@@ -9,9 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Plus, Pencil } from "lucide-react";
+import { Plus, Pencil, Upload } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ImportDialog } from "@/components/ImportDialog";
+import { FORNECEDOR_TEMPLATE } from "@/lib/import-utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/fornecedores")({
@@ -22,6 +24,7 @@ function FornecedoresPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
+  const [importing, setImporting] = useState(false);
 
   const { data } = useQuery({
     queryKey: ["fornecedores"],
@@ -50,7 +53,12 @@ function FornecedoresPage() {
   return (
     <>
       <PageHeader title="Fornecedores" description="Empresas e parceiros de fornecimento"
-        actions={<Button type="button" size="lg" onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-1" />Novo fornecedor</Button>}
+        actions={
+          <>
+            <Button type="button" size="lg" variant="outline" onClick={() => setImporting(true)}><Upload className="h-4 w-4 mr-1" />Nova importação</Button>
+            <Button type="button" size="lg" onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-1" />Novo fornecedor</Button>
+          </>
+        }
       />
 
       <Card className="overflow-hidden">
@@ -94,6 +102,36 @@ function FornecedoresPage() {
           <FornecedorForm initial={editing} onSubmit={(p: any) => mut.mutate(editing ? { ...p, id: editing.id } : p)} submitting={mut.isPending} />
         </DialogContent>
       </Dialog>
+
+      <ImportDialog
+        open={importing}
+        onOpenChange={setImporting}
+        title="Importar fornecedores"
+        description="Envie uma planilha com os fornecedores. Fornecedores com mesmo nome ou documento já cadastrados serão ignorados."
+        templateFilename="modelo_fornecedores.xlsx"
+        templateHeaders={FORNECEDOR_TEMPLATE.headers}
+        templateExample={FORNECEDOR_TEMPLATE.example}
+        onImport={async (rows) => {
+          const errors: string[] = []; let inserted = 0, skipped = 0;
+          const { data: existentes } = await supabase.from("fornecedores").select("nome,documento");
+          const setKey = new Set((existentes ?? []).map((s: any) => `${(s.nome ?? "").toLowerCase()}|${(s.documento ?? "").toLowerCase()}`));
+          for (const [idx, r] of rows.entries()) {
+            const nome = String(r.nome ?? "").trim();
+            if (!nome) { skipped++; errors.push(`Linha ${idx + 2}: nome obrigatório`); continue; }
+            const key = `${nome.toLowerCase()}|${String(r.documento ?? "").toLowerCase()}`;
+            if (setKey.has(key)) { skipped++; continue; }
+            const { error } = await supabase.from("fornecedores").insert({
+              nome, documento: r.documento || null, tipo_fornecimento: r.tipo_fornecimento || null,
+              contato_nome: r.contato_nome || null, telefone: r.telefone || null,
+              email: r.email || null, endereco: r.endereco || null, observacoes: r.observacoes || null,
+            });
+            if (error) { skipped++; errors.push(`Linha ${idx + 2}: ${error.message}`); }
+            else { inserted++; setKey.add(key); }
+          }
+          qc.invalidateQueries({ queryKey: ["fornecedores"] });
+          return { inserted, skipped, errors };
+        }}
+      />
     </>
   );
 }

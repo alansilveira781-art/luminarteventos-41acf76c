@@ -9,9 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Plus, Pencil } from "lucide-react";
+import { Plus, Pencil, Upload } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ImportDialog } from "@/components/ImportDialog";
+import { SOLICITANTE_TEMPLATE } from "@/lib/import-utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/solicitantes")({
@@ -22,6 +24,7 @@ function SolicitantesPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
+  const [importing, setImporting] = useState(false);
 
   const { data } = useQuery({
     queryKey: ["solicitantes"],
@@ -52,7 +55,12 @@ function SolicitantesPage() {
       <PageHeader
         title="Solicitantes"
         description="Pessoas e setores que solicitam itens"
-        actions={<Button type="button" size="lg" onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-1" />Novo solicitante</Button>}
+        actions={
+          <>
+            <Button type="button" size="lg" variant="outline" onClick={() => setImporting(true)}><Upload className="h-4 w-4 mr-1" />Nova importação</Button>
+            <Button type="button" size="lg" onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-1" />Novo solicitante</Button>
+          </>
+        }
       />
 
       <Card className="overflow-hidden">
@@ -96,6 +104,35 @@ function SolicitantesPage() {
           <SolicitanteForm initial={editing} onSubmit={(p: any) => mut.mutate(editing ? { ...p, id: editing.id } : p)} submitting={mut.isPending} />
         </DialogContent>
       </Dialog>
+
+      <ImportDialog
+        open={importing}
+        onOpenChange={setImporting}
+        title="Importar solicitantes"
+        description="Envie uma planilha com os solicitantes. Solicitantes com mesmo nome ou email já cadastrados serão ignorados."
+        templateFilename="modelo_solicitantes.xlsx"
+        templateHeaders={SOLICITANTE_TEMPLATE.headers}
+        templateExample={SOLICITANTE_TEMPLATE.example}
+        onImport={async (rows) => {
+          const errors: string[] = []; let inserted = 0, skipped = 0;
+          const { data: existentes } = await supabase.from("solicitantes").select("nome,email");
+          const setKey = new Set((existentes ?? []).map((s: any) => `${(s.nome ?? "").toLowerCase()}|${(s.email ?? "").toLowerCase()}`));
+          for (const [idx, r] of rows.entries()) {
+            const nome = String(r.nome ?? "").trim();
+            if (!nome) { skipped++; errors.push(`Linha ${idx + 2}: nome obrigatório`); continue; }
+            const key = `${nome.toLowerCase()}|${String(r.email ?? "").toLowerCase()}`;
+            if (setKey.has(key)) { skipped++; continue; }
+            const { error } = await supabase.from("solicitantes").insert({
+              nome, setor: r.setor || null, cargo: r.cargo || null,
+              telefone: r.telefone || null, email: r.email || null, observacoes: r.observacoes || null,
+            });
+            if (error) { skipped++; errors.push(`Linha ${idx + 2}: ${error.message}`); }
+            else { inserted++; setKey.add(key); }
+          }
+          qc.invalidateQueries({ queryKey: ["solicitantes"] });
+          return { inserted, skipped, errors };
+        }}
+      />
     </>
   );
 }
