@@ -12,7 +12,7 @@ import { ItemForm } from "@/components/forms/ItemForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/estoque")({
+export const Route = createFileRoute("/estoque/")({
   component: EstoquePage,
 });
 
