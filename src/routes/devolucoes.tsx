@@ -3,9 +3,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
+import { FormActions, FormField, FormSection } from "@/components/FormSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Plus } from "lucide-react";
@@ -152,35 +152,33 @@ function DevolucaoForm({ saidas, onSubmit, submitting }: any) {
         responsavel_lancamento: f.responsavel_lancamento,
         observacoes: f.observacoes,
       });
-    }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="md:col-span-2"><Label className="text-xs">Saída vinculada*</Label>
-        <Select value={f.saida_origem_id} onValueChange={(v) => set("saida_origem_id", v)}>
-          <SelectTrigger><SelectValue placeholder="Escolha uma saída em aberto…" /></SelectTrigger>
-          <SelectContent>
-            {saidas.length === 0 && <div className="px-3 py-2 text-sm text-muted-foreground">Nenhuma saída em aberto</div>}
-            {saidas.map((s: any) => (
-              <SelectItem key={s.id} value={s.id}>
-                {format(new Date(s.data_movimento), "dd/MM")} · {s.item?.nome} · {s.quantidade} {s.item?.unidade} · {s.solicitante?.nome ?? "s/ solicitante"}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {saida && <p className="text-xs text-muted-foreground mt-1">Item: {saida.item?.nome} · Qtd da saída: {saida.quantidade} {saida.item?.unidade}</p>}
-      </div>
-      <div><Label className="text-xs">Data*</Label><Input required type="datetime-local" value={f.data_movimento} onChange={(e) => set("data_movimento", e.target.value)} /></div>
-      <div><Label className="text-xs">Quantidade devolvida*</Label><Input required type="number" min="0.01" step="0.01" value={f.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></div>
-      <div><Label className="text-xs">Condição*</Label>
-        <Select value={f.condicao} onValueChange={(v) => set("condicao", v)}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {Object.entries(condicaoLabels).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-      <div><Label className="text-xs">Responsável pela devolução</Label><Input value={f.responsavel_lancamento} onChange={(e) => set("responsavel_lancamento", e.target.value)} /></div>
-      <div><Label className="text-xs">Responsável pelo recebimento</Label><Input value={f.responsavel_recebimento} onChange={(e) => set("responsavel_recebimento", e.target.value)} /></div>
-      <div className="md:col-span-2"><Label className="text-xs">Observações</Label><Textarea rows={2} value={f.observacoes} onChange={(e) => set("observacoes", e.target.value)} /></div>
-      <div className="md:col-span-2 flex justify-end"><Button type="submit" disabled={submitting}>Registrar devolução</Button></div>
+    }} className="space-y-4">
+      <FormSection>
+        <FormField label="Saída vinculada*" wide>
+          <Select value={f.saida_origem_id} onValueChange={(v) => set("saida_origem_id", v)}>
+            <SelectTrigger><SelectValue placeholder="Escolha uma saída em aberto…" /></SelectTrigger>
+            <SelectContent>
+              {saidas.length === 0 && <div className="px-3 py-2 text-sm text-muted-foreground">Nenhuma saída em aberto</div>}
+              {saidas.map((s: any) => (
+                <SelectItem key={s.id} value={s.id}>{format(new Date(s.data_movimento), "dd/MM")} · {s.item?.nome} · {s.quantidade} {s.item?.unidade} · {s.solicitante?.nome ?? "s/ solicitante"}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {saida && <p className="text-xs text-muted-foreground mt-1">Item: {saida.item?.nome} · Qtd da saída: {saida.quantidade} {saida.item?.unidade}</p>}
+        </FormField>
+        <FormField label="Data*"><Input required type="datetime-local" value={f.data_movimento} onChange={(e) => set("data_movimento", e.target.value)} /></FormField>
+        <FormField label="Quantidade devolvida*"><Input required type="number" min="0.01" step="0.01" value={f.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></FormField>
+        <FormField label="Condição*">
+          <Select value={f.condicao} onValueChange={(v) => set("condicao", v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{Object.entries(condicaoLabels).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent>
+          </Select>
+        </FormField>
+        <FormField label="Responsável pela devolução"><Input value={f.responsavel_lancamento} onChange={(e) => set("responsavel_lancamento", e.target.value)} /></FormField>
+        <FormField label="Responsável pelo recebimento"><Input value={f.responsavel_recebimento} onChange={(e) => set("responsavel_recebimento", e.target.value)} /></FormField>
+        <FormField label="Observações" wide><Textarea rows={2} value={f.observacoes} onChange={(e) => set("observacoes", e.target.value)} /></FormField>
+        <FormActions><Button type="submit" size="lg" disabled={submitting}>{submitting ? "Registrando…" : "Registrar devolução"}</Button></FormActions>
+      </FormSection>
     </form>
   );
 }
