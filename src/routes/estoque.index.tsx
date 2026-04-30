@@ -71,7 +71,7 @@ function EstoquePage() {
         title="Estoque"
         description="Cadastro e consulta de itens"
         actions={
-          <Button onClick={() => setCreating(true)}>
+          <Button type="button" size="lg" onClick={() => setCreating(true)}>
             <Plus className="h-4 w-4 mr-1" /> Novo item
           </Button>
         }
@@ -140,7 +140,7 @@ function EstoquePage() {
       </Card>
 
       <Dialog open={creating || !!editing} onOpenChange={(o) => { if (!o) { setCreating(false); setEditing(null); } }}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>{editing ? "Editar item" : "Novo item"}</DialogTitle>
           </DialogHeader>
