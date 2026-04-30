@@ -120,6 +120,7 @@ export type Database = {
           data_movimento: string
           data_prevista_devolucao: string | null
           entrada_tipo: Database["public"]["Enums"]["entrada_tipo"] | null
+          evento_projeto: string | null
           finalidade: string | null
           fornecedor_id: string | null
           id: string
@@ -144,6 +145,7 @@ export type Database = {
           data_movimento?: string
           data_prevista_devolucao?: string | null
           entrada_tipo?: Database["public"]["Enums"]["entrada_tipo"] | null
+          evento_projeto?: string | null
           finalidade?: string | null
           fornecedor_id?: string | null
           id?: string
@@ -168,6 +170,7 @@ export type Database = {
           data_movimento?: string
           data_prevista_devolucao?: string | null
           entrada_tipo?: Database["public"]["Enums"]["entrada_tipo"] | null
+          evento_projeto?: string | null
           finalidade?: string | null
           fornecedor_id?: string | null
           id?: string
