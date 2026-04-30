@@ -3,9 +3,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
+import { FormActions, FormField, FormSection } from "@/components/FormSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Plus } from "lucide-react";
@@ -142,39 +142,35 @@ function EntradaForm({ itens, fornecedores, onSubmit, submitting }: any) {
         valor_unitario: f.valor_unitario ? Number(f.valor_unitario) : null,
         fornecedor_id: f.fornecedor_id || null,
       });
-    }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div><Label className="text-xs">Data*</Label><Input required type="datetime-local" value={f.data_movimento} onChange={(e) => set("data_movimento", e.target.value)} /></div>
-      <div><Label className="text-xs">Tipo de entrada*</Label>
-        <Select value={f.entrada_tipo} onValueChange={(v) => set("entrada_tipo", v)}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {Object.entries(entradaTipoLabels).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-      <div><Label className="text-xs">Item*</Label>
-        <Select value={f.item_id} onValueChange={(v) => set("item_id", v)}>
-          <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
-          <SelectContent>
-            {itens.map((i: any) => <SelectItem key={i.id} value={i.id}>{i.codigo} — {i.nome}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-      <div><Label className="text-xs">Fornecedor</Label>
-        <Select value={f.fornecedor_id} onValueChange={(v) => set("fornecedor_id", v)}>
-          <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-          <SelectContent>
-            {fornecedores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-      <div><Label className="text-xs">Quantidade*</Label><Input required type="number" min="0.01" step="0.01" value={f.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></div>
-      <div><Label className="text-xs">Valor unitário (R$)</Label><Input type="number" min="0" step="0.01" value={f.valor_unitario} onChange={(e) => set("valor_unitario", e.target.value)} /></div>
-      {total && <div className="md:col-span-2 text-sm text-muted-foreground">Valor total: <span className="text-foreground font-medium">R$ {total}</span></div>}
-      <div><Label className="text-xs">Nota fiscal / documento</Label><Input value={f.nota_fiscal} onChange={(e) => set("nota_fiscal", e.target.value)} /></div>
-      <div><Label className="text-xs">Responsável pelo lançamento</Label><Input value={f.responsavel_lancamento} onChange={(e) => set("responsavel_lancamento", e.target.value)} /></div>
-      <div className="md:col-span-2"><Label className="text-xs">Observações</Label><Textarea rows={2} value={f.observacoes} onChange={(e) => set("observacoes", e.target.value)} /></div>
-      <div className="md:col-span-2 flex justify-end"><Button type="submit" disabled={submitting}>Registrar entrada</Button></div>
+    }} className="space-y-4">
+      <FormSection>
+        <FormField label="Data*"><Input required type="datetime-local" value={f.data_movimento} onChange={(e) => set("data_movimento", e.target.value)} /></FormField>
+        <FormField label="Tipo de entrada*">
+          <Select value={f.entrada_tipo} onValueChange={(v) => set("entrada_tipo", v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{Object.entries(entradaTipoLabels).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent>
+          </Select>
+        </FormField>
+        <FormField label="Item*">
+          <Select value={f.item_id} onValueChange={(v) => set("item_id", v)}>
+            <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+            <SelectContent>{itens.map((i: any) => <SelectItem key={i.id} value={i.id}>{i.codigo} — {i.nome}</SelectItem>)}</SelectContent>
+          </Select>
+        </FormField>
+        <FormField label="Fornecedor">
+          <Select value={f.fornecedor_id} onValueChange={(v) => set("fornecedor_id", v)}>
+            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+            <SelectContent>{fornecedores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
+          </Select>
+        </FormField>
+        <FormField label="Quantidade*"><Input required type="number" min="0.01" step="0.01" value={f.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></FormField>
+        <FormField label="Valor unitário (R$)"><Input type="number" min="0" step="0.01" value={f.valor_unitario} onChange={(e) => set("valor_unitario", e.target.value)} /></FormField>
+        {total && <div className="md:col-span-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">Valor total: <span className="text-foreground font-medium">R$ {total}</span></div>}
+        <FormField label="Nota fiscal / documento"><Input value={f.nota_fiscal} onChange={(e) => set("nota_fiscal", e.target.value)} /></FormField>
+        <FormField label="Responsável pelo lançamento"><Input value={f.responsavel_lancamento} onChange={(e) => set("responsavel_lancamento", e.target.value)} /></FormField>
+        <FormField label="Observações" wide><Textarea rows={2} value={f.observacoes} onChange={(e) => set("observacoes", e.target.value)} /></FormField>
+        <FormActions><Button type="submit" size="lg" disabled={submitting}>{submitting ? "Registrando…" : "Registrar entrada"}</Button></FormActions>
+      </FormSection>
     </form>
   );
 }

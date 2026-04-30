@@ -3,9 +3,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
+import { FormActions, FormField, FormSection } from "@/components/FormSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -52,7 +52,7 @@ function SolicitantesPage() {
       <PageHeader
         title="Solicitantes"
         description="Pessoas e setores que solicitam itens"
-        actions={<Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-1" />Novo solicitante</Button>}
+        actions={<Button type="button" size="lg" onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-1" />Novo solicitante</Button>}
       />
 
       <Card className="overflow-hidden">
@@ -90,9 +90,9 @@ function SolicitantesPage() {
         </div>
       </Card>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-xl">
-          <DialogHeader><DialogTitle>{editing ? "Editar" : "Novo"} solicitante</DialogTitle></DialogHeader>
+      <Dialog open={open} onOpenChange={(nextOpen) => { setOpen(nextOpen); if (!nextOpen) setEditing(null); }}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader><DialogTitle>{editing ? "Editar solicitante" : "Novo solicitante"}</DialogTitle></DialogHeader>
           <SolicitanteForm initial={editing} onSubmit={(p: any) => mut.mutate(editing ? { ...p, id: editing.id } : p)} submitting={mut.isPending} />
         </DialogContent>
       </Dialog>
@@ -108,23 +108,25 @@ function SolicitanteForm({ initial, onSubmit, submitting }: any) {
   });
   const set = (k: string, v: any) => setF((p) => ({ ...p, [k]: v }));
   return (
-    <form onSubmit={(e) => { e.preventDefault(); onSubmit(f); }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="md:col-span-2"><Label className="text-xs">Nome*</Label><Input required value={f.nome} onChange={(e) => set("nome", e.target.value)} /></div>
-      <div><Label className="text-xs">Setor</Label><Input value={f.setor} onChange={(e) => set("setor", e.target.value)} /></div>
-      <div><Label className="text-xs">Cargo</Label><Input value={f.cargo} onChange={(e) => set("cargo", e.target.value)} /></div>
-      <div><Label className="text-xs">Telefone</Label><Input value={f.telefone} onChange={(e) => set("telefone", e.target.value)} /></div>
-      <div><Label className="text-xs">E-mail</Label><Input type="email" value={f.email} onChange={(e) => set("email", e.target.value)} /></div>
-      <div><Label className="text-xs">Status</Label>
-        <Select value={f.status} onValueChange={(v) => set("status", v)}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ativo">Ativo</SelectItem>
-            <SelectItem value="inativo">Inativo</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="md:col-span-2"><Label className="text-xs">Observações</Label><Textarea rows={2} value={f.observacoes} onChange={(e) => set("observacoes", e.target.value)} /></div>
-      <div className="md:col-span-2 flex justify-end"><Button type="submit" disabled={submitting}>Salvar</Button></div>
+    <form onSubmit={(e) => { e.preventDefault(); onSubmit(f); }} className="space-y-4">
+      <FormSection>
+        <FormField label="Nome*" wide><Input required value={f.nome} onChange={(e) => set("nome", e.target.value)} /></FormField>
+        <FormField label="Setor"><Input value={f.setor} onChange={(e) => set("setor", e.target.value)} /></FormField>
+        <FormField label="Cargo"><Input value={f.cargo} onChange={(e) => set("cargo", e.target.value)} /></FormField>
+        <FormField label="Telefone"><Input value={f.telefone} onChange={(e) => set("telefone", e.target.value)} /></FormField>
+        <FormField label="E-mail"><Input type="email" value={f.email} onChange={(e) => set("email", e.target.value)} /></FormField>
+        <FormField label="Status">
+          <Select value={f.status} onValueChange={(v) => set("status", v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ativo">Ativo</SelectItem>
+              <SelectItem value="inativo">Inativo</SelectItem>
+            </SelectContent>
+          </Select>
+        </FormField>
+        <FormField label="Observações" wide><Textarea rows={2} value={f.observacoes} onChange={(e) => set("observacoes", e.target.value)} /></FormField>
+        <FormActions><Button type="submit" size="lg" disabled={submitting}>{submitting ? "Salvando…" : "Salvar solicitante"}</Button></FormActions>
+      </FormSection>
     </form>
   );
 }

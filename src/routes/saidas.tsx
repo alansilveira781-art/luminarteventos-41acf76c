@@ -3,9 +3,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
+import { FormActions, FormField, FormSection } from "@/components/FormSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -150,41 +150,37 @@ function SaidaForm({ itens, solicitantes, onSubmit, submitting }: any) {
         solicitante_id: f.solicitante_id || null,
         data_prevista_devolucao: f.data_prevista_devolucao || null,
       });
-    }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div><Label className="text-xs">Data*</Label><Input required type="datetime-local" value={f.data_movimento} onChange={(e) => set("data_movimento", e.target.value)} /></div>
-      <div><Label className="text-xs">Tipo*</Label>
-        <Select value={f.saida_tipo} onValueChange={(v) => set("saida_tipo", v)}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {Object.entries(saidaTipoLabels).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-      <div><Label className="text-xs">Item*</Label>
-        <Select value={f.item_id} onValueChange={(v) => set("item_id", v)}>
-          <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
-          <SelectContent>
-            {itens.map((i: any) => <SelectItem key={i.id} value={i.id}>{i.codigo} — {i.nome} ({i.quantidade_atual} {i.unidade})</SelectItem>)}
-          </SelectContent>
-        </Select>
-        {item && <p className="text-xs text-muted-foreground mt-1">Disponível: {Number(item.quantidade_atual)} {item.unidade}</p>}
-      </div>
-      <div><Label className="text-xs">Solicitante</Label>
-        <Select value={f.solicitante_id} onValueChange={(v) => set("solicitante_id", v)}>
-          <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-          <SelectContent>
-            {solicitantes.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-      <div><Label className="text-xs">Qtd solicitada</Label><Input type="number" min="0.01" step="0.01" value={f.quantidade_solicitada} onChange={(e) => set("quantidade_solicitada", e.target.value)} /></div>
-      <div><Label className="text-xs">Qtd liberada*</Label><Input required type="number" min="0.01" step="0.01" value={f.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></div>
-      <div className="md:col-span-2"><Label className="text-xs">Evento / finalidade</Label><Input value={f.finalidade} onChange={(e) => set("finalidade", e.target.value)} /></div>
-      <div><Label className="text-xs">Responsável pela retirada</Label><Input value={f.responsavel_retirada} onChange={(e) => set("responsavel_retirada", e.target.value)} /></div>
-      <div><Label className="text-xs">Responsável pelo lançamento</Label><Input value={f.responsavel_lancamento} onChange={(e) => set("responsavel_lancamento", e.target.value)} /></div>
-      <div><Label className="text-xs">Data prevista de devolução</Label><Input type="date" value={f.data_prevista_devolucao} onChange={(e) => set("data_prevista_devolucao", e.target.value)} /></div>
-      <div className="md:col-span-2"><Label className="text-xs">Observações</Label><Textarea rows={2} value={f.observacoes} onChange={(e) => set("observacoes", e.target.value)} /></div>
-      <div className="md:col-span-2 flex justify-end"><Button type="submit" disabled={submitting}>Registrar saída</Button></div>
+    }} className="space-y-4">
+      <FormSection>
+        <FormField label="Data*"><Input required type="datetime-local" value={f.data_movimento} onChange={(e) => set("data_movimento", e.target.value)} /></FormField>
+        <FormField label="Tipo*">
+          <Select value={f.saida_tipo} onValueChange={(v) => set("saida_tipo", v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{Object.entries(saidaTipoLabels).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent>
+          </Select>
+        </FormField>
+        <FormField label="Item*">
+          <Select value={f.item_id} onValueChange={(v) => set("item_id", v)}>
+            <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+            <SelectContent>{itens.map((i: any) => <SelectItem key={i.id} value={i.id}>{i.codigo} — {i.nome} ({i.quantidade_atual} {i.unidade})</SelectItem>)}</SelectContent>
+          </Select>
+          {item && <p className="text-xs text-muted-foreground mt-1">Disponível: {Number(item.quantidade_atual)} {item.unidade}</p>}
+        </FormField>
+        <FormField label="Solicitante">
+          <Select value={f.solicitante_id} onValueChange={(v) => set("solicitante_id", v)}>
+            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+            <SelectContent>{solicitantes.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
+          </Select>
+        </FormField>
+        <FormField label="Qtd solicitada"><Input type="number" min="0.01" step="0.01" value={f.quantidade_solicitada} onChange={(e) => set("quantidade_solicitada", e.target.value)} /></FormField>
+        <FormField label="Qtd liberada*"><Input required type="number" min="0.01" step="0.01" value={f.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></FormField>
+        <FormField label="Evento / finalidade" wide><Input value={f.finalidade} onChange={(e) => set("finalidade", e.target.value)} /></FormField>
+        <FormField label="Responsável pela retirada"><Input value={f.responsavel_retirada} onChange={(e) => set("responsavel_retirada", e.target.value)} /></FormField>
+        <FormField label="Responsável pelo lançamento"><Input value={f.responsavel_lancamento} onChange={(e) => set("responsavel_lancamento", e.target.value)} /></FormField>
+        <FormField label="Data prevista de devolução"><Input type="date" value={f.data_prevista_devolucao} onChange={(e) => set("data_prevista_devolucao", e.target.value)} /></FormField>
+        <FormField label="Observações" wide><Textarea rows={2} value={f.observacoes} onChange={(e) => set("observacoes", e.target.value)} /></FormField>
+        <FormActions><Button type="submit" size="lg" disabled={submitting}>{submitting ? "Registrando…" : "Registrar saída"}</Button></FormActions>
+      </FormSection>
     </form>
   );
 }
