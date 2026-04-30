@@ -66,7 +66,7 @@ function EntradasPage() {
       <PageHeader
         title="Entradas"
         description="Registro de itens recebidos no estoque"
-        actions={<Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />Nova entrada</Button>}
+        actions={<Button type="button" size="lg" onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />Nova entrada</Button>}
       />
 
       <Card className="overflow-hidden">
@@ -107,7 +107,7 @@ function EntradasPage() {
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader><DialogTitle>Nova entrada</DialogTitle></DialogHeader>
           <EntradaForm itens={itens ?? []} fornecedores={fornecedores ?? []} onSubmit={(p: any) => mut.mutate(p)} submitting={mut.isPending} />
         </DialogContent>
