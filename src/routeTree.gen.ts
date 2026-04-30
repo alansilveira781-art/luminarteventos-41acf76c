@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SolicitantesRouteImport } from './routes/solicitantes'
 import { Route as SaidasRouteImport } from './routes/saidas'
+import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as FornecedoresRouteImport } from './routes/fornecedores'
 import { Route as EntradasRouteImport } from './routes/entradas'
 import { Route as DevolucoesRouteImport } from './routes/devolucoes'
@@ -26,6 +27,11 @@ const SolicitantesRoute = SolicitantesRouteImport.update({
 const SaidasRoute = SaidasRouteImport.update({
   id: '/saidas',
   path: '/saidas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RelatoriosRoute = RelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FornecedoresRoute = FornecedoresRouteImport.update({
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/devolucoes': typeof DevolucoesRoute
   '/entradas': typeof EntradasRoute
   '/fornecedores': typeof FornecedoresRoute
+  '/relatorios': typeof RelatoriosRoute
   '/saidas': typeof SaidasRoute
   '/solicitantes': typeof SolicitantesRoute
   '/estoque/$itemId': typeof EstoqueItemIdRoute
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/devolucoes': typeof DevolucoesRoute
   '/entradas': typeof EntradasRoute
   '/fornecedores': typeof FornecedoresRoute
+  '/relatorios': typeof RelatoriosRoute
   '/saidas': typeof SaidasRoute
   '/solicitantes': typeof SolicitantesRoute
   '/estoque/$itemId': typeof EstoqueItemIdRoute
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/devolucoes': typeof DevolucoesRoute
   '/entradas': typeof EntradasRoute
   '/fornecedores': typeof FornecedoresRoute
+  '/relatorios': typeof RelatoriosRoute
   '/saidas': typeof SaidasRoute
   '/solicitantes': typeof SolicitantesRoute
   '/estoque/$itemId': typeof EstoqueItemIdRoute
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/devolucoes'
     | '/entradas'
     | '/fornecedores'
+    | '/relatorios'
     | '/saidas'
     | '/solicitantes'
     | '/estoque/$itemId'
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '/devolucoes'
     | '/entradas'
     | '/fornecedores'
+    | '/relatorios'
     | '/saidas'
     | '/solicitantes'
     | '/estoque/$itemId'
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/devolucoes'
     | '/entradas'
     | '/fornecedores'
+    | '/relatorios'
     | '/saidas'
     | '/solicitantes'
     | '/estoque/$itemId'
@@ -128,6 +140,7 @@ export interface RootRouteChildren {
   DevolucoesRoute: typeof DevolucoesRoute
   EntradasRoute: typeof EntradasRoute
   FornecedoresRoute: typeof FornecedoresRoute
+  RelatoriosRoute: typeof RelatoriosRoute
   SaidasRoute: typeof SaidasRoute
   SolicitantesRoute: typeof SolicitantesRoute
   EstoqueItemIdRoute: typeof EstoqueItemIdRoute
@@ -148,6 +161,13 @@ declare module '@tanstack/react-router' {
       path: '/saidas'
       fullPath: '/saidas'
       preLoaderRoute: typeof SaidasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/relatorios': {
+      id: '/relatorios'
+      path: '/relatorios'
+      fullPath: '/relatorios'
+      preLoaderRoute: typeof RelatoriosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/fornecedores': {
@@ -200,6 +220,7 @@ const rootRouteChildren: RootRouteChildren = {
   DevolucoesRoute: DevolucoesRoute,
   EntradasRoute: EntradasRoute,
   FornecedoresRoute: FornecedoresRoute,
+  RelatoriosRoute: RelatoriosRoute,
   SaidasRoute: SaidasRoute,
   SolicitantesRoute: SolicitantesRoute,
   EstoqueItemIdRoute: EstoqueItemIdRoute,
