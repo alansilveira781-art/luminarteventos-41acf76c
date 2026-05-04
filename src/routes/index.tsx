@@ -325,8 +325,8 @@ function Dashboard() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={graficoMensal}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="mes" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                  <XAxis dataKey="mes" stroke="#ffffff" tick={{ fill: "#ffffff" }} fontSize={11} />
+                  <YAxis stroke="#ffffff" tick={{ fill: "#ffffff" }} fontSize={11} />
                   <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
                   <Bar dataKey="entradas" fill="hsl(var(--success))" name="Entradas" radius={[4, 4, 0, 0]} />
