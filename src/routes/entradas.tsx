@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Plus, Upload, FileCode2 } from "lucide-react";
+import { Plus, Upload, FileCode2, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
@@ -44,22 +44,31 @@ function EntradasPage() {
 
   const { data: itens } = useQuery({
     queryKey: ["itens-select"],
-    queryFn: async () => (await supabase.from("itens").select("id,nome,codigo,unidade").order("nome")).data ?? [],
+    queryFn: async () => (await supabase.from("itens").select("id,nome,codigo,unidade,valor_unitario").order("nome")).data ?? [],
   });
   const { data: fornecedores } = useQuery({
     queryKey: ["fornecedores-select"],
     queryFn: async () => (await supabase.from("fornecedores").select("id,nome").eq("status", "ativo").order("nome")).data ?? [],
   });
 
+  // Múltiplos itens em uma única entrada: criamos N movimentações compartilhando metadados
   const mut = useMutation({
-    mutationFn: async (p: any) => {
-      const { error } = await supabase.from("movimentacoes").insert({ ...p, tipo: "entrada" });
+    mutationFn: async (p: { meta: any; linhas: Array<{ item_id: string; quantidade: number; valor_unitario: number | null }> }) => {
+      const inserts = p.linhas.map((l) => ({
+        ...p.meta,
+        tipo: "entrada" as const,
+        item_id: l.item_id,
+        quantidade: l.quantidade,
+        valor_unitario: l.valor_unitario,
+      }));
+      const { error } = await supabase.from("movimentacoes").insert(inserts);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["entradas"] });
       qc.invalidateQueries({ queryKey: ["itens"] });
       qc.invalidateQueries({ queryKey: ["dashboard-itens"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-movs"] });
       toast.success("Entrada registrada");
       setOpen(false);
     },
@@ -106,7 +115,7 @@ function EntradasPage() {
                 <tr key={m.id} className="border-t border-border hover:bg-muted/30">
                   <td className="px-4 py-3 tabular-nums whitespace-nowrap">{format(new Date(m.data_movimento), "dd/MM/yyyy HH:mm")}</td>
                   <td className="px-4 py-3 font-medium">{m.item?.nome}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{m.entrada_tipo ? entradaTipoLabels[m.entrada_tipo] : "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{m.entrada_tipo ? entradaTipoLabels[m.entrada_tipo] ?? m.entrada_tipo : "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">{m.fornecedor?.nome ?? "—"}</td>
                   <td className="px-4 py-3 text-right tabular-nums text-success">+{Number(m.quantidade)} {m.item?.unidade}</td>
                   <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
@@ -124,9 +133,14 @@ function EntradasPage() {
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-4xl">
           <DialogHeader><DialogTitle>Nova entrada</DialogTitle></DialogHeader>
-          <EntradaForm itens={itens ?? []} fornecedores={fornecedores ?? []} onSubmit={(p: any) => mut.mutate(p)} submitting={mut.isPending} />
+          <EntradaForm
+            itens={itens ?? []}
+            fornecedores={fornecedores ?? []}
+            onSubmit={(meta: any, linhas: any) => mut.mutate({ meta, linhas })}
+            submitting={mut.isPending}
+          />
         </DialogContent>
       </Dialog>
 
@@ -199,7 +213,6 @@ function NfeImportDialog({ open, onOpenChange, onDone }: { open: boolean; onOpen
     if (!preview) return;
     setBusy(true);
     try {
-      // 1) Garantir fornecedor
       let fornecedor_id: string | null = null;
       const nome = preview.fornecedor.nome;
       const { data: existente } = await supabase.from("fornecedores").select("id").ilike("nome", nome).maybeSingle();
@@ -214,7 +227,6 @@ function NfeImportDialog({ open, onOpenChange, onDone }: { open: boolean; onOpen
 
       let inserted = 0;
       for (const it of preview.itens) {
-        // Criar/obter item por código
         let item_id: string | null = null;
         const { data: existenteItem } = await supabase.from("itens").select("id").eq("codigo", it.codigo).maybeSingle();
         if (existenteItem) item_id = existenteItem.id;
@@ -294,61 +306,119 @@ function NfeImportDialog({ open, onOpenChange, onDone }: { open: boolean; onOpen
   );
 }
 
+type Linha = { item_id: string; quantidade: string; valor_unitario: string };
+
 function EntradaForm({ itens, fornecedores, onSubmit, submitting }: any) {
-  const [f, setF] = useState({
+  const [meta, setMeta] = useState({
     data_movimento: new Date().toISOString().slice(0, 16),
     entrada_tipo: "compra",
-    item_id: "",
     fornecedor_id: "",
-    quantidade: 1,
-    valor_unitario: "",
     nota_fiscal: "",
     responsavel_lancamento: "",
     observacoes: "",
   });
-  const set = (k: string, v: any) => setF((p) => ({ ...p, [k]: v }));
-  const total = f.valor_unitario && f.quantidade ? (Number(f.valor_unitario) * Number(f.quantidade)).toFixed(2) : null;
+  const [linhas, setLinhas] = useState<Linha[]>([{ item_id: "", quantidade: "1", valor_unitario: "" }]);
+
+  const setM = (k: string, v: any) => setMeta((p) => ({ ...p, [k]: v }));
+  const setL = (i: number, k: keyof Linha, v: string) => {
+    setLinhas((arr) => {
+      const novo = [...arr];
+      novo[i] = { ...novo[i], [k]: v };
+      // auto-preencher valor unit ao escolher item
+      if (k === "item_id") {
+        const it = itens.find((x: any) => x.id === v);
+        if (it?.valor_unitario != null && !novo[i].valor_unitario) {
+          novo[i].valor_unitario = String(it.valor_unitario);
+        }
+      }
+      return novo;
+    });
+  };
+  const addLinha = () => setLinhas((a) => [...a, { item_id: "", quantidade: "1", valor_unitario: "" }]);
+  const remLinha = (i: number) => setLinhas((a) => (a.length === 1 ? a : a.filter((_, idx) => idx !== i)));
+
+  const total = linhas.reduce((acc, l) => acc + (Number(l.valor_unitario || 0) * Number(l.quantidade || 0)), 0);
 
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
-      if (!f.item_id) return toast.error("Selecione um item");
-      onSubmit({
-        ...f,
-        data_movimento: new Date(f.data_movimento).toISOString(),
-        quantidade: Number(f.quantidade),
-        valor_unitario: f.valor_unitario ? Number(f.valor_unitario) : null,
-        fornecedor_id: f.fornecedor_id || null,
-      });
+      const validas = linhas.filter((l) => l.item_id && Number(l.quantidade) > 0);
+      if (validas.length === 0) return toast.error("Adicione pelo menos um item");
+      onSubmit(
+        {
+          data_movimento: new Date(meta.data_movimento).toISOString(),
+          entrada_tipo: meta.entrada_tipo,
+          fornecedor_id: meta.fornecedor_id || null,
+          nota_fiscal: meta.nota_fiscal || null,
+          responsavel_lancamento: meta.responsavel_lancamento || null,
+          observacoes: meta.observacoes || null,
+        },
+        validas.map((l) => ({
+          item_id: l.item_id,
+          quantidade: Number(l.quantidade),
+          valor_unitario: l.valor_unitario === "" ? null : Number(l.valor_unitario),
+        })),
+      );
     }} className="space-y-4">
       <FormSection>
-        <FormField label="Data*"><Input required type="datetime-local" value={f.data_movimento} onChange={(e) => set("data_movimento", e.target.value)} /></FormField>
+        <FormField label="Data*"><Input required type="datetime-local" value={meta.data_movimento} onChange={(e) => setM("data_movimento", e.target.value)} /></FormField>
         <FormField label="Tipo de entrada*">
-          <Select value={f.entrada_tipo} onValueChange={(v) => set("entrada_tipo", v)}>
+          <Select value={meta.entrada_tipo} onValueChange={(v) => setM("entrada_tipo", v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>{Object.entries(entradaTipoLabels).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent>
           </Select>
         </FormField>
-        <FormField label="Item*">
-          <Select value={f.item_id} onValueChange={(v) => set("item_id", v)}>
-            <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
-            <SelectContent>{itens.map((i: any) => <SelectItem key={i.id} value={i.id}>{i.codigo} — {i.nome}</SelectItem>)}</SelectContent>
-          </Select>
-        </FormField>
         <FormField label="Fornecedor">
-          <Select value={f.fornecedor_id} onValueChange={(v) => set("fornecedor_id", v)}>
+          <Select value={meta.fornecedor_id} onValueChange={(v) => setM("fornecedor_id", v)}>
             <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
             <SelectContent>{fornecedores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
           </Select>
         </FormField>
-        <FormField label="Quantidade*"><Input required type="number" min="0.01" step="0.01" value={f.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></FormField>
-        <FormField label="Valor unitário (R$)"><Input type="number" min="0" step="0.01" value={f.valor_unitario} onChange={(e) => set("valor_unitario", e.target.value)} /></FormField>
-        {total && <div className="md:col-span-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">Valor total: <span className="text-foreground font-medium">R$ {total}</span></div>}
-        <FormField label="Nota fiscal / documento"><Input value={f.nota_fiscal} onChange={(e) => set("nota_fiscal", e.target.value)} /></FormField>
-        <FormField label="Responsável pelo lançamento"><Input value={f.responsavel_lancamento} onChange={(e) => set("responsavel_lancamento", e.target.value)} /></FormField>
-        <FormField label="Observações" wide><Textarea rows={2} value={f.observacoes} onChange={(e) => set("observacoes", e.target.value)} /></FormField>
-        <FormActions><Button type="submit" size="lg" disabled={submitting}>{submitting ? "Registrando…" : "Registrar entrada"}</Button></FormActions>
+        <FormField label="Nota fiscal / documento"><Input value={meta.nota_fiscal} onChange={(e) => setM("nota_fiscal", e.target.value)} /></FormField>
+        <FormField label="Responsável pelo lançamento"><Input value={meta.responsavel_lancamento} onChange={(e) => setM("responsavel_lancamento", e.target.value)} /></FormField>
+        <FormField label="Observações" wide><Textarea rows={2} value={meta.observacoes} onChange={(e) => setM("observacoes", e.target.value)} /></FormField>
       </FormSection>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Itens da entrada</h3>
+          <Button type="button" size="sm" variant="outline" onClick={addLinha}>
+            <Plus className="h-3 w-3 mr-1" /> Adicionar item
+          </Button>
+        </div>
+        <Card className="p-3 space-y-2">
+          {linhas.map((l, i) => (
+            <div key={i} className="grid grid-cols-12 gap-2 items-end">
+              <div className="col-span-6">
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Item</label>
+                <Select value={l.item_id} onValueChange={(v) => setL(i, "item_id", v)}>
+                  <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+                  <SelectContent>{itens.map((it: any) => <SelectItem key={it.id} value={it.id}>{it.codigo} — {it.nome}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="col-span-2">
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Qtd</label>
+                <Input type="number" min="0.01" step="0.01" value={l.quantidade} onChange={(e) => setL(i, "quantidade", e.target.value)} />
+              </div>
+              <div className="col-span-3">
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Valor unit. (R$)</label>
+                <Input type="number" min="0" step="0.01" value={l.valor_unitario} onChange={(e) => setL(i, "valor_unitario", e.target.value)} />
+              </div>
+              <div className="col-span-1 flex justify-end">
+                <Button type="button" variant="ghost" size="icon" onClick={() => remLinha(i)} disabled={linhas.length === 1} title="Remover">
+                  <Trash2 className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </div>
+            </div>
+          ))}
+          <div className="flex justify-between border-t border-border pt-2 text-sm">
+            <span className="text-muted-foreground">{linhas.length} item(ns)</span>
+            <span className="font-medium">Total: R$ {total.toFixed(2)}</span>
+          </div>
+        </Card>
+      </div>
+
+      <FormActions><Button type="submit" size="lg" disabled={submitting}>{submitting ? "Registrando…" : "Registrar entrada"}</Button></FormActions>
     </form>
   );
 }
