@@ -188,6 +188,14 @@ export function CompraDialog({
                   </SelectContent>
                 </Select>
               </FormField>
+              <FormField label="Tipo de compra">
+                <Select value={form.tipo_compra ?? ""} onValueChange={(v) => setForm({ ...form, tipo_compra: v })}>
+                  <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+                  <SelectContent>
+                    {TIPO_COMPRA_OPTIONS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </FormField>
               <FormField label="Solicitante">
                 <SelectCreatable
                   table="solicitantes"
