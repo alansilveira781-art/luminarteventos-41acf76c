@@ -15,6 +15,7 @@ import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as FornecedoresRouteImport } from './routes/fornecedores'
 import { Route as EntradasRouteImport } from './routes/entradas'
 import { Route as DevolucoesRouteImport } from './routes/devolucoes'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EstoqueIndexRouteImport } from './routes/estoque.index'
 import { Route as EstoqueItemIdRouteImport } from './routes/estoque.$itemId'
@@ -49,6 +50,11 @@ const DevolucoesRoute = DevolucoesRouteImport.update({
   path: '/devolucoes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -67,6 +73,7 @@ const EstoqueItemIdRoute = EstoqueItemIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/devolucoes': typeof DevolucoesRoute
   '/entradas': typeof EntradasRoute
   '/fornecedores': typeof FornecedoresRoute
@@ -78,6 +85,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/devolucoes': typeof DevolucoesRoute
   '/entradas': typeof EntradasRoute
   '/fornecedores': typeof FornecedoresRoute
@@ -90,6 +98,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/devolucoes': typeof DevolucoesRoute
   '/entradas': typeof EntradasRoute
   '/fornecedores': typeof FornecedoresRoute
@@ -103,6 +112,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auth'
     | '/devolucoes'
     | '/entradas'
     | '/fornecedores'
@@ -114,6 +124,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/auth'
     | '/devolucoes'
     | '/entradas'
     | '/fornecedores'
@@ -125,6 +136,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/auth'
     | '/devolucoes'
     | '/entradas'
     | '/fornecedores'
@@ -137,6 +149,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
   DevolucoesRoute: typeof DevolucoesRoute
   EntradasRoute: typeof EntradasRoute
   FornecedoresRoute: typeof FornecedoresRoute
@@ -191,6 +204,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevolucoesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -217,6 +237,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
   DevolucoesRoute: DevolucoesRoute,
   EntradasRoute: EntradasRoute,
   FornecedoresRoute: FornecedoresRoute,
@@ -229,3 +250,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
