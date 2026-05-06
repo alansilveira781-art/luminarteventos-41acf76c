@@ -56,6 +56,21 @@ function EstoquePage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const delMut = useMutation({
+    mutationFn: async (id: string) => {
+      // remove dependent movements first to avoid FK/constraint surprises
+      await supabase.from("movimentacao_itens").delete().eq("item_id", id);
+      await supabase.from("movimentacoes").delete().eq("item_id", id);
+      const { error } = await supabase.from("itens").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["itens"] });
+      toast.success("Item excluído");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const filtered = useMemo(() => {
     if (!itens) return [];
     const s = q.toLowerCase().trim();
