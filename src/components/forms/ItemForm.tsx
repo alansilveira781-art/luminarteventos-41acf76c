@@ -70,7 +70,7 @@ export function ItemForm({
       className="space-y-4"
     >
       <FormSection>
-        <FormField label="Código*"><Input required value={form.codigo} onChange={(e) => set("codigo", e.target.value)} /></FormField>
+        <FormField label="Código (gerado automaticamente)"><Input readOnly value={form.codigo} className="bg-muted/40" /></FormField>
         <FormField label="Código próprio (fornecedor)">
           <Input
             value={form.codigo_proprio}
