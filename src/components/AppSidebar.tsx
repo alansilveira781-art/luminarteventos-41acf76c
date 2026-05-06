@@ -24,7 +24,8 @@ import { useAuth } from "@/contexts/AuthContext";
 type NavItem = { title: string; url: string; icon: any; group: string; module?: string; adminOnly?: boolean };
 
 const allItems: NavItem[] = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard, group: "Visão geral", module: "estoque" },
+  { title: "Início", url: "/", icon: LayoutDashboard, group: "Visão geral" },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, group: "Visão geral", module: "estoque" },
   { title: "Estoque", url: "/estoque", icon: Package, group: "Cadastros", module: "estoque" },
   { title: "Solicitantes", url: "/solicitantes", icon: Users, group: "Cadastros", module: "estoque" },
   { title: "Fornecedores", url: "/fornecedores", icon: Truck, group: "Cadastros", module: "estoque" },
