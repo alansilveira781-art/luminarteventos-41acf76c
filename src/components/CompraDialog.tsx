@@ -172,8 +172,6 @@ export function CompraDialog({
           <TabsList>
             <TabsTrigger value="dados">Dados</TabsTrigger>
             <TabsTrigger value="itens">Itens</TabsTrigger>
-            {compraId && <TabsTrigger value="comentarios">Comentários</TabsTrigger>}
-            {compraId && <TabsTrigger value="historico">Histórico</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="dados" className="space-y-4 pt-4">
@@ -309,17 +307,24 @@ export function CompraDialog({
             </div>
           </TabsContent>
 
-          {compraId && (
-            <TabsContent value="comentarios" className="pt-4">
-              <Comentarios compraId={compraId} userId={user?.id} />
-            </TabsContent>
-          )}
-          {compraId && (
-            <TabsContent value="historico" className="pt-4">
-              <Historico compraId={compraId} />
-            </TabsContent>
-          )}
         </Tabs>
+
+        {compraId && (
+          <div className="mt-6 border-t border-border pt-4">
+            <Tabs defaultValue="comentarios">
+              <TabsList>
+                <TabsTrigger value="comentarios">Comentários</TabsTrigger>
+                <TabsTrigger value="historico">Histórico</TabsTrigger>
+              </TabsList>
+              <TabsContent value="comentarios" className="pt-4">
+                <Comentarios compraId={compraId} userId={user?.id} />
+              </TabsContent>
+              <TabsContent value="historico" className="pt-4">
+                <Historico compraId={compraId} />
+              </TabsContent>
+            </Tabs>
+          </div>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>

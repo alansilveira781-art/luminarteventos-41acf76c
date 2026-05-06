@@ -48,8 +48,15 @@ const groups = ["Visão geral", "Estoque", "Compras", "Administração"];
 const ESTOQUE_ROUTES = ["/dashboard", "/estoque", "/solicitantes", "/fornecedores", "/entradas", "/saidas", "/devolucoes", "/relatorios"];
 const COMPRAS_ROUTES = ["/compras"];
 
-function isActiveUrl(pathname: string, url: string) {
-  return url === "/" ? pathname === "/" : pathname === url || pathname.startsWith(url + "/");
+function isActiveUrl(pathname: string, url: string, allUrls: string[] = []) {
+  if (url === "/") return pathname === "/";
+  if (pathname === url) return true;
+  // Se houver outra URL mais específica que casa, este item NÃO está ativo
+  const moreSpecific = allUrls.some(
+    (u) => u !== url && u.startsWith(url + "/") && (pathname === u || pathname.startsWith(u + "/")),
+  );
+  if (moreSpecific) return false;
+  return pathname.startsWith(url + "/");
 }
 
 function getContext(pathname: string): "home" | "estoque" | "compras" | "admin" {
@@ -143,7 +150,7 @@ function SidebarBody({
               {items
                 .filter((i) => i.group === g)
                 .map((item) => {
-                  const active = isActiveUrl(pathname, item.url);
+                  const active = isActiveUrl(pathname, item.url, items.map((i) => i.url));
                   return (
                     <Link
                       key={item.url}
@@ -222,7 +229,7 @@ function MobileRail({ pathname, onOpenMenu }: { pathname: string; onOpenMenu: ()
       </button>
       <nav className="mt-5 flex flex-1 flex-col items-center gap-2">
         {items.map((item) => {
-          const active = isActiveUrl(pathname, item.url);
+          const active = isActiveUrl(pathname, item.url, items.map((i) => i.url));
           return (
             <Link
               key={item.url}
@@ -301,7 +308,7 @@ export function AppSidebar() {
 export function AppTopBar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const items = useNavItems(pathname);
-  const current = items.find((i) => isActiveUrl(pathname, i.url));
+  const current = items.find((i) => isActiveUrl(pathname, i.url, items.map((x) => x.url)));
   const currentTitle = current?.title ?? "Dashboard";
 
   return (
