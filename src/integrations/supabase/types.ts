@@ -32,6 +32,128 @@ export type Database = {
         }
         Relationships: []
       }
+      compra_itens: {
+        Row: {
+          compra_id: string
+          created_at: string
+          descricao: string
+          id: string
+          item_id: string | null
+          quantidade: number
+          quantidade_recebida: number
+          recebido: boolean
+          recebido_em: string | null
+          recebido_por: string | null
+          unidade: string | null
+          valor_unitario: number | null
+        }
+        Insert: {
+          compra_id: string
+          created_at?: string
+          descricao: string
+          id?: string
+          item_id?: string | null
+          quantidade?: number
+          quantidade_recebida?: number
+          recebido?: boolean
+          recebido_em?: string | null
+          recebido_por?: string | null
+          unidade?: string | null
+          valor_unitario?: number | null
+        }
+        Update: {
+          compra_id?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+          item_id?: string | null
+          quantidade?: number
+          quantidade_recebida?: number
+          recebido?: boolean
+          recebido_em?: string | null
+          recebido_por?: string | null
+          unidade?: string | null
+          valor_unitario?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compra_itens_compra_id_fkey"
+            columns: ["compra_id"]
+            isOneToOne: false
+            referencedRelation: "compras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compras: {
+        Row: {
+          comprador: string | null
+          condicao_pagamento: string | null
+          created_at: string
+          created_by: string | null
+          data_compra: string | null
+          data_solicitacao: string
+          documento: string | null
+          fornecedor: string | null
+          fornecedor_id: string | null
+          id: string
+          motivo_negacao: string | null
+          observacoes: string | null
+          ordem: number
+          parcelamento: string | null
+          solicitante: string | null
+          solicitante_id: string | null
+          status: Database["public"]["Enums"]["compra_status"]
+          titulo: string | null
+          updated_at: string
+          valor_total: number | null
+        }
+        Insert: {
+          comprador?: string | null
+          condicao_pagamento?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_compra?: string | null
+          data_solicitacao?: string
+          documento?: string | null
+          fornecedor?: string | null
+          fornecedor_id?: string | null
+          id?: string
+          motivo_negacao?: string | null
+          observacoes?: string | null
+          ordem?: number
+          parcelamento?: string | null
+          solicitante?: string | null
+          solicitante_id?: string | null
+          status?: Database["public"]["Enums"]["compra_status"]
+          titulo?: string | null
+          updated_at?: string
+          valor_total?: number | null
+        }
+        Update: {
+          comprador?: string | null
+          condicao_pagamento?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_compra?: string | null
+          data_solicitacao?: string
+          documento?: string | null
+          fornecedor?: string | null
+          fornecedor_id?: string | null
+          id?: string
+          motivo_negacao?: string | null
+          observacoes?: string | null
+          ordem?: number
+          parcelamento?: string | null
+          solicitante?: string | null
+          solicitante_id?: string | null
+          status?: Database["public"]["Enums"]["compra_status"]
+          titulo?: string | null
+          updated_at?: string
+          valor_total?: number | null
+        }
+        Relationships: []
+      }
       fornecedores: {
         Row: {
           contato_nome: string | null
@@ -470,6 +592,15 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      compra_status:
+        | "solicitacao"
+        | "analise"
+        | "negada"
+        | "pendente_aprovacao"
+        | "aprovada"
+        | "em_andamento"
+        | "a_receber"
+        | "finalizado"
       devolucao_condicao:
         | "perfeito"
         | "danificado"
@@ -635,6 +766,16 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      compra_status: [
+        "solicitacao",
+        "analise",
+        "negada",
+        "pendente_aprovacao",
+        "aprovada",
+        "em_andamento",
+        "a_receber",
+        "finalizado",
+      ],
       devolucao_condicao: [
         "perfeito",
         "danificado",
