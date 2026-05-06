@@ -305,13 +305,6 @@ export function AppTopBar() {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          <button
-            className="h-9 w-9 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground relative"
-            aria-label="Notificações"
-          >
-            <Bell className="h-4 w-4" />
-            <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-warning" />
-          </button>
           <div className="hidden sm:flex items-center gap-2 px-2 py-1 rounded-md border border-border bg-card">
             <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
