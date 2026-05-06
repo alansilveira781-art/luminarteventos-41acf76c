@@ -150,7 +150,7 @@ function SidebarBody({
               {items
                 .filter((i) => i.group === g)
                 .map((item) => {
-                  const active = isActiveUrl(pathname, item.url);
+                  const active = isActiveUrl(pathname, item.url, items.map((i) => i.url));
                   return (
                     <Link
                       key={item.url}
