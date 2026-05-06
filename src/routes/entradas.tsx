@@ -18,6 +18,7 @@ import { ImportDialog } from "@/components/ImportDialog";
 import { ENTRADA_TEMPLATE } from "@/lib/import-utils";
 import { parseNfeXml } from "@/lib/nfe-parser";
 import { ItemSearchSelect } from "@/components/ItemSearchSelect";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const Route = createFileRoute("/entradas")({
   component: EntradasPage,
@@ -25,9 +26,28 @@ export const Route = createFileRoute("/entradas")({
 
 function EntradasPage() {
   const qc = useQueryClient();
+  const { isAdmin } = useAuth();
   const [open, setOpen] = useState(false);
   const [importingExcel, setImportingExcel] = useState(false);
   const [importingXml, setImportingXml] = useState(false);
+
+  const delMut = useMutation({
+    mutationFn: async (m: any) => {
+      // Reverter estoque (entrada adicionou, então subtrair)
+      const { data: it } = await supabase.from("itens").select("quantidade_atual").eq("id", m.item_id).single();
+      if (it) {
+        await supabase.from("itens").update({ quantidade_atual: Number(it.quantidade_atual) - Number(m.quantidade) }).eq("id", m.item_id);
+      }
+      const { error } = await supabase.from("movimentacoes").delete().eq("id", m.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["entradas"] });
+      qc.invalidateQueries({ queryKey: ["itens"] });
+      toast.success("Entrada excluída");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   const { data: entradas } = useQuery({
     queryKey: ["entradas"],
