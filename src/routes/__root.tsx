@@ -37,8 +37,16 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Luminart Eventos — Controle de Estoque" },
-      { name: "description", content: "Sistema interno de controle de estoque da Luminart Eventos." },
+      { title: "Grupo Luminart" },
+      { name: "description", content: "Sistema do Grupo Luminart." },
+      { property: "og:title", content: "Grupo Luminart" },
+      { name: "twitter:title", content: "Grupo Luminart" },
+      { property: "og:description", content: "Sistema do Grupo Luminart." },
+      { name: "twitter:description", content: "Sistema do Grupo Luminart." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/c82de9c7-4ebf-4824-a70c-d6b5f9243ec6" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/c82de9c7-4ebf-4824-a70c-d6b5f9243ec6" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:type", content: "website" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
