@@ -341,11 +341,38 @@ export function CompraDialog({
 
         </Tabs>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={() => save.mutate()} disabled={save.isPending}>
-            {save.isPending ? "Salvando…" : "Salvar"}
-          </Button>
+        <DialogFooter className="sm:justify-between">
+          <div>
+            {compraId && (
+              <Button
+                variant="destructive"
+                onClick={async () => {
+                  if (!confirm("Tem certeza que deseja excluir esta compra? Esta ação não pode ser desfeita.")) return;
+                  try {
+                    await sb.from("compra_itens").delete().eq("compra_id", compraId);
+                    await sb.from("compra_comentarios").delete().eq("compra_id", compraId);
+                    await sb.from("compra_historico").delete().eq("compra_id", compraId);
+                    const { error } = await sb.from("compras").delete().eq("id", compraId);
+                    if (error) throw error;
+                    toast.success("Compra excluída");
+                    qc.invalidateQueries({ queryKey: ["compras"] });
+                    qc.invalidateQueries({ queryKey: ["compras-receber"] });
+                    onOpenChange(false);
+                  } catch (e: any) {
+                    toast.error(e.message ?? "Erro ao excluir");
+                  }
+                }}
+              >
+                <Trash2 className="h-4 w-4 mr-1" /> Excluir
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button onClick={() => save.mutate()} disabled={save.isPending}>
+              {save.isPending ? "Salvando…" : "Salvar"}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
