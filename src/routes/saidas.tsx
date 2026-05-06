@@ -195,12 +195,13 @@ function SaidaForm({ itens, solicitantes, eventos, eventosError, onReloadEventos
     solicitante_id: "",
     evento_projeto: "",
     finalidade: "",
-    responsavel_retirada: "",
-    responsavel_lancamento: "",
+    sera_devolvido: "sim",
     data_prevista_devolucao: "",
     observacoes: "",
   });
   const [linhas, setLinhas] = useState<Linha[]>([{ item_id: "", quantidade: "1" }]);
+
+  const isEvento = meta.saida_tipo === "evento";
 
   const setM = (k: string, v: any) => setMeta((p) => ({ ...p, [k]: v }));
   const setL = (i: number, k: keyof Linha, v: string) => setLinhas((arr) => {
@@ -214,7 +215,10 @@ function SaidaForm({ itens, solicitantes, eventos, eventosError, onReloadEventos
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
-      if (!meta.evento_projeto) return toast.error("Evento/Projeto é obrigatório");
+      if (isEvento && !meta.evento_projeto) return toast.error("Evento/Projeto é obrigatório");
+      if (meta.sera_devolvido === "sim" && !meta.data_prevista_devolucao) {
+        return toast.error("Informe a data prevista de devolução");
+      }
       const validas = linhas.filter((l) => l.item_id && Number(l.quantidade) > 0);
       if (validas.length === 0) return toast.error("Adicione pelo menos um item");
       onSubmit(
@@ -222,11 +226,9 @@ function SaidaForm({ itens, solicitantes, eventos, eventosError, onReloadEventos
           data_movimento: new Date(meta.data_movimento).toISOString(),
           saida_tipo: meta.saida_tipo,
           solicitante_id: meta.solicitante_id || null,
-          evento_projeto: meta.evento_projeto,
+          evento_projeto: isEvento ? meta.evento_projeto : null,
           finalidade: meta.finalidade || null,
-          responsavel_retirada: meta.responsavel_retirada || null,
-          responsavel_lancamento: meta.responsavel_lancamento || null,
-          data_prevista_devolucao: meta.data_prevista_devolucao || null,
+          data_prevista_devolucao: meta.sera_devolvido === "sim" ? (meta.data_prevista_devolucao || null) : null,
           observacoes: meta.observacoes || null,
         },
         validas.map((l) => ({ item_id: l.item_id, quantidade: Number(l.quantidade) })),
@@ -241,21 +243,23 @@ function SaidaForm({ itens, solicitantes, eventos, eventosError, onReloadEventos
           </Select>
         </FormField>
 
-        <FormField label="Evento / Projeto* (Google Sheets)" wide>
-          <div className="flex gap-2">
-            <Select value={meta.evento_projeto} onValueChange={(v) => setM("evento_projeto", v)}>
-              <SelectTrigger><SelectValue placeholder={eventos.length ? "Selecione…" : "Carregando ou nenhum encontrado"} /></SelectTrigger>
-              <SelectContent>
-                {eventos.map((ev: string) => <SelectItem key={ev} value={ev}>{ev}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Button type="button" variant="outline" size="icon" onClick={onReloadEventos} disabled={reloadingEventos} title="Recarregar lista">
-              <RefreshCw className={`h-4 w-4 ${reloadingEventos ? "animate-spin" : ""}`} />
-            </Button>
-          </div>
-          {eventosError && <p className="text-xs text-destructive mt-1">Erro: {eventosError}</p>}
-          {!eventosError && eventos.length === 0 && <p className="text-xs text-muted-foreground mt-1">Lista vazia. Verifique a planilha conectada.</p>}
-        </FormField>
+        {isEvento && (
+          <FormField label="Evento / Projeto* (Google Sheets)" wide>
+            <div className="flex gap-2">
+              <Select value={meta.evento_projeto} onValueChange={(v) => setM("evento_projeto", v)}>
+                <SelectTrigger><SelectValue placeholder={eventos.length ? "Selecione…" : "Carregando ou nenhum encontrado"} /></SelectTrigger>
+                <SelectContent>
+                  {eventos.map((ev: string) => <SelectItem key={ev} value={ev}>{ev}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button type="button" variant="outline" size="icon" onClick={onReloadEventos} disabled={reloadingEventos} title="Recarregar lista">
+                <RefreshCw className={`h-4 w-4 ${reloadingEventos ? "animate-spin" : ""}`} />
+              </Button>
+            </div>
+            {eventosError && <p className="text-xs text-destructive mt-1">Erro: {eventosError}</p>}
+            {!eventosError && eventos.length === 0 && <p className="text-xs text-muted-foreground mt-1">Lista vazia. Verifique a planilha conectada.</p>}
+          </FormField>
+        )}
 
         <FormField label="Solicitante">
           <Select value={meta.solicitante_id} onValueChange={(v) => setM("solicitante_id", v)}>
@@ -263,10 +267,21 @@ function SaidaForm({ itens, solicitantes, eventos, eventosError, onReloadEventos
             <SelectContent>{solicitantes.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
           </Select>
         </FormField>
-        <FormField label="Data prevista de devolução"><Input type="date" value={meta.data_prevista_devolucao} onChange={(e) => setM("data_prevista_devolucao", e.target.value)} /></FormField>
+        <FormField label="Será devolvido?*">
+          <Select value={meta.sera_devolvido} onValueChange={(v) => { setM("sera_devolvido", v); if (v === "nao") setM("data_prevista_devolucao", ""); }}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="sim">Sim</SelectItem>
+              <SelectItem value="nao">Não</SelectItem>
+            </SelectContent>
+          </Select>
+        </FormField>
+        {meta.sera_devolvido === "sim" && (
+          <FormField label="Data prevista de devolução*">
+            <Input required type="date" value={meta.data_prevista_devolucao} onChange={(e) => setM("data_prevista_devolucao", e.target.value)} />
+          </FormField>
+        )}
         <FormField label="Finalidade / detalhes" wide><Input value={meta.finalidade} onChange={(e) => setM("finalidade", e.target.value)} /></FormField>
-        <FormField label="Responsável pela retirada"><Input value={meta.responsavel_retirada} onChange={(e) => setM("responsavel_retirada", e.target.value)} /></FormField>
-        <FormField label="Responsável pelo lançamento"><Input value={meta.responsavel_lancamento} onChange={(e) => setM("responsavel_lancamento", e.target.value)} /></FormField>
         <FormField label="Observações" wide><Textarea rows={2} value={meta.observacoes} onChange={(e) => setM("observacoes", e.target.value)} /></FormField>
       </FormSection>
 
