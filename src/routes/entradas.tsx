@@ -17,6 +17,7 @@ import { entradaTipoLabels } from "@/lib/labels";
 import { ImportDialog } from "@/components/ImportDialog";
 import { ENTRADA_TEMPLATE } from "@/lib/import-utils";
 import { parseNfeXml } from "@/lib/nfe-parser";
+import { ItemSearchSelect } from "@/components/ItemSearchSelect";
 
 export const Route = createFileRoute("/entradas")({
   component: EntradasPage,
@@ -44,7 +45,7 @@ function EntradasPage() {
 
   const { data: itens } = useQuery({
     queryKey: ["itens-select"],
-    queryFn: async () => (await supabase.from("itens").select("id,nome,codigo,unidade,valor_unitario").order("nome")).data ?? [],
+    queryFn: async () => (await supabase.from("itens").select("id,nome,codigo,codigo_proprio,unidade,valor_unitario").order("nome")).data ?? [],
   });
   const { data: fornecedores } = useQuery({
     queryKey: ["fornecedores-select"],
@@ -391,10 +392,7 @@ function EntradaForm({ itens, fornecedores, onSubmit, submitting }: any) {
             <div key={i} className="grid grid-cols-12 gap-2 items-end">
               <div className="col-span-6">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Item</label>
-                <Select value={l.item_id} onValueChange={(v) => setL(i, "item_id", v)}>
-                  <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
-                  <SelectContent>{itens.map((it: any) => <SelectItem key={it.id} value={it.id}>{it.codigo} — {it.nome}</SelectItem>)}</SelectContent>
-                </Select>
+                <ItemSearchSelect itens={itens} value={l.item_id} onChange={(v) => setL(i, "item_id", v)} />
               </div>
               <div className="col-span-2">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Qtd</label>

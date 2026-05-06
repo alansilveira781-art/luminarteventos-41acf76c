@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { saidaTipoLabels } from "@/lib/labels";
 import { listEventos } from "@/server/sheets.functions";
+import { ItemSearchSelect } from "@/components/ItemSearchSelect";
 
 export const Route = createFileRoute("/saidas")({
   component: SaidasPage,
@@ -41,7 +42,7 @@ function SaidasPage() {
 
   const { data: itens } = useQuery({
     queryKey: ["itens-select-saida"],
-    queryFn: async () => (await supabase.from("itens").select("id,nome,codigo,unidade,quantidade_atual").order("nome")).data ?? [],
+    queryFn: async () => (await supabase.from("itens").select("id,nome,codigo,codigo_proprio,unidade,quantidade_atual").order("nome")).data ?? [],
   });
   const { data: solicitantes } = useQuery({
     queryKey: ["solicitantes-select"],
@@ -245,10 +246,7 @@ function SaidaForm({ itens, solicitantes, eventos, eventosError, onReloadEventos
               <div key={i} className="grid grid-cols-12 gap-2 items-end">
                 <div className="col-span-8">
                   <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Item</label>
-                  <Select value={l.item_id} onValueChange={(v) => setL(i, "item_id", v)}>
-                    <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
-                    <SelectContent>{itens.map((x: any) => <SelectItem key={x.id} value={x.id}>{x.codigo} — {x.nome} ({x.quantidade_atual} {x.unidade})</SelectItem>)}</SelectContent>
-                  </Select>
+                  <ItemSearchSelect itens={itens} value={l.item_id} onChange={(v) => setL(i, "item_id", v)} showStock />
                   {it && <p className="text-[10px] text-muted-foreground mt-1">Disponível: {Number(it.quantidade_atual)} {it.unidade}</p>}
                 </div>
                 <div className="col-span-3">

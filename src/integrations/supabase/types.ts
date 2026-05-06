@@ -81,6 +81,7 @@ export type Database = {
         Row: {
           categoria: string | null
           codigo: string
+          codigo_proprio: string | null
           created_at: string
           descricao: string | null
           foto_url: string | null
@@ -99,6 +100,7 @@ export type Database = {
         Insert: {
           categoria?: string | null
           codigo: string
+          codigo_proprio?: string | null
           created_at?: string
           descricao?: string | null
           foto_url?: string | null
@@ -117,6 +119,7 @@ export type Database = {
         Update: {
           categoria?: string | null
           codigo?: string
+          codigo_proprio?: string | null
           created_at?: string
           descricao?: string | null
           foto_url?: string | null
@@ -375,6 +378,24 @@ export type Database = {
           status?: Database["public"]["Enums"]["entity_status"]
           telefone?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      unidades: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
         }
         Relationships: []
       }

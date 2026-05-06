@@ -180,9 +180,11 @@ function EstoquePage() {
             if (setCodigos.has(codigo.toLowerCase())) { skipped++; continue; }
             const payload = {
               codigo, nome,
+              codigo_proprio: r.codigo_proprio || null,
               categoria: r.categoria || null,
               subcategoria: r.subcategoria || null,
-              unidade: String(r.unidade || "un"),
+              unidade: String(r.unidade || "Unidade"),
+              valor_unitario: r.valor_unitario ? Number(r.valor_unitario) : null,
               quantidade_atual: Number(r.quantidade_atual || 0),
               quantidade_minima: Number(r.quantidade_minima || 0),
               localizacao: r.localizacao || null,
