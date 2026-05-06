@@ -32,9 +32,76 @@ export type Database = {
         }
         Relationships: []
       }
+      compra_comentarios: {
+        Row: {
+          compra_id: string
+          created_at: string
+          id: string
+          mencoes: string[] | null
+          texto: string
+          user_id: string | null
+          user_nome: string | null
+        }
+        Insert: {
+          compra_id: string
+          created_at?: string
+          id?: string
+          mencoes?: string[] | null
+          texto: string
+          user_id?: string | null
+          user_nome?: string | null
+        }
+        Update: {
+          compra_id?: string
+          created_at?: string
+          id?: string
+          mencoes?: string[] | null
+          texto?: string
+          user_id?: string | null
+          user_nome?: string | null
+        }
+        Relationships: []
+      }
+      compra_historico: {
+        Row: {
+          acao: string
+          compra_id: string
+          created_at: string
+          detalhes: string | null
+          id: string
+          status_anterior: Database["public"]["Enums"]["compra_status"] | null
+          status_novo: Database["public"]["Enums"]["compra_status"] | null
+          user_id: string | null
+          user_nome: string | null
+        }
+        Insert: {
+          acao: string
+          compra_id: string
+          created_at?: string
+          detalhes?: string | null
+          id?: string
+          status_anterior?: Database["public"]["Enums"]["compra_status"] | null
+          status_novo?: Database["public"]["Enums"]["compra_status"] | null
+          user_id?: string | null
+          user_nome?: string | null
+        }
+        Update: {
+          acao?: string
+          compra_id?: string
+          created_at?: string
+          detalhes?: string | null
+          id?: string
+          status_anterior?: Database["public"]["Enums"]["compra_status"] | null
+          status_novo?: Database["public"]["Enums"]["compra_status"] | null
+          user_id?: string | null
+          user_nome?: string | null
+        }
+        Relationships: []
+      }
       compra_itens: {
         Row: {
           compra_id: string
+          cotacao: string | null
           created_at: string
           descricao: string
           id: string
@@ -49,6 +116,7 @@ export type Database = {
         }
         Insert: {
           compra_id: string
+          cotacao?: string | null
           created_at?: string
           descricao: string
           id?: string
@@ -63,6 +131,7 @@ export type Database = {
         }
         Update: {
           compra_id?: string
+          cotacao?: string | null
           created_at?: string
           descricao?: string
           id?: string
@@ -151,6 +220,24 @@ export type Database = {
           titulo?: string | null
           updated_at?: string
           valor_total?: number | null
+        }
+        Relationships: []
+      }
+      condicoes_pagamento: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
         }
         Relationships: []
       }
@@ -439,6 +526,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notificacoes: {
+        Row: {
+          created_at: string
+          id: string
+          lida: boolean
+          link: string | null
+          mensagem: string | null
+          tipo: string
+          titulo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lida?: boolean
+          link?: string | null
+          mensagem?: string | null
+          tipo: string
+          titulo: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lida?: boolean
+          link?: string | null
+          mensagem?: string | null
+          tipo?: string
+          titulo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      parcelamentos: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
