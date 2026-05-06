@@ -71,35 +71,11 @@ export function ItemForm({
         </FormField>
         <FormField label="Nome*"><Input required value={form.nome} onChange={(e) => set("nome", e.target.value)} /></FormField>
         <FormField label="Categoria">
-          <div className="flex gap-2">
-            <Select value={form.categoria || undefined} onValueChange={(v) => set("categoria", v)}>
-              <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
-              <SelectContent>
-                {(categorias ?? []).map((c: any) => (
-                  <SelectItem key={c.nome} value={c.nome}>{c.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button type="button" variant="outline" size="icon" onClick={() => setNovaCategoriaOpen(true)} title="Nova categoria">
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
+          <SelectCreatable table="categorias" value={form.categoria || null} onChange={(v) => set("categoria", v ?? "")} />
         </FormField>
         <FormField label="Valor unitário (R$)"><Input type="number" min="0" step="0.01" value={form.valor_unitario} onChange={(e) => set("valor_unitario", e.target.value)} placeholder="0.00" /></FormField>
         <FormField label="Unidade de medida">
-          <div className="flex gap-2">
-            <Select value={form.unidade || undefined} onValueChange={(v) => set("unidade", v)}>
-              <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
-              <SelectContent>
-                {(unidades ?? []).map((u: any) => (
-                  <SelectItem key={u.nome} value={u.nome}>{u.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button type="button" variant="outline" size="icon" onClick={() => setNovaUnidadeOpen(true)} title="Nova unidade">
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
+          <SelectCreatable table="unidades" value={form.unidade || null} onChange={(v) => set("unidade", v ?? "")} />
         </FormField>
         <FormField label="Localização física"><Input value={form.localizacao} onChange={(e) => set("localizacao", e.target.value)} /></FormField>
         <FormField label={initial ? "Quantidade atual (ajuste)" : "Quantidade inicial"}><Input type="number" min={0} step="0.01" value={form.quantidade_atual} onChange={(e) => set("quantidade_atual", e.target.value)} /></FormField>
