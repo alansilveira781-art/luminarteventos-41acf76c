@@ -186,6 +186,7 @@ function EstoquePage() {
           </DialogHeader>
           <ItemForm
             initial={editing}
+            allowEditCodigo={isAdmin}
             onSubmit={(payload) => mut.mutate(editing ? { ...payload, id: editing.id } : payload)}
             submitting={mut.isPending}
           />
