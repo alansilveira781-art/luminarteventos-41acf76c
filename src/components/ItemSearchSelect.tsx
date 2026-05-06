@@ -93,6 +93,11 @@ export function ItemSearchSelect({
                       onChange(it.id);
                       setOpen(false);
                     }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      onChange(it.id);
+                      setOpen(false);
+                    }}
                   >
                     <Check className={cn("mr-2 h-4 w-4", value === it.id ? "opacity-100" : "opacity-0")} />
                     <div className="flex flex-col min-w-0">
