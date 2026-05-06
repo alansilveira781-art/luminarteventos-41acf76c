@@ -36,19 +36,23 @@ const allItems: NavItem[] = [
   { title: "Saídas", url: "/saidas", icon: ArrowUpFromLine, group: "Estoque", module: "estoque" },
   { title: "Devoluções", url: "/devolucoes", icon: Undo2, group: "Estoque", module: "estoque" },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3, group: "Estoque", module: "estoque" },
+  { title: "Kanban", url: "/compras", icon: KanbanSquare, group: "Compras", module: "compras" },
+  { title: "A receber", url: "/compras/a-receber", icon: PackageCheck, group: "Compras", module: "compras" },
   { title: "Administração", url: "/admin", icon: Shield, group: "Administração", adminOnly: true },
 ];
 
-const groups = ["Visão geral", "Estoque", "Administração"];
+const groups = ["Visão geral", "Estoque", "Compras", "Administração"];
 
 const ESTOQUE_ROUTES = ["/dashboard", "/estoque", "/solicitantes", "/fornecedores", "/entradas", "/saidas", "/devolucoes", "/relatorios"];
+const COMPRAS_ROUTES = ["/compras"];
 
 function isActiveUrl(pathname: string, url: string) {
   return url === "/" ? pathname === "/" : pathname === url || pathname.startsWith(url + "/");
 }
 
-function getContext(pathname: string): "home" | "estoque" | "admin" {
+function getContext(pathname: string): "home" | "estoque" | "compras" | "admin" {
   if (pathname.startsWith("/admin")) return "admin";
+  if (COMPRAS_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) return "compras";
   if (ESTOQUE_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) return "estoque";
   return "home";
 }
@@ -57,10 +61,10 @@ function useNavItems(pathname: string) {
   const { isAdmin, hasModule } = useAuth();
   const ctx = getContext(pathname);
   return allItems.filter((i) => {
-    // Always show "Início"
     if (i.url === "/") return true;
     if (i.adminOnly) return ctx === "admin" && isAdmin;
     if (i.module === "estoque") return ctx === "estoque" && (isAdmin || hasModule("estoque"));
+    if (i.module === "compras") return ctx === "compras" && (isAdmin || hasModule("compras"));
     return true;
   });
 }
