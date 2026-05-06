@@ -21,6 +21,7 @@ export const Route = createFileRoute("/estoque/")({
 
 function EstoquePage() {
   const qc = useQueryClient();
+  const { isAdmin } = useAuth();
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<any | null>(null);
   const [creating, setCreating] = useState(false);
