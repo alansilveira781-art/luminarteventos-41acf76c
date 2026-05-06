@@ -217,6 +217,16 @@ function CadastrarItemInline({
   const [nome, setNome] = useState(descricao);
   const [un, setUn] = useState(unidade);
 
+  async function handleOpen() {
+    setOpen(true);
+    if (!codigo) {
+      try {
+        const sku = await generateNextSku();
+        setCodigo(sku);
+      } catch {}
+    }
+  }
+
   async function create() {
     if (!codigo || !nome) {
       toast.error("Preencha código e nome");
@@ -234,14 +244,14 @@ function CadastrarItemInline({
 
   if (!open) {
     return (
-      <Button variant="ghost" size="sm" className="mt-2" onClick={() => setOpen(true)}>
+      <Button variant="ghost" size="sm" className="mt-2" onClick={handleOpen}>
         <Plus className="h-3.5 w-3.5 mr-1" /> Cadastrar no estoque
       </Button>
     );
   }
   return (
     <div className="mt-2 grid gap-2 grid-cols-2 rounded border border-dashed border-border p-2">
-      <Input placeholder="Código*" value={codigo} onChange={(e) => setCodigo(e.target.value)} />
+      <Input placeholder="Código (auto)" value={codigo} readOnly className="bg-muted/40" />
       <Input placeholder="Código próprio" value={codigoProprio} onChange={(e) => setCodigoProprio(e.target.value)} />
       <Input placeholder="Nome*" value={nome} onChange={(e) => setNome(e.target.value)} />
       <Input placeholder="Unidade" value={un} onChange={(e) => setUn(e.target.value)} />
@@ -252,3 +262,4 @@ function CadastrarItemInline({
     </div>
   );
 }
+
