@@ -1,0 +1,1 @@
+ALTER TABLE public.compras ADD COLUMN IF NOT EXISTS tipo_compra text;

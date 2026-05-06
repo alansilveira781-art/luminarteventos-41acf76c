@@ -191,6 +191,7 @@ export type Database = {
           solicitante: string | null
           solicitante_id: string | null
           status: Database["public"]["Enums"]["compra_status"]
+          tipo_compra: string | null
           titulo: string | null
           updated_at: string
           valor_total: number | null
@@ -213,6 +214,7 @@ export type Database = {
           solicitante?: string | null
           solicitante_id?: string | null
           status?: Database["public"]["Enums"]["compra_status"]
+          tipo_compra?: string | null
           titulo?: string | null
           updated_at?: string
           valor_total?: number | null
@@ -235,6 +237,7 @@ export type Database = {
           solicitante?: string | null
           solicitante_id?: string | null
           status?: Database["public"]["Enums"]["compra_status"]
+          tipo_compra?: string | null
           titulo?: string | null
           updated_at?: string
           valor_total?: number | null
