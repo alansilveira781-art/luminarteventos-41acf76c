@@ -138,7 +138,7 @@ export function CompraDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <FormSection title="Dados gerais">
+          <div className="space-y-2"><div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dados gerais</div><FormSection>
             <FormField label="Título / Descrição">
               <Input
                 value={form.titulo ?? ""}
@@ -186,9 +186,9 @@ export function CompraDialog({
             <FormField label="Valor total">
               <Input type="number" step="0.01" value={form.valor_total ?? ""} onChange={(e) => setForm({ ...form, valor_total: e.target.value === "" ? null : Number(e.target.value) })} />
             </FormField>
-          </FormSection>
+          </FormSection></div>
 
-          <FormSection title="Itens da compra">
+          <div className="space-y-2"><div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Itens da compra</div><FormSection>
             <div className="sm:col-span-2 space-y-2">
               {itens.length === 0 && (
                 <p className="text-xs text-muted-foreground">Nenhum item adicionado.</p>
@@ -241,9 +241,9 @@ export function CompraDialog({
                 <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar item
               </Button>
             </div>
-          </FormSection>
+          </FormSection></div>
 
-          <FormSection title="Observações">
+          <div className="space-y-2"><div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Observações</div><FormSection>
             <div className="sm:col-span-2">
               <Textarea
                 rows={3}
@@ -261,7 +261,7 @@ export function CompraDialog({
                 />
               </div>
             )}
-          </FormSection>
+          </FormSection></div>
         </div>
 
         <DialogFooter>
