@@ -24,10 +24,12 @@ export function ItemForm({
   initial,
   onSubmit,
   submitting,
+  allowEditCodigo = false,
 }: {
   initial?: any;
   onSubmit: (payload: any) => void;
   submitting?: boolean;
+  allowEditCodigo?: boolean;
 }) {
   const [form, setForm] = useState({
     codigo: initial?.codigo ?? "",
