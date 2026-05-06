@@ -12,7 +12,7 @@ import { toast } from "sonner";
 
 const sb = supabase as any;
 
-export const Route = createFileRoute("/compras/a-receber")({
+export const Route = createFileRoute("/estoque/a-receber")({
   component: AReceberPage,
 });
 
@@ -106,11 +106,10 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
   });
 
   const [recebimentos, setRecebimentos] = useState<Record<string, number>>({});
-  const [itemMap, setItemMap] = useState<Record<string, string>>({}); // descricao -> existing item_id when cadastrar
+  const [itemMap, setItemMap] = useState<Record<string, string>>({});
 
   const finalizar = useMutation({
     mutationFn: async () => {
-      // For each item: register entry movement if item_id (or itemMap), update compra_itens
       for (const it of itens) {
         const qtd = recebimentos[it.id] ?? Number(it.quantidade);
         if (!qtd || qtd <= 0) continue;
