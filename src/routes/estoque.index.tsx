@@ -119,14 +119,14 @@ function EstoquePage() {
           <table className="min-w-full text-sm">
             <thead className="bg-muted/50">
               <tr className="text-left text-xs uppercase text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Código</th>
-                <th className="px-4 py-3 font-medium">Item</th>
-                <th className="px-4 py-3 font-medium">Categoria</th>
-                <th className="px-4 py-3 font-medium">Localização</th>
+                <th className="px-4 py-3 font-medium text-left">Código</th>
+                <th className="px-4 py-3 font-medium text-left">Item</th>
+                <th className="px-4 py-3 font-medium text-left">Categoria</th>
+                <th className="px-4 py-3 font-medium text-left">Localização</th>
                 <th className="px-4 py-3 font-medium text-right">Qtd</th>
-                <th className="px-4 py-3 font-medium">UN</th>
+                <th className="px-4 py-3 font-medium text-left">UN</th>
                 <th className="px-4 py-3 font-medium text-right">Mín</th>
-                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium text-left">Status</th>
                 <th className="px-4 py-3 font-medium text-right">Ações</th>
               </tr>
             </thead>
@@ -153,21 +153,23 @@ function EstoquePage() {
                             <History className="h-4 w-4" />
                           </Link>
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setEditing(i)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
                         {isAdmin && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              if (confirm(`Excluir o item "${i.nome}"? Esta ação não pode ser desfeita.`)) {
-                                delMut.mutate(i.id);
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          <>
+                            <Button size="sm" variant="ghost" onClick={() => setEditing(i)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                if (confirm(`Excluir o item "${i.nome}"? Esta ação não pode ser desfeita.`)) {
+                                  delMut.mutate(i.id);
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </>
                         )}
                       </div>
                     </td>
