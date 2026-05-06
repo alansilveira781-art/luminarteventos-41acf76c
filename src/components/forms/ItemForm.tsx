@@ -145,3 +145,78 @@ export function ItemForm({
     </form>
   );
 }
+
+function FotoUpload({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  async function handleFile(file: File) {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Selecione uma imagem.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Imagem muito grande (máx. 5 MB).");
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from("item-photos").upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+      if (error) throw error;
+      const { data } = supabase.storage.from("item-photos").getPublicUrl(path);
+      onChange(data.publicUrl);
+      toast.success("Foto enviada");
+    } catch (e: any) {
+      toast.error(e.message ?? "Falha ao enviar imagem");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleFile(f);
+          e.target.value = "";
+        }}
+      />
+      <div className="flex flex-wrap items-center gap-3">
+        {value ? (
+          <img src={value} alt="Prévia" className="h-20 w-20 rounded-md object-cover border border-border" />
+        ) : (
+          <div className="h-20 w-20 rounded-md border border-dashed border-border flex items-center justify-center text-muted-foreground">
+            <ImagePlus className="h-6 w-6" />
+          </div>
+        )}
+        <div className="flex flex-col gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()} disabled={uploading}>
+            <Upload className="h-4 w-4 mr-1" />
+            {uploading ? "Enviando…" : value ? "Trocar imagem" : "Anexar imagem"}
+          </Button>
+          {value && (
+            <Button type="button" variant="ghost" size="sm" onClick={() => onChange("")}>
+              Remover
+            </Button>
+          )}
+        </div>
+      </div>
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="ou cole uma URL https://…"
+        className="text-xs"
+      />
+    </div>
+  );
+}
