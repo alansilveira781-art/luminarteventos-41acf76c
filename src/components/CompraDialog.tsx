@@ -200,7 +200,8 @@ export function CompraDialog({
                 />
               </FormField>
               <FormField label="Comprador">
-                <Input value={form.comprador ?? ""} onChange={(e) => setForm({ ...form, comprador: e.target.value })} />
+                <SelectCreatable table="compradores" value={form.comprador}
+                  onChange={(v) => setForm({ ...form, comprador: v })} />
               </FormField>
               <FormField label="Fornecedor">
                 <SelectCreatable
@@ -235,7 +236,7 @@ export function CompraDialog({
                   onChange={(v) => setForm({ ...form, condicao_pagamento: v })} />
               </FormField>
               <FormField label="Valor total (calculado)">
-                <div className="h-9 px-3 flex items-center rounded-md border border-input bg-muted/50 text-sm font-medium tabular-nums">
+                <div className="h-9 flex items-center text-sm font-medium tabular-nums">
                   {totalCalc.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                 </div>
               </FormField>
