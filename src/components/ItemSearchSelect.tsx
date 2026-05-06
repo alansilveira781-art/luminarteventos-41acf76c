@@ -63,33 +63,33 @@ export function ItemSearchSelect({
 
   return (
     <div ref={containerRef} className="relative">
-        <Button
-          type="button"
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="w-full justify-between font-normal"
-          onClick={() => setOpen((current) => !current)}
-        >
-          <span className="truncate text-left">
-            {selected ? (
-              <>
-                <span className="font-mono text-xs text-muted-foreground mr-2">
-                  {selected.codigo}
+      <Button
+        type="button"
+        variant="outline"
+        role="combobox"
+        aria-expanded={open}
+        className="w-full justify-between font-normal"
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span className="truncate text-left">
+          {selected ? (
+            <>
+              <span className="font-mono text-xs text-muted-foreground mr-2">
+                {selected.codigo}
+              </span>
+              {selected.nome}
+              {showStock && selected.quantidade_atual != null && (
+                <span className="text-xs text-muted-foreground ml-2">
+                  ({selected.quantidade_atual} {selected.unidade})
                 </span>
-                {selected.nome}
-                {showStock && selected.quantidade_atual != null && (
-                  <span className="text-xs text-muted-foreground ml-2">
-                    ({selected.quantidade_atual} {selected.unidade})
-                  </span>
-                )}
-              </>
-            ) : (
-              <span className="text-muted-foreground">{placeholder}</span>
-            )}
-          </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
+              )}
+            </>
+          ) : (
+            <span className="text-muted-foreground">{placeholder}</span>
+          )}
+        </span>
+        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+      </Button>
       {open && (
         <div className="absolute left-0 top-full z-50 mt-1 w-full min-w-[320px] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md">
           <div className="flex items-center border-b px-3">
@@ -122,7 +122,10 @@ export function ItemSearchSelect({
                   }}
                 >
                   <Check
-                    className={cn("h-4 w-4 shrink-0", value === it.id ? "opacity-100" : "opacity-0")}
+                    className={cn(
+                      "h-4 w-4 shrink-0",
+                      value === it.id ? "opacity-100" : "opacity-0",
+                    )}
                   />
                   <div className="flex min-w-0 flex-col">
                     <span className="truncate text-sm">
