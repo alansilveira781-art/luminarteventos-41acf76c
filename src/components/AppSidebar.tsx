@@ -11,7 +11,7 @@ import {
   BarChart3,
   Menu,
   X,
-  Bell,
+  
   CircleUser,
   ChevronLeft,
   ChevronRight,
