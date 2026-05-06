@@ -105,6 +105,7 @@ function DevolucoesPage() {
                 <th className="px-4 py-3 font-medium">Item</th>
                 <th className="px-4 py-3 font-medium">Solicitante</th>
                 <th className="px-4 py-3 font-medium text-right">Qtd</th>
+                <th className="px-4 py-3 font-medium">UN</th>
                 <th className="px-4 py-3 font-medium">Recebido por</th>
                 <th className="px-4 py-3 font-medium">Obs</th>
               </tr>
