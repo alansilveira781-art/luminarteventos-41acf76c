@@ -235,7 +235,9 @@ export function CompraDialog({
                   onChange={(v) => setForm({ ...form, condicao_pagamento: v })} />
               </FormField>
               <FormField label="Valor total (calculado)">
-                <Input type="number" step="0.01" value={totalCalc.toFixed(2)} readOnly className="bg-muted/50" />
+                <div className="h-9 px-3 flex items-center rounded-md border border-input bg-muted/50 text-sm font-medium tabular-nums">
+                  {totalCalc.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                </div>
               </FormField>
               <FormField label="Observações" wide>
                 <Textarea rows={3} value={form.observacoes ?? ""} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
