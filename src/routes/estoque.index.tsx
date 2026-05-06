@@ -153,21 +153,23 @@ function EstoquePage() {
                             <History className="h-4 w-4" />
                           </Link>
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setEditing(i)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
                         {isAdmin && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              if (confirm(`Excluir o item "${i.nome}"? Esta ação não pode ser desfeita.`)) {
-                                delMut.mutate(i.id);
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          <>
+                            <Button size="sm" variant="ghost" onClick={() => setEditing(i)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                if (confirm(`Excluir o item "${i.nome}"? Esta ação não pode ser desfeita.`)) {
+                                  delMut.mutate(i.id);
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </>
                         )}
                       </div>
                     </td>
