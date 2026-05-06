@@ -248,22 +248,28 @@ export function CompraDialog({
               )}
             </FormSection>
 
-            {compraId && (
-              <div className="mt-2 border-t border-border pt-4">
-                <Tabs defaultValue="comentarios">
-                  <TabsList>
-                    <TabsTrigger value="comentarios">Comentários</TabsTrigger>
-                    <TabsTrigger value="historico">Histórico</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="comentarios" className="pt-4">
+            <div className="mt-2 border-t border-border pt-4">
+              <Tabs defaultValue="comentarios">
+                <TabsList>
+                  <TabsTrigger value="comentarios">Comentários</TabsTrigger>
+                  <TabsTrigger value="historico">Histórico</TabsTrigger>
+                </TabsList>
+                <TabsContent value="comentarios" className="pt-4">
+                  {compraId ? (
                     <Comentarios compraId={compraId} userId={user?.id} />
-                  </TabsContent>
-                  <TabsContent value="historico" className="pt-4">
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic">Salve a compra para habilitar os comentários.</p>
+                  )}
+                </TabsContent>
+                <TabsContent value="historico" className="pt-4">
+                  {compraId ? (
                     <Historico compraId={compraId} />
-                  </TabsContent>
-                </Tabs>
-              </div>
-            )}
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic">O histórico será criado automaticamente após salvar a compra.</p>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </div>
           </TabsContent>
 
           <TabsContent value="itens" className="space-y-2 pt-4">
