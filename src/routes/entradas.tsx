@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetch-all";
 import { PageHeader } from "@/components/PageHeader";
 import { FormActions, FormField, FormSection } from "@/components/FormSection";
 import { Button } from "@/components/ui/button";
@@ -65,7 +66,10 @@ function EntradasPage() {
 
   const { data: itens } = useQuery({
     queryKey: ["itens-select"],
-    queryFn: async () => (await supabase.from("itens").select("id,nome,codigo,codigo_proprio,unidade,valor_unitario").order("nome")).data ?? [],
+    queryFn: async () =>
+      await fetchAllRows<any>("itens", "id,nome,codigo,codigo_proprio,unidade,valor_unitario", {
+        orderBy: { column: "nome", ascending: true },
+      }),
   });
   const { data: fornecedores } = useQuery({
     queryKey: ["fornecedores-select"],
