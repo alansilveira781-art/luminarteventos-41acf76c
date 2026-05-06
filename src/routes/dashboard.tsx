@@ -291,20 +291,22 @@ function Dashboard() {
                   <th className="py-2 pr-4 font-medium">Item</th>
                   <th className="py-2 pr-4 font-medium text-right">Valor unitário</th>
                   <th className="py-2 pr-4 font-medium text-right">Qtd</th>
+                  <th className="py-2 pr-4 font-medium">UN</th>
                   <th className="py-2 pr-4 font-medium text-right">Valor total</th>
                   <th className="py-2 pr-0 font-medium">Status do estoque</th>
                 </tr>
               </thead>
               <tbody>
                 {tabelaItens.length === 0 ? (
-                  <tr><td colSpan={5} className="py-8 text-center text-muted-foreground">Sem movimentos no período.</td></tr>
+                  <tr><td colSpan={6} className="py-8 text-center text-muted-foreground">Sem movimentos no período.</td></tr>
                 ) : tabelaItens.slice(0, 50).map((r) => {
                   const vu = Number(r.item.valor_unitario ?? 0);
                   return (
                     <tr key={r.item.codigo} className="border-b border-border/50 last:border-0">
                       <td className="py-2 pr-4 font-medium">{r.item.nome}</td>
                       <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">R$ {vu.toFixed(2)}</td>
-                      <td className="py-2 pr-4 text-right tabular-nums">{r.qtd} {r.item.unidade}</td>
+                      <td className="py-2 pr-4 text-right tabular-nums">{r.qtd}</td>
+                      <td className="py-2 pr-4 text-muted-foreground">{r.item.unidade}</td>
                       <td className="py-2 pr-4 text-right tabular-nums font-medium">R$ {r.valorTotal.toFixed(2)}</td>
                       <td className="py-2 pr-0"><StatusBadge status={r.item.status} /></td>
                     </tr>
@@ -358,7 +360,7 @@ function Dashboard() {
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={abc}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="nome" stroke="#ffffff" tick={{ fill: "#ffffff" }} fontSize={10} interval={0} angle={-25} textAnchor="end" height={60} />
+                    <XAxis dataKey="nome" stroke="#ffffff" tick={false} axisLine={false} height={10} />
                     <YAxis yAxisId="left" stroke="#ffffff" tick={{ fill: "#ffffff" }} fontSize={11} />
                     <YAxis yAxisId="right" orientation="right" stroke="#ffffff" tick={{ fill: "#ffffff" }} fontSize={11} domain={[0, 100]} unit="%" />
                     <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
