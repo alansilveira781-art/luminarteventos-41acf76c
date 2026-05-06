@@ -88,17 +88,55 @@ function EstoquePage() {
 
   const filtered = useMemo(() => {
     if (!itens) return [];
+    let arr = itens as any[];
     const s = q.toLowerCase().trim();
-    if (!s) return itens;
-    return itens.filter(
-      (i) =>
-        i.nome.toLowerCase().includes(s) ||
-        i.codigo.toLowerCase().includes(s) ||
-        (i.categoria ?? "").toLowerCase().includes(s) ||
-        (i.localizacao ?? "").toLowerCase().includes(s) ||
-        i.status.includes(s),
-    );
-  }, [itens, q]);
+    if (s) {
+      arr = arr.filter(
+        (i) =>
+          i.nome.toLowerCase().includes(s) ||
+          i.codigo.toLowerCase().includes(s) ||
+          (i.categoria ?? "").toLowerCase().includes(s) ||
+          (i.localizacao ?? "").toLowerCase().includes(s) ||
+          i.status.includes(s),
+      );
+    }
+    if (hideZero) arr = arr.filter((i) => Number(i.quantidade_atual) > 0);
+    if (sort) {
+      const { key, dir } = sort;
+      arr = [...arr].sort((a, b) => {
+        const va = a[key]; const vb = b[key];
+        const na = typeof va === "number" ? va : Number(va);
+        const nb = typeof vb === "number" ? vb : Number(vb);
+        let cmp: number;
+        if (!isNaN(na) && !isNaN(nb) && (typeof va !== "string" || typeof vb !== "string")) {
+          cmp = na - nb;
+        } else {
+          cmp = String(va ?? "").localeCompare(String(vb ?? ""), "pt-BR", { numeric: true });
+        }
+        return dir === "desc" ? -cmp : cmp;
+      });
+    }
+    return arr;
+  }, [itens, q, hideZero, sort]);
+
+  function toggleSort(key: string) {
+    setSort((cur) => {
+      if (!cur || cur.key !== key) return { key, dir: "desc" };
+      if (cur.dir === "desc") return { key, dir: "asc" };
+      return null;
+    });
+  }
+  function SortIcon({ k }: { k: string }) {
+    if (!sort || sort.key !== k) return <ArrowUpDown className="h-3 w-3 opacity-40" />;
+    return sort.dir === "desc" ? <ArrowDown className="h-3 w-3 text-primary" /> : <ArrowUp className="h-3 w-3 text-primary" />;
+  }
+  const Th = ({ k, label, align = "left" }: { k: string; label: string; align?: "left" | "right" }) => (
+    <th className={`px-4 py-3 font-medium text-${align} cursor-pointer select-none`} onClick={() => toggleSort(k)}>
+      <span className={`inline-flex items-center gap-1 ${align === "right" ? "justify-end w-full" : ""}`}>
+        {label} <SortIcon k={k} />
+      </span>
+    </th>
+  );
 
   return (
     <>
@@ -107,6 +145,9 @@ function EstoquePage() {
         description="Cadastro e consulta de itens"
         actions={
           <>
+            <Button type="button" size="lg" variant="outline" onClick={() => setHideZero((v) => !v)}>
+              {hideZero ? <><Eye className="h-4 w-4 mr-1" /> Mostrar zerados</> : <><EyeOff className="h-4 w-4 mr-1" /> Ocultar zerados</>}
+            </Button>
             <Button type="button" size="lg" variant="outline" onClick={() => setImporting(true)}>
               <Upload className="h-4 w-4 mr-1" /> Nova importação
             </Button>
@@ -127,6 +168,10 @@ function EstoquePage() {
             className="pl-9"
           />
         </div>
+        <div className="text-xs text-muted-foreground mt-2">
+          {filtered.length} {filtered.length === 1 ? "item" : "itens"}
+          {itens && filtered.length !== itens.length ? ` (de ${itens.length})` : ""}
+        </div>
       </Card>
 
       <Card className="overflow-hidden">
@@ -134,14 +179,14 @@ function EstoquePage() {
           <table className="min-w-full text-sm">
             <thead className="bg-muted/50">
               <tr className="text-left text-xs uppercase text-muted-foreground">
-                <th className="px-4 py-3 font-medium text-left">Código</th>
-                <th className="px-4 py-3 font-medium text-left">Item</th>
-                <th className="px-4 py-3 font-medium text-left">Categoria</th>
-                <th className="px-4 py-3 font-medium text-left">Localização</th>
-                <th className="px-4 py-3 font-medium text-right">Qtd</th>
-                <th className="px-4 py-3 font-medium text-left">UN</th>
-                <th className="px-4 py-3 font-medium text-right">Mín</th>
-                <th className="px-4 py-3 font-medium text-left">Status</th>
+                <Th k="codigo" label="Código" />
+                <Th k="nome" label="Item" />
+                <Th k="categoria" label="Categoria" />
+                <Th k="localizacao" label="Localização" />
+                <Th k="quantidade_atual" label="Qtd" align="right" />
+                <Th k="unidade" label="UN" />
+                <Th k="quantidade_minima" label="Mín" align="right" />
+                <Th k="status" label="Status" />
                 <th className="px-4 py-3 font-medium text-right">Ações</th>
               </tr>
             </thead>
