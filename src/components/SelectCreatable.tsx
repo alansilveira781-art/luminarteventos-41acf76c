@@ -3,9 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 
 const sb = supabase as any;
@@ -24,7 +23,7 @@ export function SelectCreatable({
 }) {
   const qc = useQueryClient();
   const [novo, setNovo] = useState("");
-  const [open, setOpen] = useState(false);
+  const [adding, setAdding] = useState(false);
 
   const { data = [] } = useQuery({
     queryKey: [`opts-${table}`],
@@ -44,7 +43,7 @@ export function SelectCreatable({
       qc.invalidateQueries({ queryKey: [`opts-${table}`] });
       onChange(d.nome);
       setNovo("");
-      setOpen(false);
+      setAdding(false);
       toast.success("Adicionado");
     },
     onError: (e: any) => toast.error(e.message),
@@ -63,42 +62,54 @@ export function SelectCreatable({
   });
 
   return (
-    <div className="flex gap-1">
-      <Select value={value ?? "__none"} onValueChange={(v) => onChange(v === "__none" ? null : v)}>
-        <SelectTrigger className="flex-1"><SelectValue placeholder={placeholder} /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="__none">— Nenhum —</SelectItem>
-          {data.map((o) => (
-            <div key={o.id} className="flex items-center group">
-              <SelectItem value={o.nome} className="flex-1">{o.nome}</SelectItem>
-              <button
-                type="button"
-                onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); if (confirm(`Remover "${o.nome}"?`)) del.mutate(o.id); }}
-                className="opacity-0 group-hover:opacity-100 px-2 text-destructive"
-                aria-label="Remover"
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
-            </div>
-          ))}
-        </SelectContent>
-      </Select>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0" aria-label="Adicionar">
-            <Plus className="h-4 w-4" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-64" align="end">
-          <div className="space-y-2">
-            <label className="text-xs font-medium">Nova opção</label>
-            <Input value={novo} onChange={(e) => setNovo(e.target.value)} autoFocus
-              onKeyDown={(e) => { if (e.key === "Enter" && novo.trim()) add.mutate(novo.trim()); }} />
-            <Button size="sm" className="w-full" disabled={!novo.trim() || add.isPending}
-              onClick={() => add.mutate(novo.trim())}>Adicionar</Button>
-          </div>
-        </PopoverContent>
-      </Popover>
+    <div className="space-y-1.5">
+      <div className="flex gap-1">
+        <Select value={value ?? "__none"} onValueChange={(v) => onChange(v === "__none" ? null : v)}>
+          <SelectTrigger className="flex-1"><SelectValue placeholder={placeholder} /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none">— Nenhum —</SelectItem>
+            {data.map((o) => (
+              <div key={o.id} className="flex items-center group">
+                <SelectItem value={o.nome} className="flex-1">{o.nome}</SelectItem>
+                <button
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); if (confirm(`Remover "${o.nome}"?`)) del.mutate(o.id); }}
+                  className="opacity-0 group-hover:opacity-100 px-2 text-destructive"
+                  aria-label="Remover"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-9 w-9 shrink-0"
+          aria-label="Adicionar"
+          onClick={() => setAdding((v) => !v)}
+        >
+          {adding ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+        </Button>
+      </div>
+      {adding && (
+        <div className="flex gap-1 rounded-md border border-border bg-muted/30 p-2">
+          <Input
+            value={novo}
+            autoFocus
+            placeholder="Nome da nova opção"
+            onChange={(e) => setNovo(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); if (novo.trim()) add.mutate(novo.trim()); }
+              if (e.key === "Escape") { setAdding(false); setNovo(""); }
+            }}
+          />
+          <Button type="button" size="sm" disabled={!novo.trim() || add.isPending}
+            onClick={() => add.mutate(novo.trim())}>Adicionar</Button>
+        </div>
+      )}
     </div>
   );
 }
