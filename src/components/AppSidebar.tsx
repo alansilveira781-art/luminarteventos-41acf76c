@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import logo from "@/assets/luminart-logo.png";
 import { useAuth } from "@/contexts/AuthContext";
+import { NotificationBell } from "@/components/NotificationBell";
 
 type NavItem = { title: string; url: string; icon: any; group: string; module?: string; adminOnly?: boolean };
 
@@ -35,9 +36,10 @@ const allItems: NavItem[] = [
   { title: "Entradas", url: "/entradas", icon: ArrowDownToLine, group: "Estoque", module: "estoque" },
   { title: "Saídas", url: "/saidas", icon: ArrowUpFromLine, group: "Estoque", module: "estoque" },
   { title: "Devoluções", url: "/devolucoes", icon: Undo2, group: "Estoque", module: "estoque" },
+  { title: "A receber", url: "/estoque/a-receber", icon: PackageCheck, group: "Estoque", module: "estoque" },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3, group: "Estoque", module: "estoque" },
   { title: "Kanban", url: "/compras", icon: KanbanSquare, group: "Compras", module: "compras" },
-  { title: "A receber", url: "/compras/a-receber", icon: PackageCheck, group: "Compras", module: "compras" },
+  { title: "Dashboard", url: "/compras/dashboard", icon: BarChart3, group: "Compras", module: "compras" },
   { title: "Administração", url: "/admin", icon: Shield, group: "Administração", adminOnly: true },
 ];
 
@@ -312,6 +314,7 @@ export function AppTopBar() {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
+          <NotificationBell />
           <div className="hidden sm:flex items-center gap-2 px-2 py-1 rounded-md border border-border bg-card">
             <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
