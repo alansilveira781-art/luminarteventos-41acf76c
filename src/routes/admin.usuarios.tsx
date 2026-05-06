@@ -4,10 +4,12 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Settings2 } from "lucide-react";
+import { Settings2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/usuarios")({
@@ -17,6 +19,7 @@ export const Route = createFileRoute("/admin/usuarios")({
 function UsuariosPage() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<any>(null);
+  const [creating, setCreating] = useState(false);
 
   const { data: rows } = useQuery({
     queryKey: ["admin-users"],
