@@ -63,40 +63,70 @@ function FornecedoresPage() {
         }
       />
 
-      <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr className="text-left text-xs uppercase text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Nome</th>
-                <th className="px-4 py-3 font-medium">CNPJ/CPF</th>
-                <th className="px-4 py-3 font-medium">Contato</th>
-                <th className="px-4 py-3 font-medium">Telefone</th>
-                <th className="px-4 py-3 font-medium">Tipo</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {data?.length ? data.map((s) => (
-                <tr key={s.id} className="border-t border-border hover:bg-muted/30">
-                  <td className="px-4 py-3 font-medium">{s.nome}</td>
-                  <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{s.documento ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{s.contato_nome ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{s.telefone ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{s.tipo_fornecimento ?? "—"}</td>
-                  <td className="px-4 py-3"><StatusBadge status={s.status} /></td>
-                  <td className="px-4 py-3 text-right">
-                    <Button size="sm" variant="ghost" onClick={() => { setEditing(s); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                  </td>
-                </tr>
-              )) : (
-                <tr><td colSpan={7} className="text-center py-10 text-muted-foreground">Nenhum fornecedor cadastrado.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      {(() => {
+        const s = q.toLowerCase().trim();
+        const filtered = (data ?? []).filter((f: any) => {
+          if (!s) return true;
+          return [f.nome, f.nome_fantasia, f.documento, f.contato_nome, f.telefone, f.email, f.tipo_fornecimento]
+            .map((x) => String(x ?? "").toLowerCase()).join(" ").includes(s);
+        });
+        return (
+          <>
+            <Card className="p-4 mb-4">
+              <div className="relative max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome, nome fantasia, CNPJ/CPF, contato, telefone, e-mail…"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <div className="text-xs text-muted-foreground mt-2">
+                {filtered.length} {filtered.length === 1 ? "fornecedor" : "fornecedores"}
+                {data && filtered.length !== data.length ? ` (de ${data.length})` : ""}
+              </div>
+            </Card>
+
+            <Card className="overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-muted/50">
+                    <tr className="text-left text-xs uppercase text-muted-foreground">
+                      <th className="px-4 py-3 font-medium">Nome</th>
+                      <th className="px-4 py-3 font-medium">Nome fantasia</th>
+                      <th className="px-4 py-3 font-medium">CNPJ/CPF</th>
+                      <th className="px-4 py-3 font-medium">Contato</th>
+                      <th className="px-4 py-3 font-medium">Telefone</th>
+                      <th className="px-4 py-3 font-medium">Tipo</th>
+                      <th className="px-4 py-3 font-medium">Status</th>
+                      <th className="px-4 py-3" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.length ? filtered.map((s: any) => (
+                      <tr key={s.id} className="border-t border-border hover:bg-muted/30">
+                        <td className="px-4 py-3 font-medium">{s.nome}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{s.nome_fantasia ?? "—"}</td>
+                        <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{s.documento ?? "—"}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{s.contato_nome ?? "—"}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{s.telefone ?? "—"}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{s.tipo_fornecimento ?? "—"}</td>
+                        <td className="px-4 py-3"><StatusBadge status={s.status} /></td>
+                        <td className="px-4 py-3 text-right">
+                          <Button size="sm" variant="ghost" onClick={() => { setEditing(s); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr><td colSpan={8} className="text-center py-10 text-muted-foreground">Nenhum fornecedor encontrado.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </>
+        );
+      })()}
 
       <Dialog open={open} onOpenChange={(nextOpen) => { setOpen(nextOpen); if (!nextOpen) setEditing(null); }}>
         <DialogContent className="max-w-3xl">
