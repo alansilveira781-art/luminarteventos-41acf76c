@@ -71,7 +71,7 @@ function UsuariosPage() {
                   <td className="px-4 py-2.5">
                     {u.roles.includes("admin")
                       ? "Todos"
-                      : `${u.modulos.length}${u.modulos.some((m) => m.is_admin) ? " · admin" : ""}`}
+                      : `${u.modulos.length}${u.modulos.some((m: ModAccess) => m.is_admin) ? " · admin" : ""}`}
                   </td>
                   <td className="px-4 py-2.5 text-right">
                     <Button size="sm" variant="outline" onClick={() => setEditing(u)}>
