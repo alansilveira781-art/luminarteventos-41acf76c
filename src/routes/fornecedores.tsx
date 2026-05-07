@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ImportDialog } from "@/components/ImportDialog";
 import { FORNECEDOR_TEMPLATE } from "@/lib/import-utils";
 import { FornecedorForm } from "@/components/forms/FornecedorForm";
+import { SortableTh, useSort } from "@/components/SortableTh";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/fornecedores")({
@@ -27,6 +28,7 @@ function FornecedoresPage() {
   const [editing, setEditing] = useState<any | null>(null);
   const [importing, setImporting] = useState(false);
   const [q, setQ] = useState("");
+  const { sort, toggleSort, applySort } = useSort();
 
   const { data } = useQuery({
     queryKey: ["fornecedores"],
@@ -65,11 +67,12 @@ function FornecedoresPage() {
 
       {(() => {
         const s = q.toLowerCase().trim();
-        const filtered = (data ?? []).filter((f: any) => {
+        const filteredBase = (data ?? []).filter((f: any) => {
           if (!s) return true;
           return [f.nome, f.nome_fantasia, f.documento, f.contato_nome, f.telefone, f.email, f.tipo_fornecimento]
             .map((x) => String(x ?? "").toLowerCase()).join(" ").includes(s);
         });
+        const filtered = applySort(filteredBase);
         return (
           <>
             <Card className="p-4 mb-4">
@@ -93,13 +96,13 @@ function FornecedoresPage() {
                 <table className="min-w-full text-sm">
                   <thead className="bg-muted/50">
                     <tr className="text-left text-xs uppercase text-muted-foreground">
-                      <th className="px-4 py-3 font-medium">Nome</th>
-                      <th className="px-4 py-3 font-medium">Nome fantasia</th>
-                      <th className="px-4 py-3 font-medium">CNPJ/CPF</th>
-                      <th className="px-4 py-3 font-medium">Contato</th>
-                      <th className="px-4 py-3 font-medium">Telefone</th>
-                      <th className="px-4 py-3 font-medium">Tipo</th>
-                      <th className="px-4 py-3 font-medium">Status</th>
+                      <SortableTh sort={sort} onToggle={toggleSort} k="nome" label="Nome" />
+                      <SortableTh sort={sort} onToggle={toggleSort} k="nome_fantasia" label="Nome fantasia" />
+                      <SortableTh sort={sort} onToggle={toggleSort} k="documento" label="CNPJ/CPF" />
+                      <SortableTh sort={sort} onToggle={toggleSort} k="contato_nome" label="Contato" />
+                      <SortableTh sort={sort} onToggle={toggleSort} k="telefone" label="Telefone" />
+                      <SortableTh sort={sort} onToggle={toggleSort} k="tipo_fornecimento" label="Tipo" />
+                      <SortableTh sort={sort} onToggle={toggleSort} k="status" label="Status" />
                       <th className="px-4 py-3" />
                     </tr>
                   </thead>

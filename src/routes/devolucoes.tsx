@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { SortableTh, useSort } from "@/components/SortableTh";
 
 export const Route = createFileRoute("/devolucoes")({
   component: DevolucoesPage,
@@ -21,6 +22,7 @@ export const Route = createFileRoute("/devolucoes")({
 function DevolucoesPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const { sort, toggleSort, applySort } = useSort();
 
   const { data: devolucoes } = useQuery({
     queryKey: ["devolucoes"],
@@ -101,29 +103,38 @@ function DevolucoesPage() {
           <table className="min-w-full text-sm">
             <thead className="bg-muted/50">
               <tr className="text-left text-xs uppercase text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Data</th>
-                <th className="px-4 py-3 font-medium">Item</th>
-                <th className="px-4 py-3 font-medium">Solicitante</th>
-                <th className="px-4 py-3 font-medium text-right">Qtd</th>
-                <th className="px-4 py-3 font-medium">UN</th>
-                <th className="px-4 py-3 font-medium">Recebido por</th>
+                <SortableTh sort={sort} onToggle={toggleSort} k="data_movimento" label="Data" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="item" label="Item" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="solicitante" label="Solicitante" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="quantidade" label="Qtd" align="right" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="unidade" label="UN" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="responsavel_recebimento" label="Recebido por" />
                 <th className="px-4 py-3 font-medium">Obs</th>
               </tr>
             </thead>
             <tbody>
-              {devolucoes?.length ? devolucoes.map((m: any) => (
-                <tr key={m.id} className="border-t border-border hover:bg-muted/30">
-                  <td className="px-4 py-3 tabular-nums whitespace-nowrap">{format(new Date(m.data_movimento), "dd/MM/yyyy HH:mm")}</td>
-                  <td className="px-4 py-3 font-medium">{m.item?.nome}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{m.solicitante?.nome ?? "—"}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-success">+{Number(m.quantidade)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{m.item?.unidade}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{m.responsavel_recebimento ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground truncate max-w-[200px]">{m.observacoes ?? ""}</td>
-                </tr>
-              )) : (
-                <tr><td colSpan={7} className="text-center py-10 text-muted-foreground">Nenhuma devolução registrada.</td></tr>
-              )}
+              {(() => {
+                const sorted = applySort(devolucoes ?? [], (m: any, k: string) => {
+                  if (k === "item") return m.item?.nome;
+                  if (k === "solicitante") return m.solicitante?.nome;
+                  if (k === "unidade") return m.item?.unidade;
+                  if (k === "quantidade") return Number(m.quantidade);
+                  return m[k];
+                });
+                return sorted.length ? sorted.map((m: any) => (
+                  <tr key={m.id} className="border-t border-border hover:bg-muted/30">
+                    <td className="px-4 py-3 tabular-nums whitespace-nowrap">{format(new Date(m.data_movimento), "dd/MM/yyyy HH:mm")}</td>
+                    <td className="px-4 py-3 font-medium">{m.item?.nome}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{m.solicitante?.nome ?? "—"}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-success">+{Number(m.quantidade)}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{m.item?.unidade}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{m.responsavel_recebimento ?? "—"}</td>
+                    <td className="px-4 py-3 text-muted-foreground truncate max-w-[200px]">{m.observacoes ?? ""}</td>
+                  </tr>
+                )) : (
+                  <tr><td colSpan={7} className="text-center py-10 text-muted-foreground">Nenhuma devolução registrada.</td></tr>
+                );
+              })()}
             </tbody>
           </table>
         </div>
