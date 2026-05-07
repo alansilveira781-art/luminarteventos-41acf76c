@@ -23,7 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<Role[]>([]);
-  const [modulos, setModulos] = useState<{ slug: string; nome: string; rota: string | null }[]>([]);
+  const [modulos, setModulos] = useState<{ slug: string; nome: string; rota: string | null; is_admin: boolean }[]>([]);
 
   async function loadAccess(userId: string | null) {
     if (!userId) {
@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       supabase.from("user_roles").select("role").eq("user_id", userId),
       supabase
         .from("user_modulos")
-        .select("modulos(slug,nome,rota,ativo)")
+        .select("is_admin,modulos(slug,nome,rota,ativo)")
         .eq("user_id", userId),
     ]);
     const rolesList = (r ?? []).map((x: any) => x.role as Role);
@@ -43,13 +43,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (rolesList.includes("admin")) {
       const { data: all } = await supabase.from("modulos").select("slug,nome,rota,ativo").eq("ativo", true);
-      setModulos((all ?? []).map((x: any) => ({ slug: x.slug, nome: x.nome, rota: x.rota })));
+      setModulos((all ?? []).map((x: any) => ({ slug: x.slug, nome: x.nome, rota: x.rota, is_admin: true })));
     } else {
       setModulos(
         (m ?? [])
-          .map((x: any) => x.modulos)
-          .filter((x: any) => x && x.ativo)
-          .map((x: any) => ({ slug: x.slug, nome: x.nome, rota: x.rota })),
+          .filter((x: any) => x.modulos && x.modulos.ativo)
+          .map((x: any) => ({ slug: x.modulos.slug, nome: x.modulos.nome, rota: x.modulos.rota, is_admin: !!x.is_admin })),
       );
     }
   }
@@ -75,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     roles,
     modulos,
     hasModule: (slug) => roles.includes("admin") || modulos.some((m) => m.slug === slug),
+    isModuleAdmin: (slug) => roles.includes("admin") || modulos.some((m) => m.slug === slug && m.is_admin),
     refresh: () => loadAccess(session?.user.id ?? null),
     signOut: async () => {
       await supabase.auth.signOut();
