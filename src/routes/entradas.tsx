@@ -21,6 +21,7 @@ import { parseNfeXml } from "@/lib/nfe-parser";
 import { ItemSearchSelect } from "@/components/ItemSearchSelect";
 import { EntitySearchSelect } from "@/components/EntitySearchSelect";
 import { FornecedorForm } from "@/components/forms/FornecedorForm";
+import { SortableTh, useSort } from "@/components/SortableTh";
 import { useAuth } from "@/contexts/AuthContext";
 
 export const Route = createFileRoute("/entradas")({
@@ -35,6 +36,7 @@ function EntradasPage() {
   const [importingExcel, setImportingExcel] = useState(false);
   const [importingXml, setImportingXml] = useState(false);
   const [q, setQ] = useState("");
+  const { sort, toggleSort, applySort } = useSort();
 
   const editMut = useMutation({
     mutationFn: async (p: { original: any; patch: any }) => {
@@ -177,12 +179,21 @@ function EntradasPage() {
 
       {(() => {
         const s = q.toLowerCase().trim();
-        const filtered = (entradas ?? []).filter((m: any) => {
+        const filteredBase = (entradas ?? []).filter((m: any) => {
           if (!s) return true;
           return [
             m.item?.nome, m.item?.codigo, m.fornecedor?.nome,
             m.entrada_tipo, m.nota_fiscal, m.responsavel_lancamento, m.observacoes,
           ].map((x) => String(x ?? "").toLowerCase()).join(" ").includes(s);
+        });
+        const filtered = applySort(filteredBase, (m: any, k: string) => {
+          if (k === "data_movimento") return m.data_movimento;
+          if (k === "item") return m.item?.nome;
+          if (k === "fornecedor") return m.fornecedor?.nome;
+          if (k === "unidade") return m.item?.unidade;
+          if (k === "valor_total") return Number(m.valor_unitario ?? 0) * Number(m.quantidade ?? 0);
+          if (k === "quantidade") return Number(m.quantidade);
+          return m[k];
         });
         return (
           <>
@@ -207,15 +218,15 @@ function EntradasPage() {
                 <table className="min-w-full text-sm">
                   <thead className="bg-muted/50">
                     <tr className="text-left text-xs uppercase text-muted-foreground">
-                      <th className="px-4 py-3 font-medium">Data</th>
-                      <th className="px-4 py-3 font-medium">Item</th>
-                      <th className="px-4 py-3 font-medium">Tipo</th>
-                      <th className="px-4 py-3 font-medium">Fornecedor</th>
-                      <th className="px-4 py-3 font-medium text-right">Qtd</th>
-                      <th className="px-4 py-3 font-medium">UN</th>
-                      <th className="px-4 py-3 font-medium text-right">Valor total</th>
-                      <th className="px-4 py-3 font-medium">NF</th>
-                      <th className="px-4 py-3 font-medium">Responsável</th>
+                      <SortableTh sort={sort} onToggle={toggleSort} k="data_movimento" label="Data" />
+                      <SortableTh sort={sort} onToggle={toggleSort} k="item" label="Item" />
+                      <SortableTh sort={sort} onToggle={toggleSort} k="entrada_tipo" label="Tipo" />
+                      <SortableTh sort={sort} onToggle={toggleSort} k="fornecedor" label="Fornecedor" />
+                      <SortableTh sort={sort} onToggle={toggleSort} k="quantidade" label="Qtd" align="right" />
+                      <SortableTh sort={sort} onToggle={toggleSort} k="unidade" label="UN" />
+                      <SortableTh sort={sort} onToggle={toggleSort} k="valor_total" label="Valor total" align="right" />
+                      <SortableTh sort={sort} onToggle={toggleSort} k="nota_fiscal" label="NF" />
+                      <SortableTh sort={sort} onToggle={toggleSort} k="responsavel_lancamento" label="Responsável" />
                       {isAdmin && <th className="px-4 py-3 font-medium"></th>}
                     </tr>
                   </thead>

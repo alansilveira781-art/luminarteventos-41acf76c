@@ -20,6 +20,7 @@ import { listEventos } from "@/server/sheets.functions";
 import { ItemSearchSelect } from "@/components/ItemSearchSelect";
 import { EntitySearchSelect } from "@/components/EntitySearchSelect";
 import { SolicitanteForm } from "@/components/forms/SolicitanteForm";
+import { SortableTh, useSort } from "@/components/SortableTh";
 import { useAuth } from "@/contexts/AuthContext";
 
 export const Route = createFileRoute("/saidas")({
@@ -32,6 +33,7 @@ function SaidasPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [q, setQ] = useState("");
+  const { sort, toggleSort, applySort } = useSort();
 
   const editMut = useMutation({
     mutationFn: async (p: { original: any; patch: any }) => {
@@ -177,12 +179,20 @@ function SaidasPage() {
 
       {(() => {
         const s = q.toLowerCase().trim();
-        const filtered = (saidas ?? []).filter((m: any) => {
+        const filteredBase = (saidas ?? []).filter((m: any) => {
           if (!s) return true;
           return [
             m.item?.nome, m.item?.codigo, m.evento_projeto, m.solicitante?.nome,
             m.saida_tipo, m.finalidade, m.observacoes, m.saida_status,
           ].map((x) => String(x ?? "").toLowerCase()).join(" ").includes(s);
+        });
+        const filtered = applySort(filteredBase, (m: any, k: string) => {
+          if (k === "data_movimento") return m.data_movimento;
+          if (k === "item") return m.item?.nome;
+          if (k === "solicitante") return m.solicitante?.nome;
+          if (k === "unidade") return m.item?.unidade;
+          if (k === "quantidade") return Number(m.quantidade);
+          return m[k];
         });
         return (
           <>
@@ -207,15 +217,15 @@ function SaidasPage() {
                 <table className="min-w-full text-sm">
                   <thead className="bg-muted/50">
                     <tr className="text-left text-xs uppercase text-muted-foreground">
-                      <th className="px-4 py-3 font-medium">Data</th>
-                      <th className="px-4 py-3 font-medium">Item</th>
-                      <th className="px-4 py-3 font-medium">Evento/Projeto</th>
-                      <th className="px-4 py-3 font-medium">Solicitante</th>
-                      <th className="px-4 py-3 font-medium">Tipo</th>
-                      <th className="px-4 py-3 font-medium text-right">Qtd</th>
-                      <th className="px-4 py-3 font-medium">UN</th>
-                      <th className="px-4 py-3 font-medium">Devolver até</th>
-                      <th className="px-4 py-3 font-medium">Status</th>
+                      <SortableTh sort={sort} onToggle={toggleSort} k="data_movimento" label="Data" />
+                      <SortableTh sort={sort} onToggle={toggleSort} k="item" label="Item" />
+                      <SortableTh sort={sort} onToggle={toggleSort} k="evento_projeto" label="Evento/Projeto" />
+                      <SortableTh sort={sort} onToggle={toggleSort} k="solicitante" label="Solicitante" />
+                      <SortableTh sort={sort} onToggle={toggleSort} k="saida_tipo" label="Tipo" />
+                      <SortableTh sort={sort} onToggle={toggleSort} k="quantidade" label="Qtd" align="right" />
+                      <SortableTh sort={sort} onToggle={toggleSort} k="unidade" label="UN" />
+                      <SortableTh sort={sort} onToggle={toggleSort} k="data_prevista_devolucao" label="Devolver até" />
+                      <SortableTh sort={sort} onToggle={toggleSort} k="saida_status" label="Status" />
                       {isAdmin && <th className="px-4 py-3 font-medium"></th>}
                     </tr>
                   </thead>
