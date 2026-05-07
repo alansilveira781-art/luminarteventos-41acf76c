@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/fetch-all";
 import { PageHeader } from "@/components/PageHeader";
@@ -495,6 +495,10 @@ function EntradaForm({ prefill, itens, fornecedores, onEditFornecedor, onSubmit,
             : [{ item_id: "", quantidade: "1", valor_unitario: "" }],
   );
 
+  const qtyRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  const valorRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  const [autoOpenIdx, setAutoOpenIdx] = useState<number | null>(null);
+
   const setM = (k: string, v: any) => setMeta((p) => ({ ...p, [k]: v }));
   const setL = (i: number, k: keyof Linha, v: string) => {
     setLinhas((arr) => {
@@ -505,13 +509,28 @@ function EntradaForm({ prefill, itens, fornecedores, onEditFornecedor, onSubmit,
         if (it?.valor_unitario != null && !novo[i].valor_unitario) {
           novo[i].valor_unitario = String(it.valor_unitario);
         }
-        // Auto-adicionar nova linha quando seleciona item na última
-        if (v && i === arr.length - 1) {
-          novo.push({ item_id: "", quantidade: "1", valor_unitario: "" });
-        }
       }
       return novo;
     });
+  };
+  const focusQty = (i: number) => {
+    setTimeout(() => {
+      const el = qtyRefs.current[i];
+      if (el) { el.focus(); el.select(); }
+    }, 30);
+  };
+  const focusValor = (i: number) => {
+    setTimeout(() => {
+      const el = valorRefs.current[i];
+      if (el) { el.focus(); el.select(); }
+    }, 0);
+  };
+  const goNextItem = (i: number) => {
+    setLinhas((arr) => {
+      if (i === arr.length - 1) return [...arr, { item_id: "", quantidade: "1", valor_unitario: "" }];
+      return arr;
+    });
+    setAutoOpenIdx(i + 1);
   };
   const addLinha = () => setLinhas((a) => [...a, { item_id: "", quantidade: "1", valor_unitario: "" }]);
   const remLinha = (i: number) => setLinhas((a) => (a.length === 1 ? a : a.filter((_, idx) => idx !== i)));
@@ -576,15 +595,47 @@ function EntradaForm({ prefill, itens, fornecedores, onEditFornecedor, onSubmit,
             <div key={i} className="grid grid-cols-12 gap-2 items-end">
               <div className="col-span-6">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Item</label>
-                <ItemSearchSelect itens={itens} value={l.item_id} onChange={(v) => setL(i, "item_id", v)} autoOpen={!l.item_id && i === linhas.length - 1 && i > 0} />
+                <ItemSearchSelect
+                  itens={itens}
+                  value={l.item_id}
+                  onChange={(v) => setL(i, "item_id", v)}
+                  autoOpen={(!l.item_id && i === linhas.length - 1 && i > 0) || autoOpenIdx === i}
+                  onAfterSelect={() => focusQty(i)}
+                />
               </div>
               <div className="col-span-2">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Qtd</label>
-                <Input type="number" min="0.01" step="0.01" value={l.quantidade} onChange={(e) => setL(i, "quantidade", e.target.value)} />
+                <Input
+                  ref={(el) => { qtyRefs.current[i] = el; }}
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={l.quantidade}
+                  onChange={(e) => setL(i, "quantidade", e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (l.item_id && Number(l.quantidade) > 0) focusValor(i);
+                    }
+                  }}
+                />
               </div>
               <div className="col-span-3">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Valor unit. (R$)</label>
-                <Input type="number" min="0" step="0.01" value={l.valor_unitario} onChange={(e) => setL(i, "valor_unitario", e.target.value)} />
+                <Input
+                  ref={(el) => { valorRefs.current[i] = el; }}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={l.valor_unitario}
+                  onChange={(e) => setL(i, "valor_unitario", e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (l.item_id && Number(l.quantidade) > 0) goNextItem(i);
+                    }
+                  }}
+                />
               </div>
               <div className="col-span-1 flex justify-end">
                 <Button type="button" variant="ghost" size="icon" onClick={() => remLinha(i)} disabled={linhas.length === 1} title="Remover">

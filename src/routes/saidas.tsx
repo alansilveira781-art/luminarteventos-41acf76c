@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/fetch-all";
 import { PageHeader } from "@/components/PageHeader";
@@ -343,16 +343,28 @@ function SaidaForm({ prefill, itens, solicitantes, onEditSolicitante, eventos, e
 
   const isEvento = meta.saida_tipo === "evento";
 
+  const qtyRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  const [autoOpenIdx, setAutoOpenIdx] = useState<number | null>(null);
+
   const setM = (k: string, v: any) => setMeta((p) => ({ ...p, [k]: v }));
   const setL = (i: number, k: keyof Linha, v: string) => setLinhas((arr) => {
     const novo = [...arr];
     novo[i] = { ...novo[i], [k]: v };
-    // Auto-adicionar nova linha quando seleciona item na última
-    if (k === "item_id" && v && i === arr.length - 1) {
-      novo.push({ item_id: "", quantidade: "1" });
-    }
     return novo;
   });
+  const focusQty = (i: number) => {
+    setTimeout(() => {
+      const el = qtyRefs.current[i];
+      if (el) { el.focus(); el.select(); }
+    }, 30);
+  };
+  const goNextItem = (i: number) => {
+    setLinhas((arr) => {
+      if (i === arr.length - 1) return [...arr, { item_id: "", quantidade: "1" }];
+      return arr;
+    });
+    setAutoOpenIdx(i + 1);
+  };
   const addLinha = () => setLinhas((a) => [...a, { item_id: "", quantidade: "1" }]);
   const remLinha = (i: number) => setLinhas((a) => (a.length === 1 ? a : a.filter((_, idx) => idx !== i)));
 
@@ -454,12 +466,32 @@ function SaidaForm({ prefill, itens, solicitantes, onEditSolicitante, eventos, e
               <div key={i} className="grid grid-cols-12 gap-2 items-end">
                 <div className="col-span-8">
                   <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Item</label>
-                  <ItemSearchSelect itens={itens} value={l.item_id} onChange={(v) => setL(i, "item_id", v)} showStock autoOpen={!l.item_id && i === linhas.length - 1 && i > 0} />
+                  <ItemSearchSelect
+                    itens={itens}
+                    value={l.item_id}
+                    onChange={(v) => setL(i, "item_id", v)}
+                    showStock
+                    autoOpen={(!l.item_id && i === linhas.length - 1 && i > 0) || autoOpenIdx === i}
+                    onAfterSelect={() => focusQty(i)}
+                  />
                   {it && <p className="text-[10px] text-muted-foreground mt-1">Disponível: {Number(it.quantidade_atual)} {it.unidade}</p>}
                 </div>
                 <div className="col-span-3">
                   <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Quantidade</label>
-                  <Input type="number" min="0.01" step="0.01" value={l.quantidade} onChange={(e) => setL(i, "quantidade", e.target.value)} />
+                  <Input
+                    ref={(el) => { qtyRefs.current[i] = el; }}
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={l.quantidade}
+                    onChange={(e) => setL(i, "quantidade", e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (l.item_id && Number(l.quantidade) > 0) goNextItem(i);
+                      }
+                    }}
+                  />
                 </div>
                 <div className="col-span-1 flex justify-end">
                   <Button type="button" variant="ghost" size="icon" onClick={() => remLinha(i)} disabled={linhas.length === 1} title="Remover">
