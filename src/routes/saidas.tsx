@@ -274,7 +274,7 @@ function SaidasPage() {
 
 type Linha = { item_id: string; quantidade: string };
 
-function SaidaForm({ itens, solicitantes, eventos, eventosError, onReloadEventos, reloadingEventos, onSubmit, submitting }: any) {
+function SaidaForm({ itens, solicitantes, onEditSolicitante, eventos, eventosError, onReloadEventos, reloadingEventos, onSubmit, submitting }: any) {
   const [meta, setMeta] = useState({
     data_movimento: new Date().toISOString().slice(0, 16),
     saida_tipo: "evento",
