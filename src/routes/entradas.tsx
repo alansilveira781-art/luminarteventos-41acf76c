@@ -105,7 +105,7 @@ function EntradasPage() {
     queryFn: async () =>
       await fetchAllRows<any>("itens", "id,nome,codigo,codigo_proprio,unidade,valor_unitario", {
         orderBy: { column: "nome", ascending: true },
-        pageSize: 2000,
+        pageSize: 1000,
       }),
     staleTime: 5 * 60 * 1000,
   });

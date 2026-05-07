@@ -99,11 +99,13 @@ function SaidasPage() {
 
   const { data: itens } = useQuery({
     queryKey: ["itens-select-saida"],
-    queryFn: async () =>
-      await fetchAllRows<any>("itens", "id,nome,codigo,codigo_proprio,unidade,quantidade_atual", {
+    queryFn: async () => {
+      const all = await fetchAllRows<any>("itens", "id,nome,codigo,codigo_proprio,unidade,quantidade_atual", {
         orderBy: { column: "nome", ascending: true },
-        pageSize: 2000,
-      }),
+        pageSize: 1000,
+      });
+      return all.filter((i: any) => Number(i.quantidade_atual) > 0);
+    },
     staleTime: 5 * 60 * 1000,
   });
   const { data: solicitantes } = useQuery({
