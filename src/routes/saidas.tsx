@@ -475,10 +475,14 @@ function SaidaEditForm({ original, itens, solicitantes, onEditSolicitante, event
           </FormField>
         )}
         <FormField label="Solicitante">
-          <Select value={form.solicitante_id} onValueChange={(v) => set("solicitante_id", v)}>
-            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-            <SelectContent>{solicitantes.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
-          </Select>
+          <EntitySearchSelect
+            options={solicitantes}
+            value={form.solicitante_id}
+            onChange={(v) => set("solicitante_id", v)}
+            onEdit={onEditSolicitante}
+            placeholder="—"
+            searchPlaceholder="Buscar por nome ou apelido…"
+          />
         </FormField>
         <FormField label="Será devolvido?*">
           <Select value={form.sera_devolvido} onValueChange={(v) => { set("sera_devolvido", v); if (v === "nao") set("data_prevista_devolucao", ""); }}>
