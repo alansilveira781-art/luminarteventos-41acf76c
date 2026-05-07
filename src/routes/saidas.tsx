@@ -454,7 +454,7 @@ function SaidaForm({ prefill, itens, solicitantes, onEditSolicitante, eventos, e
               <div key={i} className="grid grid-cols-12 gap-2 items-end">
                 <div className="col-span-8">
                   <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Item</label>
-                  <ItemSearchSelect itens={itens} value={l.item_id} onChange={(v) => setL(i, "item_id", v)} showStock />
+                  <ItemSearchSelect itens={itens} value={l.item_id} onChange={(v) => setL(i, "item_id", v)} showStock autoOpen={!l.item_id && i === linhas.length - 1 && i > 0} />
                   {it && <p className="text-[10px] text-muted-foreground mt-1">Disponível: {Number(it.quantidade_atual)} {it.unidade}</p>}
                 </div>
                 <div className="col-span-3">
