@@ -228,6 +228,7 @@ function SaidasPage() {
           <SaidaForm
             itens={itens ?? []}
             solicitantes={solicitantes ?? []}
+            onEditSolicitante={(s: any) => setEditingSolicitante(s)}
             eventos={eventosQuery.data?.eventos ?? []}
             eventosError={eventosQuery.data?.error}
             onReloadEventos={() => eventosQuery.refetch()}
@@ -246,9 +247,23 @@ function SaidasPage() {
               original={editing}
               itens={itens ?? []}
               solicitantes={solicitantes ?? []}
+              onEditSolicitante={(s: any) => setEditingSolicitante(s)}
               eventos={eventosQuery.data?.eventos ?? []}
               onSubmit={(patch: any) => editMut.mutate({ original: editing, patch })}
               submitting={editMut.isPending}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingSolicitante} onOpenChange={(v) => !v && setEditingSolicitante(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader><DialogTitle>Editar solicitante</DialogTitle></DialogHeader>
+          {editingSolicitante && (
+            <SolicitanteForm
+              initial={editingSolicitante}
+              onSubmit={(p: any) => solMut.mutate({ ...p, id: editingSolicitante.id })}
+              submitting={solMut.isPending}
             />
           )}
         </DialogContent>
