@@ -20,6 +20,7 @@ import { ENTRADA_TEMPLATE } from "@/lib/import-utils";
 import { parseNfeXml } from "@/lib/nfe-parser";
 import { ItemSearchSelect } from "@/components/ItemSearchSelect";
 import { EntitySearchSelect } from "@/components/EntitySearchSelect";
+import { FornecedorForm } from "@/routes/fornecedores";
 import { useAuth } from "@/contexts/AuthContext";
 
 export const Route = createFileRoute("/entradas")({
