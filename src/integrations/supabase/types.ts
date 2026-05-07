@@ -185,6 +185,7 @@ export type Database = {
           fornecedor_id: string | null
           id: string
           motivo_negacao: string | null
+          numero: number | null
           observacoes: string | null
           ordem: number
           parcelamento: string | null
@@ -208,6 +209,7 @@ export type Database = {
           fornecedor_id?: string | null
           id?: string
           motivo_negacao?: string | null
+          numero?: number | null
           observacoes?: string | null
           ordem?: number
           parcelamento?: string | null
@@ -231,6 +233,7 @@ export type Database = {
           fornecedor_id?: string | null
           id?: string
           motivo_negacao?: string | null
+          numero?: number | null
           observacoes?: string | null
           ordem?: number
           parcelamento?: string | null
