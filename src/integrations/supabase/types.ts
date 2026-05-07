@@ -690,18 +690,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_admin: boolean
           modulo_id: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          is_admin?: boolean
           modulo_id: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          is_admin?: boolean
           modulo_id?: string
           user_id?: string
         }
@@ -753,6 +756,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_module_admin: {
+        Args: { _slug: string; _user_id: string }
+        Returns: boolean
+      }
       refresh_item_status: { Args: { p_item_id: string }; Returns: undefined }
     }
     Enums: {
