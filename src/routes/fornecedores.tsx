@@ -153,7 +153,8 @@ function FornecedoresPage() {
             const key = `${nome.toLowerCase()}|${String(r.documento ?? "").toLowerCase()}`;
             if (setKey.has(key)) { skipped++; continue; }
             const { error } = await supabase.from("fornecedores").insert({
-              nome, documento: r.documento || null, tipo_fornecimento: r.tipo_fornecimento || null,
+              nome, nome_fantasia: r.nome_fantasia || null,
+              documento: r.documento || null, tipo_fornecimento: r.tipo_fornecimento || null,
               contato_nome: r.contato_nome || null, telefone: r.telefone || null,
               email: r.email || null, endereco: r.endereco || null, observacoes: r.observacoes || null,
             });
