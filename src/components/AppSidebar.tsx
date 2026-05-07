@@ -20,9 +20,12 @@ import {
   ShoppingCart,
   KanbanSquare,
   PackageCheck,
+  Sun,
+  Moon,
 } from "lucide-react";
 import logo from "@/assets/luminart-logo.png";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { NotificationBell } from "@/components/NotificationBell";
 
 type NavItem = { title: string; url: string; icon: any; group: string; module?: string; adminOnly?: boolean };
