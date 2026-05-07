@@ -155,7 +155,7 @@ function EntradasPage() {
       />
 
       <Card className="overflow-hidden">
-        <div className="overflow-auto max-h-[calc(100vh-260px)]">
+        <div className="overflow-auto max-h-[calc(100vh-160px)]">
           <table className="min-w-full text-sm">
             <thead className="bg-muted/50">
               <tr className="text-left text-xs uppercase text-muted-foreground">
