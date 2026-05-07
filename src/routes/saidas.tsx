@@ -523,15 +523,15 @@ function SaidaEditForm({ original, itens, solicitantes, onEditSolicitante, event
         <FormField label="Quantidade*"><Input required type="number" min="0.01" step="0.01" value={form.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></FormField>
         {isEvento && (
           <FormField label="Evento / Projeto*" wide>
-            <Select value={form.evento_projeto} onValueChange={(v) => set("evento_projeto", v)}>
-              <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
-              <SelectContent>
-                {eventos.map((ev: string) => <SelectItem key={ev} value={ev}>{ev}</SelectItem>)}
-                {form.evento_projeto && !eventos.includes(form.evento_projeto) && (
-                  <SelectItem value={form.evento_projeto}>{form.evento_projeto}</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
+            <Input
+              list="eventos-edit-list"
+              value={form.evento_projeto}
+              onChange={(e) => set("evento_projeto", e.target.value)}
+              placeholder="Digite para buscar ou criar…"
+            />
+            <datalist id="eventos-edit-list">
+              {eventos.map((ev: string) => <option key={ev} value={ev} />)}
+            </datalist>
           </FormField>
         )}
         <FormField label="Solicitante">

@@ -32,6 +32,7 @@ function EntradasPage() {
   const qc = useQueryClient();
   const { isModuleAdmin } = useAuth(); const isAdmin = isModuleAdmin("estoque");
   const [open, setOpen] = useState(false);
+  const [prefill, setPrefill] = useState<any | null>(null);
   const [editing, setEditing] = useState<any | null>(null);
   const [importingExcel, setImportingExcel] = useState(false);
   const [importingXml, setImportingXml] = useState(false);
@@ -247,6 +248,9 @@ function EntradasPage() {
                         {isAdmin && (
                           <td className="px-4 py-3">
                             <div className="flex gap-1 justify-end">
+                              <Button type="button" variant="ghost" size="icon" onClick={() => { setPrefill(m); setOpen(true); }} title="Duplicar">
+                                <Copy className="h-4 w-4" />
+                              </Button>
                               <Button type="button" variant="ghost" size="icon" onClick={() => setEditing(m)} title="Editar">
                                 <Pencil className="h-4 w-4" />
                               </Button>
@@ -270,10 +274,12 @@ function EntradasPage() {
         );
       })()}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setPrefill(null); }}>
         <DialogContent className="max-w-4xl">
-          <DialogHeader><DialogTitle>Nova entrada</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{prefill ? "Duplicar entrada" : "Nova entrada"}</DialogTitle></DialogHeader>
           <EntradaForm
+            key={prefill?.id ?? "new"}
+            prefill={prefill}
             itens={itens ?? []}
             fornecedores={fornecedores ?? []}
             onEditFornecedor={(f: any) => setEditingFornecedor(f)}
