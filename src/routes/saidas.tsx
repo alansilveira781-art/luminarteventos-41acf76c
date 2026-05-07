@@ -378,6 +378,10 @@ function SaidaForm({ prefill, itens, solicitantes, onEditSolicitante, eventos, e
         },
         validas.map((l) => ({ item_id: l.item_id, quantidade: Number(l.quantidade) })),
       );
+    }} onKeyDown={(e) => {
+      if (e.key === "Enter" && (e.target as HTMLElement).tagName !== "TEXTAREA") {
+        e.preventDefault();
+      }
     }} className="space-y-4">
       <FormSection>
         <FormField label="Data*"><Input required type="datetime-local" value={meta.data_movimento} onChange={(e) => setM("data_movimento", e.target.value)} /></FormField>
