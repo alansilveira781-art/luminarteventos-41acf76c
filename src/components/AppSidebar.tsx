@@ -102,11 +102,17 @@ function SidebarBody({
         }`}
       >
         <Link to="/" onClick={onNavigate} className="flex items-center gap-3 min-w-0">
-          <img
-            src={logo}
-            alt="Luminart"
-            className={collapsed ? "h-8 w-8 object-contain" : "h-12 w-12 object-contain"}
-          />
+          <div
+            className={`flex items-center justify-center rounded-full bg-black shrink-0 ${
+              collapsed ? "h-9 w-9" : "h-12 w-12"
+            }`}
+          >
+            <img
+              src={logo}
+              alt="Luminart"
+              className={collapsed ? "h-7 w-7 object-contain" : "h-10 w-10 object-contain"}
+            />
+          </div>
           {!collapsed && (
             <div className="min-w-0">
               <div className="text-sm font-semibold text-sidebar-foreground leading-tight truncate">
