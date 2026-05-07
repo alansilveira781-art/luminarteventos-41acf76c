@@ -57,14 +57,24 @@ function ComprasKanban() {
     },
   });
 
+  const filteredCompras = useMemo(() => {
+    const s = q.toLowerCase().trim();
+    if (!s) return compras;
+    return compras.filter((c) => {
+      const num = c.numero != null ? `compra-${c.numero}` : "";
+      return [num, String(c.numero ?? ""), c.titulo, c.solicitante, c.fornecedor, c.comprador]
+        .some((v) => String(v ?? "").toLowerCase().includes(s));
+    });
+  }, [compras, q]);
+
   const byStatus = useMemo(() => {
     const m: Record<CompraStatus, Compra[]> = {} as any;
     COMPRA_STATUSES.forEach((s) => (m[s.key] = []));
-    (compras ?? []).forEach((c) => {
+    filteredCompras.forEach((c) => {
       (m[c.status] ??= []).push(c);
     });
     return m;
-  }, [compras]);
+  }, [filteredCompras]);
 
   const moveStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: CompraStatus }) => {
