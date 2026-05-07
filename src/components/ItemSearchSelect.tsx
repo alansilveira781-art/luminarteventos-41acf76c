@@ -19,12 +19,16 @@ export function ItemSearchSelect({
   onChange,
   placeholder = "Selecione um item…",
   showStock = false,
+  autoOpen = false,
+  onAfterSelect,
 }: {
   itens: ItemOption[];
   value: string;
   onChange: (id: string) => void;
   placeholder?: string;
   showStock?: boolean;
+  autoOpen?: boolean;
+  onAfterSelect?: (id: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -42,10 +46,15 @@ export function ItemSearchSelect({
     });
   }, [itens, search]);
 
+  useEffect(() => {
+    if (autoOpen && !value) setOpen(true);
+  }, [autoOpen, value]);
+
   const selectItem = (id: string) => {
     onChange(id);
     setSearch("");
     setOpen(false);
+    if (onAfterSelect) setTimeout(() => onAfterSelect(id), 0);
   };
 
   useEffect(() => {
