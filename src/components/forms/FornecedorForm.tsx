@@ -19,6 +19,7 @@ export function FornecedorForm({ initial, onSubmit, submitting }: any) {
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(f); }} className="space-y-4">
       <FormSection>
         <FormField label="Nome*" wide><Input required value={f.nome} onChange={(e) => set("nome", e.target.value)} /></FormField>
+        <FormField label="Nome fantasia"><Input value={f.nome_fantasia} onChange={(e) => set("nome_fantasia", e.target.value)} /></FormField>
         <FormField label="CNPJ/CPF"><Input value={f.documento} onChange={(e) => set("documento", e.target.value)} /></FormField>
         <FormField label="Tipo de fornecimento"><Input value={f.tipo_fornecimento} onChange={(e) => set("tipo_fornecimento", e.target.value)} /></FormField>
         <FormField label="Contato"><Input value={f.contato_nome} onChange={(e) => set("contato_nome", e.target.value)} /></FormField>
