@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export function FornecedorForm({ initial, onSubmit, submitting }: any) {
   const [f, setF] = useState({
-    nome: initial?.nome ?? "", documento: initial?.documento ?? "",
+    nome: initial?.nome ?? "", nome_fantasia: initial?.nome_fantasia ?? "",
+    documento: initial?.documento ?? "",
     contato_nome: initial?.contato_nome ?? "", telefone: initial?.telefone ?? "",
     email: initial?.email ?? "", endereco: initial?.endereco ?? "",
     tipo_fornecimento: initial?.tipo_fornecimento ?? "",
