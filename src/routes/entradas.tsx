@@ -19,6 +19,8 @@ import { ImportDialog } from "@/components/ImportDialog";
 import { ENTRADA_TEMPLATE } from "@/lib/import-utils";
 import { parseNfeXml } from "@/lib/nfe-parser";
 import { ItemSearchSelect } from "@/components/ItemSearchSelect";
+import { EntitySearchSelect } from "@/components/EntitySearchSelect";
+import { FornecedorForm } from "@/components/forms/FornecedorForm";
 import { useAuth } from "@/contexts/AuthContext";
 
 export const Route = createFileRoute("/entradas")({
@@ -103,11 +105,29 @@ function EntradasPage() {
     queryFn: async () =>
       await fetchAllRows<any>("itens", "id,nome,codigo,codigo_proprio,unidade,valor_unitario", {
         orderBy: { column: "nome", ascending: true },
+        pageSize: 2000,
       }),
+    staleTime: 5 * 60 * 1000,
   });
   const { data: fornecedores } = useQuery({
     queryKey: ["fornecedores-select"],
-    queryFn: async () => (await supabase.from("fornecedores").select("id,nome").eq("status", "ativo").order("nome")).data ?? [],
+    queryFn: async () => (await supabase.from("fornecedores").select("*").eq("status", "ativo").order("nome")).data ?? [],
+  });
+
+  const [editingFornecedor, setEditingFornecedor] = useState<any | null>(null);
+  const fornMut = useMutation({
+    mutationFn: async (p: any) => {
+      const { id, ...rest } = p;
+      const { error } = await supabase.from("fornecedores").update(rest).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fornecedores-select"] });
+      qc.invalidateQueries({ queryKey: ["fornecedores"] });
+      toast.success("Fornecedor atualizado");
+      setEditingFornecedor(null);
+    },
+    onError: (e: any) => toast.error(e.message),
   });
 
   // Múltiplos itens em uma única entrada: criamos N movimentações compartilhando metadados
@@ -214,6 +234,7 @@ function EntradasPage() {
           <EntradaForm
             itens={itens ?? []}
             fornecedores={fornecedores ?? []}
+            onEditFornecedor={(f: any) => setEditingFornecedor(f)}
             onSubmit={(meta: any, linhas: any) => mut.mutate({ meta, linhas })}
             submitting={mut.isPending}
           />
@@ -228,8 +249,22 @@ function EntradasPage() {
               original={editing}
               itens={itens ?? []}
               fornecedores={fornecedores ?? []}
+              onEditFornecedor={(f: any) => setEditingFornecedor(f)}
               onSubmit={(patch: any) => editMut.mutate({ original: editing, patch })}
               submitting={editMut.isPending}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingFornecedor} onOpenChange={(v) => !v && setEditingFornecedor(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader><DialogTitle>Editar fornecedor</DialogTitle></DialogHeader>
+          {editingFornecedor && (
+            <FornecedorForm
+              initial={editingFornecedor}
+              onSubmit={(p: any) => fornMut.mutate({ ...p, id: editingFornecedor.id })}
+              submitting={fornMut.isPending}
             />
           )}
         </DialogContent>
@@ -399,13 +434,12 @@ function NfeImportDialog({ open, onOpenChange, onDone }: { open: boolean; onOpen
 
 type Linha = { item_id: string; quantidade: string; valor_unitario: string };
 
-function EntradaForm({ itens, fornecedores, onSubmit, submitting }: any) {
+function EntradaForm({ itens, fornecedores, onEditFornecedor, onSubmit, submitting }: any) {
   const [meta, setMeta] = useState({
     data_movimento: new Date().toISOString().slice(0, 16),
     entrada_tipo: "compra",
     fornecedor_id: "",
     nota_fiscal: "",
-    responsavel_lancamento: "",
     observacoes: "",
   });
   const [linhas, setLinhas] = useState<Linha[]>([{ item_id: "", quantidade: "1", valor_unitario: "" }]);
@@ -441,7 +475,6 @@ function EntradaForm({ itens, fornecedores, onSubmit, submitting }: any) {
           entrada_tipo: meta.entrada_tipo,
           fornecedor_id: meta.fornecedor_id || null,
           nota_fiscal: meta.nota_fiscal || null,
-          responsavel_lancamento: meta.responsavel_lancamento || null,
           observacoes: meta.observacoes || null,
         },
         validas.map((l) => ({
@@ -460,13 +493,16 @@ function EntradaForm({ itens, fornecedores, onSubmit, submitting }: any) {
           </Select>
         </FormField>
         <FormField label="Fornecedor">
-          <Select value={meta.fornecedor_id} onValueChange={(v) => setM("fornecedor_id", v)}>
-            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-            <SelectContent>{fornecedores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
-          </Select>
+          <EntitySearchSelect
+            options={fornecedores}
+            value={meta.fornecedor_id}
+            onChange={(v) => setM("fornecedor_id", v)}
+            onEdit={onEditFornecedor}
+            placeholder="—"
+            searchPlaceholder="Buscar fornecedor…"
+          />
         </FormField>
         <FormField label="Nota fiscal / documento"><Input value={meta.nota_fiscal} onChange={(e) => setM("nota_fiscal", e.target.value)} /></FormField>
-        <FormField label="Responsável pelo lançamento"><Input value={meta.responsavel_lancamento} onChange={(e) => setM("responsavel_lancamento", e.target.value)} /></FormField>
         <FormField label="Observações" wide><Textarea rows={2} value={meta.observacoes} onChange={(e) => setM("observacoes", e.target.value)} /></FormField>
       </FormSection>
 
@@ -511,7 +547,7 @@ function EntradaForm({ itens, fornecedores, onSubmit, submitting }: any) {
   );
 }
 
-function EntradaEditForm({ original, itens, fornecedores, onSubmit, submitting }: any) {
+function EntradaEditForm({ original, itens, fornecedores, onEditFornecedor, onSubmit, submitting }: any) {
   const [form, setForm] = useState({
     data_movimento: new Date(original.data_movimento).toISOString().slice(0, 16),
     entrada_tipo: original.entrada_tipo ?? "compra",
@@ -520,7 +556,6 @@ function EntradaEditForm({ original, itens, fornecedores, onSubmit, submitting }
     quantidade: String(original.quantidade),
     valor_unitario: original.valor_unitario != null ? String(original.valor_unitario) : "",
     nota_fiscal: original.nota_fiscal ?? "",
-    responsavel_lancamento: original.responsavel_lancamento ?? "",
     observacoes: original.observacoes ?? "",
   });
   const set = (k: string, v: any) => setForm((p) => ({ ...p, [k]: v }));
@@ -537,7 +572,6 @@ function EntradaEditForm({ original, itens, fornecedores, onSubmit, submitting }
         quantidade: Number(form.quantidade),
         valor_unitario: form.valor_unitario === "" ? null : Number(form.valor_unitario),
         nota_fiscal: form.nota_fiscal || null,
-        responsavel_lancamento: form.responsavel_lancamento || null,
         observacoes: form.observacoes || null,
       });
     }} className="space-y-4">
@@ -555,13 +589,16 @@ function EntradaEditForm({ original, itens, fornecedores, onSubmit, submitting }
         <FormField label="Quantidade*"><Input required type="number" min="0.01" step="0.01" value={form.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></FormField>
         <FormField label="Valor unit. (R$)"><Input type="number" min="0" step="0.01" value={form.valor_unitario} onChange={(e) => set("valor_unitario", e.target.value)} /></FormField>
         <FormField label="Fornecedor">
-          <Select value={form.fornecedor_id} onValueChange={(v) => set("fornecedor_id", v)}>
-            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-            <SelectContent>{fornecedores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
-          </Select>
+          <EntitySearchSelect
+            options={fornecedores}
+            value={form.fornecedor_id}
+            onChange={(v) => set("fornecedor_id", v)}
+            onEdit={onEditFornecedor}
+            placeholder="—"
+            searchPlaceholder="Buscar fornecedor…"
+          />
         </FormField>
         <FormField label="Nota fiscal"><Input value={form.nota_fiscal} onChange={(e) => set("nota_fiscal", e.target.value)} /></FormField>
-        <FormField label="Responsável"><Input value={form.responsavel_lancamento} onChange={(e) => set("responsavel_lancamento", e.target.value)} /></FormField>
         <FormField label="Observações" wide><Textarea rows={2} value={form.observacoes} onChange={(e) => set("observacoes", e.target.value)} /></FormField>
       </FormSection>
       <FormActions><Button type="submit" size="lg" disabled={submitting}>{submitting ? "Salvando…" : "Salvar alterações"}</Button></FormActions>

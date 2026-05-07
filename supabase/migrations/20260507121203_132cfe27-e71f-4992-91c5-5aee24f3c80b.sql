@@ -1,0 +1,1 @@
+ALTER TABLE public.solicitantes ADD COLUMN IF NOT EXISTS apelido text;

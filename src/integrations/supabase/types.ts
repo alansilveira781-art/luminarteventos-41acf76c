@@ -625,6 +625,7 @@ export type Database = {
       }
       solicitantes: {
         Row: {
+          apelido: string | null
           cargo: string | null
           created_at: string
           email: string | null
@@ -637,6 +638,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          apelido?: string | null
           cargo?: string | null
           created_at?: string
           email?: string | null
@@ -649,6 +651,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          apelido?: string | null
           cargo?: string | null
           created_at?: string
           email?: string | null

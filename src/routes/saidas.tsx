@@ -18,6 +18,8 @@ import { format } from "date-fns";
 import { saidaTipoLabels } from "@/lib/labels";
 import { listEventos } from "@/server/sheets.functions";
 import { ItemSearchSelect } from "@/components/ItemSearchSelect";
+import { EntitySearchSelect } from "@/components/EntitySearchSelect";
+import { SolicitanteForm } from "@/components/forms/SolicitanteForm";
 import { useAuth } from "@/contexts/AuthContext";
 
 export const Route = createFileRoute("/saidas")({
@@ -100,11 +102,29 @@ function SaidasPage() {
     queryFn: async () =>
       await fetchAllRows<any>("itens", "id,nome,codigo,codigo_proprio,unidade,quantidade_atual", {
         orderBy: { column: "nome", ascending: true },
+        pageSize: 2000,
       }),
+    staleTime: 5 * 60 * 1000,
   });
   const { data: solicitantes } = useQuery({
     queryKey: ["solicitantes-select"],
-    queryFn: async () => (await supabase.from("solicitantes").select("id,nome").eq("status", "ativo").order("nome")).data ?? [],
+    queryFn: async () => (await supabase.from("solicitantes").select("*").eq("status", "ativo").order("nome")).data ?? [],
+  });
+
+  const [editingSolicitante, setEditingSolicitante] = useState<any | null>(null);
+  const solMut = useMutation({
+    mutationFn: async (p: any) => {
+      const { id, ...rest } = p;
+      const { error } = await supabase.from("solicitantes").update(rest).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["solicitantes-select"] });
+      qc.invalidateQueries({ queryKey: ["solicitantes"] });
+      toast.success("Solicitante atualizado");
+      setEditingSolicitante(null);
+    },
+    onError: (e: any) => toast.error(e.message),
   });
 
   const eventosQuery = useQuery({
@@ -210,6 +230,7 @@ function SaidasPage() {
           <SaidaForm
             itens={itens ?? []}
             solicitantes={solicitantes ?? []}
+            onEditSolicitante={(s: any) => setEditingSolicitante(s)}
             eventos={eventosQuery.data?.eventos ?? []}
             eventosError={eventosQuery.data?.error}
             onReloadEventos={() => eventosQuery.refetch()}
@@ -228,9 +249,23 @@ function SaidasPage() {
               original={editing}
               itens={itens ?? []}
               solicitantes={solicitantes ?? []}
+              onEditSolicitante={(s: any) => setEditingSolicitante(s)}
               eventos={eventosQuery.data?.eventos ?? []}
               onSubmit={(patch: any) => editMut.mutate({ original: editing, patch })}
               submitting={editMut.isPending}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingSolicitante} onOpenChange={(v) => !v && setEditingSolicitante(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader><DialogTitle>Editar solicitante</DialogTitle></DialogHeader>
+          {editingSolicitante && (
+            <SolicitanteForm
+              initial={editingSolicitante}
+              onSubmit={(p: any) => solMut.mutate({ ...p, id: editingSolicitante.id })}
+              submitting={solMut.isPending}
             />
           )}
         </DialogContent>
@@ -241,7 +276,7 @@ function SaidasPage() {
 
 type Linha = { item_id: string; quantidade: string };
 
-function SaidaForm({ itens, solicitantes, eventos, eventosError, onReloadEventos, reloadingEventos, onSubmit, submitting }: any) {
+function SaidaForm({ itens, solicitantes, onEditSolicitante, eventos, eventosError, onReloadEventos, reloadingEventos, onSubmit, submitting }: any) {
   const [meta, setMeta] = useState({
     data_movimento: new Date().toISOString().slice(0, 16),
     saida_tipo: "evento",
@@ -316,10 +351,14 @@ function SaidaForm({ itens, solicitantes, eventos, eventosError, onReloadEventos
         )}
 
         <FormField label="Solicitante">
-          <Select value={meta.solicitante_id} onValueChange={(v) => setM("solicitante_id", v)}>
-            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-            <SelectContent>{solicitantes.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
-          </Select>
+          <EntitySearchSelect
+            options={solicitantes}
+            value={meta.solicitante_id}
+            onChange={(v) => setM("solicitante_id", v)}
+            onEdit={onEditSolicitante}
+            placeholder="—"
+            searchPlaceholder="Buscar por nome ou apelido…"
+          />
         </FormField>
         <FormField label="Será devolvido?*">
           <Select value={meta.sera_devolvido} onValueChange={(v) => { setM("sera_devolvido", v); if (v === "nao") setM("data_prevista_devolucao", ""); }}>
@@ -376,7 +415,7 @@ function SaidaForm({ itens, solicitantes, eventos, eventosError, onReloadEventos
   );
 }
 
-function SaidaEditForm({ original, itens, solicitantes, eventos, onSubmit, submitting }: any) {
+function SaidaEditForm({ original, itens, solicitantes, onEditSolicitante, eventos, onSubmit, submitting }: any) {
   const [form, setForm] = useState({
     data_movimento: new Date(original.data_movimento).toISOString().slice(0, 16),
     saida_tipo: original.saida_tipo ?? "evento",
@@ -438,10 +477,14 @@ function SaidaEditForm({ original, itens, solicitantes, eventos, onSubmit, submi
           </FormField>
         )}
         <FormField label="Solicitante">
-          <Select value={form.solicitante_id} onValueChange={(v) => set("solicitante_id", v)}>
-            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-            <SelectContent>{solicitantes.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
-          </Select>
+          <EntitySearchSelect
+            options={solicitantes}
+            value={form.solicitante_id}
+            onChange={(v) => set("solicitante_id", v)}
+            onEdit={onEditSolicitante}
+            placeholder="—"
+            searchPlaceholder="Buscar por nome ou apelido…"
+          />
         </FormField>
         <FormField label="Será devolvido?*">
           <Select value={form.sera_devolvido} onValueChange={(v) => { set("sera_devolvido", v); if (v === "nao") set("data_prevista_devolucao", ""); }}>
