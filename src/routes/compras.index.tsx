@@ -122,6 +122,16 @@ function ComprasKanban() {
         }
       />
 
+      <div className="mb-3 relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Buscar por código (ex: 12), título, fornecedor, solicitante…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <div className="flex gap-3 overflow-auto pb-4 max-h-[calc(100vh-140px)] items-start">
           {COMPRA_STATUSES.map((s) => (
