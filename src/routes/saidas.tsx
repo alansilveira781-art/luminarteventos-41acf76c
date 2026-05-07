@@ -153,7 +153,7 @@ function SaidasPage() {
       />
 
       <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[calc(100vh-260px)]">
           <table className="min-w-full text-sm">
             <thead className="bg-muted/50">
               <tr className="text-left text-xs uppercase text-muted-foreground">
