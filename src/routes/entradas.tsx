@@ -595,15 +595,47 @@ function EntradaForm({ prefill, itens, fornecedores, onEditFornecedor, onSubmit,
             <div key={i} className="grid grid-cols-12 gap-2 items-end">
               <div className="col-span-6">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Item</label>
-                <ItemSearchSelect itens={itens} value={l.item_id} onChange={(v) => setL(i, "item_id", v)} autoOpen={!l.item_id && i === linhas.length - 1 && i > 0} />
+                <ItemSearchSelect
+                  itens={itens}
+                  value={l.item_id}
+                  onChange={(v) => setL(i, "item_id", v)}
+                  autoOpen={(!l.item_id && i === linhas.length - 1 && i > 0) || autoOpenIdx === i}
+                  onAfterSelect={() => focusQty(i)}
+                />
               </div>
               <div className="col-span-2">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Qtd</label>
-                <Input type="number" min="0.01" step="0.01" value={l.quantidade} onChange={(e) => setL(i, "quantidade", e.target.value)} />
+                <Input
+                  ref={(el) => { qtyRefs.current[i] = el; }}
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={l.quantidade}
+                  onChange={(e) => setL(i, "quantidade", e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (l.item_id && Number(l.quantidade) > 0) focusValor(i);
+                    }
+                  }}
+                />
               </div>
               <div className="col-span-3">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Valor unit. (R$)</label>
-                <Input type="number" min="0" step="0.01" value={l.valor_unitario} onChange={(e) => setL(i, "valor_unitario", e.target.value)} />
+                <Input
+                  ref={(el) => { valorRefs.current[i] = el; }}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={l.valor_unitario}
+                  onChange={(e) => setL(i, "valor_unitario", e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (l.item_id && Number(l.quantidade) > 0) goNextItem(i);
+                    }
+                  }}
+                />
               </div>
               <div className="col-span-1 flex justify-end">
                 <Button type="button" variant="ghost" size="icon" onClick={() => remLinha(i)} disabled={linhas.length === 1} title="Remover">
