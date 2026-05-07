@@ -183,11 +183,16 @@ function SaidasPage() {
                   <td className="px-4 py-3"><StatusBadge status={m.saida_status} /></td>
                   {isAdmin && (
                     <td className="px-4 py-3">
-                      <Button type="button" variant="ghost" size="icon" onClick={() => {
-                        if (confirm("Excluir esta saída? O estoque será revertido e devoluções vinculadas serão apagadas.")) delMut.mutate(m);
-                      }}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      <div className="flex gap-1 justify-end">
+                        <Button type="button" variant="ghost" size="icon" onClick={() => setEditing(m)} title="Editar">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => {
+                          if (confirm("Excluir esta saída? O estoque será revertido e devoluções vinculadas serão apagadas.")) delMut.mutate(m);
+                        }} title="Excluir">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </td>
                   )}
                 </tr>
