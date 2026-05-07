@@ -31,6 +31,7 @@ function SaidasPage() {
   const { isModuleAdmin } = useAuth(); const isAdmin = isModuleAdmin("estoque");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
+  const [q, setQ] = useState("");
 
   const editMut = useMutation({
     mutationFn: async (p: { original: any; patch: any }) => {
