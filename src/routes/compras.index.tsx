@@ -43,6 +43,7 @@ function ComprasKanban() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [defaultStatus, setDefaultStatus] = useState<CompraStatus>("solicitacao");
+  const [q, setQ] = useState("");
 
   const { data: compras = [] } = useQuery({
     queryKey: ["compras"],
