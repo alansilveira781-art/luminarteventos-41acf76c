@@ -229,6 +229,7 @@ function SaidaForm({ itens, solicitantes, eventos, eventosError, onReloadEventos
           evento_projeto: isEvento ? meta.evento_projeto : null,
           finalidade: meta.finalidade || null,
           data_prevista_devolucao: meta.sera_devolvido === "sim" ? (meta.data_prevista_devolucao || null) : null,
+          saida_status: meta.sera_devolvido === "sim" ? "aberta" : "finalizada",
           observacoes: meta.observacoes || null,
         },
         validas.map((l) => ({ item_id: l.item_id, quantidade: Number(l.quantidade) })),
