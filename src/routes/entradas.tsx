@@ -220,6 +220,21 @@ function EntradasPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>Editar entrada</DialogTitle></DialogHeader>
+          {editing && (
+            <EntradaEditForm
+              original={editing}
+              itens={itens ?? []}
+              fornecedores={fornecedores ?? []}
+              onSubmit={(patch: any) => editMut.mutate({ original: editing, patch })}
+              submitting={editMut.isPending}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
       <ImportDialog
         open={importingExcel}
         onOpenChange={setImportingExcel}
