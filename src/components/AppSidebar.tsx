@@ -324,6 +324,7 @@ export function AppTopBar() {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
+          <ThemeToggle />
           <NotificationBell />
           <div className="hidden sm:flex items-center gap-2 px-2 py-1 rounded-md border border-border bg-card">
             <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
@@ -334,5 +335,21 @@ export function AppTopBar() {
         </div>
       </div>
     </header>
+  );
+}
+
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === "dark";
+  return (
+    <button
+      type="button"
+      onClick={toggleTheme}
+      title={isDark ? "Mudar para modo claro" : "Mudar para modo escuro"}
+      aria-label="Alternar tema"
+      className="h-9 w-9 inline-flex items-center justify-center rounded-md border border-border bg-card text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+    >
+      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+    </button>
   );
 }
