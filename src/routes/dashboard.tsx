@@ -167,7 +167,8 @@ function Dashboard() {
     for (const m of movsPeriodo ?? []) {
       const it: any = (m as any).item;
       if (!it) continue;
-      const key = m.item_id;
+      const key = m.item_id as string | null;
+      if (!key) continue;
       const cur = map.get(key) ?? { item: it, qtd: 0, valorTotal: 0 };
       const q = Number(m.quantidade || 0);
       const vu = Number(m.valor_unitario ?? it.valor_unitario ?? 0);
