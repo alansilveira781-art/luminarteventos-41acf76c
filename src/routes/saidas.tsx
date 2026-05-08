@@ -73,15 +73,19 @@ function SaidasPage() {
   });
 
   const delMut = useMutation({
-    mutationFn: async (m: any) => {
-      // Reverter estoque (saida tirou, então adicionar de volta)
-      const { data: it } = await supabase.from("itens").select("quantidade_atual").eq("id", m.item_id).single();
-      if (it) {
-        await supabase.from("itens").update({ quantidade_atual: Number(it.quantidade_atual) + Number(m.quantidade) }).eq("id", m.item_id);
+    mutationFn: async (grupo: any) => {
+      const linhas: any[] = grupo.linhas ?? [grupo];
+      // Reverter estoque de cada linha (saída tirou, então adicionar de volta)
+      for (const m of linhas) {
+        const { data: it } = await supabase.from("itens").select("quantidade_atual").eq("id", m.item_id).single();
+        if (it) {
+          await supabase.from("itens").update({ quantidade_atual: Number(it.quantidade_atual) + Number(m.quantidade) }).eq("id", m.item_id);
+        }
+        // Apagar devoluções vinculadas
+        await supabase.from("movimentacoes").delete().eq("saida_origem_id", m.id);
       }
-      // Apagar devoluções vinculadas
-      await supabase.from("movimentacoes").delete().eq("saida_origem_id", m.id);
-      const { error } = await supabase.from("movimentacoes").delete().eq("id", m.id);
+      const ids = linhas.map((l) => l.id);
+      const { error } = await supabase.from("movimentacoes").delete().in("id", ids);
       if (error) throw error;
     },
     onSuccess: () => {
