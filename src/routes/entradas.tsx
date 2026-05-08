@@ -21,6 +21,7 @@ import { ImportDialog } from "@/components/ImportDialog";
 import { ENTRADA_TEMPLATE } from "@/lib/import-utils";
 import { parseNfeXml } from "@/lib/nfe-parser";
 import { ItemSearchSelect } from "@/components/ItemSearchSelect";
+import { ItemInfoHover } from "@/components/ItemInfoHover";
 import { EntitySearchSelect } from "@/components/EntitySearchSelect";
 import { FornecedorForm } from "@/components/forms/FornecedorForm";
 import { SortableTh, useSort } from "@/components/SortableTh";
