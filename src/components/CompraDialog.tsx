@@ -346,18 +346,17 @@ export function CompraDialog({
                 </div>
                 <div>
                   <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Evento / Projeto</label>
-                  <Select
-                    value={it.evento_projeto ?? "__none__"}
-                    onValueChange={(v) => updateItem(idx, { evento_projeto: v === "__none__" ? null : v })}
-                  >
-                    <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">— Nenhum —</SelectItem>
-                      {eventosOptions.map((ev) => (
-                        <SelectItem key={ev} value={ev}>{ev}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    list={`eventos-list-${idx}`}
+                    value={it.evento_projeto ?? ""}
+                    onChange={(e) => updateItem(idx, { evento_projeto: e.target.value || null })}
+                    placeholder="Digite ou escolha…"
+                  />
+                  <datalist id={`eventos-list-${idx}`}>
+                    {eventosOptions.map((ev) => (
+                      <option key={ev} value={ev} />
+                    ))}
+                  </datalist>
                 </div>
                 <div className="flex justify-end">
                   <Button type="button" variant="ghost" size="sm" onClick={() => removeItem(idx)}>
