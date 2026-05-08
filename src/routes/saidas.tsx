@@ -689,7 +689,7 @@ function SaidaForm({ prefill, isEditing, itens, solicitantes, onEditSolicitante,
                 <div className="col-span-8">
                   <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Item</label>
                   <ItemSearchSelect
-                    itens={itens}
+                    itens={itensList}
                     value={l.item_id}
                     onChange={(v) => setL(i, "item_id", v)}
                     showStock
