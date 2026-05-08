@@ -11,7 +11,7 @@ import { FormField, FormSection } from "@/components/FormSection";
 import { ItemSearchSelect } from "@/components/ItemSearchSelect";
 import { SelectCreatable } from "@/components/SelectCreatable";
 import { MentionInput, renderCommentText } from "@/components/MentionInput";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Upload, Download, FileIcon } from "lucide-react";
 import { toast } from "sonner";
 import { COMPRA_STATUSES, TIPO_COMPRA_OPTIONS, type CompraStatus } from "@/lib/compras";
 import { useAuth } from "@/contexts/AuthContext";
