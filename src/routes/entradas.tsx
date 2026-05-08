@@ -801,7 +801,7 @@ function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor
               <div className="col-span-6">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Item</label>
                 <ItemSearchSelect
-                  itens={itens}
+                  itens={itensList}
                   value={l.item_id}
                   onChange={(v) => setL(i, "item_id", v)}
                   autoOpen={(!l.item_id && i === linhas.length - 1 && i > 0) || autoOpenIdx === i}
