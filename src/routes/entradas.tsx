@@ -227,101 +227,100 @@ function EntradasPage() {
         }
       />
 
-      {(() => {
-        const s = q.toLowerCase().trim();
-        const filteredBase = (entradas ?? []).filter((m: any) => {
-          if (!s) return true;
-          return [
-            m.item?.nome, m.item?.codigo, m.fornecedor?.nome,
-            m.entrada_tipo, m.nota_fiscal, m.responsavel_lancamento, m.observacoes,
-          ].map((x) => String(x ?? "").toLowerCase()).join(" ").includes(s);
-        });
-        const filtered = applySort(filteredBase, (m: any, k: string) => {
-          if (k === "data_movimento") return m.data_movimento;
-          if (k === "item") return m.item?.nome;
-          if (k === "fornecedor") return m.fornecedor?.nome;
-          if (k === "unidade") return m.item?.unidade;
-          if (k === "valor_total") return Number(m.valor_unitario ?? 0) * Number(m.quantidade ?? 0);
-          if (k === "quantidade") return Number(m.quantidade);
-          return m[k];
-        });
-        return (
-          <>
-            <Card className="p-4 mb-4">
-              <div className="relative max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por item, código, fornecedor, NF, responsável…"
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <div className="text-xs text-muted-foreground mt-2">
-                {filtered.length} {filtered.length === 1 ? "entrada" : "entradas"}
-                {entradas && filtered.length !== entradas.length ? ` (de ${entradas.length})` : ""}
-              </div>
-            </Card>
+      <Card className="p-4 mb-4">
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por item, código, fornecedor, NF, responsável…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="text-xs text-muted-foreground mt-2">
+          {filteredList.length} {filteredList.length === 1 ? "entrada" : "entradas"}
+          {entradas && filteredList.length !== entradas.length ? ` (de ${entradas.length})` : ""}
+        </div>
+      </Card>
 
-            <Card className="overflow-hidden">
-              <div className="overflow-auto max-h-[calc(100vh-180px)]">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-muted/50">
-                    <tr className="text-left text-xs uppercase text-muted-foreground">
-                      <SortableTh sort={sort} onToggle={toggleSort} k="data_movimento" label="Data" />
-                      <SortableTh sort={sort} onToggle={toggleSort} k="item" label="Item" />
-                      <SortableTh sort={sort} onToggle={toggleSort} k="entrada_tipo" label="Tipo" />
-                      <SortableTh sort={sort} onToggle={toggleSort} k="fornecedor" label="Fornecedor" />
-                      <SortableTh sort={sort} onToggle={toggleSort} k="quantidade" label="Qtd" align="right" />
-                      <SortableTh sort={sort} onToggle={toggleSort} k="unidade" label="UN" />
-                      <SortableTh sort={sort} onToggle={toggleSort} k="valor_total" label="Valor total" align="right" />
-                      <SortableTh sort={sort} onToggle={toggleSort} k="nota_fiscal" label="NF" />
-                      <SortableTh sort={sort} onToggle={toggleSort} k="responsavel_lancamento" label="Responsável" />
-                      {isAdmin && <th className="px-4 py-3 font-medium"></th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.length ? filtered.map((m: any) => (
-                      <tr key={m.id} className="border-t border-border hover:bg-muted/30">
-                        <td className="px-4 py-3 tabular-nums whitespace-nowrap">{format(new Date(m.data_movimento), "dd/MM/yyyy HH:mm")}</td>
-                        <td className="px-4 py-3 font-medium">{m.item?.nome}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{m.entrada_tipo ? entradaTipoLabels[m.entrada_tipo] ?? m.entrada_tipo : "—"}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{m.fornecedor?.nome ?? "—"}</td>
-                        <td className="px-4 py-3 text-right tabular-nums text-success">+{Number(m.quantidade)}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{m.item?.unidade}</td>
-                        <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                          {m.valor_unitario ? `R$ ${(Number(m.valor_unitario) * Number(m.quantidade)).toFixed(2)}` : "—"}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{m.nota_fiscal ?? "—"}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{m.responsavel_lancamento ?? "—"}</td>
-                        {isAdmin && (
-                          <td className="px-4 py-3">
-                            <div className="flex gap-1 justify-end">
-                              <Button type="button" variant="ghost" size="icon" onClick={() => { setPrefill(m); setOpen(true); }} title="Duplicar">
-                                <Copy className="h-4 w-4" />
-                              </Button>
-                              <Button type="button" variant="ghost" size="icon" onClick={() => setEditing(m)} title="Editar">
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button type="button" variant="ghost" size="icon" onClick={() => {
-                                if (confirm("Excluir esta entrada? O estoque será revertido.")) delMut.mutate(m);
-                              }} title="Excluir">
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </div>
-                          </td>
-                        )}
-                      </tr>
-                    )) : (
-                      <tr><td colSpan={isAdmin ? 10 : 9} className="text-center py-10 text-muted-foreground">Nenhuma entrada encontrada.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-          </>
-        );
-      })()}
+      {isAdmin && <BulkActionsBar count={sel.count} onEdit={() => setBulkOpen(true)} onClear={sel.clear} />}
+
+      <Card className="overflow-hidden">
+        <div className="overflow-auto max-h-[calc(100vh-180px)]">
+          <table className="min-w-full text-sm">
+            <thead className="bg-muted/50">
+              <tr className="text-left text-xs uppercase text-muted-foreground">
+                {isAdmin && (
+                  <th className="px-3 py-3 w-8">
+                    <Checkbox checked={sel.allSelected} onCheckedChange={() => sel.toggleAll()} />
+                  </th>
+                )}
+                <SortableTh sort={sort} onToggle={toggleSort} k="data_movimento" label="Data" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="item" label="Item" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="entrada_tipo" label="Tipo" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="fornecedor" label="Fornecedor" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="quantidade" label="Qtd" align="right" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="unidade" label="UN" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="valor_total" label="Valor total" align="right" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="nota_fiscal" label="NF" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="responsavel_lancamento" label="Responsável" />
+                {isAdmin && <th className="px-4 py-3 font-medium"></th>}
+              </tr>
+            </thead>
+            <tbody>
+              {filteredList.length ? filteredList.map((m: any) => (
+                <tr key={m.id} className="border-t border-border hover:bg-muted/30">
+                  {isAdmin && (
+                    <td className="px-3 py-3">
+                      <Checkbox checked={sel.selected.has(m.id)} onCheckedChange={() => sel.toggle(m.id)} />
+                    </td>
+                  )}
+                  <td className="px-4 py-3 tabular-nums whitespace-nowrap">{format(new Date(m.data_movimento), "dd/MM/yyyy HH:mm")}</td>
+                  <td className="px-4 py-3 font-medium">{m.item?.nome}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{m.entrada_tipo ? entradaTipoLabels[m.entrada_tipo] ?? m.entrada_tipo : "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{m.fornecedor?.nome ?? "—"}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-success">+{Number(m.quantidade)}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{m.item?.unidade}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                    {m.valor_unitario ? `R$ ${(Number(m.valor_unitario) * Number(m.quantidade)).toFixed(2)}` : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{m.nota_fiscal ?? "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{m.responsavel_lancamento ?? "—"}</td>
+                  {isAdmin && (
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1 justify-end">
+                        <Button type="button" variant="ghost" size="icon" onClick={() => { setPrefill(m); setOpen(true); }} title="Duplicar">
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => setEditing(m)} title="Editar">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => {
+                          if (confirm("Excluir esta entrada? O estoque será revertido.")) delMut.mutate(m);
+                        }} title="Excluir">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              )) : (
+                <tr><td colSpan={isAdmin ? 11 : 9} className="text-center py-10 text-muted-foreground">Nenhuma entrada encontrada.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <BulkEditDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        count={sel.count}
+        fields={ENTRADA_BULK_FIELDS}
+        submitting={bulkMut.isPending}
+        onSubmit={(p) => bulkMut.mutate(normalizeBulkPatch(p))}
+        title="Editar entradas em massa"
+      />
 
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setPrefill(null); }}>
         <DialogContent className="max-w-4xl">
