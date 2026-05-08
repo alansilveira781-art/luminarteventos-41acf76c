@@ -32,6 +32,39 @@ export type Database = {
         }
         Relationships: []
       }
+      compra_anexos: {
+        Row: {
+          compra_id: string
+          created_at: string
+          id: string
+          mime_type: string | null
+          nome: string
+          path: string
+          tamanho: number | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          compra_id: string
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          nome: string
+          path: string
+          tamanho?: number | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          compra_id?: string
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          nome?: string
+          path?: string
+          tamanho?: number | null
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       compra_comentarios: {
         Row: {
           compra_id: string
@@ -103,6 +136,7 @@ export type Database = {
           compra_id: string
           cotacao: string | null
           created_at: string
+          desconto_percentual: number | null
           descricao: string
           evento_projeto: string | null
           id: string
@@ -119,6 +153,7 @@ export type Database = {
           compra_id: string
           cotacao?: string | null
           created_at?: string
+          desconto_percentual?: number | null
           descricao: string
           evento_projeto?: string | null
           id?: string
@@ -135,6 +170,7 @@ export type Database = {
           compra_id?: string
           cotacao?: string | null
           created_at?: string
+          desconto_percentual?: number | null
           descricao?: string
           evento_projeto?: string | null
           id?: string
@@ -918,6 +954,9 @@ export type Database = {
         | "transferencia"
         | "outros"
         | "epi_fardamento"
+        | "epi"
+        | "fardamento"
+        | "producao_novos_itens"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1098,6 +1137,9 @@ export const Constants = {
         "transferencia",
         "outros",
         "epi_fardamento",
+        "epi",
+        "fardamento",
+        "producao_novos_itens",
       ],
     },
   },
