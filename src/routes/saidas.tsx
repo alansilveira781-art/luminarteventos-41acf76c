@@ -280,8 +280,8 @@ function SaidasPage() {
           />
         </div>
         <div className="text-xs text-muted-foreground mt-2">
-          {filteredList.length} {filteredList.length === 1 ? "saída" : "saídas"}
-          {saidas && filteredList.length !== saidas.length ? ` (de ${saidas.length})` : ""}
+          {grupos.length} {grupos.length === 1 ? "saída" : "saídas"}
+          {saidas && filteredBaseList.length !== saidas.length ? ` (de ${saidas.length} itens)` : ""}
         </div>
       </Card>
 
@@ -297,55 +297,101 @@ function SaidasPage() {
                     <Checkbox checked={sel.allSelected} onCheckedChange={() => sel.toggleAll()} />
                   </th>
                 )}
+                <th className="px-3 py-3 w-8"></th>
+                <SortableTh sort={sort} onToggle={toggleSort} k="numero" label="REQ" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="data_movimento" label="Data" />
-                <SortableTh sort={sort} onToggle={toggleSort} k="item" label="Item" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="evento_projeto" label="Evento/Projeto" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="solicitante" label="Solicitante" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="saida_tipo" label="Tipo" />
-                <SortableTh sort={sort} onToggle={toggleSort} k="quantidade" label="Qtd" align="right" />
-                <SortableTh sort={sort} onToggle={toggleSort} k="unidade" label="UN" />
+                <th className="px-4 py-3 font-medium text-right">Itens</th>
+                <SortableTh sort={sort} onToggle={toggleSort} k="quantidade" label="Qtd total" align="right" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="data_prevista_devolucao" label="Devolver até" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="saida_status" label="Status" />
                 {isAdmin && <th className="px-4 py-3 font-medium"></th>}
               </tr>
             </thead>
             <tbody>
-              {filteredList.length ? filteredList.map((m: any) => (
-                <tr key={m.id} className="border-t border-border hover:bg-muted/30">
-                  {isAdmin && (
-                    <td className="px-3 py-3">
-                      <Checkbox checked={sel.selected.has(m.id)} onCheckedChange={() => sel.toggle(m.id)} />
-                    </td>
-                  )}
-                  <td className="px-4 py-3 tabular-nums whitespace-nowrap">{format(new Date(m.data_movimento), "dd/MM/yyyy HH:mm")}</td>
-                  <td className="px-4 py-3 font-medium">{m.item?.nome}</td>
-                  <td className="px-4 py-3 text-foreground">{m.evento_projeto ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{m.solicitante?.nome ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{m.saida_tipo ? saidaTipoLabels[m.saida_tipo] : "—"}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-destructive">-{Number(m.quantidade)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{m.item?.unidade}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{m.data_prevista_devolucao ? format(new Date(m.data_prevista_devolucao), "dd/MM/yyyy") : "—"}</td>
-                  <td className="px-4 py-3"><StatusBadge status={m.saida_status} /></td>
-                  {isAdmin && (
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1 justify-end">
-                        <Button type="button" variant="ghost" size="icon" onClick={() => { setPrefill(m); setOpen(true); }} title="Duplicar">
-                          <Copy className="h-4 w-4" />
+              {grupos.length ? grupos.map((g: any) => {
+                const isOpen = !!expandido[g.id];
+                const colCount = (isAdmin ? 1 : 0) + 1 + 9 + (isAdmin ? 1 : 0);
+                return (
+                  <>
+                    <tr key={g.id} className="border-t border-border hover:bg-muted/30">
+                      {isAdmin && (
+                        <td className="px-3 py-3">
+                          <Checkbox checked={sel.selected.has(g.id)} onCheckedChange={() => sel.toggle(g.id)} />
+                        </td>
+                      )}
+                      <td className="px-1 py-3">
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7"
+                          onClick={() => setExpandido((p) => ({ ...p, [g.id]: !p[g.id] }))}>
+                          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </Button>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => setEditing(m)} title="Editar">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => {
-                          if (confirm("Excluir esta saída? O estoque será revertido e devoluções vinculadas serão apagadas.")) delMut.mutate(m);
-                        }} title="Excluir">
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              )) : (
-                <tr><td colSpan={isAdmin ? 11 : 9} className="text-center py-10 text-muted-foreground">Nenhuma saída encontrada.</td></tr>
+                      </td>
+                      <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">
+                        {g.numero != null ? `REQ-${String(g.numero).padStart(4, "0")}` : "—"}
+                      </td>
+                      <td className="px-4 py-3 tabular-nums whitespace-nowrap">{format(new Date(g.data_movimento), "dd/MM/yyyy HH:mm")}</td>
+                      <td className="px-4 py-3 text-foreground">{g.evento_projeto ?? "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{g.solicitante?.nome ?? "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{g.saida_tipo ? saidaTipoLabels[g.saida_tipo] : "—"}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{g.linhas.length}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-destructive">-{g.qtd_total}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{g.data_prevista_devolucao ? format(new Date(g.data_prevista_devolucao), "dd/MM/yyyy") : "—"}</td>
+                      <td className="px-4 py-3"><StatusBadge status={g.saida_status} /></td>
+                      {isAdmin && (
+                        <td className="px-4 py-3">
+                          <div className="flex gap-1 justify-end">
+                            <Button type="button" variant="ghost" size="icon" onClick={() => { setPrefill(g); setOpen(true); }} title="Duplicar">
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            {g.linhas.length === 1 && (
+                              <Button type="button" variant="ghost" size="icon" onClick={() => setEditing(g.linhas[0])} title="Editar">
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button type="button" variant="ghost" size="icon" onClick={() => {
+                              const msg = g.linhas.length > 1
+                                ? `Excluir esta requisição com ${g.linhas.length} itens? O estoque será revertido e devoluções vinculadas serão apagadas.`
+                                : "Excluir esta saída? O estoque será revertido e devoluções vinculadas serão apagadas.";
+                              if (confirm(msg)) delMut.mutate(g);
+                            }} title="Excluir">
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                    {isOpen && (
+                      <tr key={`${g.id}-exp`} className="bg-muted/20">
+                        <td colSpan={colCount} className="px-6 py-3">
+                          <table className="w-full text-xs">
+                            <thead className="text-muted-foreground">
+                              <tr>
+                                <th className="text-left py-1 font-medium">Item</th>
+                                <th className="text-left py-1 font-medium">Código</th>
+                                <th className="text-right py-1 font-medium">Qtd</th>
+                                <th className="text-left py-1 font-medium pl-2">UN</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {g.linhas.map((l: any) => (
+                                <tr key={l.id} className="border-t border-border/40">
+                                  <td className="py-1 font-medium">{l.item?.nome}</td>
+                                  <td className="py-1 font-mono text-muted-foreground">{l.item?.codigo}</td>
+                                  <td className="py-1 text-right tabular-nums">{Number(l.quantidade)}</td>
+                                  <td className="py-1 pl-2 text-muted-foreground">{l.item?.unidade}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                );
+              }) : (
+                <tr><td colSpan={isAdmin ? 12 : 10} className="text-center py-10 text-muted-foreground">Nenhuma saída encontrada.</td></tr>
               )}
             </tbody>
           </table>
