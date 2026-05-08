@@ -344,6 +344,21 @@ export function CompraDialog({
                     <Input value={(Number(it.quantidade || 0) * Number(it.valor_unitario || 0)).toFixed(2)} readOnly className="bg-muted/50" />
                   </div>
                 </div>
+                <div>
+                  <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Evento / Projeto</label>
+                  <Select
+                    value={it.evento_projeto ?? "__none__"}
+                    onValueChange={(v) => updateItem(idx, { evento_projeto: v === "__none__" ? null : v })}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">— Nenhum —</SelectItem>
+                      {eventosOptions.map((ev) => (
+                        <SelectItem key={ev} value={ev}>{ev}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="flex justify-end">
                   <Button type="button" variant="ghost" size="sm" onClick={() => removeItem(idx)}>
                     <Trash2 className="h-3.5 w-3.5 mr-1" /> Remover
