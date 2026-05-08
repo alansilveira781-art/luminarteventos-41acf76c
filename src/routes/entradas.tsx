@@ -279,8 +279,8 @@ function EntradasPage() {
           />
         </div>
         <div className="text-xs text-muted-foreground mt-2">
-          {filteredList.length} {filteredList.length === 1 ? "entrada" : "entradas"}
-          {entradas && filteredList.length !== entradas.length ? ` (de ${entradas.length})` : ""}
+          {grupos.length} {grupos.length === 1 ? "entrada" : "entradas"}
+          {entradas && filteredBaseList.length !== entradas.length ? ` (de ${entradas.length} itens)` : ""}
         </div>
       </Card>
 
@@ -296,12 +296,13 @@ function EntradasPage() {
                     <Checkbox checked={sel.allSelected} onCheckedChange={() => sel.toggleAll()} />
                   </th>
                 )}
+                <th className="px-3 py-3 w-8"></th>
+                <SortableTh sort={sort} onToggle={toggleSort} k="numero" label="REQ" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="data_movimento" label="Data" />
-                <SortableTh sort={sort} onToggle={toggleSort} k="item" label="Item" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="entrada_tipo" label="Tipo" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="fornecedor" label="Fornecedor" />
-                <SortableTh sort={sort} onToggle={toggleSort} k="quantidade" label="Qtd" align="right" />
-                <SortableTh sort={sort} onToggle={toggleSort} k="unidade" label="UN" />
+                <th className="px-4 py-3 font-medium text-right">Itens</th>
+                <SortableTh sort={sort} onToggle={toggleSort} k="quantidade" label="Qtd total" align="right" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="valor_total" label="Valor total" align="right" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="nota_fiscal" label="NF" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="responsavel_lancamento" label="Responsável" />
@@ -309,44 +310,97 @@ function EntradasPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredList.length ? filteredList.map((m: any) => (
-                <tr key={m.id} className="border-t border-border hover:bg-muted/30">
-                  {isAdmin && (
-                    <td className="px-3 py-3">
-                      <Checkbox checked={sel.selected.has(m.id)} onCheckedChange={() => sel.toggle(m.id)} />
-                    </td>
-                  )}
-                  <td className="px-4 py-3 tabular-nums whitespace-nowrap">{format(new Date(m.data_movimento), "dd/MM/yyyy HH:mm")}</td>
-                  <td className="px-4 py-3 font-medium">{m.item?.nome}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{m.entrada_tipo ? entradaTipoLabels[m.entrada_tipo] ?? m.entrada_tipo : "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{m.fornecedor?.nome ?? "—"}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-success">+{Number(m.quantidade)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{m.item?.unidade}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                    {m.valor_unitario ? `R$ ${(Number(m.valor_unitario) * Number(m.quantidade)).toFixed(2)}` : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{m.nota_fiscal ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{m.responsavel_lancamento ?? "—"}</td>
-                  {isAdmin && (
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1 justify-end">
-                        <Button type="button" variant="ghost" size="icon" onClick={() => { setPrefill(m); setOpen(true); }} title="Duplicar">
-                          <Copy className="h-4 w-4" />
+              {grupos.length ? grupos.map((g: any) => {
+                const isOpen = !!expandido[g.id];
+                const colCount = (isAdmin ? 1 : 0) + 1 + 9 + (isAdmin ? 1 : 0);
+                return (
+                  <>
+                    <tr key={g.id} className="border-t border-border hover:bg-muted/30">
+                      {isAdmin && (
+                        <td className="px-3 py-3">
+                          <Checkbox checked={sel.selected.has(g.id)} onCheckedChange={() => sel.toggle(g.id)} />
+                        </td>
+                      )}
+                      <td className="px-1 py-3">
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7"
+                          onClick={() => setExpandido((p) => ({ ...p, [g.id]: !p[g.id] }))}>
+                          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </Button>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => setEditing(m)} title="Editar">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => {
-                          if (confirm("Excluir esta entrada? O estoque será revertido.")) delMut.mutate(m);
-                        }} title="Excluir">
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              )) : (
-                <tr><td colSpan={isAdmin ? 11 : 9} className="text-center py-10 text-muted-foreground">Nenhuma entrada encontrada.</td></tr>
+                      </td>
+                      <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">
+                        {g.numero != null ? `REQ-${String(g.numero).padStart(4, "0")}` : "—"}
+                      </td>
+                      <td className="px-4 py-3 tabular-nums whitespace-nowrap">{format(new Date(g.data_movimento), "dd/MM/yyyy HH:mm")}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{g.entrada_tipo ? entradaTipoLabels[g.entrada_tipo] ?? g.entrada_tipo : "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{g.fornecedor?.nome ?? "—"}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{g.linhas.length}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-success">+{g.qtd_total}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                        {g.valor_total > 0 ? `R$ ${g.valor_total.toFixed(2)}` : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{g.nota_fiscal ?? "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{g.responsavel_lancamento ?? "—"}</td>
+                      {isAdmin && (
+                        <td className="px-4 py-3">
+                          <div className="flex gap-1 justify-end">
+                            <Button type="button" variant="ghost" size="icon" onClick={() => { setPrefill(g); setOpen(true); }} title="Duplicar">
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            {g.linhas.length === 1 && (
+                              <Button type="button" variant="ghost" size="icon" onClick={() => setEditing(g.linhas[0])} title="Editar">
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button type="button" variant="ghost" size="icon" onClick={() => {
+                              const msg = g.linhas.length > 1
+                                ? `Excluir esta requisição com ${g.linhas.length} itens? O estoque será revertido.`
+                                : "Excluir esta entrada? O estoque será revertido.";
+                              if (confirm(msg)) delMut.mutate(g);
+                            }} title="Excluir">
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                    {isOpen && (
+                      <tr key={`${g.id}-exp`} className="bg-muted/20">
+                        <td colSpan={colCount} className="px-6 py-3">
+                          <table className="w-full text-xs">
+                            <thead className="text-muted-foreground">
+                              <tr>
+                                <th className="text-left py-1 font-medium">Item</th>
+                                <th className="text-left py-1 font-medium">Código</th>
+                                <th className="text-right py-1 font-medium">Qtd</th>
+                                <th className="text-left py-1 font-medium pl-2">UN</th>
+                                <th className="text-right py-1 font-medium pl-2">Valor unit.</th>
+                                <th className="text-right py-1 font-medium pl-2">Subtotal</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {g.linhas.map((l: any) => (
+                                <tr key={l.id} className="border-t border-border/40">
+                                  <td className="py-1 font-medium">{l.item?.nome}</td>
+                                  <td className="py-1 font-mono text-muted-foreground">{l.item?.codigo}</td>
+                                  <td className="py-1 text-right tabular-nums">{Number(l.quantidade)}</td>
+                                  <td className="py-1 pl-2 text-muted-foreground">{l.item?.unidade}</td>
+                                  <td className="py-1 pl-2 text-right tabular-nums text-muted-foreground">
+                                    {l.valor_unitario != null ? `R$ ${Number(l.valor_unitario).toFixed(2)}` : "—"}
+                                  </td>
+                                  <td className="py-1 pl-2 text-right tabular-nums">
+                                    {l.valor_unitario != null ? `R$ ${(Number(l.valor_unitario) * Number(l.quantidade)).toFixed(2)}` : "—"}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                );
+              }) : (
+                <tr><td colSpan={isAdmin ? 12 : 10} className="text-center py-10 text-muted-foreground">Nenhuma entrada encontrada.</td></tr>
               )}
             </tbody>
           </table>
