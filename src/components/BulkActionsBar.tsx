@@ -6,11 +6,13 @@ export function BulkActionsBar({
   onEdit,
   onClear,
   label = "selecionados",
+  extraActions,
 }: {
   count: number;
   onEdit: () => void;
   onClear: () => void;
   label?: string;
+  extraActions?: React.ReactNode;
 }) {
   if (count === 0) return null;
   return (
@@ -22,6 +24,7 @@ export function BulkActionsBar({
         <Button type="button" size="sm" variant="default" onClick={onEdit}>
           <Pencil className="h-3.5 w-3.5 mr-1" /> Editar em massa
         </Button>
+        {extraActions}
         <Button type="button" size="sm" variant="ghost" onClick={onClear}>
           <X className="h-3.5 w-3.5 mr-1" /> Limpar
         </Button>
