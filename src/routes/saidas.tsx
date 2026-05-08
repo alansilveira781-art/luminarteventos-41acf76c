@@ -524,20 +524,25 @@ function SaidasPage() {
 
 type Linha = { item_id: string; quantidade: string };
 
-function SaidaForm({ prefill, itens, solicitantes, onEditSolicitante, eventos, eventosError, onReloadEventos, reloadingEventos, onSubmit, submitting }: any) {
+function SaidaForm({ prefill, isEditing, itens, solicitantes, onEditSolicitante, eventos, eventosError, onReloadEventos, reloadingEventos, onSubmit, submitting }: any) {
   const [meta, setMeta] = useState({
-    data_movimento: new Date().toISOString().slice(0, 16),
+    data_movimento: isEditing && prefill?.data_movimento
+      ? new Date(prefill.data_movimento).toISOString().slice(0, 16)
+      : new Date().toISOString().slice(0, 16),
     saida_tipo: prefill?.saida_tipo ?? "evento",
     solicitante_id: prefill?.solicitante_id ?? "",
     evento_projeto: prefill?.evento_projeto ?? "",
     finalidade: prefill?.finalidade ?? "",
-    sera_devolvido: prefill?.data_prevista_devolucao ? "sim" : "sim",
-    data_prevista_devolucao: "",
+    sera_devolvido: isEditing
+      ? ((prefill?.data_prevista_devolucao || prefill?.saida_status !== "finalizada") ? "sim" : "nao")
+      : "sim",
+    data_prevista_devolucao: isEditing ? (prefill?.data_prevista_devolucao ?? "") : "",
     observacoes: prefill?.observacoes ?? "",
   });
   const [linhas, setLinhas] = useState<Linha[]>(() => {
     if (prefill?.linhas?.length) {
-      return prefill.linhas.map((l: any) => ({ item_id: l.item_id, quantidade: String(l.quantidade) }));
+      const base = prefill.linhas.map((l: any) => ({ item_id: l.item_id, quantidade: String(l.quantidade) }));
+      return isEditing ? base : [...base, { item_id: "", quantidade: "1" }];
     }
     if (prefill) {
       return [{ item_id: prefill.item_id, quantidade: String(prefill.quantidade) }, { item_id: "", quantidade: "1" }];
