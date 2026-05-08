@@ -338,7 +338,7 @@ export function CompraDialog({
                     <Input value={it.descricao} onChange={(e) => updateItem(idx, { descricao: e.target.value })} placeholder="Item novo / não cadastrado" />
                   </div>
                 </div>
-                <div className="grid gap-2 grid-cols-2 sm:grid-cols-5">
+                <div className="grid gap-2 grid-cols-2 sm:grid-cols-6">
                   <div>
                     <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Qtd</label>
                     <Input type="number" step="0.01" value={it.quantidade} onChange={(e) => updateItem(idx, { quantidade: Number(e.target.value) })} />
@@ -349,7 +349,21 @@ export function CompraDialog({
                   </div>
                   <div>
                     <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Cotação</label>
-                    <Input value={it.cotacao ?? ""} onChange={(e) => updateItem(idx, { cotacao: e.target.value })} placeholder="Ref / fornecedor" />
+                    <Input
+                      value={it.cotacao ?? ""}
+                      onChange={(e) => updateCotacaoOrDesconto(idx, { cotacao: e.target.value })}
+                      placeholder="Ex: 12,50"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Desc. %</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={it.desconto_percentual ?? ""}
+                      onChange={(e) => updateCotacaoOrDesconto(idx, { desconto_percentual: e.target.value === "" ? null : Number(e.target.value) })}
+                      placeholder="0"
+                    />
                   </div>
                   <div>
                     <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Valor unit.</label>
