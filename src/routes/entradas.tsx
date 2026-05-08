@@ -830,7 +830,7 @@ function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor
                 />
               </div>
               <div className="col-span-3">
-                <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Valor unit. (R$)</label>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">Valor unit. (R$)</label>
                 <Input
                   ref={(el) => { valorRefs.current[i] = el; }}
                   type="number"
