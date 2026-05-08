@@ -151,6 +151,7 @@ export function CompraDialog({
           unidade: it.unidade || null,
           cotacao: it.cotacao || null,
           valor_unitario: it.valor_unitario ?? null,
+          evento_projeto: it.evento_projeto || null,
         }));
         const { error } = await sb.from("compra_itens").insert(rows);
         if (error) throw error;
