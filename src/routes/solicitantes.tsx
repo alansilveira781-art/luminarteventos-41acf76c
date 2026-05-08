@@ -71,19 +71,6 @@ function SolicitantesPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  return (
-    <>
-      <PageHeader
-        title="Solicitantes"
-        description="Pessoas e setores que solicitam itens"
-        actions={
-          <>
-            <Button type="button" size="lg" variant="outline" onClick={() => setImporting(true)}><Upload className="h-4 w-4 mr-1" />Nova importação</Button>
-            <Button type="button" size="lg" onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-1" />Novo solicitante</Button>
-          </>
-        }
-      />
-
   const s = q.toLowerCase().trim();
   const filteredBase = (data ?? []).filter((it: any) => {
     if (!s) return true;
