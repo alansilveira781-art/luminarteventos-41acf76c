@@ -798,9 +798,9 @@ function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor
         </div>
         <Card className="p-3 space-y-2">
           {linhas.map((l, i) => (
-            <div key={i} className="grid grid-cols-12 gap-2 items-end">
+            <div key={i} className="grid grid-cols-12 gap-2 items-start">
               <div className="col-span-6">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 h-4">
                   <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Item</label>
                   {l.item_id && <ItemInfoHover itemId={l.item_id} />}
                 </div>
@@ -813,7 +813,7 @@ function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor
                 />
               </div>
               <div className="col-span-2">
-                <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Qtd</label>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">Qtd</label>
                 <Input
                   ref={(el) => { qtyRefs.current[i] = el; }}
                   type="number"
