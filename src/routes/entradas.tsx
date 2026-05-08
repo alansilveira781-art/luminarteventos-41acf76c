@@ -856,7 +856,7 @@ function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor
         </Card>
       </div>
 
-      <FormActions><Button type="submit" size="lg" disabled={submitting}>{submitting ? "Registrando…" : "Registrar entrada"}</Button></FormActions>
+      <FormActions><Button type="submit" size="lg" disabled={submitting}>{submitting ? "Salvando…" : (isEditing ? "Salvar alterações" : "Registrar entrada")}</Button></FormActions>
     </form>
   );
 }
