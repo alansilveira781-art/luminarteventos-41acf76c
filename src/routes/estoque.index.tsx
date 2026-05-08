@@ -238,12 +238,17 @@ function EstoquePage() {
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={9} className="text-center py-10 text-muted-foreground">Carregando…</td></tr>
+                <tr><td colSpan={isAdmin ? 10 : 9} className="text-center py-10 text-muted-foreground">Carregando…</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-10 text-muted-foreground">Nenhum item encontrado.</td></tr>
+                <tr><td colSpan={isAdmin ? 10 : 9} className="text-center py-10 text-muted-foreground">Nenhum item encontrado.</td></tr>
               ) : (
                 filtered.map((i) => (
                   <tr key={i.id} className="border-t border-border hover:bg-muted/30">
+                    {isAdmin && (
+                      <td className="px-3 py-3">
+                        <Checkbox checked={sel.selected.has(i.id)} onCheckedChange={() => sel.toggle(i.id)} />
+                      </td>
+                    )}
                     <td className="px-4 py-3 font-mono text-xs">{i.codigo}</td>
                     <td className="px-4 py-3 font-medium">{i.nome}</td>
                     <td className="px-4 py-3 text-muted-foreground">{i.categoria ?? "—"}</td>
