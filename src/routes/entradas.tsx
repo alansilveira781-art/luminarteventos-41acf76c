@@ -465,16 +465,22 @@ function EntradasPage() {
       </Dialog>
 
       <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>Editar entrada</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>
+              Editar entrada{editing?.numero != null ? ` REQ-${String(editing.numero).padStart(4, "0")}` : ""}
+            </DialogTitle>
+          </DialogHeader>
           {editing && (
-            <EntradaEditForm
-              original={editing}
+            <EntradaForm
+              key={`edit-${editing.id}`}
+              prefill={editing}
+              isEditing
               itens={itens ?? []}
               fornecedores={fornecedores ?? []}
               onEditFornecedor={(f: any) => setEditingFornecedor(f)}
-              onSubmit={(patch: any) => editMut.mutate({ original: editing, patch })}
-              submitting={editMut.isPending}
+              onSubmit={(meta: any, linhas: any) => editGroupMut.mutate({ grupo: editing, meta, linhas })}
+              submitting={editGroupMut.isPending}
             />
           )}
         </DialogContent>
