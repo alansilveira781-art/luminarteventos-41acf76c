@@ -380,11 +380,9 @@ function EntradasPage() {
                             <Button type="button" variant="ghost" size="icon" onClick={() => { setPrefill(g); setOpen(true); }} title="Duplicar">
                               <Copy className="h-4 w-4" />
                             </Button>
-                            {g.linhas.length === 1 && (
-                              <Button type="button" variant="ghost" size="icon" onClick={() => setEditing(g.linhas[0])} title="Editar">
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            )}
+                            <Button type="button" variant="ghost" size="icon" onClick={() => setEditing(g)} title="Editar">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
                             <Button type="button" variant="ghost" size="icon" onClick={() => {
                               const msg = g.linhas.length > 1
                                 ? `Excluir esta requisição com ${g.linhas.length} itens? O estoque será revertido.`
