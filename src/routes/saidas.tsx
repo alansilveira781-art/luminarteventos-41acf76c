@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
+import { ChevronRight, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/fetch-all";
 import { PageHeader } from "@/components/PageHeader";
@@ -72,15 +73,19 @@ function SaidasPage() {
   });
 
   const delMut = useMutation({
-    mutationFn: async (m: any) => {
-      // Reverter estoque (saida tirou, então adicionar de volta)
-      const { data: it } = await supabase.from("itens").select("quantidade_atual").eq("id", m.item_id).single();
-      if (it) {
-        await supabase.from("itens").update({ quantidade_atual: Number(it.quantidade_atual) + Number(m.quantidade) }).eq("id", m.item_id);
+    mutationFn: async (grupo: any) => {
+      const linhas: any[] = grupo.linhas ?? [grupo];
+      // Reverter estoque de cada linha (saída tirou, então adicionar de volta)
+      for (const m of linhas) {
+        const { data: it } = await supabase.from("itens").select("quantidade_atual").eq("id", m.item_id).single();
+        if (it) {
+          await supabase.from("itens").update({ quantidade_atual: Number(it.quantidade_atual) + Number(m.quantidade) }).eq("id", m.item_id);
+        }
+        // Apagar devoluções vinculadas
+        await supabase.from("movimentacoes").delete().eq("saida_origem_id", m.id);
       }
-      // Apagar devoluções vinculadas
-      await supabase.from("movimentacoes").delete().eq("saida_origem_id", m.id);
-      const { error } = await supabase.from("movimentacoes").delete().eq("id", m.id);
+      const ids = linhas.map((l) => l.id);
+      const { error } = await supabase.from("movimentacoes").delete().in("id", ids);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -153,11 +158,15 @@ function SaidasPage() {
           throw new Error(`Estoque insuficiente para ${it.nome}. Disponível: ${it.quantidade_atual} ${it.unidade}`);
         }
       }
+      const { data: numData, error: numErr } = await supabase.rpc("next_requisicao_numero" as any);
+      if (numErr) throw numErr;
+      const requisicao_numero = numData as number;
       const inserts = p.linhas.map((l) => ({
         ...p.meta,
         tipo: "saida" as const,
         item_id: l.item_id,
         quantidade: l.quantidade,
+        requisicao_numero,
       }));
       const { error } = await supabase.from("movimentacoes").insert(inserts);
       if (error) throw error;
@@ -174,24 +183,55 @@ function SaidasPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Filtros + bulk
+  // Filtros + agrupamento por requisicao_numero
   const sBusca = q.toLowerCase().trim();
   const filteredBaseList = (saidas ?? []).filter((m: any) => {
     if (!sBusca) return true;
     return [
       m.item?.nome, m.item?.codigo, m.evento_projeto, m.solicitante?.nome,
       m.saida_tipo, m.finalidade, m.observacoes, m.saida_status,
+      m.requisicao_numero ? `req-${String(m.requisicao_numero).padStart(4, "0")}` : "",
     ].map((x) => String(x ?? "").toLowerCase()).join(" ").includes(sBusca);
   });
-  const filteredList = applySort(filteredBaseList, (m: any, k: string) => {
-    if (k === "data_movimento") return m.data_movimento;
-    if (k === "item") return m.item?.nome;
-    if (k === "solicitante") return m.solicitante?.nome;
-    if (k === "unidade") return m.item?.unidade;
-    if (k === "quantidade") return Number(m.quantidade);
-    return m[k];
-  });
-  const sel = useBulkSelection(filteredList);
+  const grupos = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const m of filteredBaseList) {
+      const key = m.requisicao_numero != null ? `req-${m.requisicao_numero}` : `solo-${m.id}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          id: key, // usado para bulk selection
+          numero: m.requisicao_numero,
+          data_movimento: m.data_movimento,
+          solicitante_id: m.solicitante_id,
+          solicitante: m.solicitante,
+          evento_projeto: m.evento_projeto,
+          saida_tipo: m.saida_tipo,
+          saida_status: m.saida_status,
+          data_prevista_devolucao: m.data_prevista_devolucao,
+          observacoes: m.observacoes,
+          finalidade: m.finalidade,
+          responsavel_retirada: m.responsavel_retirada,
+          responsavel_recebimento: m.responsavel_recebimento,
+          responsavel_lancamento: m.responsavel_lancamento,
+          linhas: [],
+          qtd_total: 0,
+        });
+      }
+      const g = map.get(key)!;
+      g.linhas.push(m);
+      g.qtd_total += Number(m.quantidade);
+    }
+    const arr = Array.from(map.values());
+    return applySort(arr, (g: any, k: string) => {
+      if (k === "data_movimento") return g.data_movimento;
+      if (k === "solicitante") return g.solicitante?.nome;
+      if (k === "quantidade") return g.qtd_total;
+      if (k === "numero") return g.numero ?? 0;
+      return g[k];
+    });
+  }, [filteredBaseList, sort]);
+  const sel = useBulkSelection(grupos);
+  const [expandido, setExpandido] = useState<Record<string, boolean>>({});
   const [bulkOpen, setBulkOpen] = useState(false);
   const SAIDA_BULK_FIELDS: BulkField[] = [
     { key: "solicitante_id", label: "Solicitante", type: "select", allowClear: true,
@@ -207,9 +247,13 @@ function SaidasPage() {
   ];
   const bulkMut = useMutation({
     mutationFn: async (patch: Record<string, any>) => {
-      const ids = Array.from(sel.selected);
-      if (!ids.length) return;
-      const { error } = await supabase.from("movimentacoes").update(patch as any).in("id", ids);
+      const groupIds = Array.from(sel.selected);
+      const movIds: string[] = [];
+      for (const g of grupos) {
+        if (groupIds.includes(g.id)) movIds.push(...g.linhas.map((l: any) => l.id));
+      }
+      if (!movIds.length) return;
+      const { error } = await supabase.from("movimentacoes").update(patch as any).in("id", movIds);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -240,8 +284,8 @@ function SaidasPage() {
           />
         </div>
         <div className="text-xs text-muted-foreground mt-2">
-          {filteredList.length} {filteredList.length === 1 ? "saída" : "saídas"}
-          {saidas && filteredList.length !== saidas.length ? ` (de ${saidas.length})` : ""}
+          {grupos.length} {grupos.length === 1 ? "saída" : "saídas"}
+          {saidas && filteredBaseList.length !== saidas.length ? ` (de ${saidas.length} itens)` : ""}
         </div>
       </Card>
 
@@ -257,55 +301,101 @@ function SaidasPage() {
                     <Checkbox checked={sel.allSelected} onCheckedChange={() => sel.toggleAll()} />
                   </th>
                 )}
+                <th className="px-3 py-3 w-8"></th>
+                <SortableTh sort={sort} onToggle={toggleSort} k="numero" label="REQ" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="data_movimento" label="Data" />
-                <SortableTh sort={sort} onToggle={toggleSort} k="item" label="Item" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="evento_projeto" label="Evento/Projeto" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="solicitante" label="Solicitante" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="saida_tipo" label="Tipo" />
-                <SortableTh sort={sort} onToggle={toggleSort} k="quantidade" label="Qtd" align="right" />
-                <SortableTh sort={sort} onToggle={toggleSort} k="unidade" label="UN" />
+                <th className="px-4 py-3 font-medium text-right">Itens</th>
+                <SortableTh sort={sort} onToggle={toggleSort} k="quantidade" label="Qtd total" align="right" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="data_prevista_devolucao" label="Devolver até" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="saida_status" label="Status" />
                 {isAdmin && <th className="px-4 py-3 font-medium"></th>}
               </tr>
             </thead>
             <tbody>
-              {filteredList.length ? filteredList.map((m: any) => (
-                <tr key={m.id} className="border-t border-border hover:bg-muted/30">
-                  {isAdmin && (
-                    <td className="px-3 py-3">
-                      <Checkbox checked={sel.selected.has(m.id)} onCheckedChange={() => sel.toggle(m.id)} />
-                    </td>
-                  )}
-                  <td className="px-4 py-3 tabular-nums whitespace-nowrap">{format(new Date(m.data_movimento), "dd/MM/yyyy HH:mm")}</td>
-                  <td className="px-4 py-3 font-medium">{m.item?.nome}</td>
-                  <td className="px-4 py-3 text-foreground">{m.evento_projeto ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{m.solicitante?.nome ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{m.saida_tipo ? saidaTipoLabels[m.saida_tipo] : "—"}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-destructive">-{Number(m.quantidade)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{m.item?.unidade}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{m.data_prevista_devolucao ? format(new Date(m.data_prevista_devolucao), "dd/MM/yyyy") : "—"}</td>
-                  <td className="px-4 py-3"><StatusBadge status={m.saida_status} /></td>
-                  {isAdmin && (
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1 justify-end">
-                        <Button type="button" variant="ghost" size="icon" onClick={() => { setPrefill(m); setOpen(true); }} title="Duplicar">
-                          <Copy className="h-4 w-4" />
+              {grupos.length ? grupos.map((g: any) => {
+                const isOpen = !!expandido[g.id];
+                const colCount = (isAdmin ? 1 : 0) + 1 + 9 + (isAdmin ? 1 : 0);
+                return (
+                  <>
+                    <tr key={g.id} className="border-t border-border hover:bg-muted/30">
+                      {isAdmin && (
+                        <td className="px-3 py-3">
+                          <Checkbox checked={sel.selected.has(g.id)} onCheckedChange={() => sel.toggle(g.id)} />
+                        </td>
+                      )}
+                      <td className="px-1 py-3">
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7"
+                          onClick={() => setExpandido((p) => ({ ...p, [g.id]: !p[g.id] }))}>
+                          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </Button>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => setEditing(m)} title="Editar">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => {
-                          if (confirm("Excluir esta saída? O estoque será revertido e devoluções vinculadas serão apagadas.")) delMut.mutate(m);
-                        }} title="Excluir">
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              )) : (
-                <tr><td colSpan={isAdmin ? 11 : 9} className="text-center py-10 text-muted-foreground">Nenhuma saída encontrada.</td></tr>
+                      </td>
+                      <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">
+                        {g.numero != null ? `REQ-${String(g.numero).padStart(4, "0")}` : "—"}
+                      </td>
+                      <td className="px-4 py-3 tabular-nums whitespace-nowrap">{format(new Date(g.data_movimento), "dd/MM/yyyy HH:mm")}</td>
+                      <td className="px-4 py-3 text-foreground">{g.evento_projeto ?? "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{g.solicitante?.nome ?? "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{g.saida_tipo ? saidaTipoLabels[g.saida_tipo] : "—"}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{g.linhas.length}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-destructive">-{g.qtd_total}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{g.data_prevista_devolucao ? format(new Date(g.data_prevista_devolucao), "dd/MM/yyyy") : "—"}</td>
+                      <td className="px-4 py-3"><StatusBadge status={g.saida_status} /></td>
+                      {isAdmin && (
+                        <td className="px-4 py-3">
+                          <div className="flex gap-1 justify-end">
+                            <Button type="button" variant="ghost" size="icon" onClick={() => { setPrefill(g); setOpen(true); }} title="Duplicar">
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            {g.linhas.length === 1 && (
+                              <Button type="button" variant="ghost" size="icon" onClick={() => setEditing(g.linhas[0])} title="Editar">
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button type="button" variant="ghost" size="icon" onClick={() => {
+                              const msg = g.linhas.length > 1
+                                ? `Excluir esta requisição com ${g.linhas.length} itens? O estoque será revertido e devoluções vinculadas serão apagadas.`
+                                : "Excluir esta saída? O estoque será revertido e devoluções vinculadas serão apagadas.";
+                              if (confirm(msg)) delMut.mutate(g);
+                            }} title="Excluir">
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                    {isOpen && (
+                      <tr key={`${g.id}-exp`} className="bg-muted/20">
+                        <td colSpan={colCount} className="px-6 py-3">
+                          <table className="w-full text-xs">
+                            <thead className="text-muted-foreground">
+                              <tr>
+                                <th className="text-left py-1 font-medium">Item</th>
+                                <th className="text-left py-1 font-medium">Código</th>
+                                <th className="text-right py-1 font-medium">Qtd</th>
+                                <th className="text-left py-1 font-medium pl-2">UN</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {g.linhas.map((l: any) => (
+                                <tr key={l.id} className="border-t border-border/40">
+                                  <td className="py-1 font-medium">{l.item?.nome}</td>
+                                  <td className="py-1 font-mono text-muted-foreground">{l.item?.codigo}</td>
+                                  <td className="py-1 text-right tabular-nums">{Number(l.quantidade)}</td>
+                                  <td className="py-1 pl-2 text-muted-foreground">{l.item?.unidade}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                );
+              }) : (
+                <tr><td colSpan={isAdmin ? 12 : 10} className="text-center py-10 text-muted-foreground">Nenhuma saída encontrada.</td></tr>
               )}
             </tbody>
           </table>
@@ -387,10 +477,15 @@ function SaidaForm({ prefill, itens, solicitantes, onEditSolicitante, eventos, e
     data_prevista_devolucao: "",
     observacoes: prefill?.observacoes ?? "",
   });
-  const [linhas, setLinhas] = useState<Linha[]>(
-    prefill ? [{ item_id: prefill.item_id, quantidade: String(prefill.quantidade) }, { item_id: "", quantidade: "1" }]
-            : [{ item_id: "", quantidade: "1" }],
-  );
+  const [linhas, setLinhas] = useState<Linha[]>(() => {
+    if (prefill?.linhas?.length) {
+      return prefill.linhas.map((l: any) => ({ item_id: l.item_id, quantidade: String(l.quantidade) }));
+    }
+    if (prefill) {
+      return [{ item_id: prefill.item_id, quantidade: String(prefill.quantidade) }, { item_id: "", quantidade: "1" }];
+    }
+    return [{ item_id: "", quantidade: "1" }];
+  });
 
   const isEvento = meta.saida_tipo === "evento";
 

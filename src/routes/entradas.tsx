@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
+import { ChevronRight, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/fetch-all";
 import { PageHeader } from "@/components/PageHeader";
@@ -77,13 +78,17 @@ function EntradasPage() {
   });
 
   const delMut = useMutation({
-    mutationFn: async (m: any) => {
+    mutationFn: async (grupo: any) => {
+      const linhas: any[] = grupo.linhas ?? [grupo];
       // Reverter estoque (entrada adicionou, então subtrair)
-      const { data: it } = await supabase.from("itens").select("quantidade_atual").eq("id", m.item_id).single();
-      if (it) {
-        await supabase.from("itens").update({ quantidade_atual: Number(it.quantidade_atual) - Number(m.quantidade) }).eq("id", m.item_id);
+      for (const m of linhas) {
+        const { data: it } = await supabase.from("itens").select("quantidade_atual").eq("id", m.item_id).single();
+        if (it) {
+          await supabase.from("itens").update({ quantidade_atual: Number(it.quantidade_atual) - Number(m.quantidade) }).eq("id", m.item_id);
+        }
       }
-      const { error } = await supabase.from("movimentacoes").delete().eq("id", m.id);
+      const ids = linhas.map((l) => l.id);
+      const { error } = await supabase.from("movimentacoes").delete().in("id", ids);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -138,15 +143,19 @@ function EntradasPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Múltiplos itens em uma única entrada: criamos N movimentações compartilhando metadados
+  // Múltiplos itens em uma única entrada: criamos N movimentações compartilhando metadados + requisicao_numero
   const mut = useMutation({
     mutationFn: async (p: { meta: any; linhas: Array<{ item_id: string; quantidade: number; valor_unitario: number | null }> }) => {
+      const { data: numData, error: numErr } = await supabase.rpc("next_requisicao_numero" as any);
+      if (numErr) throw numErr;
+      const requisicao_numero = numData as number;
       const inserts = p.linhas.map((l) => ({
         ...p.meta,
         tipo: "entrada" as const,
         item_id: l.item_id,
         quantidade: l.quantidade,
         valor_unitario: l.valor_unitario,
+        requisicao_numero,
       }));
       const { error } = await supabase.from("movimentacoes").insert(inserts);
       if (error) throw error;
@@ -162,25 +171,53 @@ function EntradasPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Filtros e seleção em massa
+  // Filtros + agrupamento por requisicao_numero
   const sBusca = q.toLowerCase().trim();
   const filteredBaseList = (entradas ?? []).filter((m: any) => {
     if (!sBusca) return true;
     return [
       m.item?.nome, m.item?.codigo, m.fornecedor?.nome,
       m.entrada_tipo, m.nota_fiscal, m.responsavel_lancamento, m.observacoes,
+      m.requisicao_numero ? `req-${String(m.requisicao_numero).padStart(4, "0")}` : "",
     ].map((x) => String(x ?? "").toLowerCase()).join(" ").includes(sBusca);
   });
-  const filteredList = applySort(filteredBaseList, (m: any, k: string) => {
-    if (k === "data_movimento") return m.data_movimento;
-    if (k === "item") return m.item?.nome;
-    if (k === "fornecedor") return m.fornecedor?.nome;
-    if (k === "unidade") return m.item?.unidade;
-    if (k === "valor_total") return Number(m.valor_unitario ?? 0) * Number(m.quantidade ?? 0);
-    if (k === "quantidade") return Number(m.quantidade);
-    return m[k];
-  });
-  const sel = useBulkSelection(filteredList);
+  const grupos = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const m of filteredBaseList) {
+      const key = m.requisicao_numero != null ? `req-${m.requisicao_numero}` : `solo-${m.id}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          id: key,
+          numero: m.requisicao_numero,
+          data_movimento: m.data_movimento,
+          fornecedor_id: m.fornecedor_id,
+          fornecedor: m.fornecedor,
+          entrada_tipo: m.entrada_tipo,
+          nota_fiscal: m.nota_fiscal,
+          observacoes: m.observacoes,
+          responsavel_lancamento: m.responsavel_lancamento,
+          linhas: [],
+          qtd_total: 0,
+          valor_total: 0,
+        });
+      }
+      const g = map.get(key)!;
+      g.linhas.push(m);
+      g.qtd_total += Number(m.quantidade);
+      g.valor_total += Number(m.valor_unitario ?? 0) * Number(m.quantidade ?? 0);
+    }
+    const arr = Array.from(map.values());
+    return applySort(arr, (g: any, k: string) => {
+      if (k === "data_movimento") return g.data_movimento;
+      if (k === "fornecedor") return g.fornecedor?.nome;
+      if (k === "valor_total") return g.valor_total;
+      if (k === "quantidade") return g.qtd_total;
+      if (k === "numero") return g.numero ?? 0;
+      return g[k];
+    });
+  }, [filteredBaseList, sort]);
+  const sel = useBulkSelection(grupos);
+  const [expandido, setExpandido] = useState<Record<string, boolean>>({});
   const [bulkOpen, setBulkOpen] = useState(false);
   const ENTRADA_BULK_FIELDS: BulkField[] = [
     { key: "fornecedor_id", label: "Fornecedor", type: "select", allowClear: true,
@@ -194,9 +231,13 @@ function EntradasPage() {
   ];
   const bulkMut = useMutation({
     mutationFn: async (patch: Record<string, any>) => {
-      const ids = Array.from(sel.selected);
-      if (!ids.length) return;
-      const { error } = await supabase.from("movimentacoes").update(patch as any).in("id", ids);
+      const groupIds = Array.from(sel.selected);
+      const movIds: string[] = [];
+      for (const g of grupos) {
+        if (groupIds.includes(g.id)) movIds.push(...g.linhas.map((l: any) => l.id));
+      }
+      if (!movIds.length) return;
+      const { error } = await supabase.from("movimentacoes").update(patch as any).in("id", movIds);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -238,8 +279,8 @@ function EntradasPage() {
           />
         </div>
         <div className="text-xs text-muted-foreground mt-2">
-          {filteredList.length} {filteredList.length === 1 ? "entrada" : "entradas"}
-          {entradas && filteredList.length !== entradas.length ? ` (de ${entradas.length})` : ""}
+          {grupos.length} {grupos.length === 1 ? "entrada" : "entradas"}
+          {entradas && filteredBaseList.length !== entradas.length ? ` (de ${entradas.length} itens)` : ""}
         </div>
       </Card>
 
@@ -255,12 +296,13 @@ function EntradasPage() {
                     <Checkbox checked={sel.allSelected} onCheckedChange={() => sel.toggleAll()} />
                   </th>
                 )}
+                <th className="px-3 py-3 w-8"></th>
+                <SortableTh sort={sort} onToggle={toggleSort} k="numero" label="REQ" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="data_movimento" label="Data" />
-                <SortableTh sort={sort} onToggle={toggleSort} k="item" label="Item" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="entrada_tipo" label="Tipo" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="fornecedor" label="Fornecedor" />
-                <SortableTh sort={sort} onToggle={toggleSort} k="quantidade" label="Qtd" align="right" />
-                <SortableTh sort={sort} onToggle={toggleSort} k="unidade" label="UN" />
+                <th className="px-4 py-3 font-medium text-right">Itens</th>
+                <SortableTh sort={sort} onToggle={toggleSort} k="quantidade" label="Qtd total" align="right" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="valor_total" label="Valor total" align="right" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="nota_fiscal" label="NF" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="responsavel_lancamento" label="Responsável" />
@@ -268,44 +310,97 @@ function EntradasPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredList.length ? filteredList.map((m: any) => (
-                <tr key={m.id} className="border-t border-border hover:bg-muted/30">
-                  {isAdmin && (
-                    <td className="px-3 py-3">
-                      <Checkbox checked={sel.selected.has(m.id)} onCheckedChange={() => sel.toggle(m.id)} />
-                    </td>
-                  )}
-                  <td className="px-4 py-3 tabular-nums whitespace-nowrap">{format(new Date(m.data_movimento), "dd/MM/yyyy HH:mm")}</td>
-                  <td className="px-4 py-3 font-medium">{m.item?.nome}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{m.entrada_tipo ? entradaTipoLabels[m.entrada_tipo] ?? m.entrada_tipo : "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{m.fornecedor?.nome ?? "—"}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-success">+{Number(m.quantidade)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{m.item?.unidade}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                    {m.valor_unitario ? `R$ ${(Number(m.valor_unitario) * Number(m.quantidade)).toFixed(2)}` : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{m.nota_fiscal ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{m.responsavel_lancamento ?? "—"}</td>
-                  {isAdmin && (
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1 justify-end">
-                        <Button type="button" variant="ghost" size="icon" onClick={() => { setPrefill(m); setOpen(true); }} title="Duplicar">
-                          <Copy className="h-4 w-4" />
+              {grupos.length ? grupos.map((g: any) => {
+                const isOpen = !!expandido[g.id];
+                const colCount = (isAdmin ? 1 : 0) + 1 + 9 + (isAdmin ? 1 : 0);
+                return (
+                  <>
+                    <tr key={g.id} className="border-t border-border hover:bg-muted/30">
+                      {isAdmin && (
+                        <td className="px-3 py-3">
+                          <Checkbox checked={sel.selected.has(g.id)} onCheckedChange={() => sel.toggle(g.id)} />
+                        </td>
+                      )}
+                      <td className="px-1 py-3">
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7"
+                          onClick={() => setExpandido((p) => ({ ...p, [g.id]: !p[g.id] }))}>
+                          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </Button>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => setEditing(m)} title="Editar">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => {
-                          if (confirm("Excluir esta entrada? O estoque será revertido.")) delMut.mutate(m);
-                        }} title="Excluir">
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              )) : (
-                <tr><td colSpan={isAdmin ? 11 : 9} className="text-center py-10 text-muted-foreground">Nenhuma entrada encontrada.</td></tr>
+                      </td>
+                      <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">
+                        {g.numero != null ? `REQ-${String(g.numero).padStart(4, "0")}` : "—"}
+                      </td>
+                      <td className="px-4 py-3 tabular-nums whitespace-nowrap">{format(new Date(g.data_movimento), "dd/MM/yyyy HH:mm")}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{g.entrada_tipo ? entradaTipoLabels[g.entrada_tipo] ?? g.entrada_tipo : "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{g.fornecedor?.nome ?? "—"}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{g.linhas.length}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-success">+{g.qtd_total}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                        {g.valor_total > 0 ? `R$ ${g.valor_total.toFixed(2)}` : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{g.nota_fiscal ?? "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{g.responsavel_lancamento ?? "—"}</td>
+                      {isAdmin && (
+                        <td className="px-4 py-3">
+                          <div className="flex gap-1 justify-end">
+                            <Button type="button" variant="ghost" size="icon" onClick={() => { setPrefill(g); setOpen(true); }} title="Duplicar">
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            {g.linhas.length === 1 && (
+                              <Button type="button" variant="ghost" size="icon" onClick={() => setEditing(g.linhas[0])} title="Editar">
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button type="button" variant="ghost" size="icon" onClick={() => {
+                              const msg = g.linhas.length > 1
+                                ? `Excluir esta requisição com ${g.linhas.length} itens? O estoque será revertido.`
+                                : "Excluir esta entrada? O estoque será revertido.";
+                              if (confirm(msg)) delMut.mutate(g);
+                            }} title="Excluir">
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                    {isOpen && (
+                      <tr key={`${g.id}-exp`} className="bg-muted/20">
+                        <td colSpan={colCount} className="px-6 py-3">
+                          <table className="w-full text-xs">
+                            <thead className="text-muted-foreground">
+                              <tr>
+                                <th className="text-left py-1 font-medium">Item</th>
+                                <th className="text-left py-1 font-medium">Código</th>
+                                <th className="text-right py-1 font-medium">Qtd</th>
+                                <th className="text-left py-1 font-medium pl-2">UN</th>
+                                <th className="text-right py-1 font-medium pl-2">Valor unit.</th>
+                                <th className="text-right py-1 font-medium pl-2">Subtotal</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {g.linhas.map((l: any) => (
+                                <tr key={l.id} className="border-t border-border/40">
+                                  <td className="py-1 font-medium">{l.item?.nome}</td>
+                                  <td className="py-1 font-mono text-muted-foreground">{l.item?.codigo}</td>
+                                  <td className="py-1 text-right tabular-nums">{Number(l.quantidade)}</td>
+                                  <td className="py-1 pl-2 text-muted-foreground">{l.item?.unidade}</td>
+                                  <td className="py-1 pl-2 text-right tabular-nums text-muted-foreground">
+                                    {l.valor_unitario != null ? `R$ ${Number(l.valor_unitario).toFixed(2)}` : "—"}
+                                  </td>
+                                  <td className="py-1 pl-2 text-right tabular-nums">
+                                    {l.valor_unitario != null ? `R$ ${(Number(l.valor_unitario) * Number(l.quantidade)).toFixed(2)}` : "—"}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                );
+              }) : (
+                <tr><td colSpan={isAdmin ? 12 : 10} className="text-center py-10 text-muted-foreground">Nenhuma entrada encontrada.</td></tr>
               )}
             </tbody>
           </table>
@@ -538,10 +633,19 @@ function EntradaForm({ prefill, itens, fornecedores, onEditFornecedor, onSubmit,
     nota_fiscal: prefill?.nota_fiscal ?? "",
     observacoes: prefill?.observacoes ?? "",
   });
-  const [linhas, setLinhas] = useState<Linha[]>(
-    prefill ? [{ item_id: prefill.item_id, quantidade: String(prefill.quantidade), valor_unitario: prefill.valor_unitario != null ? String(prefill.valor_unitario) : "" }, { item_id: "", quantidade: "1", valor_unitario: "" }]
-            : [{ item_id: "", quantidade: "1", valor_unitario: "" }],
-  );
+  const [linhas, setLinhas] = useState<Linha[]>(() => {
+    if (prefill?.linhas?.length) {
+      return prefill.linhas.map((l: any) => ({
+        item_id: l.item_id,
+        quantidade: String(l.quantidade),
+        valor_unitario: l.valor_unitario != null ? String(l.valor_unitario) : "",
+      }));
+    }
+    if (prefill) {
+      return [{ item_id: prefill.item_id, quantidade: String(prefill.quantidade), valor_unitario: prefill.valor_unitario != null ? String(prefill.valor_unitario) : "" }, { item_id: "", quantidade: "1", valor_unitario: "" }];
+    }
+    return [{ item_id: "", quantidade: "1", valor_unitario: "" }];
+  });
 
   const qtyRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const valorRefs = useRef<Record<number, HTMLInputElement | null>>({});

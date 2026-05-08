@@ -563,6 +563,7 @@ export type Database = {
           observacoes: string | null
           quantidade: number | null
           quantidade_solicitada: number | null
+          requisicao_numero: number | null
           responsavel_lancamento: string | null
           responsavel_recebimento: string | null
           responsavel_retirada: string | null
@@ -588,6 +589,7 @@ export type Database = {
           observacoes?: string | null
           quantidade?: number | null
           quantidade_solicitada?: number | null
+          requisicao_numero?: number | null
           responsavel_lancamento?: string | null
           responsavel_recebimento?: string | null
           responsavel_retirada?: string | null
@@ -613,6 +615,7 @@ export type Database = {
           observacoes?: string | null
           quantidade?: number | null
           quantidade_solicitada?: number | null
+          requisicao_numero?: number | null
           responsavel_lancamento?: string | null
           responsavel_recebimento?: string | null
           responsavel_retirada?: string | null
@@ -863,6 +866,7 @@ export type Database = {
         Args: { _slug: string; _user_id: string }
         Returns: boolean
       }
+      next_requisicao_numero: { Args: never; Returns: number }
       refresh_item_status: { Args: { p_item_id: string }; Returns: undefined }
     }
     Enums: {
