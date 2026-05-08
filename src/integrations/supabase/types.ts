@@ -529,6 +529,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "movimentacao_itens_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "itens"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "movimentacao_itens_movimentacao_id_fkey"
             columns: ["movimentacao_id"]
             isOneToOne: false
@@ -548,10 +555,10 @@ export type Database = {
           finalidade: string | null
           fornecedor_id: string | null
           id: string
-          item_id: string
+          item_id: string | null
           nota_fiscal: string | null
           observacoes: string | null
-          quantidade: number
+          quantidade: number | null
           quantidade_solicitada: number | null
           responsavel_lancamento: string | null
           responsavel_recebimento: string | null
@@ -573,10 +580,10 @@ export type Database = {
           finalidade?: string | null
           fornecedor_id?: string | null
           id?: string
-          item_id: string
+          item_id?: string | null
           nota_fiscal?: string | null
           observacoes?: string | null
-          quantidade: number
+          quantidade?: number | null
           quantidade_solicitada?: number | null
           responsavel_lancamento?: string | null
           responsavel_recebimento?: string | null
@@ -598,10 +605,10 @@ export type Database = {
           finalidade?: string | null
           fornecedor_id?: string | null
           id?: string
-          item_id?: string
+          item_id?: string | null
           nota_fiscal?: string | null
           observacoes?: string | null
-          quantidade?: number
+          quantidade?: number | null
           quantidade_solicitada?: number | null
           responsavel_lancamento?: string | null
           responsavel_recebimento?: string | null
@@ -903,6 +910,7 @@ export type Database = {
         | "manutencao"
         | "transferencia"
         | "outros"
+        | "epi_fardamento"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1082,6 +1090,7 @@ export const Constants = {
         "manutencao",
         "transferencia",
         "outros",
+        "epi_fardamento",
       ],
     },
   },
