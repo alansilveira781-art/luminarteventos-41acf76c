@@ -33,7 +33,7 @@ function AdminLayout() {
   ];
 
   return (
-    <div className="-mx-4 -my-6 sm:-mx-8 sm:-my-8 px-4 sm:px-8 py-6 sm:py-8 min-h-[calc(100vh-3.5rem)] bg-[oklch(0.18_0_0)]">
+    <div className="-mx-4 -my-6 sm:-mx-8 sm:-my-8 px-4 sm:px-8 py-6 sm:py-8 min-h-[calc(100vh-3.5rem)] bg-muted">
       <PageHeader title="Administração" description="Gerencie usuários, módulos e dados do sistema" />
       <nav className="flex flex-wrap gap-1 mb-4 border-b border-border">
         {tabs.map((t) => {
