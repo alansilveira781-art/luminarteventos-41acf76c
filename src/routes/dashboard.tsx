@@ -271,14 +271,39 @@ function Dashboard() {
         description="Visão geral da operação de estoque · Luminart Eventos"
       />
 
+      <Card className="p-3 mb-4 bg-muted/20">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Ano</label>
+            <Select value={String(anoVisao)} onValueChange={(v) => setAnoVisao(Number(v))}>
+              <SelectTrigger className="h-9 w-[120px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {anosDisponiveis.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Mês</label>
+            <Select value={mesVisao} onValueChange={setMesVisao}>
+              <SelectTrigger className="h-9 w-[160px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Todos os meses</SelectItem>
+                {MESES_PT.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <span className="text-xs text-muted-foreground ml-auto">Período: {visaoRange.label}</span>
+        </div>
+      </Card>
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Kpi icon={Package} label="Total de itens" value={total} tone="primary" />
         <Kpi icon={AlertTriangle} label="Baixo estoque" value={baixo} tone="warning" />
         <Kpi icon={XCircle} label="Sem estoque" value={sem} tone="destructive" />
         <Kpi icon={Wrench} label="Em manutenção" value={manut} tone="accent" />
-        <Kpi icon={ArrowDownToLine} label="Entradas no mês" value={entradasMes} tone="success" />
-        <Kpi icon={ArrowUpFromLine} label="Saídas no mês" value={saidasMes} tone="primary" />
-        <Kpi icon={Undo2} label="Devoluções no mês" value={devolucoesMes} tone="accent" />
+        <Kpi icon={ArrowDownToLine} label={`Entradas (${visaoRange.label})`} value={entradasMes} tone="success" />
+        <Kpi icon={ArrowUpFromLine} label={`Saídas (${visaoRange.label})`} value={saidasMes} tone="primary" />
+        <Kpi icon={Undo2} label={`Devoluções (${visaoRange.label})`} value={devolucoesMes} tone="accent" />
         <Kpi icon={ListChecks} label="Saídas pendentes" value={saidasAbertas} tone="warning" />
       </div>
 
