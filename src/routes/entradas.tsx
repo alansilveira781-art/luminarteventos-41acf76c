@@ -340,15 +340,19 @@ function EntradasPage() {
               className="pl-9"
             />
           </div>
-          <Select value={filterItemId} onValueChange={setFilterItemId}>
-            <SelectTrigger className="w-[220px]"><SelectValue placeholder="Filtrar por item" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all">Todos os itens</SelectItem>
-              {(itens ?? []).map((it: any) => (
-                <SelectItem key={it.id} value={it.id}>{it.codigo} — {it.nome}</SelectItem>
+          <div className="relative w-[260px]">
+            <Input
+              placeholder="Filtrar por item (digite código ou nome)"
+              value={filterItemQ}
+              onChange={(e) => setFilterItemQ(e.target.value)}
+              list="entradas-filter-itens-list"
+            />
+            <datalist id="entradas-filter-itens-list">
+              {(itens ?? []).slice(0, 500).map((it: any) => (
+                <option key={it.id} value={`${it.codigo} — ${it.nome}`} />
               ))}
-            </SelectContent>
-          </Select>
+            </datalist>
+          </div>
           <Select value={filterEvento} onValueChange={setFilterEvento}>
             <SelectTrigger className="w-[200px]"><SelectValue placeholder="Filtrar por evento/projeto" /></SelectTrigger>
             <SelectContent>
