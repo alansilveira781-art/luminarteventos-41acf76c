@@ -210,15 +210,26 @@ function EntradasPage() {
   });
 
   // Filtros + agrupamento por requisicao_numero
-  const sBusca = q.toLowerCase().trim();
+  const sBusca = normalize(q);
   const filteredBaseList = (entradas ?? []).filter((m: any) => {
+    if (filterItemId !== "__all" && m.item_id !== filterItemId) return false;
+    if (filterEvento !== "__all" && (m.evento_projeto ?? "") !== filterEvento) return false;
     if (!sBusca) return true;
-    return [
-      m.item?.nome, m.item?.codigo, m.fornecedor?.nome,
-      m.entrada_tipo, m.nota_fiscal, m.responsavel_lancamento, m.observacoes,
-      m.requisicao_numero ? `req-${String(m.requisicao_numero).padStart(4, "0")}` : "",
-    ].map((x) => String(x ?? "").toLowerCase()).join(" ").includes(sBusca);
+    const hay = normalize(
+      [
+        m.item?.nome, m.item?.codigo, m.fornecedor?.nome,
+        m.entrada_tipo, m.nota_fiscal, m.responsavel_lancamento, m.observacoes,
+        m.requisicao_numero ? `req-${String(m.requisicao_numero).padStart(4, "0")}` : "",
+      ].join(" "),
+    );
+    return hay.includes(sBusca);
   });
+  // Lista distinct de eventos para o filtro
+  const eventosDisponiveis = useMemo(() => {
+    const s = new Set<string>();
+    (entradas ?? []).forEach((m: any) => { if (m.evento_projeto) s.add(m.evento_projeto); });
+    return Array.from(s).sort();
+  }, [entradas]);
   const grupos = useMemo(() => {
     const map = new Map<string, any>();
     for (const m of filteredBaseList) {
