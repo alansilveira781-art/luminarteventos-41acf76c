@@ -185,6 +185,15 @@ function RelatoriosPage() {
                 </tr>
               ))}
             </tbody>
+            {totals && body.length > 0 && (
+              <tfoot>
+                <tr className="border-t-2 border-border bg-muted/60 font-semibold">
+                  {totals.map((c, j) => (
+                    <td key={j} className="px-4 py-3 whitespace-nowrap">{c}</td>
+                  ))}
+                </tr>
+              </tfoot>
+            )}
           </table>
           {body.length > 500 && (
             <div className="px-4 py-2 text-xs text-muted-foreground border-t border-border">
