@@ -183,7 +183,7 @@ function EntradasPage() {
 
   // Múltiplos itens em uma única entrada: criamos N movimentações compartilhando metadados + requisicao_numero
   const mut = useMutation({
-    mutationFn: async (p: { meta: any; linhas: Array<{ item_id: string; quantidade: number; valor_unitario: number | null }> }) => {
+    mutationFn: async (p: { meta: any; linhas: Array<{ item_id: string; quantidade: number; valor_unitario: number | null; valor_total: number | null; desconto: number; frete: number; ipi: number; outros_custos: number }> }) => {
       const { data: numData, error: numErr } = await supabase.rpc("next_requisicao_numero" as any);
       if (numErr) throw numErr;
       const requisicao_numero = numData as number;
@@ -193,16 +193,25 @@ function EntradasPage() {
         item_id: l.item_id,
         quantidade: l.quantidade,
         valor_unitario: l.valor_unitario,
+        valor_total: l.valor_total,
+        desconto: l.desconto,
+        frete: l.frete,
+        ipi: l.ipi,
+        outros_custos: l.outros_custos,
         requisicao_numero,
       }));
       const { error } = await supabase.from("movimentacoes").insert(inserts);
       if (error) throw error;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["entradas"] });
-      qc.invalidateQueries({ queryKey: ["itens"] });
-      qc.invalidateQueries({ queryKey: ["dashboard-itens"] });
-      qc.invalidateQueries({ queryKey: ["dashboard-movs"] });
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["entradas"] }),
+        qc.invalidateQueries({ queryKey: ["itens"] }),
+        qc.invalidateQueries({ queryKey: ["itens-select"] }),
+        qc.invalidateQueries({ queryKey: ["itens-select-saida"] }),
+        qc.invalidateQueries({ queryKey: ["dashboard-itens"] }),
+        qc.invalidateQueries({ queryKey: ["dashboard-movs"] }),
+      ]);
       toast.success("Entrada registrada");
       setOpen(false);
     },
