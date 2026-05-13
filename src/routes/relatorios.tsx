@@ -251,75 +251,87 @@ async function loadReport(id: ReportId, dataIni: string, dataFim: string): Promi
   return [];
 }
 
-function formatReport(id: ReportId, rows: any[]): { headers: string[]; body: any[][] } {
+function formatReport(id: ReportId, rows: any[]): { headers: string[]; body: any[][]; totals: any[] | null } {
+  const fmtBRL = (n: number) => `R$ ${n.toFixed(2)}`;
+
   if (id === "saidas") {
-    return {
-      headers: ["Data", "Código", "Item", "Qtd", "Un", "Valor unit.", "Valor total", "Solicitante", "Evento/Projeto", "Status"],
-      body: rows.map((r) => {
-        const vu = Number(r.valor_unitario ?? r.item?.valor_unitario ?? 0);
-        const q = Number(r.quantidade);
-        return [
-          format(new Date(r.data_movimento), "dd/MM/yyyy HH:mm"),
-          r.item?.codigo ?? "", r.item?.nome ?? "",
-          q, r.item?.unidade ?? "",
-          `R$ ${vu.toFixed(2)}`, `R$ ${(vu * q).toFixed(2)}`,
-          r.solicitante?.nome ?? "—", r.evento_projeto ?? "—", r.saida_status ?? "—",
-        ];
-      }),
-    };
-  }
-  if (id === "entradas") {
-    return {
-      headers: ["Data", "Código", "Item", "Qtd", "Un", "Valor unit.", "Valor total", "Fornecedor", "NF"],
-      body: rows.map((r) => {
-        const vu = Number(r.valor_unitario ?? 0);
-        const q = Number(r.quantidade);
-        return [
-          format(new Date(r.data_movimento), "dd/MM/yyyy HH:mm"),
-          r.item?.codigo ?? "", r.item?.nome ?? "",
-          q, r.item?.unidade ?? "",
-          `R$ ${vu.toFixed(2)}`, `R$ ${(vu * q).toFixed(2)}`,
-          r.fornecedor?.nome ?? "—", r.nota_fiscal ?? "—",
-        ];
-      }),
-    };
-  }
-  if (id === "devolucoes") {
-    return {
-      headers: ["Data", "Código", "Item", "Qtd", "Un", "Solicitante", "Recebido por"],
-      body: rows.map((r) => [
+    const headers = ["Data", "Código", "Item", "Qtd", "Un", "Valor unit.", "Valor total", "Solicitante", "Evento/Projeto", "Status"];
+    let sumQ = 0, sumT = 0;
+    const body = rows.map((r) => {
+      const vu = Number(r.valor_unitario ?? r.item?.valor_unitario ?? 0);
+      const q = Number(r.quantidade);
+      sumQ += q; sumT += vu * q;
+      return [
         format(new Date(r.data_movimento), "dd/MM/yyyy HH:mm"),
         r.item?.codigo ?? "", r.item?.nome ?? "",
-        Number(r.quantidade), r.item?.unidade ?? "",
+        q, r.item?.unidade ?? "",
+        fmtBRL(vu), fmtBRL(vu * q),
+        r.solicitante?.nome ?? "—", r.evento_projeto ?? "—", r.saida_status ?? "—",
+      ];
+    });
+    return { headers, body, totals: ["TOTAL", "", "", sumQ, "", "", fmtBRL(sumT), "", "", ""] };
+  }
+  if (id === "entradas") {
+    const headers = ["Data", "Código", "Item", "Qtd", "Un", "Valor unit.", "Valor total", "Fornecedor", "NF"];
+    let sumQ = 0, sumT = 0;
+    const body = rows.map((r) => {
+      const vu = Number(r.valor_unitario ?? 0);
+      const q = Number(r.quantidade);
+      sumQ += q; sumT += vu * q;
+      return [
+        format(new Date(r.data_movimento), "dd/MM/yyyy HH:mm"),
+        r.item?.codigo ?? "", r.item?.nome ?? "",
+        q, r.item?.unidade ?? "",
+        fmtBRL(vu), fmtBRL(vu * q),
+        r.fornecedor?.nome ?? "—", r.nota_fiscal ?? "—",
+      ];
+    });
+    return { headers, body, totals: ["TOTAL", "", "", sumQ, "", "", fmtBRL(sumT), "", ""] };
+  }
+  if (id === "devolucoes") {
+    const headers = ["Data", "Código", "Item", "Qtd", "Un", "Solicitante", "Recebido por"];
+    let sumQ = 0;
+    const body = rows.map((r) => {
+      const q = Number(r.quantidade);
+      sumQ += q;
+      return [
+        format(new Date(r.data_movimento), "dd/MM/yyyy HH:mm"),
+        r.item?.codigo ?? "", r.item?.nome ?? "",
+        q, r.item?.unidade ?? "",
         r.solicitante?.nome ?? "—", r.responsavel_recebimento ?? "—",
-      ]),
-    };
+      ];
+    });
+    return { headers, body, totals: ["TOTAL", "", "", sumQ, "", "", ""] };
   }
   if (id === "estoque") {
-    return {
-      headers: ["Código", "Item", "Categoria", "Un", "Qtd atual", "Mín", "Valor unit.", "Valor total", "Localização", "Status"],
-      body: rows.map((r) => {
-        const vu = Number(r.valor_unitario ?? 0);
-        const q = Number(r.quantidade_atual);
-        return [
-          r.codigo, r.nome, r.categoria ?? "—", r.unidade,
-          q, Number(r.quantidade_minima),
-          `R$ ${vu.toFixed(2)}`, `R$ ${(vu * q).toFixed(2)}`,
-          r.localizacao ?? "—", r.status,
-        ];
-      }),
-    };
+    const headers = ["Código", "Item", "Categoria", "Un", "Qtd atual", "Mín", "Valor unit.", "Valor total", "Localização", "Status"];
+    let sumQ = 0, sumMin = 0, sumT = 0;
+    const body = rows.map((r) => {
+      const vu = Number(r.valor_unitario ?? 0);
+      const q = Number(r.quantidade_atual);
+      const mn = Number(r.quantidade_minima);
+      sumQ += q; sumMin += mn; sumT += vu * q;
+      return [
+        r.codigo, r.nome, r.categoria ?? "—", r.unidade,
+        q, mn,
+        fmtBRL(vu), fmtBRL(vu * q),
+        r.localizacao ?? "—", r.status,
+      ];
+    });
+    return { headers, body, totals: ["TOTAL", "", "", "", sumQ, sumMin, "", fmtBRL(sumT), "", ""] };
   }
   if (id === "solicitantes") {
     return {
       headers: ["Nome", "Setor", "Cargo", "Telefone", "Email", "Status"],
       body: rows.map((r) => [r.nome, r.setor ?? "—", r.cargo ?? "—", r.telefone ?? "—", r.email ?? "—", r.status]),
+      totals: null,
     };
   }
   if (id === "fornecedores") {
     return {
       headers: ["Nome", "Documento", "Contato", "Telefone", "Email", "Tipo de fornecimento", "Status"],
       body: rows.map((r) => [r.nome, r.documento ?? "—", r.contato_nome ?? "—", r.telefone ?? "—", r.email ?? "—", r.tipo_fornecimento ?? "—", r.status]),
+      totals: null,
     };
   }
   if (id === "gastos_mes") {
@@ -328,14 +340,15 @@ function formatReport(id: ReportId, rows: any[]): { headers: string[]; body: any
       const k = format(new Date(r.data_movimento), "yyyy-MM");
       const cur = m.get(k) ?? { qtd: 0, total: 0 };
       const q = Number(r.quantidade);
-      cur.qtd += q;
-      cur.total += Number(r.valor_unitario ?? 0) * q;
+      cur.qtd += q; cur.total += Number(r.valor_unitario ?? 0) * q;
       m.set(k, cur);
     }
     const entries = Array.from(m.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    let sumQ = 0, sumT = 0; entries.forEach(([, v]) => { sumQ += v.qtd; sumT += v.total; });
     return {
       headers: ["Mês", "Qtd entradas", "Gasto total"],
-      body: entries.map(([k, v]) => [k, v.qtd, `R$ ${v.total.toFixed(2)}`]),
+      body: entries.map(([k, v]) => [k, v.qtd, fmtBRL(v.total)]),
+      totals: ["TOTAL", sumQ, fmtBRL(sumT)],
     };
   }
   if (id === "gastos_categoria") {
@@ -344,14 +357,15 @@ function formatReport(id: ReportId, rows: any[]): { headers: string[]; body: any
       const cat = r.item?.categoria ?? "Sem categoria";
       const cur = m.get(cat) ?? { qtd: 0, total: 0 };
       const q = Number(r.quantidade);
-      cur.qtd += q;
-      cur.total += Number(r.valor_unitario ?? 0) * q;
+      cur.qtd += q; cur.total += Number(r.valor_unitario ?? 0) * q;
       m.set(cat, cur);
     }
     const entries = Array.from(m.entries()).sort((a, b) => b[1].total - a[1].total);
+    let sumQ = 0, sumT = 0; entries.forEach(([, v]) => { sumQ += v.qtd; sumT += v.total; });
     return {
       headers: ["Categoria", "Qtd entradas", "Gasto total"],
-      body: entries.map(([cat, v]) => [cat, v.qtd, `R$ ${v.total.toFixed(2)}`]),
+      body: entries.map(([cat, v]) => [cat, v.qtd, fmtBRL(v.total)]),
+      totals: ["TOTAL", sumQ, fmtBRL(sumT)],
     };
   }
   if (id === "saidas_evento") {
@@ -361,15 +375,16 @@ function formatReport(id: ReportId, rows: any[]): { headers: string[]; body: any
       const cur = m.get(ev) ?? { qtd: 0, total: 0 };
       const q = Number(r.quantidade);
       const vu = Number(r.valor_unitario ?? r.item?.valor_unitario ?? 0);
-      cur.qtd += q;
-      cur.total += vu * q;
+      cur.qtd += q; cur.total += vu * q;
       m.set(ev, cur);
     }
     const entries = Array.from(m.entries()).sort((a, b) => b[1].total - a[1].total);
+    let sumQ = 0, sumT = 0; entries.forEach(([, v]) => { sumQ += v.qtd; sumT += v.total; });
     return {
       headers: ["Evento/Projeto", "Qtd saídas", "Valor total"],
-      body: entries.map(([ev, v]) => [ev, v.qtd, `R$ ${v.total.toFixed(2)}`]),
+      body: entries.map(([ev, v]) => [ev, v.qtd, fmtBRL(v.total)]),
+      totals: ["TOTAL", sumQ, fmtBRL(sumT)],
     };
   }
-  return { headers: [], body: [] };
+  return { headers: [], body: [], totals: null };
 }
