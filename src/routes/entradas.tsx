@@ -717,7 +717,8 @@ function NfeImportDialog({ open, onOpenChange, onDone }: { open: boolean; onOpen
   );
 }
 
-type Linha = { item_id: string; quantidade: string; valor_unitario: string };
+type Linha = { item_id: string; quantidade: string; valor_unitario: string; desconto: string; frete: string; ipi: string; outros_custos: string };
+const novaLinha = (overrides: Partial<Linha> = {}): Linha => ({ item_id: "", quantidade: "1", valor_unitario: "", desconto: "0", frete: "0", ipi: "0", outros_custos: "0", ...overrides });
 
 function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor, onSubmit, submitting }: any) {
   const [meta, setMeta] = useState({
@@ -728,23 +729,26 @@ function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor
     fornecedor_id: prefill?.fornecedor_id ?? "",
     nota_fiscal: prefill?.nota_fiscal ?? "",
     observacoes: prefill?.observacoes ?? "",
-    desconto: prefill?.desconto != null ? String(prefill.desconto) : "0",
-    frete: prefill?.frete != null ? String(prefill.frete) : "0",
-    ipi: prefill?.ipi != null ? String(prefill.ipi) : "0",
-    outros_custos: prefill?.outros_custos != null ? String(prefill.outros_custos) : "0",
   });
   const [linhas, setLinhas] = useState<Linha[]>(() => {
     if (prefill?.linhas?.length) {
-      return prefill.linhas.map((l: any) => ({
+      return prefill.linhas.map((l: any) => novaLinha({
         item_id: l.item_id,
         quantidade: String(l.quantidade),
         valor_unitario: l.valor_unitario != null ? String(l.valor_unitario) : "",
+        desconto: l.desconto != null ? String(l.desconto) : "0",
+        frete: l.frete != null ? String(l.frete) : "0",
+        ipi: l.ipi != null ? String(l.ipi) : "0",
+        outros_custos: l.outros_custos != null ? String(l.outros_custos) : "0",
       }));
     }
     if (prefill) {
-      return [{ item_id: prefill.item_id, quantidade: String(prefill.quantidade), valor_unitario: prefill.valor_unitario != null ? String(prefill.valor_unitario) : "" }, { item_id: "", quantidade: "1", valor_unitario: "" }];
+      return [
+        novaLinha({ item_id: prefill.item_id, quantidade: String(prefill.quantidade), valor_unitario: prefill.valor_unitario != null ? String(prefill.valor_unitario) : "" }),
+        novaLinha(),
+      ];
     }
-    return [{ item_id: "", quantidade: "1", valor_unitario: "" }];
+    return [novaLinha()];
   });
 
   const itensList = useMemo(() => {
@@ -779,27 +783,33 @@ function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor
   const focusQty = (i: number) => { setTimeout(() => { const el = qtyRefs.current[i]; if (el) { el.focus(); el.select(); } }, 30); };
   const focusValor = (i: number) => { setTimeout(() => { const el = valorRefs.current[i]; if (el) { el.focus(); el.select(); } }, 0); };
   const goNextItem = (i: number) => {
-    setLinhas((arr) => i === arr.length - 1 ? [...arr, { item_id: "", quantidade: "1", valor_unitario: "" }] : arr);
+    setLinhas((arr) => i === arr.length - 1 ? [...arr, novaLinha()] : arr);
     setAutoOpenIdx(i + 1);
   };
-  const addLinha = () => setLinhas((a) => [...a, { item_id: "", quantidade: "1", valor_unitario: "" }]);
+  const addLinha = () => setLinhas((a) => [...a, novaLinha()]);
   const remLinha = (i: number) => setLinhas((a) => (a.length === 1 ? a : a.filter((_, idx) => idx !== i)));
 
-  const subtotal = linhas.reduce((acc, l) => acc + (Number(l.valor_unitario || 0) * Number(l.quantidade || 0)), 0);
-  const desconto = Number(meta.desconto || 0);
-  const frete = Number(meta.frete || 0);
-  const ipi = Number(meta.ipi || 0);
-  const outros = Number(meta.outros_custos || 0);
-  const totalGeral = subtotal - desconto + frete + ipi + outros;
+  const calcLinha = (l: Linha) => {
+    const qtd = Number(l.quantidade || 0);
+    const vu = Number(l.valor_unitario || 0);
+    const desc = Number(l.desconto || 0);
+    const fre = Number(l.frete || 0);
+    const ip = Number(l.ipi || 0);
+    const out = Number(l.outros_custos || 0);
+    return qtd * vu - desc + fre + ip + out;
+  };
+  const subtotal = linhas.reduce((acc, l) => acc + Number(l.valor_unitario || 0) * Number(l.quantidade || 0), 0);
+  const sumDesc = linhas.reduce((acc, l) => acc + Number(l.desconto || 0), 0);
+  const sumFrete = linhas.reduce((acc, l) => acc + Number(l.frete || 0), 0);
+  const sumIpi = linhas.reduce((acc, l) => acc + Number(l.ipi || 0), 0);
+  const sumOutros = linhas.reduce((acc, l) => acc + Number(l.outros_custos || 0), 0);
+  const totalGeral = linhas.reduce((acc, l) => acc + calcLinha(l), 0);
 
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
       const validas = linhas.filter((l) => l.item_id && Number(l.quantidade) > 0);
       if (validas.length === 0) return toast.error("Adicione pelo menos um item");
-      // Distribuir desconto/frete/ipi/outros proporcionalmente ao subtotal de cada linha
-      const subTot = validas.reduce((acc, l) => acc + Number(l.valor_unitario || 0) * Number(l.quantidade), 0);
-      const adicional = -desconto + frete + ipi + outros;
       onSubmit(
         {
           data_movimento: new Date(meta.data_movimento).toISOString(),
@@ -811,18 +821,20 @@ function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor
         validas.map((l) => {
           const qtd = Number(l.quantidade);
           const vu = l.valor_unitario === "" ? 0 : Number(l.valor_unitario);
-          const subLinha = vu * qtd;
-          const proporcao = subTot > 0 ? subLinha / subTot : 1 / validas.length;
-          const valor_total = subLinha + adicional * proporcao;
+          const desc = Number(l.desconto || 0);
+          const fre = Number(l.frete || 0);
+          const ip = Number(l.ipi || 0);
+          const out = Number(l.outros_custos || 0);
+          const valor_total = qtd * vu - desc + fre + ip + out;
           return {
             item_id: l.item_id,
             quantidade: qtd,
             valor_unitario: l.valor_unitario === "" ? null : vu,
             valor_total: Number(valor_total.toFixed(4)),
-            desconto: Number((desconto * proporcao).toFixed(4)),
-            frete: Number((frete * proporcao).toFixed(4)),
-            ipi: Number((ipi * proporcao).toFixed(4)),
-            outros_custos: Number((outros * proporcao).toFixed(4)),
+            desconto: Number(desc.toFixed(4)),
+            frete: Number(fre.toFixed(4)),
+            ipi: Number(ip.toFixed(4)),
+            outros_custos: Number(out.toFixed(4)),
           };
         }),
       );
@@ -851,10 +863,10 @@ function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor
             <Plus className="h-3 w-3 mr-1" /> Adicionar item
           </Button>
         </div>
-        <Card className="p-3 space-y-2">
+        <Card className="p-3 space-y-2 overflow-x-auto">
           {linhas.map((l, i) => (
-            <div key={i} className="grid grid-cols-12 gap-2 items-start">
-              <div className="col-span-6">
+            <div key={i} className="grid grid-cols-24 gap-2 items-start min-w-[1000px]" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
+              <div className="col-span-7">
                 <div className="flex items-center gap-1.5 h-4">
                   <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Item</label>
                   {l.item_id && <ItemInfoHover itemId={l.item_id} />}
@@ -867,46 +879,46 @@ function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (l.item_id && Number(l.quantidade) > 0) focusValor(i); } }} />
               </div>
               <div className="col-span-3">
-                <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">Custo unit. (R$)</label>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">Cust. Unit. (R$)</label>
                 <Input ref={(el) => { valorRefs.current[i] = el; }} type="number" min="0" step="any" value={l.valor_unitario} onChange={(e) => setL(i, "valor_unitario", e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (l.item_id && Number(l.quantidade) > 0) goNextItem(i); } }} />
               </div>
-              <div className="col-span-1 flex justify-end">
+              <div className="col-span-2">
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">Desconto</label>
+                <Input type="number" min="0" step="any" value={l.desconto} onChange={(e) => setL(i, "desconto", e.target.value)} />
+              </div>
+              <div className="col-span-2">
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">Frete</label>
+                <Input type="number" min="0" step="any" value={l.frete} onChange={(e) => setL(i, "frete", e.target.value)} />
+              </div>
+              <div className="col-span-2">
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">IPI</label>
+                <Input type="number" min="0" step="any" value={l.ipi} onChange={(e) => setL(i, "ipi", e.target.value)} />
+              </div>
+              <div className="col-span-2">
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">Outros</label>
+                <Input type="number" min="0" step="any" value={l.outros_custos} onChange={(e) => setL(i, "outros_custos", e.target.value)} />
+              </div>
+              <div className="col-span-3">
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">Total linha</label>
+                <div className="h-9 flex items-center px-2 rounded-md border border-input bg-muted/30 text-sm tabular-nums">
+                  R$ {calcLinha(l).toFixed(2)}
+                </div>
+              </div>
+              <div className="col-span-1 flex justify-end pt-4">
                 <Button type="button" variant="ghost" size="icon" onClick={() => remLinha(i)} disabled={linhas.length === 1} title="Remover">
                   <Trash2 className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </div>
             </div>
           ))}
-        </Card>
-      </div>
-
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold">Custos adicionais da nota</h3>
-        <Card className="p-3">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div>
-              <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Desconto (R$)</label>
-              <Input type="number" min="0" step="any" value={meta.desconto} onChange={(e) => setM("desconto", e.target.value)} />
-            </div>
-            <div>
-              <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Frete (R$)</label>
-              <Input type="number" min="0" step="any" value={meta.frete} onChange={(e) => setM("frete", e.target.value)} />
-            </div>
-            <div>
-              <label className="text-[10px] uppercase tracking-wider text-muted-foreground">IPI (R$)</label>
-              <Input type="number" min="0" step="any" value={meta.ipi} onChange={(e) => setM("ipi", e.target.value)} />
-            </div>
-            <div>
-              <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Outros custos (R$)</label>
-              <Input type="number" min="0" step="any" value={meta.outros_custos} onChange={(e) => setM("outros_custos", e.target.value)} />
-            </div>
-          </div>
-          <div className="flex flex-wrap justify-between border-t border-border pt-2 mt-3 text-sm gap-2">
-            <span className="text-muted-foreground">Subtotal: R$ {subtotal.toFixed(2)} · Desc: R$ {desconto.toFixed(2)} · Frete: R$ {frete.toFixed(2)} · IPI: R$ {ipi.toFixed(2)} · Outros: R$ {outros.toFixed(2)}</span>
+          <div className="flex flex-wrap justify-between border-t border-border pt-2 mt-2 text-sm gap-2">
+            <span className="text-muted-foreground">
+              Subtotal: R$ {subtotal.toFixed(2)} · Desc: R$ {sumDesc.toFixed(2)} · Frete: R$ {sumFrete.toFixed(2)} · IPI: R$ {sumIpi.toFixed(2)} · Outros: R$ {sumOutros.toFixed(2)}
+            </span>
             <span className="font-semibold">Valor total: R$ {totalGeral.toFixed(2)}</span>
           </div>
-          <p className="text-[11px] text-muted-foreground mt-2">O valor total é distribuído proporcionalmente nos itens e atualiza o custo médio do estoque.</p>
+          <p className="text-[11px] text-muted-foreground">Os custos adicionais entram no valor total de cada item e atualizam o custo médio do estoque.</p>
         </Card>
       </div>
 
