@@ -44,6 +44,8 @@ function EntradasPage() {
   const [importingExcel, setImportingExcel] = useState(false);
   const [importingXml, setImportingXml] = useState(false);
   const [q, setQ] = useState("");
+  const [filterItemId, setFilterItemId] = useState<string>("__all");
+  const [filterEvento, setFilterEvento] = useState<string>("__all");
   const { sort, toggleSort, applySort } = useSort();
 
   const editMut = useMutation({
