@@ -40,6 +40,8 @@ function SaidasPage() {
   const [prefill, setPrefill] = useState<any | null>(null);
   const [editing, setEditing] = useState<any | null>(null);
   const [q, setQ] = useState("");
+  const [filterItemQ, setFilterItemQ] = useState<string>("");
+  const [filterEvento, setFilterEvento] = useState<string>("__all");
   const { sort, toggleSort, applySort } = useSort();
 
   const editMut = useMutation({
