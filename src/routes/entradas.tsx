@@ -543,7 +543,7 @@ function EntradasPage() {
       </Dialog>
 
       <Dialog open={!!editingFornecedor} onOpenChange={(v) => !v && setEditingFornecedor(null)}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-[min(1100px,96vw)] w-[96vw]">
           <DialogHeader><DialogTitle>Editar fornecedor</DialogTitle></DialogHeader>
           {editingFornecedor && (
             <FornecedorForm
