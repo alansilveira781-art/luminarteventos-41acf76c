@@ -13,6 +13,7 @@ import { Route as SolicitantesRouteImport } from './routes/solicitantes'
 import { Route as SaidasRouteImport } from './routes/saidas'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as FornecedoresRouteImport } from './routes/fornecedores'
+import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as EntradasRouteImport } from './routes/entradas'
 import { Route as DevolucoesRouteImport } from './routes/devolucoes'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -48,6 +49,11 @@ const RelatoriosRoute = RelatoriosRouteImport.update({
 const FornecedoresRoute = FornecedoresRouteImport.update({
   id: '/fornecedores',
   path: '/fornecedores',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FinanceiroRoute = FinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EntradasRoute = EntradasRouteImport.update({
@@ -139,6 +145,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/devolucoes': typeof DevolucoesRoute
   '/entradas': typeof EntradasRoute
+  '/financeiro': typeof FinanceiroRoute
   '/fornecedores': typeof FornecedoresRoute
   '/relatorios': typeof RelatoriosRoute
   '/saidas': typeof SaidasRoute
@@ -159,6 +166,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/devolucoes': typeof DevolucoesRoute
   '/entradas': typeof EntradasRoute
+  '/financeiro': typeof FinanceiroRoute
   '/fornecedores': typeof FornecedoresRoute
   '/relatorios': typeof RelatoriosRoute
   '/saidas': typeof SaidasRoute
@@ -182,6 +190,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/devolucoes': typeof DevolucoesRoute
   '/entradas': typeof EntradasRoute
+  '/financeiro': typeof FinanceiroRoute
   '/fornecedores': typeof FornecedoresRoute
   '/relatorios': typeof RelatoriosRoute
   '/saidas': typeof SaidasRoute
@@ -206,6 +215,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/devolucoes'
     | '/entradas'
+    | '/financeiro'
     | '/fornecedores'
     | '/relatorios'
     | '/saidas'
@@ -226,6 +236,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/devolucoes'
     | '/entradas'
+    | '/financeiro'
     | '/fornecedores'
     | '/relatorios'
     | '/saidas'
@@ -248,6 +259,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/devolucoes'
     | '/entradas'
+    | '/financeiro'
     | '/fornecedores'
     | '/relatorios'
     | '/saidas'
@@ -271,6 +283,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   DevolucoesRoute: typeof DevolucoesRoute
   EntradasRoute: typeof EntradasRoute
+  FinanceiroRoute: typeof FinanceiroRoute
   FornecedoresRoute: typeof FornecedoresRoute
   RelatoriosRoute: typeof RelatoriosRoute
   SaidasRoute: typeof SaidasRoute
@@ -308,6 +321,13 @@ declare module '@tanstack/react-router' {
       path: '/fornecedores'
       fullPath: '/fornecedores'
       preLoaderRoute: typeof FornecedoresRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/financeiro': {
+      id: '/financeiro'
+      path: '/financeiro'
+      fullPath: '/financeiro'
+      preLoaderRoute: typeof FinanceiroRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/entradas': {
@@ -462,6 +482,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   DevolucoesRoute: DevolucoesRoute,
   EntradasRoute: EntradasRoute,
+  FinanceiroRoute: FinanceiroRoute,
   FornecedoresRoute: FornecedoresRoute,
   RelatoriosRoute: RelatoriosRoute,
   SaidasRoute: SaidasRoute,
