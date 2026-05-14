@@ -34,22 +34,22 @@ function Hub() {
         description="Selecione um módulo para começar"
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {isAdmin && (
           <Link to="/admin" className="group">
-            <Card className="p-5 h-full border-primary/30 bg-gradient-to-br from-primary/10 to-transparent hover:border-primary transition-colors">
-              <div className="flex items-start justify-between mb-4">
-                <div className="h-11 w-11 rounded-lg bg-primary/15 text-primary flex items-center justify-center">
-                  <Shield className="h-5 w-5" />
+            <Card className="p-3 h-full border-primary/30 bg-gradient-to-br from-primary/10 to-transparent hover:border-primary transition-colors">
+              <div className="flex items-start justify-between mb-2">
+                <div className="h-8 w-8 rounded-md bg-primary/15 text-primary flex items-center justify-center">
+                  <Shield className="h-4 w-4" />
                 </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition" />
+                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition" />
               </div>
-              <div className="text-base font-semibold">Administração</div>
-              <div className="text-xs text-muted-foreground mt-1">
-                Visão geral, usuários, módulos e base de dados
+              <div className="text-sm font-semibold">Administração</div>
+              <div className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                Usuários, módulos e dados
               </div>
 
-              <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+              <div className="mt-2 grid grid-cols-3 gap-1 text-center">
                 <Stat icon={UsersIcon} label="Usuários" value={stats?.users} />
                 <Stat icon={Boxes} label="Módulos" value={stats?.modules} />
                 <Stat icon={Database} label="Admins" value={stats?.admins} />
@@ -63,16 +63,16 @@ function Hub() {
           const to = m.slug === "estoque" ? "/dashboard" : (m.rota || "/");
           return (
             <Link key={m.slug} to={to} className="group">
-              <Card className="p-5 h-full hover:border-primary/60 transition-colors">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="h-11 w-11 rounded-lg bg-muted text-foreground flex items-center justify-center">
-                    <Icon className="h-5 w-5" />
+              <Card className="p-3 h-full hover:border-primary/60 transition-colors">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="h-8 w-8 rounded-md bg-muted text-foreground flex items-center justify-center">
+                    <Icon className="h-4 w-4" />
                   </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition" />
+                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition" />
                 </div>
-                <div className="text-base font-semibold">{m.nome}</div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  Acessar módulo {m.nome.toLowerCase()}
+                <div className="text-sm font-semibold">{m.nome}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                  Acessar {m.nome.toLowerCase()}
                 </div>
               </Card>
             </Link>
