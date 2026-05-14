@@ -551,7 +551,7 @@ function SaidasPage() {
       </Dialog>
 
       <Dialog open={!!editingSolicitante} onOpenChange={(v) => !v && setEditingSolicitante(null)}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-[min(1100px,96vw)] w-[96vw]">
           <DialogHeader><DialogTitle>Editar solicitante</DialogTitle></DialogHeader>
           {editingSolicitante && (
             <SolicitanteForm

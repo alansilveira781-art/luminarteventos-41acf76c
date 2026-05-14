@@ -293,7 +293,7 @@ function EstoquePage() {
       </Card>
 
       <Dialog open={creating || !!editing} onOpenChange={(o) => { if (!o) { setCreating(false); setEditing(null); } }}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-[min(1100px,96vw)] w-[96vw]">
           <DialogHeader>
             <DialogTitle>{editing ? "Editar item" : "Novo item"}</DialogTitle>
           </DialogHeader>

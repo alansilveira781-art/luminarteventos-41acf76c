@@ -182,7 +182,7 @@ function SolicitantesPage() {
 
 
       <Dialog open={open} onOpenChange={(nextOpen) => { setOpen(nextOpen); if (!nextOpen) setEditing(null); }}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-[min(1100px,96vw)] w-[96vw]">
           <DialogHeader><DialogTitle>{editing ? "Editar solicitante" : "Novo solicitante"}</DialogTitle></DialogHeader>
           <SolicitanteForm initial={editing} onSubmit={(p: any) => mut.mutate(editing ? { ...p, id: editing.id } : p)} submitting={mut.isPending} />
         </DialogContent>
