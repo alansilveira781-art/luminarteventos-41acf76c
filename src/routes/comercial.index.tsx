@@ -1,0 +1,228 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import {
+  DndContext, PointerSensor, useSensor, useSensors,
+  useDroppable, useDraggable, type DragEndEvent,
+} from "@dnd-kit/core";
+import { Plus, FileText, CheckCircle2, XCircle, Pencil, Eye } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { CARD_STATUSES, type CardStatus, type ComercialCard } from "@/lib/comercial/types";
+import { useComercial, moveCard } from "@/lib/comercial/store";
+import { CardDialog } from "@/components/comercial/CardDialog";
+import { PerdaDialog } from "@/components/comercial/PerdaDialog";
+import { DetalhesDrawer } from "@/components/comercial/DetalhesDrawer";
+import { PropostaWizard } from "@/components/comercial/PropostaWizard";
+
+export const Route = createFileRoute("/comercial/")({
+  component: QuadroVendas,
+});
+
+const brl = (v: number) =>
+  Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const fmt = (d: string) => {
+  if (!d) return "—";
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : d;
+};
+
+function QuadroVendas() {
+  const { cards } = useComercial();
+  const [editCard, setEditCard] = useState<ComercialCard | null>(null);
+  const [defaultStatus, setDefaultStatus] = useState<CardStatus>("lead");
+  const [openCard, setOpenCard] = useState(false);
+  const [perdaCardId, setPerdaCardId] = useState<string | null>(null);
+  const [detalhesCard, setDetalhesCard] = useState<ComercialCard | null>(null);
+  const [wizardCardId, setWizardCardId] = useState<string | null>(null);
+  const [wizardOpen, setWizardOpen] = useState(false);
+
+  const byStatus = useMemo(() => {
+    const m: Record<CardStatus, ComercialCard[]> = {} as any;
+    CARD_STATUSES.forEach((s) => (m[s.key] = []));
+    cards.forEach((c) => (m[c.status] ??= []).push(c));
+    return m;
+  }, [cards]);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  function onDragEnd(e: DragEndEvent) {
+    const id = String(e.active.id);
+    const overId = e.over?.id ? String(e.over.id) : null;
+    if (!overId) return;
+    const status = overId as CardStatus;
+    const card = cards.find((c) => c.id === id);
+    if (!card || card.status === status) return;
+    if (status === "perda") {
+      setPerdaCardId(id);
+      return;
+    }
+    moveCard(id, status);
+  }
+
+  return (
+    <>
+      <PageHeader
+        title="Quadro de Vendas"
+        description="Arraste os cards entre as colunas para alterar o status"
+        actions={
+          <Button onClick={() => { setEditCard(null); setDefaultStatus("lead"); setOpenCard(true); }}>
+            <Plus className="h-4 w-4 mr-1" /> Novo lead
+          </Button>
+        }
+      />
+
+      <TooltipProvider>
+        <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+          <div className="flex gap-3 overflow-auto pb-4 max-h-[calc(100vh-180px)] items-start">
+            {CARD_STATUSES.map((s) => (
+              <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={byStatus[s.key]?.length ?? 0}>
+                {(byStatus[s.key] ?? []).map((c) => (
+                  <KanbanCard
+                    key={c.id}
+                    card={c}
+                    onEdit={() => { setEditCard(c); setOpenCard(true); }}
+                    onDetalhes={() => setDetalhesCard(c)}
+                    onVenda={() => moveCard(c.id, "fechamento")}
+                    onPerda={() => setPerdaCardId(c.id)}
+                    onProposta={() => { setWizardCardId(c.id); setWizardOpen(true); }}
+                  />
+                ))}
+                <button
+                  type="button"
+                  onClick={() => { setEditCard(null); setDefaultStatus(s.key); setOpenCard(true); }}
+                  className="w-full text-xs text-muted-foreground hover:text-foreground py-1.5 rounded border border-dashed border-border hover:border-primary"
+                >
+                  + adicionar
+                </button>
+              </Column>
+            ))}
+          </div>
+        </DndContext>
+      </TooltipProvider>
+
+      <CardDialog open={openCard} onOpenChange={setOpenCard} card={editCard} defaultStatus={defaultStatus} />
+      <PerdaDialog
+        open={!!perdaCardId}
+        onOpenChange={(v) => { if (!v) setPerdaCardId(null); }}
+        onConfirm={(motivo) => { if (perdaCardId) moveCard(perdaCardId, "perda", motivo); setPerdaCardId(null); }}
+      />
+      <DetalhesDrawer open={!!detalhesCard} onOpenChange={(v) => { if (!v) setDetalhesCard(null); }} card={detalhesCard} />
+      <PropostaWizard
+        open={wizardOpen}
+        onOpenChange={(v) => { setWizardOpen(v); if (!v) setWizardCardId(null); }}
+        cardId={wizardCardId}
+        defaults={(() => {
+          const c = cards.find((x) => x.id === wizardCardId);
+          return c ? { clienteNome: c.clienteNome, eventoNome: c.eventoNome, eventoData: c.eventoData } : undefined;
+        })()}
+      />
+    </>
+  );
+}
+
+function Column({
+  statusKey, label, color, count, children,
+}: { statusKey: string; label: string; color: string; count: number; children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id: statusKey });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex-shrink-0 w-72 rounded-lg border bg-muted/30 ${isOver ? "border-primary ring-2 ring-primary/30" : "border-border"}`}
+    >
+      <div className="px-3 py-2 border-b border-border flex items-center justify-between">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={`h-2 w-2 rounded-full ${color}`} />
+          <span className="text-xs font-semibold truncate">{label}</span>
+        </div>
+        <span className="text-[10px] text-muted-foreground">{count}</span>
+      </div>
+      <div className="p-2 space-y-2 min-h-[120px]">{children}</div>
+    </div>
+  );
+}
+
+function KanbanCard({
+  card, onEdit, onDetalhes, onVenda, onPerda, onProposta,
+}: {
+  card: ComercialCard;
+  onEdit: () => void; onDetalhes: () => void; onVenda: () => void; onPerda: () => void; onProposta: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id });
+  const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
+
+  const cardBody = (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`rounded-md border border-border bg-card p-2.5 text-xs shadow-sm ${isDragging ? "opacity-50" : ""}`}
+    >
+      <div className="flex items-start gap-2">
+        <button
+          type="button"
+          {...listeners}
+          {...attributes}
+          className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground select-none"
+          aria-label="Mover"
+        >⋮⋮</button>
+        <div className="flex-1 min-w-0">
+          <div className="font-medium text-sm truncate text-foreground">{card.clienteNome}</div>
+          {card.eventoNome && <div className="text-[11px] text-muted-foreground truncate">{card.eventoNome}</div>}
+          <div className="mt-1.5 space-y-0.5 text-[11px] text-muted-foreground">
+            {card.eventoData && <div>Data: {fmt(card.eventoData)}</div>}
+            {card.responsavel && <div>Resp.: {card.responsavel}</div>}
+            {card.valorEstimado > 0 && (
+              <div className="font-medium text-foreground">{brl(card.valorEstimado)}</div>
+            )}
+          </div>
+          {card.status === "perda" && card.motivoPerda && (
+            <span className="inline-block mt-1.5 px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-600 dark:text-rose-400 text-[10px] truncate max-w-full">
+              Perda: {card.motivoPerda}
+            </span>
+          )}
+          <div className="flex flex-wrap gap-1 mt-2">
+            <ActionBtn onClick={onVenda} label="Marcar como venda" icon={<CheckCircle2 className="h-3 w-3" />} className="text-emerald-600 hover:bg-emerald-500/10" />
+            <ActionBtn onClick={onPerda} label="Marcar como perda" icon={<XCircle className="h-3 w-3" />} className="text-rose-600 hover:bg-rose-500/10" />
+            <ActionBtn onClick={onEdit} label="Editar" icon={<Pencil className="h-3 w-3" />} />
+            <ActionBtn onClick={onDetalhes} label="Detalhes" icon={<Eye className="h-3 w-3" />} />
+            {card.status === "projeto" && (
+              <button
+                type="button"
+                onClick={onProposta}
+                className="ml-auto inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-primary text-primary-foreground hover:opacity-90"
+              >
+                <FileText className="h-3 w-3" /> Criar Proposta
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (card.status === "perda" && card.motivoPerda) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild><div>{cardBody}</div></TooltipTrigger>
+        <TooltipContent side="right">{card.motivoPerda}</TooltipContent>
+      </Tooltip>
+    );
+  }
+  return cardBody;
+}
+
+function ActionBtn({
+  onClick, label, icon, className = "",
+}: { onClick: () => void; label: string; icon: React.ReactNode; className?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      className={`inline-flex items-center justify-center h-6 w-6 rounded text-muted-foreground hover:text-foreground hover:bg-muted ${className}`}
+    >
+      {icon}
+    </button>
+  );
+}
