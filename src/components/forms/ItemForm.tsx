@@ -22,29 +22,33 @@ const itemStatuses = [
 
 export function ItemForm({
   initial,
+  seed,
   onSubmit,
   submitting,
   allowEditCodigo = false,
 }: {
   initial?: any;
+  /** Pré-preenche campos como se fosse novo item (para duplicar). Ignorado se `initial` for passado. */
+  seed?: any;
   onSubmit: (payload: any) => void;
   submitting?: boolean;
   allowEditCodigo?: boolean;
 }) {
+  const src = initial ?? seed;
   const [form, setForm] = useState({
     codigo: initial?.codigo ?? "",
-    codigo_proprio: initial?.codigo_proprio ?? "",
-    nome: initial?.nome ?? "",
-    categoria: initial?.categoria ?? "",
-    descricao: initial?.descricao ?? "",
-    unidade: initial?.unidade ?? "un",
-    valor_unitario: initial?.valor_unitario ?? "",
+    codigo_proprio: src?.codigo_proprio ?? "",
+    nome: src?.nome ?? "",
+    categoria: src?.categoria ?? "",
+    descricao: src?.descricao ?? "",
+    unidade: src?.unidade ?? "un",
+    valor_unitario: src?.valor_unitario ?? "",
     quantidade_atual: initial?.quantidade_atual ?? 0,
-    quantidade_minima: initial?.quantidade_minima ?? 0,
-    localizacao: initial?.localizacao ?? "",
-    status: initial?.status ?? "disponivel",
-    observacoes: initial?.observacoes ?? "",
-    foto_url: initial?.foto_url ?? "",
+    quantidade_minima: src?.quantidade_minima ?? 0,
+    localizacao: src?.localizacao ?? "",
+    status: src?.status ?? "disponivel",
+    observacoes: src?.observacoes ?? "",
+    foto_url: src?.foto_url ?? "",
   });
 
   useEffect(() => {
