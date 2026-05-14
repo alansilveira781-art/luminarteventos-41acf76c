@@ -90,7 +90,7 @@ function Hub() {
 }
 
 function iconFor(slug: string) {
-  const map: Record<string, string> = { estoque: "Package", compras: "ShoppingCart" };
+  const map: Record<string, string> = { estoque: "Package", compras: "ShoppingCart", financeiro: "Wallet" };
   return map[slug] ?? "Boxes";
 }
 
