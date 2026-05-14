@@ -70,7 +70,7 @@ export const Route = createFileRoute("/api/public/solicitar")({
           [tipoColumn]: d.subtipo || null,
         };
 
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await (supabaseAdmin as any)
           .from(table)
           .insert(payload)
           .select("id, numero")
