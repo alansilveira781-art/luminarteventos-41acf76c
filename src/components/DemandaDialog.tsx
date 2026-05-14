@@ -95,10 +95,31 @@ export function DemandaDialog({
         if (error) throw error;
         id = data.id;
       }
+      // Upload de anexos pendentes (anexados antes de salvar)
+      if (id && pendingFiles.length > 0) {
+        for (const file of pendingFiles) {
+          const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+          const path = `${id}/${Date.now()}_${safeName}`;
+          const { error: upErr } = await sb.storage.from("demanda-anexos").upload(path, file, {
+            contentType: file.type || undefined,
+          });
+          if (upErr) throw upErr;
+          const { error: insErr } = await sb.from("demanda_anexos").insert({
+            demanda_id: id,
+            nome: file.name,
+            path,
+            mime_type: file.type || null,
+            tamanho: file.size,
+            uploaded_by: user?.id ?? null,
+          });
+          if (insErr) throw insErr;
+        }
+      }
       return id;
     },
     onSuccess: () => {
       toast.success("Demanda salva");
+      setPendingFiles([]);
       qc.invalidateQueries({ queryKey: ["demandas"] });
       onOpenChange(false);
     },
