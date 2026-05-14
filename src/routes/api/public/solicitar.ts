@@ -83,13 +83,11 @@ export const Route = createFileRoute("/api/public/solicitar")({
           (d.descricao ? `\n\n${d.descricao}` : "");
 
         if (d.tipo === "compra") {
-          const valorTotal =
-            d.valor_total ??
-            d.itens!.reduce(
-              (acc, it) => acc + (it.valor_unitario ?? 0) * it.quantidade,
-              0,
-            ) ||
-            null;
+          const somaItens = d.itens!.reduce(
+            (acc, it) => acc + (it.valor_unitario ?? 0) * it.quantidade,
+            0,
+          );
+          const valorTotal = d.valor_total ?? (somaItens > 0 ? somaItens : null);
 
           const { data: compra, error } = await (supabaseAdmin as any)
             .from("compras")
