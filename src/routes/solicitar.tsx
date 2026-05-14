@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TIPO_COMPRA_OPTIONS } from "@/lib/compras";
 import { TIPO_DEMANDA_OPTIONS } from "@/lib/demandas";
-import { ShoppingCart, Wallet, ChevronLeft, ChevronRight, Check, Loader2 } from "lucide-react";
+import { ShoppingCart, Wallet, ChevronLeft, ChevronRight, Check, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/solicitar")({
@@ -23,6 +23,13 @@ export const Route = createFileRoute("/solicitar")({
 
 type Tipo = "compra" | "demanda";
 
+type ItemRow = {
+  descricao: string;
+  quantidade: string;
+  unidade: string;
+  valor_unitario: string;
+};
+
 type FormState = {
   tipo: Tipo | null;
   titulo: string;
@@ -33,7 +40,10 @@ type FormState = {
   solicitante_telefone: string;
   descricao: string;
   valor_total: string;
+  itens: ItemRow[];
 };
+
+const emptyItem = (): ItemRow => ({ descricao: "", quantidade: "1", unidade: "un", valor_unitario: "" });
 
 const initial: FormState = {
   tipo: null,
@@ -45,6 +55,7 @@ const initial: FormState = {
   solicitante_telefone: "",
   descricao: "",
   valor_total: "",
+  itens: [emptyItem()],
 };
 
 function SolicitarPage() {
@@ -55,10 +66,28 @@ function SolicitarPage() {
 
   const update = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
 
+  const updateItem = (idx: number, patch: Partial<ItemRow>) =>
+    setForm((f) => ({
+      ...f,
+      itens: f.itens.map((it, i) => (i === idx ? { ...it, ...patch } : it)),
+    }));
+
+  const addItem = () => setForm((f) => ({ ...f, itens: [...f.itens, emptyItem()] }));
+  const removeItem = (idx: number) =>
+    setForm((f) => ({ ...f, itens: f.itens.length > 1 ? f.itens.filter((_, i) => i !== idx) : f.itens }));
+
   function canAdvance(): boolean {
     if (step === 0) return !!form.tipo;
     if (step === 1) return form.titulo.trim().length > 0;
-    if (step === 2) return form.solicitante_nome.trim().length > 0 && form.descricao.trim().length > 0;
+    if (step === 2) {
+      if (form.solicitante_nome.trim().length === 0) return false;
+      if (form.tipo === "compra") {
+        return form.itens.some(
+          (it) => it.descricao.trim().length > 0 && Number(it.quantidade) > 0,
+        );
+      }
+      return form.descricao.trim().length > 0;
+    }
     return true;
   }
 
@@ -66,6 +95,18 @@ function SolicitarPage() {
     if (!form.tipo) return;
     setSending(true);
     try {
+      const itensValidos =
+        form.tipo === "compra"
+          ? form.itens
+              .filter((it) => it.descricao.trim().length > 0 && Number(it.quantidade) > 0)
+              .map((it) => ({
+                descricao: it.descricao.trim(),
+                quantidade: Number(it.quantidade),
+                unidade: it.unidade.trim(),
+                valor_unitario: it.valor_unitario ? Number(it.valor_unitario) : null,
+              }))
+          : undefined;
+
       const res = await fetch("/api/public/solicitar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -79,6 +120,7 @@ function SolicitarPage() {
           solicitante_telefone: form.solicitante_telefone.trim(),
           descricao: form.descricao.trim(),
           valor_total: form.valor_total ? Number(form.valor_total) : null,
+          itens: itensValidos,
         }),
       });
       const json = await res.json();
@@ -126,6 +168,8 @@ function SolicitarPage() {
     );
   }
 
+  const isCompra = form.tipo === "compra";
+
   return (
     <Shell>
       {/* Progress */}
@@ -169,16 +213,16 @@ function SolicitarPage() {
                 value={form.titulo}
                 maxLength={200}
                 onChange={(e) => update({ titulo: e.target.value })}
-                placeholder="Ex.: Manutenção dos veículos da frota"
+                placeholder={isCompra ? "Ex.: Compra de papel A4" : "Ex.: Manutenção da frota"}
               />
             </Field>
-            <Field label={form.tipo === "compra" ? "Tipo de compra" : "Tipo de demanda"}>
+            <Field label={isCompra ? "Tipo de compra" : "Tipo de demanda"}>
               <Select value={form.subtipo} onValueChange={(v) => update({ subtipo: v })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione…" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(form.tipo === "compra" ? TIPO_COMPRA_OPTIONS : TIPO_DEMANDA_OPTIONS).map((t) => (
+                  {(isCompra ? TIPO_COMPRA_OPTIONS : TIPO_DEMANDA_OPTIONS).map((t) => (
                     <SelectItem key={t.value} value={t.value}>
                       {t.label}
                     </SelectItem>
@@ -194,7 +238,7 @@ function SolicitarPage() {
                 placeholder="Opcional"
               />
             </Field>
-            <Field label="Valor estimado (R$)">
+            <Field label="Valor estimado total (R$)">
               <Input
                 type="number"
                 step="0.01"
@@ -209,8 +253,11 @@ function SolicitarPage() {
       )}
 
       {step === 2 && (
-        <Step title="Quem está solicitando?" subtitle="Para que possamos retornar.">
-          <div className="space-y-4">
+        <Step
+          title="Detalhes da solicitação"
+          subtitle={isCompra ? "Liste os itens e quem está solicitando." : "Descreva a demanda e quem está solicitando."}
+        >
+          <div className="space-y-5">
             <Field label="Seu nome *">
               <Input
                 value={form.solicitante_nome}
@@ -238,18 +285,95 @@ function SolicitarPage() {
                 />
               </Field>
             </div>
-            <Field label="Descreva sua solicitação *">
-              <Textarea
-                rows={6}
-                value={form.descricao}
-                maxLength={4000}
-                onChange={(e) => update({ descricao: e.target.value })}
-                placeholder="Detalhe o que precisa, quantidades, prazos, observações…"
-              />
-              <p className="text-[11px] text-muted-foreground mt-1">
-                {form.descricao.length}/4000
-              </p>
-            </Field>
+
+            {isCompra ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    Itens da compra *
+                  </Label>
+                  <Button type="button" size="sm" variant="outline" onClick={addItem}>
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar item
+                  </Button>
+                </div>
+                <div className="space-y-3">
+                  {form.itens.map((it, idx) => (
+                    <div
+                      key={idx}
+                      className="rounded-lg border border-border p-3 space-y-2 bg-muted/20"
+                    >
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1 space-y-2">
+                          <Input
+                            value={it.descricao}
+                            maxLength={300}
+                            onChange={(e) => updateItem(idx, { descricao: e.target.value })}
+                            placeholder="Descrição do item"
+                          />
+                          <div className="grid grid-cols-3 gap-2">
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={it.quantidade}
+                              onChange={(e) => updateItem(idx, { quantidade: e.target.value })}
+                              placeholder="Qtd"
+                            />
+                            <Input
+                              value={it.unidade}
+                              maxLength={20}
+                              onChange={(e) => updateItem(idx, { unidade: e.target.value })}
+                              placeholder="Un."
+                            />
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={it.valor_unitario}
+                              onChange={(e) => updateItem(idx, { valor_unitario: e.target.value })}
+                              placeholder="Vlr unit."
+                            />
+                          </div>
+                        </div>
+                        {form.itens.length > 1 && (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => removeItem(idx)}
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <Field label="Observações (opcional)">
+                  <Textarea
+                    rows={3}
+                    value={form.descricao}
+                    maxLength={4000}
+                    onChange={(e) => update({ descricao: e.target.value })}
+                    placeholder="Algum detalhe adicional sobre a compra…"
+                  />
+                </Field>
+              </div>
+            ) : (
+              <Field label="Descreva sua demanda *">
+                <Textarea
+                  rows={6}
+                  value={form.descricao}
+                  maxLength={4000}
+                  onChange={(e) => update({ descricao: e.target.value })}
+                  placeholder="Detalhe a demanda, prazos, locais, observações…"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {form.descricao.length}/4000
+                </p>
+              </Field>
+            )}
           </div>
         </Step>
       )}
@@ -257,7 +381,7 @@ function SolicitarPage() {
       {step === 3 && (
         <Step title="Confira antes de enviar" subtitle="Revise os dados da solicitação.">
           <div className="rounded-lg border border-border divide-y divide-border text-sm">
-            <Row k="Tipo" v={form.tipo === "compra" ? "Compra" : "Demanda"} />
+            <Row k="Tipo" v={isCompra ? "Compra" : "Demanda"} />
             <Row k="Título" v={form.titulo} />
             {form.subtipo && <Row k="Categoria" v={labelOf(form.tipo!, form.subtipo)} />}
             {form.fornecedor && <Row k="Fornecedor" v={form.fornecedor} />}
@@ -270,10 +394,36 @@ function SolicitarPage() {
             <Row k="Solicitante" v={form.solicitante_nome} />
             {form.solicitante_email && <Row k="E-mail" v={form.solicitante_email} />}
             {form.solicitante_telefone && <Row k="Telefone" v={form.solicitante_telefone} />}
-            <div className="p-3">
-              <div className="text-xs text-muted-foreground mb-1">Descrição</div>
-              <div className="whitespace-pre-wrap break-words">{form.descricao}</div>
-            </div>
+
+            {isCompra ? (
+              <div className="p-3">
+                <div className="text-xs text-muted-foreground mb-2">Itens</div>
+                <ul className="space-y-1">
+                  {form.itens
+                    .filter((it) => it.descricao.trim() && Number(it.quantidade) > 0)
+                    .map((it, idx) => (
+                      <li key={idx} className="flex justify-between gap-3 text-sm">
+                        <span className="break-words">{it.descricao}</span>
+                        <span className="text-muted-foreground whitespace-nowrap">
+                          {it.quantidade} {it.unidade}
+                          {it.valor_unitario ? ` · R$ ${Number(it.valor_unitario).toFixed(2)}` : ""}
+                        </span>
+                      </li>
+                    ))}
+                </ul>
+                {form.descricao && (
+                  <>
+                    <div className="text-xs text-muted-foreground mt-3 mb-1">Observações</div>
+                    <div className="whitespace-pre-wrap break-words">{form.descricao}</div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="p-3">
+                <div className="text-xs text-muted-foreground mb-1">Descrição</div>
+                <div className="whitespace-pre-wrap break-words">{form.descricao}</div>
+              </div>
+            )}
           </div>
         </Step>
       )}
