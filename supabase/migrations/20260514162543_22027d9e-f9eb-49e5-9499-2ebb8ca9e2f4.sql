@@ -1,0 +1,1 @@
+INSERT INTO public.modulos (slug, nome, rota, ativo) VALUES ('comercial', 'Comercial', '/comercial', true) ON CONFLICT (slug) DO NOTHING;
