@@ -23,6 +23,8 @@ export type Demanda = {
   titulo?: string | null;
   tipo_demanda?: string | null;
   descritivo?: string | null;
+  evento_projeto?: string | null;
+  evento_projeto_id?: string | null;
   solicitante?: string | null;
   solicitante_id?: string | null;
   fornecedor?: string | null;
