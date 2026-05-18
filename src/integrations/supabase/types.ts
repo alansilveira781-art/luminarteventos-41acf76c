@@ -14,6 +14,228 @@ export type Database = {
   }
   public: {
     Tables: {
+      ca_centros_custo: {
+        Row: {
+          ativo: boolean
+          external_id: string
+          id: string
+          nome: string
+          synced_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          external_id: string
+          id?: string
+          nome: string
+          synced_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          external_id?: string
+          id?: string
+          nome?: string
+          synced_at?: string
+        }
+        Relationships: []
+      }
+      ca_contas_pagar: {
+        Row: {
+          categoria_external_id: string | null
+          centro_custo_external_id: string | null
+          data_pagamento: string | null
+          data_vencimento: string | null
+          descricao: string | null
+          documento: string | null
+          external_id: string
+          fornecedor_nome: string | null
+          id: string
+          observacoes: string | null
+          status: string | null
+          synced_at: string
+          valor: number
+        }
+        Insert: {
+          categoria_external_id?: string | null
+          centro_custo_external_id?: string | null
+          data_pagamento?: string | null
+          data_vencimento?: string | null
+          descricao?: string | null
+          documento?: string | null
+          external_id: string
+          fornecedor_nome?: string | null
+          id?: string
+          observacoes?: string | null
+          status?: string | null
+          synced_at?: string
+          valor?: number
+        }
+        Update: {
+          categoria_external_id?: string | null
+          centro_custo_external_id?: string | null
+          data_pagamento?: string | null
+          data_vencimento?: string | null
+          descricao?: string | null
+          documento?: string | null
+          external_id?: string
+          fornecedor_nome?: string | null
+          id?: string
+          observacoes?: string | null
+          status?: string | null
+          synced_at?: string
+          valor?: number
+        }
+        Relationships: []
+      }
+      ca_contas_receber: {
+        Row: {
+          categoria_external_id: string | null
+          centro_custo_external_id: string | null
+          cliente_nome: string | null
+          data_pagamento: string | null
+          data_vencimento: string | null
+          descricao: string | null
+          documento: string | null
+          external_id: string
+          id: string
+          observacoes: string | null
+          status: string | null
+          synced_at: string
+          valor: number
+        }
+        Insert: {
+          categoria_external_id?: string | null
+          centro_custo_external_id?: string | null
+          cliente_nome?: string | null
+          data_pagamento?: string | null
+          data_vencimento?: string | null
+          descricao?: string | null
+          documento?: string | null
+          external_id: string
+          id?: string
+          observacoes?: string | null
+          status?: string | null
+          synced_at?: string
+          valor?: number
+        }
+        Update: {
+          categoria_external_id?: string | null
+          centro_custo_external_id?: string | null
+          cliente_nome?: string | null
+          data_pagamento?: string | null
+          data_vencimento?: string | null
+          descricao?: string | null
+          documento?: string | null
+          external_id?: string
+          id?: string
+          observacoes?: string | null
+          status?: string | null
+          synced_at?: string
+          valor?: number
+        }
+        Relationships: []
+      }
+      ca_extrato: {
+        Row: {
+          categoria_external_id: string | null
+          centro_custo_external_id: string | null
+          conta_bancaria: string | null
+          data: string | null
+          descricao: string | null
+          external_id: string
+          id: string
+          synced_at: string
+          tipo: string | null
+          valor: number
+        }
+        Insert: {
+          categoria_external_id?: string | null
+          centro_custo_external_id?: string | null
+          conta_bancaria?: string | null
+          data?: string | null
+          descricao?: string | null
+          external_id: string
+          id?: string
+          synced_at?: string
+          tipo?: string | null
+          valor?: number
+        }
+        Update: {
+          categoria_external_id?: string | null
+          centro_custo_external_id?: string | null
+          conta_bancaria?: string | null
+          data?: string | null
+          descricao?: string | null
+          external_id?: string
+          id?: string
+          synced_at?: string
+          tipo?: string | null
+          valor?: number
+        }
+        Relationships: []
+      }
+      ca_plano_contas: {
+        Row: {
+          ativo: boolean
+          codigo: string | null
+          external_id: string
+          id: string
+          nome: string
+          pai_external_id: string | null
+          synced_at: string
+          tipo: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          codigo?: string | null
+          external_id: string
+          id?: string
+          nome: string
+          pai_external_id?: string | null
+          synced_at?: string
+          tipo?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string | null
+          external_id?: string
+          id?: string
+          nome?: string
+          pai_external_id?: string | null
+          synced_at?: string
+          tipo?: string | null
+        }
+        Relationships: []
+      }
+      ca_sync_log: {
+        Row: {
+          finished_at: string | null
+          id: string
+          mensagem: string | null
+          qtd_registros: number | null
+          recurso: string
+          started_at: string
+          status: string
+        }
+        Insert: {
+          finished_at?: string | null
+          id?: string
+          mensagem?: string | null
+          qtd_registros?: number | null
+          recurso: string
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          finished_at?: string | null
+          id?: string
+          mensagem?: string | null
+          qtd_registros?: number | null
+          recurso?: string
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       categorias: {
         Row: {
           created_at: string
@@ -391,6 +613,39 @@ export type Database = {
           created_at?: string
           id?: string
           nome?: string
+        }
+        Relationships: []
+      }
+      conta_azul_credentials: {
+        Row: {
+          access_token: string
+          connected_at: string
+          connected_by: string | null
+          expires_at: string
+          id: string
+          refresh_token: string
+          scope: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          connected_at?: string
+          connected_by?: string | null
+          expires_at: string
+          id?: string
+          refresh_token: string
+          scope?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          connected_at?: string
+          connected_by?: string | null
+          expires_at?: string
+          id?: string
+          refresh_token?: string
+          scope?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
