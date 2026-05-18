@@ -34,7 +34,7 @@ const fmtPeriodo = (ini: string, fim: string) => {
 };
 
 function QuadroVendas() {
-  const { cards } = useComercial();
+  const { cards, propostas } = useComercial();
   const [editCard, setEditCard] = useState<ComercialCard | null>(null);
   const [defaultStatus, setDefaultStatus] = useState<CardStatus>("lead");
   const [openCard, setOpenCard] = useState(false);
@@ -162,10 +162,11 @@ function Column({
 }
 
 function KanbanCard({
-  card, onEdit, onDetalhes, onVenda, onPerda, onProposta,
+  card, hasProposta, onEdit, onDetalhes, onVenda, onPerda, onProposta, onImprimir,
 }: {
   card: ComercialCard;
-  onEdit: () => void; onDetalhes: () => void; onVenda: () => void; onPerda: () => void; onProposta: () => void;
+  hasProposta: boolean;
+  onEdit: () => void; onDetalhes: () => void; onVenda: () => void; onPerda: () => void; onProposta: () => void; onImprimir: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
@@ -204,6 +205,9 @@ function KanbanCard({
             <ActionBtn onClick={onPerda} label="Marcar como perda" icon={<XCircle className="h-3 w-3" />} className="text-rose-600 hover:bg-rose-500/10" />
             <ActionBtn onClick={onEdit} label="Editar" icon={<Pencil className="h-3 w-3" />} />
             <ActionBtn onClick={onDetalhes} label="Detalhes" icon={<Eye className="h-3 w-3" />} />
+            {hasProposta && (
+              <ActionBtn onClick={onImprimir} label="Imprimir proposta (PDF)" icon={<Printer className="h-3 w-3" />} className="text-primary hover:bg-primary/10" />
+            )}
             {card.status === "projeto" && (
               <button
                 type="button"
