@@ -23,6 +23,8 @@ export type Demanda = {
   titulo?: string | null;
   tipo_demanda?: string | null;
   descritivo?: string | null;
+  evento_projeto?: string | null;
+  evento_projeto_id?: string | null;
   solicitante?: string | null;
   solicitante_id?: string | null;
   fornecedor?: string | null;
@@ -128,7 +130,7 @@ export function DemandaDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
         {(form as any).numero != null && (
           <div className="-mt-2 -mx-6 px-6 pb-2 pr-12 text-xs font-mono text-muted-foreground border-b border-border">
             DEMANDA-{(form as any).numero}
@@ -254,14 +256,27 @@ export function DemandaDialog({
             </div>
           </TabsContent>
 
-          <TabsContent value="descritivo" className="space-y-2 pt-4">
-            <label className="text-xs font-medium text-muted-foreground">Descritivo da solicitação</label>
-            <Textarea
-              rows={14}
-              value={form.descritivo ?? ""}
-              onChange={(e) => setForm({ ...form, descritivo: e.target.value })}
-              placeholder="Descreva em detalhes a solicitação (o que precisa, quantidades, observações, prazos, etc.)"
-            />
+          <TabsContent value="descritivo" className="space-y-3 pt-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Evento / Projeto</label>
+              <SelectCreatable
+                table="eventos_projetos"
+                value={form.evento_projeto}
+                onChange={(v) => {
+                  setForm({ ...form, evento_projeto: v, evento_projeto_id: null });
+                }}
+                placeholder="Selecione ou cadastre um evento/projeto…"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Descritivo da solicitação</label>
+              <Textarea
+                rows={12}
+                value={form.descritivo ?? ""}
+                onChange={(e) => setForm({ ...form, descritivo: e.target.value })}
+                placeholder="Descreva em detalhes a solicitação (o que precisa, quantidades, observações, prazos, etc.)"
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="anexos" className="space-y-2 pt-4">

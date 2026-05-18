@@ -503,6 +503,8 @@ export type Database = {
           data_solicitacao: string
           descritivo: string | null
           documento: string | null
+          evento_projeto: string | null
+          evento_projeto_id: string | null
           fornecedor: string | null
           fornecedor_id: string | null
           id: string
@@ -528,6 +530,8 @@ export type Database = {
           data_solicitacao?: string
           descritivo?: string | null
           documento?: string | null
+          evento_projeto?: string | null
+          evento_projeto_id?: string | null
           fornecedor?: string | null
           fornecedor_id?: string | null
           id?: string
@@ -553,6 +557,8 @@ export type Database = {
           data_solicitacao?: string
           descritivo?: string | null
           documento?: string | null
+          evento_projeto?: string | null
+          evento_projeto_id?: string | null
           fornecedor?: string | null
           fornecedor_id?: string | null
           id?: string
@@ -568,6 +574,32 @@ export type Database = {
           titulo?: string | null
           updated_at?: string
           valor_total?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demandas_evento_projeto_id_fkey"
+            columns: ["evento_projeto_id"]
+            isOneToOne: false
+            referencedRelation: "eventos_projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      eventos_projetos: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
         }
         Relationships: []
       }
