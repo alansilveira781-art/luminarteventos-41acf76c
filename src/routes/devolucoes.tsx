@@ -276,7 +276,7 @@ function DevolucoesPage() {
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Nova devolução</DialogTitle></DialogHeader>
           <DevolucaoForm
             saidas={saidasAbertas ?? []}
