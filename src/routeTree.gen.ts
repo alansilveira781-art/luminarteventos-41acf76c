@@ -39,6 +39,7 @@ import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 import { Route as AdminModulosRouteImport } from './routes/admin.modulos'
 import { Route as AdminDadosRouteImport } from './routes/admin.dados'
 import { Route as ApiPublicSolicitarRouteImport } from './routes/api/public/solicitar'
+import { Route as ApiContaazulOauthPrepareRouteImport } from './routes/api/contaazul/oauth.prepare'
 
 const SolicitarRoute = SolicitarRouteImport.update({
   id: '/solicitar',
@@ -190,6 +191,12 @@ const ApiPublicSolicitarRoute = ApiPublicSolicitarRouteImport.update({
   path: '/api/public/solicitar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiContaazulOauthPrepareRoute =
+  ApiContaazulOauthPrepareRouteImport.update({
+    id: '/api/contaazul/oauth/prepare',
+    path: '/api/contaazul/oauth/prepare',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -222,6 +229,7 @@ export interface FileRoutesByFullPath {
   '/estoque/': typeof EstoqueIndexRoute
   '/financeiro/': typeof FinanceiroIndexRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
+  '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -250,6 +258,7 @@ export interface FileRoutesByTo {
   '/estoque': typeof EstoqueIndexRoute
   '/financeiro': typeof FinanceiroIndexRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
+  '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -283,6 +292,7 @@ export interface FileRoutesById {
   '/estoque/': typeof EstoqueIndexRoute
   '/financeiro/': typeof FinanceiroIndexRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
+  '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -317,6 +327,7 @@ export interface FileRouteTypes {
     | '/estoque/'
     | '/financeiro/'
     | '/api/public/solicitar'
+    | '/api/contaazul/oauth/prepare'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -345,6 +356,7 @@ export interface FileRouteTypes {
     | '/estoque'
     | '/financeiro'
     | '/api/public/solicitar'
+    | '/api/contaazul/oauth/prepare'
   id:
     | '__root__'
     | '/'
@@ -377,6 +389,7 @@ export interface FileRouteTypes {
     | '/estoque/'
     | '/financeiro/'
     | '/api/public/solicitar'
+    | '/api/contaazul/oauth/prepare'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -398,6 +411,7 @@ export interface RootRouteChildren {
   EstoqueAReceberRoute: typeof EstoqueAReceberRoute
   EstoqueIndexRoute: typeof EstoqueIndexRoute
   ApiPublicSolicitarRoute: typeof ApiPublicSolicitarRoute
+  ApiContaazulOauthPrepareRoute: typeof ApiContaazulOauthPrepareRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -612,6 +626,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSolicitarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/contaazul/oauth/prepare': {
+      id: '/api/contaazul/oauth/prepare'
+      path: '/api/contaazul/oauth/prepare'
+      fullPath: '/api/contaazul/oauth/prepare'
+      preLoaderRoute: typeof ApiContaazulOauthPrepareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -695,7 +716,17 @@ const rootRouteChildren: RootRouteChildren = {
   EstoqueAReceberRoute: EstoqueAReceberRoute,
   EstoqueIndexRoute: EstoqueIndexRoute,
   ApiPublicSolicitarRoute: ApiPublicSolicitarRoute,
+  ApiContaazulOauthPrepareRoute: ApiContaazulOauthPrepareRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
