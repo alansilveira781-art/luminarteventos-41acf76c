@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,11 +11,13 @@ import { Plus, Trash2, ChevronLeft, ChevronRight, ImagePlus, X } from "lucide-re
 import { toast } from "sonner";
 import {
   TIPOS_EVENTO,
+  TIPO_MEDIDA_LABEL,
   type Ambiente,
   type ItemAmbiente,
   type DescricaoItem,
   type CustoExtra,
   type Proposta,
+  type CatalogoDescricao,
   ambienteSubtotal,
   itemSubtotal,
   descricaoSubtotal,
@@ -51,18 +54,40 @@ const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 const brl = (v: number) =>
   Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-function newDescricao(): DescricaoItem {
-  return { id: uid(), descricao: "", unidade: "un", quantidade: 1, valorUnitario: 0 };
+function newDescricaoVazia(): DescricaoItem {
+  return {
+    id: uid(),
+    catalogoId: null,
+    descricao: "",
+    tipoMedida: "unidade",
+    unidade: "un",
+    quantidade: 1,
+    valorUnitario: 0,
+  };
+}
+function descricaoFromCatalogo(c: CatalogoDescricao): DescricaoItem {
+  return {
+    id: uid(),
+    catalogoId: c.id,
+    descricao: c.nome,
+    tipoMedida: c.tipoMedida,
+    unidade: c.unidade || "un",
+    quantidade: 1,
+    valorUnitario: c.valorUnitario,
+    largura: c.tipoMedida === "unidade" ? undefined : 0,
+    altura: c.tipoMedida === "dimensional" ? 0 : undefined,
+    comprimento: c.tipoMedida !== "unidade" ? 0 : undefined,
+  };
 }
 function newItem(): ItemAmbiente {
-  return { id: uid(), nome: "", descricoes: [newDescricao()] };
+  return { id: uid(), nome: "", descricoes: [] };
 }
 function newAmbiente(nome = ""): Ambiente {
   return { id: uid(), nome, imagens: [], itens: [newItem()] };
 }
 
 export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta }: Props) {
-  const { consultores } = useComercial();
+  const { consultores, catalogo } = useComercial();
   const [step, setStep] = useState(0);
   const [cliente, setCliente] = useState({ nome: "", telefone: "", email: "" });
   const [evento, setEvento] = useState<Proposta["evento"]>({
@@ -202,6 +227,18 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
     }));
   }
 
+  function adicionarDescricaoDoCatalogo(aIdx: number, iIdx: number, catalogoId: string) {
+    if (catalogoId === "__vazia__") {
+      const novas = [...ambientes[aIdx].itens[iIdx].descricoes, newDescricaoVazia()];
+      patchItem(aIdx, iIdx, { descricoes: novas });
+      return;
+    }
+    const c = catalogo.find((x) => x.id === catalogoId);
+    if (!c) return;
+    const novas = [...ambientes[aIdx].itens[iIdx].descricoes, descricaoFromCatalogo(c)];
+    patchItem(aIdx, iIdx, { descricoes: novas });
+  }
+
   async function adicionarImagens(aIdx: number, files: FileList | null) {
     if (!files || files.length === 0) return;
     const arr = Array.from(files);
@@ -218,7 +255,7 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{proposta ? `Editar proposta #${proposta.numero}` : "Criar proposta"}</DialogTitle>
           </DialogHeader>
@@ -290,7 +327,8 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <p className="text-xs text-muted-foreground">
-                  Cada <b>ambiente</b> contém vários <b>itens</b>, e cada item pode ter várias <b>descrições</b>.
+                  Cada <b>ambiente</b> contém vários <b>itens</b>, e cada item tem <b>descrições</b> do catálogo.{" "}
+                  <Link to="/comercial/catalogo" className="text-primary underline">Gerenciar catálogo →</Link>
                 </p>
                 <Button size="sm" variant="outline" onClick={() => setAmbientes([...ambientes, newAmbiente()])}>
                   <Plus className="h-3 w-3 mr-1" /> Adicionar ambiente
@@ -369,48 +407,44 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead className="bg-muted/30 text-xs">
-                              <tr>
-                                <th className="text-left p-2">Descrição</th>
-                                <th className="text-left p-2 w-20">Unid.</th>
-                                <th className="text-right p-2 w-20">Qtd</th>
-                                <th className="text-right p-2 w-32">Valor unit.</th>
-                                <th className="text-right p-2 w-32">Subtotal</th>
-                                <th className="w-10" />
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {item.descricoes.map((d, dIdx) => (
-                                <tr key={d.id} className="border-t border-border">
-                                  <td className="p-2">
-                                    <Input value={d.descricao} onChange={(e) => patchDescricao(aIdx, iIdx, dIdx, { descricao: e.target.value })} />
-                                  </td>
-                                  <td className="p-2">
-                                    <Input value={d.unidade} onChange={(e) => patchDescricao(aIdx, iIdx, dIdx, { unidade: e.target.value })} />
-                                  </td>
-                                  <td className="p-2">
-                                    <NumberInput className="text-right" value={d.quantidade} onChange={(n) => patchDescricao(aIdx, iIdx, dIdx, { quantidade: n })} />
-                                  </td>
-                                  <td className="p-2">
-                                    <NumberInput step="0.01" className="text-right" value={d.valorUnitario} onChange={(n) => patchDescricao(aIdx, iIdx, dIdx, { valorUnitario: n })} />
-                                  </td>
-                                  <td className="p-2 text-right font-medium whitespace-nowrap">{brl(descricaoSubtotal(d))}</td>
-                                  <td className="p-2">
-                                    <Button size="icon" variant="ghost" onClick={() => patchItem(aIdx, iIdx, { descricoes: item.descricoes.filter((_, k) => k !== dIdx) })}>
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                        <div className="p-2 border-t border-border">
-                          <Button size="sm" variant="outline" onClick={() => patchItem(aIdx, iIdx, { descricoes: [...item.descricoes, newDescricao()] })}>
-                            <Plus className="h-3 w-3 mr-1" /> Adicionar descrição
-                          </Button>
+
+                        <div className="p-2 space-y-2">
+                          {item.descricoes.length === 0 && (
+                            <div className="text-xs text-muted-foreground text-center py-2">
+                              Nenhuma descrição. Adicione uma do catálogo abaixo.
+                            </div>
+                          )}
+                          {item.descricoes.map((d, dIdx) => (
+                            <DescricaoRow
+                              key={d.id}
+                              d={d}
+                              onPatch={(patch) => patchDescricao(aIdx, iIdx, dIdx, patch)}
+                              onRemove={() =>
+                                patchItem(aIdx, iIdx, { descricoes: item.descricoes.filter((_, k) => k !== dIdx) })
+                              }
+                            />
+                          ))}
+
+                          <div className="flex gap-2 pt-1">
+                            <Select value="" onValueChange={(v) => adicionarDescricaoDoCatalogo(aIdx, iIdx, v)}>
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="+ Adicionar descrição (catálogo)" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {catalogo.length === 0 && (
+                                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                                    Catálogo vazio
+                                  </div>
+                                )}
+                                {catalogo.map((c) => (
+                                  <SelectItem key={c.id} value={c.id}>
+                                    {c.nome} <span className="text-muted-foreground">— {TIPO_MEDIDA_LABEL[c.tipoMedida]}</span>
+                                  </SelectItem>
+                                ))}
+                                <SelectItem value="__vazia__">+ Descrição manual (em branco)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -518,6 +552,70 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function DescricaoRow({
+  d, onPatch, onRemove,
+}: { d: DescricaoItem; onPatch: (p: Partial<DescricaoItem>) => void; onRemove: () => void }) {
+  return (
+    <div className="rounded border border-border bg-muted/10 p-2">
+      <div className="flex items-center gap-2 mb-2">
+        <Input
+          className="flex-1 h-8 text-sm"
+          value={d.descricao}
+          onChange={(e) => onPatch({ descricao: e.target.value })}
+          placeholder="Descrição"
+        />
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+          {TIPO_MEDIDA_LABEL[d.tipoMedida]}
+        </span>
+        <Button size="icon" variant="ghost" onClick={onRemove} title="Remover descrição">
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+
+      <div className="grid gap-2 grid-cols-2 sm:grid-cols-6 items-end">
+        {d.tipoMedida === "unidade" && (
+          <div className="col-span-1">
+            <Label className="text-[10px]">Unid.</Label>
+            <Input className="h-8 text-sm" value={d.unidade} onChange={(e) => onPatch({ unidade: e.target.value })} />
+          </div>
+        )}
+        {(d.tipoMedida === "dimensional" || d.tipoMedida === "area") && (
+          <div>
+            <Label className="text-[10px]">Largura (m)</Label>
+            <NumberInput className="h-8 text-sm" step="0.01" value={d.largura ?? 0} onChange={(n) => onPatch({ largura: n })} />
+          </div>
+        )}
+        {d.tipoMedida === "dimensional" && (
+          <div>
+            <Label className="text-[10px]">Altura (m)</Label>
+            <NumberInput className="h-8 text-sm" step="0.01" value={d.altura ?? 0} onChange={(n) => onPatch({ altura: n })} />
+          </div>
+        )}
+        {(d.tipoMedida === "dimensional" || d.tipoMedida === "area" || d.tipoMedida === "linear") && (
+          <div>
+            <Label className="text-[10px]">Comprimento (m)</Label>
+            <NumberInput className="h-8 text-sm" step="0.01" value={d.comprimento ?? 0} onChange={(n) => onPatch({ comprimento: n })} />
+          </div>
+        )}
+        <div>
+          <Label className="text-[10px]">Qtde</Label>
+          <NumberInput className="h-8 text-sm" value={d.quantidade} onChange={(n) => onPatch({ quantidade: n })} />
+        </div>
+        <div>
+          <Label className="text-[10px]">
+            Valor un.{d.tipoMedida === "area" ? " (/m²)" : d.tipoMedida === "linear" ? " (/m)" : ""}
+          </Label>
+          <NumberInput className="h-8 text-sm" step="0.01" value={d.valorUnitario} onChange={(n) => onPatch({ valorUnitario: n })} />
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] text-muted-foreground">Subtotal</div>
+          <div className="text-sm font-medium">{brl(descricaoSubtotal(d))}</div>
+        </div>
+      </div>
+    </div>
   );
 }
 

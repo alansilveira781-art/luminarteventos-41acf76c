@@ -13,6 +13,25 @@ export type TipoEvento = (typeof TIPOS_EVENTO)[number];
 
 export const CONSULTORES_PADRAO = ["Pádua Costa", "Romulo Manoel"] as const;
 
+// ----- Catálogo de descrições -----
+export type TipoMedida = "unidade" | "dimensional" | "area" | "linear";
+
+export const TIPO_MEDIDA_LABEL: Record<TipoMedida, string> = {
+  unidade: "Unidade (qtde × valor)",
+  dimensional: "Dimensional (L × A × C × qtde)",
+  area: "Área (L × C em m²)",
+  linear: "Linear (metros)",
+};
+
+export type CatalogoDescricao = {
+  id: string;
+  nome: string;
+  tipoMedida: TipoMedida;
+  valorUnitario: number; // valor padrão; editável na proposta
+  unidade?: string;      // rótulo livre só para tipo "unidade" (un, pç, kg, m³…)
+  createdAt: string;
+};
+
 export type Cliente = {
   id: string;
   nome: string;
@@ -39,8 +58,13 @@ export type ComercialCard = {
 
 export type DescricaoItem = {
   id: string;
+  catalogoId: string | null;
   descricao: string;
-  unidade: string;
+  tipoMedida: TipoMedida;
+  unidade: string; // rótulo (un, pç…) — usado em tipoMedida=unidade
+  largura?: number;
+  altura?: number;
+  comprimento?: number;
   quantidade: number;
   valorUnitario: number;
 };
@@ -101,9 +125,43 @@ export const PROPOSTA_STATUS_LABEL: Record<PropostaStatus, string> = {
 };
 
 // ----- Helpers de cálculo -----
+const n = (x: any) => Number(x) || 0;
+
 export function descricaoSubtotal(d: DescricaoItem) {
-  return (Number(d.quantidade) || 0) * (Number(d.valorUnitario) || 0);
+  const qtd = n(d.quantidade);
+  const v = n(d.valorUnitario);
+  const L = n(d.largura);
+  const A = n(d.altura);
+  const C = n(d.comprimento);
+  switch (d.tipoMedida) {
+    case "dimensional":
+      return v * (L * A * C) * qtd;
+    case "area":
+      return v * (L * C) * qtd;
+    case "linear":
+      return v * C * qtd;
+    case "unidade":
+    default:
+      return v * qtd;
+  }
 }
+
+export function descricaoMedidaLabel(d: DescricaoItem): string {
+  const L = n(d.largura), A = n(d.altura), C = n(d.comprimento), q = n(d.quantidade);
+  const num = (x: number) => x.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  switch (d.tipoMedida) {
+    case "dimensional":
+      return `${num(L)} × ${num(A)} × ${num(C)} m × ${q} un`;
+    case "area":
+      return `${num(L)} × ${num(C)} m² × ${q}`;
+    case "linear":
+      return `${num(C)} m × ${q}`;
+    case "unidade":
+    default:
+      return `${q} ${d.unidade || "un"}`;
+  }
+}
+
 export function itemSubtotal(i: ItemAmbiente) {
   return i.descricoes.reduce((s, d) => s + descricaoSubtotal(d), 0);
 }

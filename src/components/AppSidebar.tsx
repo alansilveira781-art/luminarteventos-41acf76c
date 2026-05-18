@@ -28,6 +28,7 @@ import {
   ClipboardCheck,
   FileText,
   Link2,
+  BookOpen,
 } from "lucide-react";
 import logo from "@/assets/luminart-logo.png";
 import { useAuth } from "@/contexts/AuthContext";
@@ -56,6 +57,7 @@ const allItems: NavItem[] = [
   { title: "Propostas", url: "/comercial/propostas", icon: FileText, group: "Comercial", module: "comercial" },
   { title: "Validações", url: "/comercial/validacoes", icon: ClipboardCheck, group: "Comercial", module: "comercial" },
   { title: "Clientes", url: "/comercial/clientes", icon: Users2, group: "Comercial", module: "comercial" },
+  { title: "Catálogo", url: "/comercial/catalogo", icon: BookOpen, group: "Comercial", module: "comercial" },
   { title: "Administração", url: "/admin", icon: Shield, group: "Administração", adminOnly: true },
 ];
 

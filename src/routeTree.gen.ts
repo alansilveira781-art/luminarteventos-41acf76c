@@ -36,6 +36,7 @@ import { Route as ComprasDashboardRouteImport } from './routes/compras.dashboard
 import { Route as ComercialValidacoesRouteImport } from './routes/comercial.validacoes'
 import { Route as ComercialPropostasRouteImport } from './routes/comercial.propostas'
 import { Route as ComercialClientesRouteImport } from './routes/comercial.clientes'
+import { Route as ComercialCatalogoRouteImport } from './routes/comercial.catalogo'
 import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 import { Route as AdminModulosRouteImport } from './routes/admin.modulos'
 import { Route as AdminDadosRouteImport } from './routes/admin.dados'
@@ -180,6 +181,11 @@ const ComercialClientesRoute = ComercialClientesRouteImport.update({
   path: '/clientes',
   getParentRoute: () => ComercialRoute,
 } as any)
+const ComercialCatalogoRoute = ComercialCatalogoRouteImport.update({
+  id: '/catalogo',
+  path: '/catalogo',
+  getParentRoute: () => ComercialRoute,
+} as any)
 const AdminUsuariosRoute = AdminUsuariosRouteImport.update({
   id: '/usuarios',
   path: '/usuarios',
@@ -241,6 +247,7 @@ export interface FileRoutesByFullPath {
   '/admin/dados': typeof AdminDadosRoute
   '/admin/modulos': typeof AdminModulosRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
+  '/comercial/catalogo': typeof ComercialCatalogoRoute
   '/comercial/clientes': typeof ComercialClientesRoute
   '/comercial/propostas': typeof ComercialPropostasRoute
   '/comercial/validacoes': typeof ComercialValidacoesRoute
@@ -274,6 +281,7 @@ export interface FileRoutesByTo {
   '/admin/dados': typeof AdminDadosRoute
   '/admin/modulos': typeof AdminModulosRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
+  '/comercial/catalogo': typeof ComercialCatalogoRoute
   '/comercial/clientes': typeof ComercialClientesRoute
   '/comercial/propostas': typeof ComercialPropostasRoute
   '/comercial/validacoes': typeof ComercialValidacoesRoute
@@ -312,6 +320,7 @@ export interface FileRoutesById {
   '/admin/dados': typeof AdminDadosRoute
   '/admin/modulos': typeof AdminModulosRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
+  '/comercial/catalogo': typeof ComercialCatalogoRoute
   '/comercial/clientes': typeof ComercialClientesRoute
   '/comercial/propostas': typeof ComercialPropostasRoute
   '/comercial/validacoes': typeof ComercialValidacoesRoute
@@ -351,6 +360,7 @@ export interface FileRouteTypes {
     | '/admin/dados'
     | '/admin/modulos'
     | '/admin/usuarios'
+    | '/comercial/catalogo'
     | '/comercial/clientes'
     | '/comercial/propostas'
     | '/comercial/validacoes'
@@ -384,6 +394,7 @@ export interface FileRouteTypes {
     | '/admin/dados'
     | '/admin/modulos'
     | '/admin/usuarios'
+    | '/comercial/catalogo'
     | '/comercial/clientes'
     | '/comercial/propostas'
     | '/comercial/validacoes'
@@ -421,6 +432,7 @@ export interface FileRouteTypes {
     | '/admin/dados'
     | '/admin/modulos'
     | '/admin/usuarios'
+    | '/comercial/catalogo'
     | '/comercial/clientes'
     | '/comercial/propostas'
     | '/comercial/validacoes'
@@ -657,6 +669,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ComercialClientesRouteImport
       parentRoute: typeof ComercialRoute
     }
+    '/comercial/catalogo': {
+      id: '/comercial/catalogo'
+      path: '/catalogo'
+      fullPath: '/comercial/catalogo'
+      preLoaderRoute: typeof ComercialCatalogoRouteImport
+      parentRoute: typeof ComercialRoute
+    }
     '/admin/usuarios': {
       id: '/admin/usuarios'
       path: '/usuarios'
@@ -733,6 +752,7 @@ const AdminRouteChildren: AdminRouteChildren = {
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface ComercialRouteChildren {
+  ComercialCatalogoRoute: typeof ComercialCatalogoRoute
   ComercialClientesRoute: typeof ComercialClientesRoute
   ComercialPropostasRoute: typeof ComercialPropostasRoute
   ComercialValidacoesRoute: typeof ComercialValidacoesRoute
@@ -740,6 +760,7 @@ interface ComercialRouteChildren {
 }
 
 const ComercialRouteChildren: ComercialRouteChildren = {
+  ComercialCatalogoRoute: ComercialCatalogoRoute,
   ComercialClientesRoute: ComercialClientesRoute,
   ComercialPropostasRoute: ComercialPropostasRoute,
   ComercialValidacoesRoute: ComercialValidacoesRoute,
@@ -806,12 +827,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

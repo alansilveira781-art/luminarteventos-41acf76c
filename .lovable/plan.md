@@ -1,70 +1,112 @@
-## Mudanças no módulo Comercial → Quadro de Vendas
+# Plano — Impressão de Proposta + Catálogo de Descrições
 
-### 1. Formulário "Novo lead" (CardDialog)
-- Substituir o campo único **Data do evento** por **período** com dois campos: **Data início** e **Data fim** (ambos `type="date"`). O card no Kanban passa a mostrar "DD/MM/AAAA – DD/MM/AAAA" (ou só uma data se forem iguais).
-- Corrigir o bug dos campos numéricos (valor estimado, quantidade etc.): hoje usam `value={number}` + `Number(e.target.value)`, o que impede apagar o `0`. Vamos armazenar como string controlada no formulário e converter para número só ao salvar — assim o usuário consegue limpar e digitar normalmente.
-- Renomear **Responsável** para **Consultor(a)** e trocar o `Input` por um `Select` (combobox) com:
-  - Pádua Costa
-  - Romulo Manoel
-  - opção **"+ Adicionar consultor(a)"** que abre um pequeno prompt/dialog para cadastrar um novo nome.
-- A lista de consultores fica persistida em `localStorage` (mesma estratégia já usada em `src/lib/comercial/store.ts`).
+## 1. Catálogo de Descrições (novo)
 
-### 2. Tipos e store (`src/lib/comercial/types.ts`, `store.ts`)
-- `ComercialCard.eventoData: string` → `eventoDataInicio: string; eventoDataFim: string` (com migração simples lendo o valor antigo).
-- `TIPOS_EVENTO` passa a ser: **Cenografia, Casamento, Corporativo, Stand**.
-- Novo tipo `Consultor = { id; nome }` + funções `listConsultores / addConsultor`.
+### Tipos de medida suportados
+- **unidade** — campos: `quantidade`, `valorUnitario` → subtotal = `qtde × valor`
+- **dimensional** — campos: `largura`, `altura`, `comprimento`, `quantidade`, `valorUnitario` → subtotal = `valor × (L × A × C) × qtde`
+- **area** — campos: `largura`, `comprimento`, `quantidade`, `valorM2` → subtotal = `valor × (L × C) × qtde`
+- **linear** — campos: `comprimento`, `quantidade`, `valorMetro` → subtotal = `valor × C × qtde`
 
-### 3. Wizard de Proposta (`PropostaWizard.tsx`)
-- Quando aberto a partir de um card, pré-preencher:
-  - **Cliente**: nome, telefone e email (buscando o `Cliente` vinculado pelo `clienteId` do card, com fallback para o `clienteNome`).
-  - **Evento**: nome/local (a partir de `eventoNome`), `dataInicio` e `dataFim` do card, e tipo se já estiver definido.
-  - **Consultor(a)**: o consultor do card.
-- Na etapa **Evento**:
-  - Remover os campos **Horário de início** e **Horário de término**.
-  - Trocar **Data do evento** por **Data início / Data fim**.
-  - Tipo de evento limitado às 4 opções acima.
-- Aplicar a mesma correção dos inputs numéricos (permitir apagar o 0) em toda a etapa de Itens, Custos e Resumo.
+### Estrutura de dados (`src/lib/comercial/types.ts`)
+```ts
+type TipoMedida = "unidade" | "dimensional" | "area" | "linear";
 
-### 4. Nova estrutura da etapa "Itens": Ambiente → Item → Descrição
-Substituir a tabela plana atual por uma estrutura hierárquica de 3 níveis:
+type CatalogoDescricao = {
+  id: string;
+  nome: string;          // ex: "Painel de LED 4x2"
+  tipoMedida: TipoMedida;
+  valorUnitario: number; // valor pré-definido (editável na proposta)
+  createdAt: string;
+};
 
-```text
-Ambiente "Recepção"
-  ├── Imagens do ambiente [upload múltiplo]
-  ├── Item "Painel LED"
-  │     ├── Descrição "Painel 3x2m P3" — qtd, valor unit.
-  │     └── Descrição "Estrutura box truss" — qtd, valor unit.
-  └── Item "Mobiliário"
-        └── Descrição "Sofá branco" — qtd, valor unit.
-Ambiente "Palco"
-  └── ...
+// Substitui o atual DescricaoItem
+type DescricaoItem = {
+  id: string;
+  catalogoId: string | null; // referência ao catálogo (selecionável)
+  descricao: string;         // nome (cópia no momento da seleção)
+  tipoMedida: TipoMedida;
+  largura?: number;
+  altura?: number;
+  comprimento?: number;
+  quantidade: number;
+  valorUnitario: number;
+};
 ```
+Adicionar helper `descricaoSubtotal(d)` com switch por `tipoMedida` e migração no `store.ts` (descrições antigas viram `tipoMedida: "unidade"`).
 
-- Cada **Ambiente** tem: `nome`, `imagens: string[]` (data URLs / base64 em localStorage), e uma lista de **Itens**.
-- Cada **Item** tem: `nome` e uma lista de **Descrições**.
-- Cada **Descrição** tem: `descricao`, `unidade`, `quantidade`, `valorUnitario`. O subtotal é calculado por descrição e agregado por item/ambiente e na proposta.
-- UI: cards/accordions colapsáveis por ambiente, botões **+ Adicionar ambiente**, **+ Adicionar item**, **+ Adicionar descrição** e ações de remover em cada nível.
-- O catálogo existente (`CATALOGO`) vira sugestão para o campo Item (autocomplete simples), mantendo a lógica.
+### Nova rota: `/comercial/catalogo` (`src/routes/comercial.catalogo.tsx`)
+- Tabela com colunas: Nome, Tipo de medida, Valor unitário, Ações (editar/excluir)
+- Dialog de criar/editar com `Select` de tipo de medida + `NumberInput` para valor
+- Persistido no `localStorage` (mesmo padrão do `store.ts` atual)
+- Link na sidebar dentro do grupo Comercial
 
-### 5. Imagens por ambiente
-- Componente de upload em cada ambiente: aceita múltiplas imagens, converte para data URL (`FileReader.readAsDataURL`), exibe miniaturas com botão de remover.
-- Persistência junto com a proposta no `localStorage` (mesmo store atual).
-- Observação: como hoje todo o módulo Comercial é client-side em localStorage, isso evita dependência de backend. Se no futuro mover para Supabase Storage, o shape `ambiente.imagens: string[]` permanece compatível (basta trocar data URLs por URLs públicas).
+## 2. Wizard de Proposta — passo Itens
 
-### 6. Custos e Resumo
-- Sem mudanças funcionais (você confirmou que está bom). Apenas a correção dos campos numéricos para permitir apagar o 0.
+No passo "Itens" (`PropostaWizard.tsx`), dentro de cada **Item**:
+- Botão **"+ Adicionar descrição"** abre `Select` com as descrições do catálogo (com busca / `Command`)
+- Ao escolher uma descrição do catálogo:
+  - copia `nome`, `tipoMedida`, `valorUnitario` para a `DescricaoItem`
+  - renderiza apenas os campos relevantes ao tipo (ex.: dimensional mostra L/A/C/qtde; unidade só qtde)
+- Valor unitário fica **editável** na proposta (pode sobrescrever o padrão)
+- Subtotal por descrição usa o novo helper
 
----
+Catálogo vazio? Mostrar CTA "Cadastrar no Catálogo →" linkando para a nova rota.
 
-### Arquivos que serão tocados
-- `src/lib/comercial/types.ts` — novos tipos (`Ambiente`, `ItemAmbiente`, `Descricao`, `Consultor`, período de datas, novos `TIPOS_EVENTO`).
-- `src/lib/comercial/store.ts` — consultores + migração leve do shape antigo.
-- `src/components/comercial/CardDialog.tsx` — período, consultor, fix de inputs numéricos.
-- `src/components/comercial/PropostaWizard.tsx` — pré-preenchimento, etapa Evento sem horário, nova etapa Itens hierárquica, upload de imagens por ambiente, fix de inputs numéricos.
-- `src/routes/comercial.index.tsx` — exibição do período no card.
-- `src/components/comercial/DetalhesDrawer.tsx` — ajustar para mostrar período/consultor (read-only).
-- `src/lib/comercial/pdf.ts` — atualizar geração de PDF para a nova estrutura Ambiente → Item → Descrição (mantendo o layout atual onde fizer sentido).
+## 3. Nova impressão de proposta (PDF)
 
-### Pontos a confirmar antes de eu implementar
-1. **Imagens em base64 (localStorage)** está ok para começar? Funciona perfeito para poucas imagens por proposta, mas pode ficar pesado se forem muitas/grandes. Alternativa é usar Supabase Storage (criamos bucket dedicado).
-2. Os cards existentes com `eventoData` único — posso assumir como `dataInicio = dataFim = valor antigo` na migração?
+Reescrever `src/lib/comercial/pdf.ts` com layout limpo:
+
+### Página 1 — Capa / Dados essenciais
+- Cabeçalho minimalista (logo + nº proposta + data)
+- Bloco **Cliente**: nome, telefone, email
+- Bloco **Evento**: tipo, período, local, cidade, observações
+- Bloco **Consultor(a)** + validade
+- Rodapé com contato
+
+### Páginas 2..N — Uma por Ambiente
+Layout em duas colunas:
+- **Esquerda (≈45% da largura):** primeira imagem do ambiente, ocupando boa altura, com legenda discreta "Ambiente: {nome}"
+- **Direita (≈55%):** lista de itens
+  - Nome do item em **negrito**
+  - Descrições abaixo em *itálico*, com a medida formatada conforme o tipo:
+    - unidade: `2× Painel LED — R$ 1.500,00 = R$ 3.000,00`
+    - dimensional: `4,00 × 2,00 × 0,50 m × 2 un — R$ 200,00/un = R$ 1.600,00`
+    - area: `4,00 × 2,00 m² × 1 — R$ 150,00/m² = R$ 1.200,00`
+    - linear: `10,00 m × 1 — R$ 50,00/m = R$ 500,00`
+  - Subtotal do ambiente em destaque no final
+- Quebra de página automática entre ambientes (`doc.addPage()` por ambiente)
+- Imagens redimensionadas mantendo proporção; fallback "Sem imagem" se vazio
+
+### Última página — Resumo financeiro
+- Subtotal ambientes, custos (frete/montagem/desmontagem/outros), Total final em destaque
+- Validade da proposta
+
+Numeração "Página X de Y" no rodapé.
+
+## 4. Onde disparar a impressão
+
+Adicionar botão "Imprimir PDF" (ícone `Printer`/`FileDown`) chamando `gerarPropostaPDF(proposta)`:
+1. **Card do Kanban** (`comercial.index.tsx`) — só aparece quando o card tem `propostaId`; busca a proposta no store
+2. **Drawer de Detalhes** (`DetalhesDrawer.tsx`) — botão no rodapé quando há proposta vinculada
+3. **Aba Propostas** (`comercial.propostas.tsx`) — já existe, apenas usar a nova função
+
+## 5. Arquivos afetados
+
+| Arquivo | Mudança |
+|---|---|
+| `src/lib/comercial/types.ts` | `TipoMedida`, `CatalogoDescricao`, novo `DescricaoItem`, helpers de subtotal |
+| `src/lib/comercial/store.ts` | CRUD `catalogo`, migração de descrições antigas |
+| `src/lib/comercial/pdf.ts` | Reescrita completa (capa + 1 ambiente/página + resumo) |
+| `src/routes/comercial.catalogo.tsx` | **novo** — CRUD do catálogo |
+| `src/routes/comercial.tsx` | adicionar tab/link "Catálogo" |
+| `src/components/AppSidebar.tsx` | item de menu (se aplicável) |
+| `src/components/comercial/PropostaWizard.tsx` | seletor de descrição via catálogo, campos por tipo |
+| `src/components/comercial/DetalhesDrawer.tsx` | botão "Imprimir PDF" |
+| `src/routes/comercial.index.tsx` | botão imprimir no card |
+
+## 6. Pontos em aberto (assumidos)
+- Catálogo e descrições continuam em `localStorage` (mesmo padrão atual). Migrar para Lovable Cloud é trabalho separado.
+- Imagens dos ambientes seguem como data URL (já implementado).
+- Dimensões em metros; valores em BRL.
+- Se o ambiente tiver várias imagens, a página usa a 1ª (futuras imagens podem virar páginas extras — fora do escopo).

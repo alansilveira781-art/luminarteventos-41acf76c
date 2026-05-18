@@ -1,7 +1,10 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Printer } from "lucide-react";
 import { CARD_STATUSES, type ComercialCard, PROPOSTA_STATUS_LABEL, propostaTotal } from "@/lib/comercial/types";
 import { useComercial } from "@/lib/comercial/store";
+import { gerarPropostaPDF } from "@/lib/comercial/pdf";
 
 const brl = (v: number) =>
   Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -60,6 +63,9 @@ export function DetalhesDrawer({
               <Field label="Número" value={`#${proposta.numero}`} />
               <Field label="Status" value={PROPOSTA_STATUS_LABEL[proposta.status]} />
               <Field label="Total" value={brl(propostaTotal(proposta))} />
+              <Button className="w-full mt-3" size="sm" onClick={() => gerarPropostaPDF(proposta)}>
+                <Printer className="h-3.5 w-3.5 mr-1" /> Imprimir proposta (PDF)
+              </Button>
             </Section>
           )}
         </div>

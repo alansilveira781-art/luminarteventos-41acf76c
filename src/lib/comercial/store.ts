@@ -6,6 +6,8 @@ import type {
   Proposta,
   PropostaStatus,
   Ambiente,
+  CatalogoDescricao,
+  DescricaoItem,
 } from "./types";
 import { CONSULTORES_PADRAO } from "./types";
 
@@ -14,12 +16,14 @@ const KEY_PROPOSTAS = "comercial.propostas.v1";
 const KEY_CLIENTES = "comercial.clientes.v1";
 const KEY_PROP_SEQ = "comercial.proposta.seq.v1";
 const KEY_CONSULTORES = "comercial.consultores.v1";
+const KEY_CATALOGO = "comercial.catalogo.v1";
 
 type State = {
   cards: ComercialCard[];
   propostas: Proposta[];
   clientes: Cliente[];
   consultores: string[];
+  catalogo: CatalogoDescricao[];
 };
 
 function read<T>(key: string, fallback: T): T {
@@ -50,6 +54,21 @@ function migrateCards(raw: any[]): ComercialCard[] {
   });
 }
 
+function migrateDescricao(d: any): DescricaoItem {
+  return {
+    id: d.id || uid(),
+    catalogoId: d.catalogoId ?? null,
+    descricao: d.descricao || "",
+    tipoMedida: d.tipoMedida || "unidade",
+    unidade: d.unidade || "un",
+    largura: d.largura,
+    altura: d.altura,
+    comprimento: d.comprimento,
+    quantidade: Number(d.quantidade) || 0,
+    valorUnitario: Number(d.valorUnitario) || 0,
+  };
+}
+
 function migratePropostas(raw: any[]): Proposta[] {
   return (raw || []).map((p) => {
     let evento = p.evento || {};
@@ -74,16 +93,25 @@ function migratePropostas(raw: any[]): Proposta[] {
             itens: oldItens.map((it: any) => ({
               id: uid(),
               nome: it.nome || "Item",
-              descricoes: [{
-                id: it.id || uid(),
+              descricoes: [migrateDescricao({
+                id: it.id,
                 descricao: it.nome || "",
                 unidade: it.unidade || "un",
-                quantidade: Number(it.quantidade) || 0,
-                valorUnitario: Number(it.valorUnitario) || 0,
-              }],
+                quantidade: it.quantidade,
+                valorUnitario: it.valorUnitario,
+                tipoMedida: "unidade",
+              })],
             })),
           }]
         : [];
+    } else {
+      ambientes = ambientes.map((a) => ({
+        ...a,
+        itens: (a.itens || []).map((it) => ({
+          ...it,
+          descricoes: (it.descricoes || []).map(migrateDescricao),
+        })),
+      }));
     }
     const { itens: _drop, ...rest } = p;
     return { ...rest, evento, ambientes } as Proposta;
@@ -95,6 +123,7 @@ let state: State = {
   propostas: migratePropostas(read<any[]>(KEY_PROPOSTAS, [])),
   clientes: read<Cliente[]>(KEY_CLIENTES, []),
   consultores: read<string[]>(KEY_CONSULTORES, [...CONSULTORES_PADRAO]),
+  catalogo: read<CatalogoDescricao[]>(KEY_CATALOGO, []),
 };
 
 const listeners = new Set<() => void>();
@@ -117,6 +146,7 @@ function setState(next: Partial<State>) {
   if (next.propostas) write(KEY_PROPOSTAS, next.propostas);
   if (next.clientes) write(KEY_CLIENTES, next.clientes);
   if (next.consultores) write(KEY_CONSULTORES, next.consultores);
+  if (next.catalogo) write(KEY_CATALOGO, next.catalogo);
   emit();
 }
 
@@ -199,6 +229,23 @@ export function addConsultor(nome: string) {
   if (!n) return;
   if (state.consultores.some((c) => c.toLowerCase() === n.toLowerCase())) return;
   setState({ consultores: [...state.consultores, n] });
+}
+
+// ----- Catálogo -----
+export function createCatalogoDescricao(input: Omit<CatalogoDescricao, "id" | "createdAt">) {
+  const item: CatalogoDescricao = {
+    id: uid(),
+    createdAt: new Date().toISOString(),
+    ...input,
+  };
+  setState({ catalogo: [item, ...state.catalogo] });
+  return item;
+}
+export function updateCatalogoDescricao(id: string, patch: Partial<CatalogoDescricao>) {
+  setState({ catalogo: state.catalogo.map((c) => (c.id === id ? { ...c, ...patch } : c)) });
+}
+export function deleteCatalogoDescricao(id: string) {
+  setState({ catalogo: state.catalogo.filter((c) => c.id !== id) });
 }
 
 // ----- Propostas -----

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Check, X, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { useComercial, aprovarProposta, reprovarProposta } from "@/lib/comercial/store";
-import { PROPOSTA_STATUS_LABEL, type Proposta, propostaTotal, ambienteSubtotal } from "@/lib/comercial/types";
+import { PROPOSTA_STATUS_LABEL, type Proposta, propostaTotal, ambienteSubtotal, descricaoSubtotal, descricaoMedidaLabel } from "@/lib/comercial/types";
 import { PropostaWizard } from "@/components/comercial/PropostaWizard";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -104,9 +104,9 @@ function Validacoes() {
                             {it.descricoes.map((d) => (
                               <tr key={d.id} className="border-t border-border">
                                 <td className="p-2 pl-10 text-muted-foreground">
-                                  {d.descricao || "—"} <span className="text-[10px]">({d.quantidade} {d.unidade} × {brl(d.valorUnitario)})</span>
+                                  {d.descricao || "—"} <span className="text-[10px]">({descricaoMedidaLabel(d)} × {brl(d.valorUnitario)})</span>
                                 </td>
-                                <td className="p-2 text-right">{brl(d.quantidade * d.valorUnitario)}</td>
+                                <td className="p-2 text-right">{brl(descricaoSubtotal(d))}</td>
                               </tr>
                             ))}
                           </>
