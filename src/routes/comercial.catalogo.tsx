@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
@@ -79,7 +79,10 @@ function CatalogoPage() {
               <tr key={c.id} className="border-t border-border hover:bg-muted/20">
                 <td className="p-3 font-medium">{c.nome}</td>
                 <td className="p-3"><Badge variant="secondary">{TIPO_MEDIDA_LABEL[c.tipoMedida]}</Badge></td>
-                <td className="p-3 text-right">{brl(c.valorUnitario)}{c.tipoMedida === "area" ? "/m²" : c.tipoMedida === "linear" ? "/m" : ""}</td>
+                <td className="p-3 text-right">
+                  {brl(c.valorUnitario)}
+                  {c.tipoMedida === "area" ? "/m²" : c.tipoMedida === "linear" ? "/m" : ""}
+                </td>
                 <td className="p-3">
                   <div className="flex justify-end gap-1">
                     <Button size="icon" variant="ghost" onClick={() => { setEdit(c); setOpen(true); }}>
@@ -114,40 +117,28 @@ function CatalogoDialog({
   const [valor, setValor] = useState(0);
   const [unidade, setUnidade] = useState("un");
 
-  useState(() => {
-    // init when opened
-    return 0;
-  });
+  useEffect(() => {
+    if (!open) return;
+    setNome(edit?.nome ?? "");
+    setTipoMedida(edit?.tipoMedida ?? "unidade");
+    setValor(edit?.valorUnitario ?? 0);
+    setUnidade(edit?.unidade ?? "un");
+  }, [open, edit]);
 
-  // reset when opening
-  if (open && typeof window !== "undefined") {
-    // simple controlled init via key
-  }
-
-  // we re-init via effect-like pattern using a key, but simpler: rely on `open` toggling
-  // Using uncontrolled init through a small inline effect:
-  // (Done via onOpenChange wrap)
-
-  function handleOpenChange(v: boolean) {
-    if (v) {
-      setNome(edit?.nome ?? "");
-      setTipoMedida(edit?.tipoMedida ?? "unidade");
-      setValor(edit?.valorUnitario ?? 0);
-      setUnidade(edit?.unidade ?? "un");
+  function save() {
+    if (!nome.trim()) return toast.error("Informe o nome");
+    if (edit) {
+      updateCatalogoDescricao(edit.id, { nome: nome.trim(), tipoMedida, valorUnitario: valor, unidade });
+      toast.success("Descrição atualizada");
+    } else {
+      createCatalogoDescricao({ nome: nome.trim(), tipoMedida, valorUnitario: valor, unidade });
+      toast.success("Descrição cadastrada");
     }
-    onOpenChange(v);
+    onOpenChange(false);
   }
-
-  // ensure init when `open` becomes true via parent
-  // (call once on each open transition)
-  // useEffect equivalent done inline:
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  (function syncOnOpen() {
-    // no-op placeholder; real sync happens below with useEffect imported
-  })();
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{edit ? "Editar descrição" : "Nova descrição"}</DialogTitle>
@@ -182,22 +173,8 @@ function CatalogoDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancelar</Button>
-          <Button
-            onClick={() => {
-              if (!nome.trim()) return toast.error("Informe o nome");
-              if (edit) {
-                updateCatalogoDescricao(edit.id, { nome: nome.trim(), tipoMedida, valorUnitario: valor, unidade });
-                toast.success("Descrição atualizada");
-              } else {
-                createCatalogoDescricao({ nome: nome.trim(), tipoMedida, valorUnitario: valor, unidade });
-                toast.success("Descrição cadastrada");
-              }
-              handleOpenChange(false);
-            }}
-          >
-            Salvar
-          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={save}>Salvar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
