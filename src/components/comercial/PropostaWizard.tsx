@@ -6,44 +6,81 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Trash2, ChevronLeft, ChevronRight, ImagePlus, X } from "lucide-react";
 import { toast } from "sonner";
-import { CATALOGO } from "@/lib/comercial/catalogo";
-import { TIPOS_EVENTO, type ItemProposta, type CustoExtra, type Proposta } from "@/lib/comercial/types";
-import { createProposta, updateProposta, upsertCliente } from "@/lib/comercial/store";
+import {
+  TIPOS_EVENTO,
+  type Ambiente,
+  type ItemAmbiente,
+  type DescricaoItem,
+  type CustoExtra,
+  type Proposta,
+  ambienteSubtotal,
+  itemSubtotal,
+  descricaoSubtotal,
+} from "@/lib/comercial/types";
+import {
+  createProposta,
+  updateProposta,
+  upsertCliente,
+  useComercial,
+  addConsultor,
+} from "@/lib/comercial/store";
+import { NumberInput } from "@/components/comercial/NumberInput";
 
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   cardId?: string | null;
-  defaults?: { clienteNome?: string; eventoNome?: string; eventoData?: string };
+  defaults?: {
+    clienteNome?: string;
+    clienteTelefone?: string;
+    clienteEmail?: string;
+    eventoNome?: string;
+    eventoDataInicio?: string;
+    eventoDataFim?: string;
+    responsavel?: string;
+  };
   proposta?: Proposta | null;
 };
 
-const STEPS = ["Cliente", "Evento", "Itens", "Custos", "Resumo"];
-const uid = () => Math.random().toString(36).slice(2);
+const STEPS = ["Cliente", "Evento", "Ambientes e Itens", "Custos", "Resumo"];
+const NEW_CONSULTOR = "__novo__";
+const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
 const brl = (v: number) =>
   Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+function newDescricao(): DescricaoItem {
+  return { id: uid(), descricao: "", unidade: "un", quantidade: 1, valorUnitario: 0 };
+}
+function newItem(): ItemAmbiente {
+  return { id: uid(), nome: "", descricoes: [newDescricao()] };
+}
+function newAmbiente(nome = ""): Ambiente {
+  return { id: uid(), nome, imagens: [], itens: [newItem()] };
+}
+
 export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta }: Props) {
+  const { consultores } = useComercial();
   const [step, setStep] = useState(0);
   const [cliente, setCliente] = useState({ nome: "", telefone: "", email: "" });
-  const [evento, setEvento] = useState({
-    tipo: "" as Proposta["evento"]["tipo"],
-    data: "",
-    horarioInicio: "",
-    horarioTermino: "",
+  const [evento, setEvento] = useState<Proposta["evento"]>({
+    tipo: "",
+    dataInicio: "",
+    dataFim: "",
     local: "",
     cidade: "",
     observacoes: "",
   });
-  const [itens, setItens] = useState<ItemProposta[]>([]);
+  const [ambientes, setAmbientes] = useState<Ambiente[]>([]);
   const [custos, setCustos] = useState<{ frete: number; montagem: number; desmontagem: number; outros: CustoExtra[] }>({
     frete: 0, montagem: 0, desmontagem: 0, outros: [],
   });
   const [resumo, setResumo] = useState({ margem: 0, validade: "" });
   const [responsavel, setResponsavel] = useState("");
+  const [novoConsultorOpen, setNovoConsultorOpen] = useState(false);
+  const [novoConsultor, setNovoConsultor] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -51,23 +88,34 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
     if (proposta) {
       setCliente(proposta.cliente);
       setEvento(proposta.evento);
-      setItens(proposta.itens);
+      setAmbientes(proposta.ambientes?.length ? proposta.ambientes : [newAmbiente("Ambiente principal")]);
       setCustos(proposta.custos);
       setResumo(proposta.resumo);
       setResponsavel(proposta.responsavel);
     } else {
-      setCliente({ nome: defaults?.clienteNome ?? "", telefone: "", email: "" });
-      setEvento({ tipo: "", data: defaults?.eventoData ?? "", horarioInicio: "", horarioTermino: "", local: "", cidade: "", observacoes: "" });
-      setItens([]);
+      setCliente({
+        nome: defaults?.clienteNome ?? "",
+        telefone: defaults?.clienteTelefone ?? "",
+        email: defaults?.clienteEmail ?? "",
+      });
+      setEvento({
+        tipo: "",
+        dataInicio: defaults?.eventoDataInicio ?? "",
+        dataFim: defaults?.eventoDataFim ?? defaults?.eventoDataInicio ?? "",
+        local: defaults?.eventoNome ?? "",
+        cidade: "",
+        observacoes: "",
+      });
+      setAmbientes([newAmbiente("Ambiente principal")]);
       setCustos({ frete: 0, montagem: 0, desmontagem: 0, outros: [] });
       setResumo({ margem: 0, validade: "" });
-      setResponsavel("");
+      setResponsavel(defaults?.responsavel ?? "");
     }
   }, [open, proposta, defaults]);
 
-  const subtotalItens = useMemo(
-    () => itens.reduce((s, i) => s + (i.quantidade || 0) * (i.valorUnitario || 0), 0),
-    [itens],
+  const subtotalAmbientes = useMemo(
+    () => ambientes.reduce((s, a) => s + ambienteSubtotal(a), 0),
+    [ambientes],
   );
   const totalCustos = useMemo(
     () =>
@@ -77,216 +125,399 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
       custos.outros.reduce((s, c) => s + (c.valor || 0), 0),
     [custos],
   );
-  const totalFinal = subtotalItens + totalCustos;
-
-  function addCatalogo(idx: number) {
-    const c = CATALOGO[idx];
-    setItens([...itens, { id: uid(), nome: c.nome, unidade: c.unidade, quantidade: 1, valorUnitario: 0 }]);
-  }
+  const totalFinal = subtotalAmbientes + totalCustos;
 
   function canNext() {
     if (step === 0) return cliente.nome.trim().length > 0;
-    if (step === 1) return !!evento.tipo && !!evento.data;
-    if (step === 2) return itens.length > 0;
+    if (step === 1) return !!evento.tipo && !!evento.dataInicio;
+    if (step === 2) {
+      const hasDescricao = ambientes.some((a) =>
+        a.itens.some((i) => i.descricoes.length > 0),
+      );
+      return ambientes.length > 0 && hasDescricao;
+    }
     return true;
   }
 
   function finish() {
     if (!cliente.nome.trim()) return toast.error("Informe o cliente");
-    if (itens.length === 0) return toast.error("Adicione ao menos um item");
+    const totalDescricoes = ambientes.reduce(
+      (s, a) => s + a.itens.reduce((si, it) => si + it.descricoes.length, 0),
+      0,
+    );
+    if (totalDescricoes === 0) return toast.error("Adicione ao menos uma descrição em algum item");
 
     const c = upsertCliente(cliente);
     if (proposta) {
       updateProposta(proposta.id, {
-        cliente, evento, itens, custos, resumo, responsavel, clienteId: c.id,
+        cliente, evento, ambientes, custos, resumo, responsavel, clienteId: c.id,
         status: "aguardando_aprovacao",
       });
       toast.success("Proposta atualizada e enviada para validação");
     } else {
       createProposta({
-        cardId: cardId ?? null, clienteId: c.id, cliente, evento, itens, custos, resumo, responsavel,
+        cardId: cardId ?? null, clienteId: c.id, cliente, evento, ambientes, custos, resumo, responsavel,
       });
       toast.success("Proposta enviada para validação interna");
     }
     onOpenChange(false);
   }
 
+  function onConsultorChange(v: string) {
+    if (v === NEW_CONSULTOR) {
+      setNovoConsultor("");
+      setNovoConsultorOpen(true);
+      return;
+    }
+    setResponsavel(v);
+  }
+  function confirmarNovoConsultor() {
+    const n = novoConsultor.trim();
+    if (!n) return;
+    addConsultor(n);
+    setResponsavel(n);
+    setNovoConsultorOpen(false);
+  }
+
+  // ----- Ambientes / Itens / Descrições helpers -----
+  function patchAmbiente(idx: number, patch: Partial<Ambiente>) {
+    setAmbientes(ambientes.map((a, i) => (i === idx ? { ...a, ...patch } : a)));
+  }
+  function patchItem(aIdx: number, iIdx: number, patch: Partial<ItemAmbiente>) {
+    setAmbientes(ambientes.map((a, i) => {
+      if (i !== aIdx) return a;
+      return { ...a, itens: a.itens.map((it, j) => (j === iIdx ? { ...it, ...patch } : it)) };
+    }));
+  }
+  function patchDescricao(aIdx: number, iIdx: number, dIdx: number, patch: Partial<DescricaoItem>) {
+    setAmbientes(ambientes.map((a, i) => {
+      if (i !== aIdx) return a;
+      return {
+        ...a,
+        itens: a.itens.map((it, j) => {
+          if (j !== iIdx) return it;
+          return { ...it, descricoes: it.descricoes.map((d, k) => (k === dIdx ? { ...d, ...patch } : d)) };
+        }),
+      };
+    }));
+  }
+
+  async function adicionarImagens(aIdx: number, files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const arr = Array.from(files);
+    const dataUrls = await Promise.all(arr.map((f) => new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(f);
+    })));
+    const ambiente = ambientes[aIdx];
+    patchAmbiente(aIdx, { imagens: [...ambiente.imagens, ...dataUrls] });
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{proposta ? `Editar proposta #${proposta.numero}` : "Criar proposta"}</DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{proposta ? `Editar proposta #${proposta.numero}` : "Criar proposta"}</DialogTitle>
+          </DialogHeader>
 
-        <div className="mb-2">
-          <div className="flex justify-between text-xs text-muted-foreground mb-1">
-            {STEPS.map((s, i) => (
-              <span key={s} className={i === step ? "text-foreground font-medium" : ""}>
-                {i + 1}. {s}
-              </span>
-            ))}
+          <div className="mb-2">
+            <div className="flex justify-between text-xs text-muted-foreground mb-1">
+              {STEPS.map((s, i) => (
+                <span key={s} className={i === step ? "text-foreground font-medium" : ""}>
+                  {i + 1}. {s}
+                </span>
+              ))}
+            </div>
+            <Progress value={((step + 1) / STEPS.length) * 100} />
           </div>
-          <Progress value={((step + 1) / STEPS.length) * 100} />
-        </div>
 
-        {step === 0 && (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <Label>Nome *</Label>
-              <Input value={cliente.nome} onChange={(e) => setCliente({ ...cliente, nome: e.target.value })} />
-            </div>
-            <div>
-              <Label>Telefone</Label>
-              <Input value={cliente.telefone} onChange={(e) => setCliente({ ...cliente, telefone: e.target.value })} />
-            </div>
-            <div>
-              <Label>Email</Label>
-              <Input type="email" value={cliente.email} onChange={(e) => setCliente({ ...cliente, email: e.target.value })} />
-            </div>
-          </div>
-        )}
-
-        {step === 1 && (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <Label>Tipo de evento *</Label>
-              <Select value={evento.tipo} onValueChange={(v) => setEvento({ ...evento, tipo: v as any })}>
-                <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
-                <SelectContent>
-                  {TIPOS_EVENTO.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Data do evento *</Label>
-              <Input type="date" value={evento.data} onChange={(e) => setEvento({ ...evento, data: e.target.value })} />
-            </div>
-            <div>
-              <Label>Horário de início</Label>
-              <Input type="time" value={evento.horarioInicio} onChange={(e) => setEvento({ ...evento, horarioInicio: e.target.value })} />
-            </div>
-            <div>
-              <Label>Horário de término</Label>
-              <Input type="time" value={evento.horarioTermino} onChange={(e) => setEvento({ ...evento, horarioTermino: e.target.value })} />
-            </div>
-            <div>
-              <Label>Local</Label>
-              <Input value={evento.local} onChange={(e) => setEvento({ ...evento, local: e.target.value })} />
-            </div>
-            <div>
-              <Label>Cidade</Label>
-              <Input value={evento.cidade} onChange={(e) => setEvento({ ...evento, cidade: e.target.value })} />
-            </div>
-            <div className="sm:col-span-2">
-              <Label>Observações</Label>
-              <Textarea rows={3} value={evento.observacoes} onChange={(e) => setEvento({ ...evento, observacoes: e.target.value })} />
-            </div>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="space-y-3">
-            <div className="rounded-lg border border-border p-3">
-              <div className="text-xs font-semibold uppercase text-muted-foreground mb-2">Adicionar do catálogo</div>
-              <div className="flex flex-wrap gap-2">
-                {CATALOGO.map((c, i) => (
-                  <Button key={c.nome} type="button" size="sm" variant="outline" onClick={() => addCatalogo(i)}>
-                    <Plus className="h-3 w-3 mr-1" /> {c.nome}
-                  </Button>
-                ))}
+          {step === 0 && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <Label>Nome *</Label>
+                <Input value={cliente.nome} onChange={(e) => setCliente({ ...cliente, nome: e.target.value })} />
+              </div>
+              <div>
+                <Label>Telefone</Label>
+                <Input value={cliente.telefone} onChange={(e) => setCliente({ ...cliente, telefone: e.target.value })} />
+              </div>
+              <div>
+                <Label>Email</Label>
+                <Input type="email" value={cliente.email} onChange={(e) => setCliente({ ...cliente, email: e.target.value })} />
               </div>
             </div>
+          )}
 
-            <div className="rounded-lg border border-border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/40 text-xs">
-                  <tr>
-                    <th className="text-left p-2">Item</th>
-                    <th className="text-left p-2 w-20">Unid.</th>
-                    <th className="text-right p-2 w-20">Qtd</th>
-                    <th className="text-right p-2 w-32">Valor unit.</th>
-                    <th className="text-right p-2 w-32">Subtotal</th>
-                    <th className="w-10" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {itens.length === 0 && (
-                    <tr><td colSpan={6} className="p-3 text-center text-xs text-muted-foreground">Nenhum item adicionado</td></tr>
-                  )}
-                  {itens.map((it, i) => (
-                    <tr key={it.id} className="border-t border-border">
-                      <td className="p-2"><Input value={it.nome} onChange={(e) => setItens(itens.map((x, j) => j === i ? { ...x, nome: e.target.value } : x))} /></td>
-                      <td className="p-2"><Input value={it.unidade} onChange={(e) => setItens(itens.map((x, j) => j === i ? { ...x, unidade: e.target.value } : x))} /></td>
-                      <td className="p-2"><Input type="number" className="text-right" value={it.quantidade} onChange={(e) => setItens(itens.map((x, j) => j === i ? { ...x, quantidade: Number(e.target.value) } : x))} /></td>
-                      <td className="p-2"><Input type="number" step="0.01" className="text-right" value={it.valorUnitario} onChange={(e) => setItens(itens.map((x, j) => j === i ? { ...x, valorUnitario: Number(e.target.value) } : x))} /></td>
-                      <td className="p-2 text-right font-medium">{brl((it.quantidade || 0) * (it.valorUnitario || 0))}</td>
-                      <td className="p-2"><Button size="icon" variant="ghost" onClick={() => setItens(itens.filter((_, j) => j !== i))}><Trash2 className="h-3.5 w-3.5" /></Button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {step === 1 && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label>Tipo de evento *</Label>
+                <Select value={evento.tipo || undefined} onValueChange={(v) => setEvento({ ...evento, tipo: v as any })}>
+                  <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+                  <SelectContent>
+                    {TIPOS_EVENTO.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="hidden sm:block" />
+              <div>
+                <Label>Data início *</Label>
+                <Input type="date" value={evento.dataInicio} onChange={(e) => setEvento({ ...evento, dataInicio: e.target.value })} />
+              </div>
+              <div>
+                <Label>Data fim</Label>
+                <Input type="date" value={evento.dataFim} onChange={(e) => setEvento({ ...evento, dataFim: e.target.value })} />
+              </div>
+              <div>
+                <Label>Local</Label>
+                <Input value={evento.local} onChange={(e) => setEvento({ ...evento, local: e.target.value })} />
+              </div>
+              <div>
+                <Label>Cidade</Label>
+                <Input value={evento.cidade} onChange={(e) => setEvento({ ...evento, cidade: e.target.value })} />
+              </div>
+              <div className="sm:col-span-2">
+                <Label>Observações</Label>
+                <Textarea rows={3} value={evento.observacoes} onChange={(e) => setEvento({ ...evento, observacoes: e.target.value })} />
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {step === 3 && (
-          <div className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div><Label>Frete (R$)</Label><Input type="number" step="0.01" value={custos.frete} onChange={(e) => setCustos({ ...custos, frete: Number(e.target.value) })} /></div>
-              <div><Label>Montagem (R$)</Label><Input type="number" step="0.01" value={custos.montagem} onChange={(e) => setCustos({ ...custos, montagem: Number(e.target.value) })} /></div>
-              <div><Label>Desmontagem (R$)</Label><Input type="number" step="0.01" value={custos.desmontagem} onChange={(e) => setCustos({ ...custos, desmontagem: Number(e.target.value) })} /></div>
-            </div>
-
-            <div className="rounded-lg border border-border p-3">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-xs font-semibold uppercase text-muted-foreground">Outros custos</div>
-                <Button size="sm" variant="outline" onClick={() => setCustos({ ...custos, outros: [...custos.outros, { descricao: "", valor: 0 }] })}>
-                  <Plus className="h-3 w-3 mr-1" /> Adicionar
+          {step === 2 && (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <p className="text-xs text-muted-foreground">
+                  Cada <b>ambiente</b> contém vários <b>itens</b>, e cada item pode ter várias <b>descrições</b>.
+                </p>
+                <Button size="sm" variant="outline" onClick={() => setAmbientes([...ambientes, newAmbiente()])}>
+                  <Plus className="h-3 w-3 mr-1" /> Adicionar ambiente
                 </Button>
               </div>
-              <div className="space-y-2">
-                {custos.outros.map((c, i) => (
-                  <div key={i} className="flex gap-2 items-center">
-                    <Input placeholder="Descrição" value={c.descricao} onChange={(e) => setCustos({ ...custos, outros: custos.outros.map((x, j) => j === i ? { ...x, descricao: e.target.value } : x) })} />
-                    <Input type="number" step="0.01" className="w-32 text-right" value={c.valor} onChange={(e) => setCustos({ ...custos, outros: custos.outros.map((x, j) => j === i ? { ...x, valor: Number(e.target.value) } : x) })} />
-                    <Button size="icon" variant="ghost" onClick={() => setCustos({ ...custos, outros: custos.outros.filter((_, j) => j !== i) })}><Trash2 className="h-3.5 w-3.5" /></Button>
+
+              {ambientes.map((amb, aIdx) => (
+                <div key={amb.id} className="rounded-lg border border-border bg-muted/20">
+                  <div className="p-3 border-b border-border flex gap-2 items-center">
+                    <Input
+                      className="flex-1"
+                      placeholder="Nome do ambiente (ex: Recepção, Palco…)"
+                      value={amb.nome}
+                      onChange={(e) => patchAmbiente(aIdx, { nome: e.target.value })}
+                    />
+                    <div className="text-sm font-medium whitespace-nowrap">{brl(ambienteSubtotal(amb))}</div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => setAmbientes(ambientes.filter((_, i) => i !== aIdx))}
+                      title="Remover ambiente"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
-                ))}
-                {custos.outros.length === 0 && <div className="text-xs text-muted-foreground text-center py-2">Nenhum custo adicional</div>}
+
+                  {/* Imagens do ambiente */}
+                  <div className="p-3 border-b border-border">
+                    <div className="text-xs font-semibold uppercase text-muted-foreground mb-2">Imagens do ambiente</div>
+                    <div className="flex flex-wrap gap-2 items-start">
+                      {amb.imagens.map((src, imgIdx) => (
+                        <div key={imgIdx} className="relative group h-20 w-20 rounded overflow-hidden border border-border">
+                          <img src={src} alt={`Ambiente ${amb.nome || aIdx + 1} - imagem ${imgIdx + 1}`} className="h-full w-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => patchAmbiente(aIdx, { imagens: amb.imagens.filter((_, i) => i !== imgIdx) })}
+                            className="absolute top-0.5 right-0.5 bg-background/80 hover:bg-background rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition"
+                            title="Remover imagem"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                      <label className="h-20 w-20 rounded border border-dashed border-border flex flex-col items-center justify-center text-xs text-muted-foreground cursor-pointer hover:bg-muted/30">
+                        <ImagePlus className="h-4 w-4 mb-1" />
+                        Adicionar
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => { adicionarImagens(aIdx, e.target.files); e.target.value = ""; }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Itens */}
+                  <div className="p-3 space-y-3">
+                    {amb.itens.map((item, iIdx) => (
+                      <div key={item.id} className="rounded border border-border bg-card">
+                        <div className="p-2 border-b border-border flex gap-2 items-center">
+                          <Input
+                            className="flex-1"
+                            placeholder="Nome do item (ex: Painel LED, Mobiliário…)"
+                            value={item.nome}
+                            onChange={(e) => patchItem(aIdx, iIdx, { nome: e.target.value })}
+                          />
+                          <div className="text-xs text-muted-foreground whitespace-nowrap">{brl(itemSubtotal(item))}</div>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => patchAmbiente(aIdx, { itens: amb.itens.filter((_, j) => j !== iIdx) })}
+                            title="Remover item"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead className="bg-muted/30 text-xs">
+                              <tr>
+                                <th className="text-left p-2">Descrição</th>
+                                <th className="text-left p-2 w-20">Unid.</th>
+                                <th className="text-right p-2 w-20">Qtd</th>
+                                <th className="text-right p-2 w-32">Valor unit.</th>
+                                <th className="text-right p-2 w-32">Subtotal</th>
+                                <th className="w-10" />
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {item.descricoes.map((d, dIdx) => (
+                                <tr key={d.id} className="border-t border-border">
+                                  <td className="p-2">
+                                    <Input value={d.descricao} onChange={(e) => patchDescricao(aIdx, iIdx, dIdx, { descricao: e.target.value })} />
+                                  </td>
+                                  <td className="p-2">
+                                    <Input value={d.unidade} onChange={(e) => patchDescricao(aIdx, iIdx, dIdx, { unidade: e.target.value })} />
+                                  </td>
+                                  <td className="p-2">
+                                    <NumberInput className="text-right" value={d.quantidade} onChange={(n) => patchDescricao(aIdx, iIdx, dIdx, { quantidade: n })} />
+                                  </td>
+                                  <td className="p-2">
+                                    <NumberInput step="0.01" className="text-right" value={d.valorUnitario} onChange={(n) => patchDescricao(aIdx, iIdx, dIdx, { valorUnitario: n })} />
+                                  </td>
+                                  <td className="p-2 text-right font-medium whitespace-nowrap">{brl(descricaoSubtotal(d))}</td>
+                                  <td className="p-2">
+                                    <Button size="icon" variant="ghost" onClick={() => patchItem(aIdx, iIdx, { descricoes: item.descricoes.filter((_, k) => k !== dIdx) })}>
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <div className="p-2 border-t border-border">
+                          <Button size="sm" variant="outline" onClick={() => patchItem(aIdx, iIdx, { descricoes: [...item.descricoes, newDescricao()] })}>
+                            <Plus className="h-3 w-3 mr-1" /> Adicionar descrição
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => patchAmbiente(aIdx, { itens: [...amb.itens, newItem()] })}
+                    >
+                      <Plus className="h-3 w-3 mr-1" /> Adicionar item
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div><Label>Frete (R$)</Label><NumberInput step="0.01" value={custos.frete} onChange={(n) => setCustos({ ...custos, frete: n })} /></div>
+                <div><Label>Montagem (R$)</Label><NumberInput step="0.01" value={custos.montagem} onChange={(n) => setCustos({ ...custos, montagem: n })} /></div>
+                <div><Label>Desmontagem (R$)</Label><NumberInput step="0.01" value={custos.desmontagem} onChange={(n) => setCustos({ ...custos, desmontagem: n })} /></div>
+              </div>
+
+              <div className="rounded-lg border border-border p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-xs font-semibold uppercase text-muted-foreground">Outros custos</div>
+                  <Button size="sm" variant="outline" onClick={() => setCustos({ ...custos, outros: [...custos.outros, { descricao: "", valor: 0 }] })}>
+                    <Plus className="h-3 w-3 mr-1" /> Adicionar
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {custos.outros.map((c, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <Input placeholder="Descrição" value={c.descricao} onChange={(e) => setCustos({ ...custos, outros: custos.outros.map((x, j) => j === i ? { ...x, descricao: e.target.value } : x) })} />
+                      <NumberInput step="0.01" className="w-32 text-right" value={c.valor} onChange={(n) => setCustos({ ...custos, outros: custos.outros.map((x, j) => j === i ? { ...x, valor: n } : x) })} />
+                      <Button size="icon" variant="ghost" onClick={() => setCustos({ ...custos, outros: custos.outros.filter((_, j) => j !== i) })}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    </div>
+                  ))}
+                  {custos.outros.length === 0 && <div className="text-xs text-muted-foreground text-center py-2">Nenhum custo adicional</div>}
+                </div>
               </div>
             </div>
-          </div>
-        )}
-
-        {step === 4 && (
-          <div className="space-y-3">
-            <div className="rounded-lg border border-border divide-y divide-border">
-              <Row label="Subtotal dos itens" value={brl(subtotalItens)} />
-              <Row label="Total dos custos adicionais" value={brl(totalCustos)} />
-              <Row label="Total final" value={brl(totalFinal)} bold />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div><Label>Margem estimada (%)</Label><Input type="number" step="0.1" value={resumo.margem} onChange={(e) => setResumo({ ...resumo, margem: Number(e.target.value) })} /></div>
-              <div><Label>Validade da proposta</Label><Input type="date" value={resumo.validade} onChange={(e) => setResumo({ ...resumo, validade: e.target.value })} /></div>
-              <div className="sm:col-span-2"><Label>Responsável pela criação</Label><Input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} /></div>
-            </div>
-          </div>
-        )}
-
-        <DialogFooter className="gap-2 mt-4">
-          <Button variant="outline" disabled={step === 0} onClick={() => setStep(step - 1)}>
-            <ChevronLeft className="h-4 w-4 mr-1" /> Voltar
-          </Button>
-          {step < STEPS.length - 1 ? (
-            <Button disabled={!canNext()} onClick={() => setStep(step + 1)}>
-              Próximo <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          ) : (
-            <Button onClick={finish}>Enviar para validação</Button>
           )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+
+          {step === 4 && (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-border divide-y divide-border">
+                <Row label="Subtotal dos ambientes" value={brl(subtotalAmbientes)} />
+                <Row label="Total dos custos adicionais" value={brl(totalCustos)} />
+                <Row label="Total final" value={brl(totalFinal)} bold />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div><Label>Margem estimada (%)</Label><NumberInput step="0.1" value={resumo.margem} onChange={(n) => setResumo({ ...resumo, margem: n })} /></div>
+                <div><Label>Validade da proposta</Label><Input type="date" value={resumo.validade} onChange={(e) => setResumo({ ...resumo, validade: e.target.value })} /></div>
+                <div className="sm:col-span-2">
+                  <Label>Consultor(a) responsável</Label>
+                  <Select value={responsavel || undefined} onValueChange={onConsultorChange}>
+                    <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+                    <SelectContent>
+                      {consultores.map((c) => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
+                      <SelectItem value={NEW_CONSULTOR}>+ Adicionar consultor(a)…</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 mt-4">
+            <Button variant="outline" disabled={step === 0} onClick={() => setStep(step - 1)}>
+              <ChevronLeft className="h-4 w-4 mr-1" /> Voltar
+            </Button>
+            {step < STEPS.length - 1 ? (
+              <Button disabled={!canNext()} onClick={() => setStep(step + 1)}>
+                Próximo <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            ) : (
+              <Button onClick={finish}>Enviar para validação</Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={novoConsultorOpen} onOpenChange={setNovoConsultorOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Novo consultor(a)</DialogTitle>
+          </DialogHeader>
+          <div>
+            <Label>Nome</Label>
+            <Input
+              value={novoConsultor}
+              onChange={(e) => setNovoConsultor(e.target.value)}
+              autoFocus
+              onKeyDown={(e) => { if (e.key === "Enter") confirmarNovoConsultor(); }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNovoConsultorOpen(false)}>Cancelar</Button>
+            <Button onClick={confirmarNovoConsultor} disabled={!novoConsultor.trim()}>Adicionar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
