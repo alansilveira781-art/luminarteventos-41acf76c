@@ -47,7 +47,8 @@ function Clientes() {
       clienteId: cliente.id,
       clienteNome: cliente.nome,
       eventoNome: "",
-      eventoData: "",
+      eventoDataInicio: "",
+      eventoDataFim: "",
       valorEstimado: 0,
       responsavel: "",
       observacoes: "",
@@ -148,7 +149,7 @@ function Clientes() {
                       const st = CARD_STATUSES.find((s) => s.key === c.status);
                       return (
                         <div key={c.id} className="flex justify-between text-xs">
-                          <span>{c.eventoNome || "Evento"} {c.eventoData && `• ${fmt(c.eventoData)}`}</span>
+                          <span>{c.eventoNome || "Evento"} {c.eventoDataInicio && `• ${fmt(c.eventoDataInicio)}`}</span>
                           {st && <Badge variant="secondary" className="gap-1"><span className={`h-1.5 w-1.5 rounded-full ${st.color}`} />{st.label}</Badge>}
                         </div>
                       );
@@ -164,7 +165,7 @@ function Clientes() {
                   <div className="space-y-1.5">
                     {linkedPropostas.map((p) => (
                       <div key={p.id} className="flex justify-between text-xs">
-                        <span>#{p.numero} • {fmt(p.evento.data)}</span>
+                        <span>#{p.numero} • {fmt(p.evento.dataInicio)}</span>
                         <Badge variant="secondary">{PROPOSTA_STATUS_LABEL[p.status]}</Badge>
                       </div>
                     ))}

@@ -1,6 +1,6 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { CARD_STATUSES, type ComercialCard, PROPOSTA_STATUS_LABEL } from "@/lib/comercial/types";
+import { CARD_STATUSES, type ComercialCard, PROPOSTA_STATUS_LABEL, propostaTotal } from "@/lib/comercial/types";
 import { useComercial } from "@/lib/comercial/store";
 
 const brl = (v: number) =>
@@ -9,6 +9,11 @@ const fmt = (d: string) => {
   if (!d) return "—";
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d);
   return m ? `${m[3]}/${m[2]}/${m[1]}` : d;
+};
+const fmtPeriodo = (ini: string, fim: string) => {
+  if (!ini && !fim) return "—";
+  if (!fim || ini === fim) return fmt(ini);
+  return `${fmt(ini)} – ${fmt(fim)}`;
 };
 
 export function DetalhesDrawer({
@@ -38,12 +43,12 @@ export function DetalhesDrawer({
 
           <Section title="Evento">
             <Field label="Nome" value={card.eventoNome || "—"} />
-            <Field label="Data" value={fmt(card.eventoData)} />
+            <Field label="Período" value={fmtPeriodo(card.eventoDataInicio, card.eventoDataFim)} />
             <Field label="Valor estimado" value={brl(card.valorEstimado)} />
           </Section>
 
           <Section title="Atendimento">
-            <Field label="Responsável" value={card.responsavel || "—"} />
+            <Field label="Consultor(a)" value={card.responsavel || "—"} />
             {card.observacoes && <Field label="Observações" value={card.observacoes} />}
             {card.motivoPerda && (
               <Field label="Motivo da perda" value={card.motivoPerda} />
@@ -54,16 +59,7 @@ export function DetalhesDrawer({
             <Section title="Proposta vinculada">
               <Field label="Número" value={`#${proposta.numero}`} />
               <Field label="Status" value={PROPOSTA_STATUS_LABEL[proposta.status]} />
-              <Field
-                label="Total"
-                value={brl(
-                  proposta.itens.reduce((s, i) => s + i.quantidade * i.valorUnitario, 0) +
-                    (proposta.custos.frete || 0) +
-                    (proposta.custos.montagem || 0) +
-                    (proposta.custos.desmontagem || 0) +
-                    (proposta.custos.outros || []).reduce((s, c) => s + c.valor, 0),
-                )}
-              />
+              <Field label="Total" value={brl(propostaTotal(proposta))} />
             </Section>
           )}
         </div>
