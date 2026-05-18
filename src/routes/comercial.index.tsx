@@ -83,17 +83,22 @@ function QuadroVendas() {
           <div className="flex gap-3 overflow-auto pb-4 max-h-[calc(100vh-180px)] items-start">
             {CARD_STATUSES.map((s) => (
               <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={byStatus[s.key]?.length ?? 0}>
-                {(byStatus[s.key] ?? []).map((c) => (
-                  <KanbanCard
-                    key={c.id}
-                    card={c}
-                    onEdit={() => { setEditCard(c); setOpenCard(true); }}
-                    onDetalhes={() => setDetalhesCard(c)}
-                    onVenda={() => moveCard(c.id, "fechamento")}
-                    onPerda={() => setPerdaCardId(c.id)}
-                    onProposta={() => { setWizardCardId(c.id); setWizardOpen(true); }}
-                  />
-                ))}
+                {(byStatus[s.key] ?? []).map((c) => {
+                  const proposta = c.propostaId ? propostas.find((p) => p.id === c.propostaId) : null;
+                  return (
+                    <KanbanCard
+                      key={c.id}
+                      card={c}
+                      hasProposta={!!proposta}
+                      onEdit={() => { setEditCard(c); setOpenCard(true); }}
+                      onDetalhes={() => setDetalhesCard(c)}
+                      onVenda={() => moveCard(c.id, "fechamento")}
+                      onPerda={() => setPerdaCardId(c.id)}
+                      onProposta={() => { setWizardCardId(c.id); setWizardOpen(true); }}
+                      onImprimir={() => proposta && gerarPropostaPDF(proposta)}
+                    />
+                  );
+                })}
                 <button
                   type="button"
                   onClick={() => { setEditCard(null); setDefaultStatus(s.key); setOpenCard(true); }}
