@@ -1,112 +1,103 @@
-# Plano — Impressão de Proposta + Catálogo de Descrições
+## Objetivo
 
-## 1. Catálogo de Descrições (novo)
+Reescrever `src/lib/comercial/pdf.ts` para que a impressão da proposta siga o layout do exemplo anexado (Luminart): A4 **paisagem**, capa centralizada com logo, páginas de ambiente com cabeçalho preto e total no rodapé, e página final "Investimento" com tabela resumida.
 
-### Tipos de medida suportados
-- **unidade** — campos: `quantidade`, `valorUnitario` → subtotal = `qtde × valor`
-- **dimensional** — campos: `largura`, `altura`, `comprimento`, `quantidade`, `valorUnitario` → subtotal = `valor × (L × A × C) × qtde`
-- **area** — campos: `largura`, `comprimento`, `quantidade`, `valorM2` → subtotal = `valor × (L × C) × qtde`
-- **linear** — campos: `comprimento`, `quantidade`, `valorMetro` → subtotal = `valor × C × qtde`
+Mudança puramente de apresentação — não toca em tipos, store, wizard ou drawer.
 
-### Estrutura de dados (`src/lib/comercial/types.ts`)
-```ts
-type TipoMedida = "unidade" | "dimensional" | "area" | "linear";
+## Pré-requisito
 
-type CatalogoDescricao = {
-  id: string;
-  nome: string;          // ex: "Painel de LED 4x2"
-  tipoMedida: TipoMedida;
-  valorUnitario: number; // valor pré-definido (editável na proposta)
-  createdAt: string;
-};
+Você vai me enviar o logo (`PNG` ou `SVG`). Vou salvá-lo em `src/assets/luminart-logo.png` e importá-lo como módulo, convertendo para data URL em runtime para o `jsPDF`. Se vier SVG, rasterizo via `<canvas>` antes de embutir.
 
-// Substitui o atual DescricaoItem
-type DescricaoItem = {
-  id: string;
-  catalogoId: string | null; // referência ao catálogo (selecionável)
-  descricao: string;         // nome (cópia no momento da seleção)
-  tipoMedida: TipoMedida;
-  largura?: number;
-  altura?: number;
-  comprimento?: number;
-  quantidade: number;
-  valorUnitario: number;
-};
+## Layout
+
+### Página 1 — Capa (tudo centralizado)
+```text
+              [ LOGO Luminart ]
+        ─────── linha dourada ───────
+            Seu Sonho, Nosso Projeto
+              ── ORC-{numero} ──
+
+              Cliente:            {nome}
+              Local do Evento:    {local}
+              Período:            {periodo}
+              Data do Orçamento:  {data}
+              Consultor(a):       {responsavel}
+
+        [ ondas decorativas no rodapé ]
 ```
-Adicionar helper `descricaoSubtotal(d)` com switch por `tipoMedida` e migração no `store.ts` (descrições antigas viram `tipoMedida: "unidade"`).
+- Bloco de campos: labels alinhados à direita + valores em negrito alinhados à esquerda, agrupados num grid centrado horizontalmente na página.
+- Ondas decorativas desenhadas em vetor (jsPDF paths) com tons `#E8A33D` (laranja) e `#B5B5B5` (cinza).
 
-### Nova rota: `/comercial/catalogo` (`src/routes/comercial.catalogo.tsx`)
-- Tabela com colunas: Nome, Tipo de medida, Valor unitário, Ações (editar/excluir)
-- Dialog de criar/editar com `Select` de tipo de medida + `NumberInput` para valor
-- Persistido no `localStorage` (mesmo padrão do `store.ts` atual)
-- Link na sidebar dentro do grupo Comercial
+### Páginas 2..N — Um ambiente por página
+```text
+█ {NOME DO AMBIENTE EM CAIXA ALTA} ████████████████████████
 
-## 2. Wizard de Proposta — passo Itens
+       Imagem                  Descrição/Componentes
+   ┌─────────────┐         ITEM EM NEGRITO
+   │             │         - descrição em itálico (medidas)
+   │  [foto]     │         - descrição em itálico
+   └─────────────┘         OUTRO ITEM
+                           - descrição em itálico
+                           ...
 
-No passo "Itens" (`PropostaWizard.tsx`), dentro de cada **Item**:
-- Botão **"+ Adicionar descrição"** abre `Select` com as descrições do catálogo (com busca / `Command`)
-- Ao escolher uma descrição do catálogo:
-  - copia `nome`, `tipoMedida`, `valorUnitario` para a `DescricaoItem`
-  - renderiza apenas os campos relevantes ao tipo (ex.: dimensional mostra L/A/C/qtde; unidade só qtde)
-- Valor unitário fica **editável** na proposta (pode sobrescrever o padrão)
-- Subtotal por descrição usa o novo helper
+████ Total ambiente:  R$ {subtotal} ███████████████████████
+```
+- Barra preta de cabeçalho (altura ~14mm) com o nome do ambiente em branco, à esquerda.
+- Coluna imagem ~40% / coluna descrições ~60%, com cabeçalhos cinza-claro "Imagem" e "Descrição/Componentes".
+- Item em **negrito CAIXA ALTA**, descrições em *itálico*. Mantém a formatação por `tipoMedida` (unidade, dimensional, área, linear) que já existe.
+- Barra preta de rodapé com "Total ambiente: R$ …" centralizado em branco.
+- Se as descrições estourarem a página, abre nova página com o mesmo cabeçalho e segue.
 
-Catálogo vazio? Mostrar CTA "Cadastrar no Catálogo →" linkando para a nova rota.
+### Última página — Investimento
+```text
+          ─── INVESTIMENTO ───
 
-## 3. Nova impressão de proposta (PDF)
+              Ambiente A         R$ ...
+              Ambiente B         R$ ...
+              Frete              R$ ...
+              Montagem           R$ ...
+              ...
 
-Reescrever `src/lib/comercial/pdf.ts` com layout limpo:
+       ▓▓▓ Total Geral:  R$ ... ▓▓▓     ← faixa laranja
 
-### Página 1 — Capa / Dados essenciais
-- Cabeçalho minimalista (logo + nº proposta + data)
-- Bloco **Cliente**: nome, telefone, email
-- Bloco **Evento**: tipo, período, local, cidade, observações
-- Bloco **Consultor(a)** + validade
-- Rodapé com contato
+         Av. Maestro Lisboa, 2181 - Lagoa Redonda - Fortaleza CE
+              (85) 9 9997-1804 / (85) 9 9933-1605
+                  comercial@luminarteventos.com.br
 
-### Páginas 2..N — Uma por Ambiente
-Layout em duas colunas:
-- **Esquerda (≈45% da largura):** primeira imagem do ambiente, ocupando boa altura, com legenda discreta "Ambiente: {nome}"
-- **Direita (≈55%):** lista de itens
-  - Nome do item em **negrito**
-  - Descrições abaixo em *itálico*, com a medida formatada conforme o tipo:
-    - unidade: `2× Painel LED — R$ 1.500,00 = R$ 3.000,00`
-    - dimensional: `4,00 × 2,00 × 0,50 m × 2 un — R$ 200,00/un = R$ 1.600,00`
-    - area: `4,00 × 2,00 m² × 1 — R$ 150,00/m² = R$ 1.200,00`
-    - linear: `10,00 m × 1 — R$ 50,00/m = R$ 500,00`
-  - Subtotal do ambiente em destaque no final
-- Quebra de página automática entre ambientes (`doc.addPage()` por ambiente)
-- Imagens redimensionadas mantendo proporção; fallback "Sem imagem" se vazio
+        ── Detalhes que transformam eventos em experiências. ──
+```
+- Tabela centralizada (label / valor) com linhas finas separando.
+- "Total Geral" numa faixa laranja com sombra suave (retângulo + retângulo cinza deslocado).
+- Rodapé fixo com endereço, telefones e email + tagline em itálico entre duas linhas douradas.
 
-### Última página — Resumo financeiro
-- Subtotal ambientes, custos (frete/montagem/desmontagem/outros), Total final em destaque
-- Validade da proposta
+## Paleta
 
-Numeração "Página X de Y" no rodapé.
+```ts
+const GOLD = [232, 163, 61];   // #E8A33D
+const INK  = [20, 20, 20];     // preto suave
+const GREY = [180, 180, 180];
+const SOFT = [240, 240, 240];  // cabeçalho de tabela
+```
 
-## 4. Onde disparar a impressão
+## Detalhes técnicos
 
-Adicionar botão "Imprimir PDF" (ícone `Printer`/`FileDown`) chamando `gerarPropostaPDF(proposta)`:
-1. **Card do Kanban** (`comercial.index.tsx`) — só aparece quando o card tem `propostaId`; busca a proposta no store
-2. **Drawer de Detalhes** (`DetalhesDrawer.tsx`) — botão no rodapé quando há proposta vinculada
-3. **Aba Propostas** (`comercial.propostas.tsx`) — já existe, apenas usar a nova função
+- `new jsPDF({ unit: "mm", format: "a4", orientation: "landscape" })` → 297×210mm.
+- Logo: `import logoUrl from "@/assets/luminart-logo.png"` → `fetch` → `FileReader` → data URL no top-level da função (carrega uma vez).
+- Ondas da capa: dois `doc.path()`/curvas Bezier (ou `lines` com `bezierCurveTo`) preenchidas com `setFillColor`.
+- Barras pretas: `doc.setFillColor(...INK); doc.rect(0, y, 297, 14, "F");` com texto branco via `setTextColor(255,255,255)`.
+- Faixa laranja do Total Geral: `rect` arredondado simulado com dois retângulos (sombra cinza atrás + faixa dourada na frente).
+- Numeração de página continua no rodapé das páginas de ambiente apenas (capa e investimento sem número, como no exemplo).
+- `descricaoLinha()` permanece igual (já formata por tipoMedida).
 
-## 5. Arquivos afetados
+## Arquivos afetados
 
 | Arquivo | Mudança |
 |---|---|
-| `src/lib/comercial/types.ts` | `TipoMedida`, `CatalogoDescricao`, novo `DescricaoItem`, helpers de subtotal |
-| `src/lib/comercial/store.ts` | CRUD `catalogo`, migração de descrições antigas |
-| `src/lib/comercial/pdf.ts` | Reescrita completa (capa + 1 ambiente/página + resumo) |
-| `src/routes/comercial.catalogo.tsx` | **novo** — CRUD do catálogo |
-| `src/routes/comercial.tsx` | adicionar tab/link "Catálogo" |
-| `src/components/AppSidebar.tsx` | item de menu (se aplicável) |
-| `src/components/comercial/PropostaWizard.tsx` | seletor de descrição via catálogo, campos por tipo |
-| `src/components/comercial/DetalhesDrawer.tsx` | botão "Imprimir PDF" |
-| `src/routes/comercial.index.tsx` | botão imprimir no card |
+| `src/lib/comercial/pdf.ts` | Reescrita completa do layout (paisagem + novas seções) |
+| `src/assets/luminart-logo.png` | **novo** — logo que você vai enviar |
 
-## 6. Pontos em aberto (assumidos)
-- Catálogo e descrições continuam em `localStorage` (mesmo padrão atual). Migrar para Lovable Cloud é trabalho separado.
-- Imagens dos ambientes seguem como data URL (já implementado).
-- Dimensões em metros; valores em BRL.
-- Se o ambiente tiver várias imagens, a página usa a 1ª (futuras imagens podem virar páginas extras — fora do escopo).
+Nenhuma alteração em tipos, store, wizard, drawer ou rotas.
+
+## Próximo passo
+
+Após aprovar o plano, me envie o arquivo do logo na próxima mensagem que eu implemento.
