@@ -18,6 +18,7 @@ import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as EntradasRouteImport } from './routes/entradas'
 import { Route as DevolucoesRouteImport } from './routes/devolucoes'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ContabilRouteImport } from './routes/contabil'
 import { Route as ComprasRouteImport } from './routes/compras'
 import { Route as ComercialRouteImport } from './routes/comercial'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -25,6 +26,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as FinanceiroIndexRouteImport } from './routes/financeiro.index'
 import { Route as EstoqueIndexRouteImport } from './routes/estoque.index'
+import { Route as ContabilIndexRouteImport } from './routes/contabil.index'
 import { Route as ComprasIndexRouteImport } from './routes/compras.index'
 import { Route as ComercialIndexRouteImport } from './routes/comercial.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
@@ -92,6 +94,11 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContabilRoute = ContabilRouteImport.update({
+  id: '/contabil',
+  path: '/contabil',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ComprasRoute = ComprasRouteImport.update({
   id: '/compras',
   path: '/compras',
@@ -126,6 +133,11 @@ const EstoqueIndexRoute = EstoqueIndexRouteImport.update({
   id: '/estoque/',
   path: '/estoque/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ContabilIndexRoute = ContabilIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ContabilRoute,
 } as any)
 const ComprasIndexRoute = ComprasIndexRouteImport.update({
   id: '/',
@@ -241,6 +253,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/comercial': typeof ComercialRouteWithChildren
   '/compras': typeof ComprasRouteWithChildren
+  '/contabil': typeof ContabilRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/devolucoes': typeof DevolucoesRoute
   '/entradas': typeof EntradasRoute
@@ -266,6 +279,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/comercial/': typeof ComercialIndexRoute
   '/compras/': typeof ComprasIndexRoute
+  '/contabil/': typeof ContabilIndexRoute
   '/estoque/': typeof EstoqueIndexRoute
   '/financeiro/': typeof FinanceiroIndexRoute
   '/api/contaazul/status': typeof ApiContaazulStatusRoute
@@ -301,6 +315,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/comercial': typeof ComercialIndexRoute
   '/compras': typeof ComprasIndexRoute
+  '/contabil': typeof ContabilIndexRoute
   '/estoque': typeof EstoqueIndexRoute
   '/financeiro': typeof FinanceiroIndexRoute
   '/api/contaazul/status': typeof ApiContaazulStatusRoute
@@ -316,6 +331,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/comercial': typeof ComercialRouteWithChildren
   '/compras': typeof ComprasRouteWithChildren
+  '/contabil': typeof ContabilRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/devolucoes': typeof DevolucoesRoute
   '/entradas': typeof EntradasRoute
@@ -341,6 +357,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/comercial/': typeof ComercialIndexRoute
   '/compras/': typeof ComprasIndexRoute
+  '/contabil/': typeof ContabilIndexRoute
   '/estoque/': typeof EstoqueIndexRoute
   '/financeiro/': typeof FinanceiroIndexRoute
   '/api/contaazul/status': typeof ApiContaazulStatusRoute
@@ -357,6 +374,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/comercial'
     | '/compras'
+    | '/contabil'
     | '/dashboard'
     | '/devolucoes'
     | '/entradas'
@@ -382,6 +400,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/comercial/'
     | '/compras/'
+    | '/contabil/'
     | '/estoque/'
     | '/financeiro/'
     | '/api/contaazul/status'
@@ -417,6 +436,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/comercial'
     | '/compras'
+    | '/contabil'
     | '/estoque'
     | '/financeiro'
     | '/api/contaazul/status'
@@ -431,6 +451,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/comercial'
     | '/compras'
+    | '/contabil'
     | '/dashboard'
     | '/devolucoes'
     | '/entradas'
@@ -456,6 +477,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/comercial/'
     | '/compras/'
+    | '/contabil/'
     | '/estoque/'
     | '/financeiro/'
     | '/api/contaazul/status'
@@ -471,6 +493,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ComercialRoute: typeof ComercialRouteWithChildren
   ComprasRoute: typeof ComprasRouteWithChildren
+  ContabilRoute: typeof ContabilRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   DevolucoesRoute: typeof DevolucoesRoute
   EntradasRoute: typeof EntradasRoute
@@ -555,6 +578,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contabil': {
+      id: '/contabil'
+      path: '/contabil'
+      fullPath: '/contabil'
+      preLoaderRoute: typeof ContabilRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/compras': {
       id: '/compras'
       path: '/compras'
@@ -603,6 +633,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/estoque/'
       preLoaderRoute: typeof EstoqueIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/contabil/': {
+      id: '/contabil/'
+      path: '/'
+      fullPath: '/contabil/'
+      preLoaderRoute: typeof ContabilIndexRouteImport
+      parentRoute: typeof ContabilRoute
     }
     '/compras/': {
       id: '/compras/'
@@ -803,6 +840,18 @@ const ComprasRouteChildren: ComprasRouteChildren = {
 const ComprasRouteWithChildren =
   ComprasRoute._addFileChildren(ComprasRouteChildren)
 
+interface ContabilRouteChildren {
+  ContabilIndexRoute: typeof ContabilIndexRoute
+}
+
+const ContabilRouteChildren: ContabilRouteChildren = {
+  ContabilIndexRoute: ContabilIndexRoute,
+}
+
+const ContabilRouteWithChildren = ContabilRoute._addFileChildren(
+  ContabilRouteChildren,
+)
+
 interface FinanceiroRouteChildren {
   FinanceiroContaAzulRoute: typeof FinanceiroContaAzulRoute
   FinanceiroDashboardRoute: typeof FinanceiroDashboardRoute
@@ -827,6 +876,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ComercialRoute: ComercialRouteWithChildren,
   ComprasRoute: ComprasRouteWithChildren,
+  ContabilRoute: ContabilRouteWithChildren,
   DashboardRoute: DashboardRoute,
   DevolucoesRoute: DevolucoesRoute,
   EntradasRoute: EntradasRoute,
@@ -848,3 +898,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
