@@ -858,6 +858,57 @@ export type Database = {
         }
         Relationships: []
       }
+      financeiro_rotinas: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_fim: string | null
+          data_inicio: string
+          descricao: string | null
+          dias_semana: number[] | null
+          frequencia: string
+          hora: string
+          id: string
+          responsavel_id: string | null
+          responsavel_nome: string | null
+          status: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_fim?: string | null
+          data_inicio?: string
+          descricao?: string | null
+          dias_semana?: number[] | null
+          frequencia: string
+          hora?: string
+          id?: string
+          responsavel_id?: string | null
+          responsavel_nome?: string | null
+          status?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_fim?: string | null
+          data_inicio?: string
+          descricao?: string | null
+          dias_semana?: number[] | null
+          frequencia?: string
+          hora?: string
+          id?: string
+          responsavel_id?: string | null
+          responsavel_nome?: string | null
+          status?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fornecedores: {
         Row: {
           contato_nome: string | null
@@ -1054,6 +1105,7 @@ export type Database = {
           data_movimento: string
           data_prevista_devolucao: string | null
           desconto: number | null
+          empresa: string | null
           entrada_tipo: Database["public"]["Enums"]["entrada_tipo"] | null
           evento_projeto: string | null
           finalidade: string | null
@@ -1085,6 +1137,7 @@ export type Database = {
           data_movimento?: string
           data_prevista_devolucao?: string | null
           desconto?: number | null
+          empresa?: string | null
           entrada_tipo?: Database["public"]["Enums"]["entrada_tipo"] | null
           evento_projeto?: string | null
           finalidade?: string | null
@@ -1116,6 +1169,7 @@ export type Database = {
           data_movimento?: string
           data_prevista_devolucao?: string | null
           desconto?: number | null
+          empresa?: string | null
           entrada_tipo?: Database["public"]["Enums"]["entrada_tipo"] | null
           evento_projeto?: string | null
           finalidade?: string | null
@@ -1171,6 +1225,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      nfe_consultas: {
+        Row: {
+          chave: string
+          data_emissao: string | null
+          destinatario_cnpj: string | null
+          destinatario_nome: string | null
+          emitente_cnpj: string | null
+          emitente_nome: string | null
+          empresa: string
+          id: string
+          numero: string | null
+          raw: Json | null
+          serie: string | null
+          status: string | null
+          synced_at: string
+          valor: number | null
+          xml_url: string | null
+        }
+        Insert: {
+          chave: string
+          data_emissao?: string | null
+          destinatario_cnpj?: string | null
+          destinatario_nome?: string | null
+          emitente_cnpj?: string | null
+          emitente_nome?: string | null
+          empresa: string
+          id?: string
+          numero?: string | null
+          raw?: Json | null
+          serie?: string | null
+          status?: string | null
+          synced_at?: string
+          valor?: number | null
+          xml_url?: string | null
+        }
+        Update: {
+          chave?: string
+          data_emissao?: string | null
+          destinatario_cnpj?: string | null
+          destinatario_nome?: string | null
+          emitente_cnpj?: string | null
+          emitente_nome?: string | null
+          empresa?: string
+          id?: string
+          numero?: string | null
+          raw?: Json | null
+          serie?: string | null
+          status?: string | null
+          synced_at?: string
+          valor?: number | null
+          xml_url?: string | null
+        }
+        Relationships: []
       }
       notificacoes: {
         Row: {

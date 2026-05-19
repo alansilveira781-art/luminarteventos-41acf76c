@@ -1,103 +1,119 @@
-## Objetivo
 
-Reescrever `src/lib/comercial/pdf.ts` para que a impressão da proposta siga o layout do exemplo anexado (Luminart): A4 **paisagem**, capa centralizada com logo, páginas de ambiente com cabeçalho preto e total no rodapé, e página final "Investimento" com tabela resumida.
+# Fase 1 — Ajustes nos módulos existentes
 
-Mudança puramente de apresentação — não toca em tipos, store, wizard ou drawer.
+Esta fase entrega só Financeiro / Estoque / Compras. Os 3 módulos novos (Contábil, Jurídico, RH) ficam para a Fase 2.
 
-## Pré-requisito
+---
 
-Você vai me enviar o logo (`PNG` ou `SVG`). Vou salvá-lo em `src/assets/luminart-logo.png` e importá-lo como módulo, convertendo para data URL em runtime para o `jsPDF`. Se vier SVG, rasterizo via `<canvas>` antes de embutir.
+## 1. Financeiro — nova aba "Rotinas"
 
-## Layout
+Nova rota `/financeiro/rotinas` com 2 visualizações: **Tabela** e **Calendário**.
 
-### Página 1 — Capa (tudo centralizado)
-```text
-              [ LOGO Luminart ]
-        ─────── linha dourada ───────
-            Seu Sonho, Nosso Projeto
-              ── ORC-{numero} ──
+Cada rotina tem:
+- Título (ex.: "Verificar pagamentos")
+- Descrição (opcional)
+- Frequência: diária / semanal / quinzenal / mensal / personalizada (dias da semana)
+- Hora do dia
+- Data de início e data de fim (a rotina deixa de se repetir após essa data)
+- Responsável (usuário com acesso ao módulo financeiro)
+- Status: ativa / pausada
+- (futuro) marcar execução como concluída no dia
 
-              Cliente:            {nome}
-              Local do Evento:    {local}
-              Período:            {periodo}
-              Data do Orçamento:  {data}
-              Consultor(a):       {responsavel}
+**Tabela**: lista, busca, filtros por responsável/frequência/status, CRUD inline com dialog.
+**Calendário**: visão mensal (e semanal) expandindo cada rotina nas datas em que cai, considerando início/fim e frequência. Click em um evento abre o detalhe da rotina.
 
-        [ ondas decorativas no rodapé ]
-```
-- Bloco de campos: labels alinhados à direita + valores em negrito alinhados à esquerda, agrupados num grid centrado horizontalmente na página.
-- Ondas decorativas desenhadas em vetor (jsPDF paths) com tons `#E8A33D` (laranja) e `#B5B5B5` (cinza).
+Sidebar do Comercial/Financeiro recebe novo item "Rotinas".
 
-### Páginas 2..N — Um ambiente por página
-```text
-█ {NOME DO AMBIENTE EM CAIXA ALTA} ████████████████████████
+## 2. Estoque — campo Empresa nas entradas e saídas
 
-       Imagem                  Descrição/Componentes
-   ┌─────────────┐         ITEM EM NEGRITO
-   │             │         - descrição em itálico (medidas)
-   │  [foto]     │         - descrição em itálico
-   └─────────────┘         OUTRO ITEM
-                           - descrição em itálico
-                           ...
+Lista fixa em código: **Luminart Eventos**, **Luminart Planejados**, **Luminart Tecnologia** (helper em `src/lib/empresas.ts`).
 
-████ Total ambiente:  R$ {subtotal} ███████████████████████
-```
-- Barra preta de cabeçalho (altura ~14mm) com o nome do ambiente em branco, à esquerda.
-- Coluna imagem ~40% / coluna descrições ~60%, com cabeçalhos cinza-claro "Imagem" e "Descrição/Componentes".
-- Item em **negrito CAIXA ALTA**, descrições em *itálico*. Mantém a formatação por `tipoMedida` (unidade, dimensional, área, linear) que já existe.
-- Barra preta de rodapé com "Total ambiente: R$ …" centralizado em branco.
-- Se as descrições estourarem a página, abre nova página com o mesmo cabeçalho e segue.
+- Nova coluna `empresa` em `movimentacoes` (texto, nullable para compatibilidade).
+- Form de Entrada: select obrigatório de Empresa.
+- Form de Saída: select obrigatório de Empresa (saída pode ser de empresa diferente da entrada — só campo informativo).
+- Listagem de Entradas e Saídas: nova coluna Empresa + filtro.
+- Modelos de importação Excel (`ENTRADA_TEMPLATE` e equivalente saída): adicionar coluna `empresa` com validação contra a lista fixa.
+- Parser de NFe: tentar inferir empresa pelo CNPJ do destinatário; se não bater, deixa em branco e usuário escolhe.
 
-### Última página — Investimento
-```text
-          ─── INVESTIMENTO ───
+## 3. Estoque — nova seção "Notas emitidas" (SEFAZ)
 
-              Ambiente A         R$ ...
-              Ambiente B         R$ ...
-              Frete              R$ ...
-              Montagem           R$ ...
-              ...
+Dentro de `/entradas`, virar a página em **abas**:
+- **Aba 1 — Entradas** (a tela atual, sem alteração de comportamento).
+- **Aba 2 — Notas emitidas (SEFAZ)**: consulta de NFs emitidas no CNPJ de cada empresa.
 
-       ▓▓▓ Total Geral:  R$ ... ▓▓▓     ← faixa laranja
+Implementação:
+- Integração via provedor terceirizado de NFe (sugestão: **Focus NFe** ou **PlugNotas** — confirmar com você antes de codar a integração final).
+- Server function `consultarNotasSefaz({ empresa, periodo })` em `src/lib/sefaz/sefaz.functions.ts` que chama o provedor.
+- Tabela `nfe_consultas` para cachear resultados (chave, emitente, destinatário, valor, data, status, XML link).
+- UI: filtros por empresa + período, botão "Atualizar", lista com chave, fornecedor, valor, data, ações (ver detalhes, baixar XML, "Criar entrada a partir desta NF").
+- Segredos necessários: token do provedor + certificado A1 (vou pedir via `add_secret` quando você confirmar o provedor).
 
-         Av. Maestro Lisboa, 2181 - Lagoa Redonda - Fortaleza CE
-              (85) 9 9997-1804 / (85) 9 9933-1605
-                  comercial@luminarteventos.com.br
+## 4. Compras — reorganização das abas + Alerta de estoque
 
-        ── Detalhes que transformam eventos em experiências. ──
-```
-- Tabela centralizada (label / valor) com linhas finas separando.
-- "Total Geral" numa faixa laranja com sombra suave (retângulo + retângulo cinza deslocado).
-- Rodapé fixo com endereço, telefones e email + tagline em itálico entre duas linhas douradas.
+- Reordenar sidebar do Comercial→Compras para: **Dashboard** primeiro, depois Quadro de Compras.
+- No Dashboard de Compras (`/compras/dashboard`):
+  - Adicionar **card "Alerta de Estoque"** no topo, listando todos os itens com `status = 'baixo_estoque'` ou `'sem_estoque'` (lendo de `itens`).
+  - Para cada item: nome, qtd atual, qtd mínima, badge de status, botão "Solicitar compra" que pré-preenche um novo card no Quadro de Compras com o item.
+  - Mantém os widgets já existentes do dashboard abaixo.
 
-## Paleta
-
-```ts
-const GOLD = [232, 163, 61];   // #E8A33D
-const INK  = [20, 20, 20];     // preto suave
-const GREY = [180, 180, 180];
-const SOFT = [240, 240, 240];  // cabeçalho de tabela
-```
+---
 
 ## Detalhes técnicos
 
-- `new jsPDF({ unit: "mm", format: "a4", orientation: "landscape" })` → 297×210mm.
-- Logo: `import logoUrl from "@/assets/luminart-logo.png"` → `fetch` → `FileReader` → data URL no top-level da função (carrega uma vez).
-- Ondas da capa: dois `doc.path()`/curvas Bezier (ou `lines` com `bezierCurveTo`) preenchidas com `setFillColor`.
-- Barras pretas: `doc.setFillColor(...INK); doc.rect(0, y, 297, 14, "F");` com texto branco via `setTextColor(255,255,255)`.
-- Faixa laranja do Total Geral: `rect` arredondado simulado com dois retângulos (sombra cinza atrás + faixa dourada na frente).
-- Numeração de página continua no rodapé das páginas de ambiente apenas (capa e investimento sem número, como no exemplo).
-- `descricaoLinha()` permanece igual (já formata por tipoMedida).
+**Migrações de banco (uma migração só):**
+```sql
+-- rotinas financeiras
+CREATE TABLE public.financeiro_rotinas (
+  id uuid PK default gen_random_uuid(),
+  titulo text NOT NULL,
+  descricao text,
+  frequencia text NOT NULL,  -- 'diaria'|'semanal'|'quinzenal'|'mensal'|'custom'
+  dias_semana int[],         -- 0..6 quando frequencia='custom' ou 'semanal'
+  hora time NOT NULL,
+  data_inicio date NOT NULL,
+  data_fim date,
+  responsavel_id uuid,
+  status text NOT NULL DEFAULT 'ativa',
+  created_by uuid,
+  created_at/updated_at timestamptz
+);
+-- RLS: has_module_access(auth.uid(),'financeiro')
 
-## Arquivos afetados
+-- empresa nas movimentações
+ALTER TABLE public.movimentacoes ADD COLUMN empresa text;
 
-| Arquivo | Mudança |
-|---|---|
-| `src/lib/comercial/pdf.ts` | Reescrita completa do layout (paisagem + novas seções) |
-| `src/assets/luminart-logo.png` | **novo** — logo que você vai enviar |
+-- cache de consultas SEFAZ
+CREATE TABLE public.nfe_consultas (
+  id uuid PK,
+  empresa text NOT NULL,
+  chave text NOT NULL UNIQUE,
+  numero text, serie text,
+  emitente_cnpj text, emitente_nome text,
+  destinatario_cnpj text, destinatario_nome text,
+  valor numeric, data_emissao timestamptz,
+  status text, xml_url text,
+  raw jsonb, synced_at timestamptz default now()
+);
+-- RLS: has_module_access(auth.uid(),'estoque')
+```
 
-Nenhuma alteração em tipos, store, wizard, drawer ou rotas.
+**Arquivos novos:**
+- `src/lib/empresas.ts` — lista fixa + helper.
+- `src/routes/financeiro.rotinas.tsx` — página com tabs Tabela/Calendário.
+- `src/components/financeiro/RotinaDialog.tsx` — form CRUD.
+- `src/components/financeiro/RotinasCalendar.tsx` — visão calendário (usa `date-fns` + expansão de recorrência).
+- `src/lib/sefaz/sefaz.functions.ts` — server functions de consulta NFe.
+- `src/components/estoque/NotasSefaz.tsx` — UI da nova aba.
+- `src/components/compras/AlertaEstoqueCard.tsx` — card do dashboard.
 
-## Próximo passo
+**Arquivos editados:**
+- `src/components/AppSidebar.tsx` — novo item "Rotinas" no grupo Financeiro; reordenar Compras (Dashboard primeiro).
+- `src/routes/entradas.tsx` — wrappear em `<Tabs>` (Entradas / Notas emitidas) + campo Empresa no form e na listagem.
+- `src/routes/saidas.tsx` — campo Empresa no form e na listagem.
+- `src/lib/import-utils.ts` — adicionar `empresa` em `ENTRADA_TEMPLATE` e criar `SAIDA_TEMPLATE` se faltar.
+- `src/routes/compras.dashboard.tsx` — adicionar card de alerta no topo.
 
-Após aprovar o plano, me envie o arquivo do logo na próxima mensagem que eu implemento.
+**Segredos (a pedir após escolha do provedor SEFAZ):**
+- `FOCUS_NFE_TOKEN` (ou equivalente) — só quando você confirmar o provedor.
+
+**Fora desta fase (Fase 2):** módulos Contábil, Jurídico, Recursos Humanos.
