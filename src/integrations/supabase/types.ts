@@ -649,6 +649,144 @@ export type Database = {
         }
         Relationships: []
       }
+      contabil_configuracao_aliquotas: {
+        Row: {
+          aliquota: number
+          ativo: boolean
+          created_at: string
+          empresa: string
+          id: string
+          imposto: string
+          observacoes: string | null
+          regime: string
+          updated_at: string
+        }
+        Insert: {
+          aliquota?: number
+          ativo?: boolean
+          created_at?: string
+          empresa: string
+          id?: string
+          imposto: string
+          observacoes?: string | null
+          regime: string
+          updated_at?: string
+        }
+        Update: {
+          aliquota?: number
+          ativo?: boolean
+          created_at?: string
+          empresa?: string
+          id?: string
+          imposto?: string
+          observacoes?: string | null
+          regime?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      contabil_consultas_impostos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          empresa: string | null
+          id: string
+          observacoes: string | null
+          parametros: Json | null
+          periodo_fim: string | null
+          periodo_inicio: string | null
+          resultado: Json | null
+          status: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          empresa?: string | null
+          id?: string
+          observacoes?: string | null
+          parametros?: Json | null
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          resultado?: Json | null
+          status?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          empresa?: string | null
+          id?: string
+          observacoes?: string | null
+          parametros?: Json | null
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          resultado?: Json | null
+          status?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      contabil_notas_fiscais: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_emissao: string | null
+          empresa: string
+          id: string
+          impostos: Json | null
+          numero: string | null
+          observacoes: string | null
+          status: string
+          tipo_servico: string | null
+          tomador_documento: string | null
+          tomador_email: string | null
+          tomador_nome: string
+          updated_at: string
+          valor_bruto: number
+          valor_liquido: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_emissao?: string | null
+          empresa: string
+          id?: string
+          impostos?: Json | null
+          numero?: string | null
+          observacoes?: string | null
+          status?: string
+          tipo_servico?: string | null
+          tomador_documento?: string | null
+          tomador_email?: string | null
+          tomador_nome: string
+          updated_at?: string
+          valor_bruto?: number
+          valor_liquido?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_emissao?: string | null
+          empresa?: string
+          id?: string
+          impostos?: Json | null
+          numero?: string | null
+          observacoes?: string | null
+          status?: string
+          tipo_servico?: string | null
+          tomador_documento?: string | null
+          tomador_email?: string | null
+          tomador_nome?: string
+          updated_at?: string
+          valor_bruto?: number
+          valor_liquido?: number | null
+        }
+        Relationships: []
+      }
       demanda_anexos: {
         Row: {
           created_at: string
@@ -1017,6 +1155,72 @@ export type Database = {
         }
         Relationships: []
       }
+      juridico_contratos: {
+        Row: {
+          cliente_documento: string | null
+          cliente_email: string | null
+          cliente_nome: string | null
+          cliente_telefone: string | null
+          created_at: string
+          created_by: string | null
+          data_assinatura: string | null
+          data_fechamento: string | null
+          empresa: string | null
+          id: string
+          observacoes: string | null
+          ordem: number
+          proposta_numero: number | null
+          proposta_ref: string | null
+          responsavel: string | null
+          status: string
+          titulo: string
+          updated_at: string
+          valor: number | null
+        }
+        Insert: {
+          cliente_documento?: string | null
+          cliente_email?: string | null
+          cliente_nome?: string | null
+          cliente_telefone?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_assinatura?: string | null
+          data_fechamento?: string | null
+          empresa?: string | null
+          id?: string
+          observacoes?: string | null
+          ordem?: number
+          proposta_numero?: number | null
+          proposta_ref?: string | null
+          responsavel?: string | null
+          status?: string
+          titulo: string
+          updated_at?: string
+          valor?: number | null
+        }
+        Update: {
+          cliente_documento?: string | null
+          cliente_email?: string | null
+          cliente_nome?: string | null
+          cliente_telefone?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_assinatura?: string | null
+          data_fechamento?: string | null
+          empresa?: string | null
+          id?: string
+          observacoes?: string | null
+          ordem?: number
+          proposta_numero?: number | null
+          proposta_ref?: string | null
+          responsavel?: string | null
+          status?: string
+          titulo?: string
+          updated_at?: string
+          valor?: number | null
+        }
+        Relationships: []
+      }
       modulos: {
         Row: {
           ativo: boolean
@@ -1351,6 +1555,63 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rh_vagas: {
+        Row: {
+          candidato_email: string | null
+          candidato_nome: string | null
+          candidato_telefone: string | null
+          created_at: string
+          created_by: string | null
+          departamento: string | null
+          descricao: string | null
+          empresa: string | null
+          fonte: string | null
+          id: string
+          observacoes: string | null
+          ordem: number
+          responsavel: string | null
+          status: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          candidato_email?: string | null
+          candidato_nome?: string | null
+          candidato_telefone?: string | null
+          created_at?: string
+          created_by?: string | null
+          departamento?: string | null
+          descricao?: string | null
+          empresa?: string | null
+          fonte?: string | null
+          id?: string
+          observacoes?: string | null
+          ordem?: number
+          responsavel?: string | null
+          status?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          candidato_email?: string | null
+          candidato_nome?: string | null
+          candidato_telefone?: string | null
+          created_at?: string
+          created_by?: string | null
+          departamento?: string | null
+          descricao?: string | null
+          empresa?: string | null
+          fonte?: string | null
+          id?: string
+          observacoes?: string | null
+          ordem?: number
+          responsavel?: string | null
+          status?: string
+          titulo?: string
           updated_at?: string
         }
         Relationships: []
