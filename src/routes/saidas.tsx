@@ -309,6 +309,8 @@ function SaidasPage() {
       options: (solicitantes ?? []).map((s: any) => ({ value: s.id, label: s.nome })) },
     { key: "saida_tipo", label: "Tipo de saída", type: "select",
       options: Object.entries(saidaTipoLabels).map(([v, l]) => ({ value: v, label: l as string })) },
+    { key: "empresa", label: "Empresa", type: "select",
+      options: EMPRESAS.map((e) => ({ value: e, label: e })) },
     { key: "evento_projeto", label: "Evento/Projeto", type: "text" },
     { key: "finalidade", label: "Finalidade", type: "text" },
     { key: "responsavel_retirada", label: "Responsável retirada", type: "text" },
