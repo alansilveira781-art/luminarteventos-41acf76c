@@ -502,7 +502,7 @@ function SaidasPage() {
                   </>
                 );
               }) : (
-                <tr><td colSpan={isAdmin ? 12 : 10} className="text-center py-10 text-muted-foreground">Nenhuma saída encontrada.</td></tr>
+                <tr><td colSpan={isAdmin ? 13 : 11} className="text-center py-10 text-muted-foreground">Nenhuma saída encontrada.</td></tr>
               )}
             </tbody>
           </table>
