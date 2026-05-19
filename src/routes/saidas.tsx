@@ -30,6 +30,7 @@ import { useBulkSelection } from "@/hooks/useBulkSelection";
 import { BulkActionsBar } from "@/components/BulkActionsBar";
 import { BulkEditDialog, normalizeBulkPatch, type BulkField } from "@/components/BulkEditDialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { EMPRESAS } from "@/lib/empresas";
 
 export const Route = createFileRoute("/saidas")({
   component: SaidasPage,
@@ -44,6 +45,7 @@ function SaidasPage() {
   const [q, setQ] = useState("");
   const [filterItemQ, setFilterItemQ] = useState<string>("");
   const [filterEvento, setFilterEvento] = useState<string>("__all");
+  const [filterEmpresa, setFilterEmpresa] = useState<string>("__all");
   const { sort, toggleSort, applySort } = useSort();
 
   const editMut = useMutation({
@@ -247,6 +249,7 @@ function SaidasPage() {
       if (!itemHay.includes(normalize(filterItemQ))) return false;
     }
     if (filterEvento !== "__all" && (m.evento_projeto ?? "") !== filterEvento) return false;
+    if (filterEmpresa !== "__all" && (m.empresa ?? "") !== filterEmpresa) return false;
     if (!sBusca) return true;
     const hay = normalize([
       m.item?.nome, m.item?.codigo, m.evento_projeto, m.solicitante?.nome,
@@ -274,6 +277,7 @@ function SaidasPage() {
           evento_projeto: m.evento_projeto,
           saida_tipo: m.saida_tipo,
           saida_status: m.saida_status,
+          empresa: m.empresa,
           data_prevista_devolucao: m.data_prevista_devolucao,
           observacoes: m.observacoes,
           finalidade: m.finalidade,
@@ -305,6 +309,8 @@ function SaidasPage() {
       options: (solicitantes ?? []).map((s: any) => ({ value: s.id, label: s.nome })) },
     { key: "saida_tipo", label: "Tipo de saída", type: "select",
       options: Object.entries(saidaTipoLabels).map(([v, l]) => ({ value: v, label: l as string })) },
+    { key: "empresa", label: "Empresa", type: "select",
+      options: EMPRESAS.map((e) => ({ value: e, label: e })) },
     { key: "evento_projeto", label: "Evento/Projeto", type: "text" },
     { key: "finalidade", label: "Finalidade", type: "text" },
     { key: "responsavel_retirada", label: "Responsável retirada", type: "text" },
@@ -373,8 +379,15 @@ function SaidasPage() {
               ))}
             </SelectContent>
           </Select>
-          {(filterItemQ || filterEvento !== "__all" || q) && (
-            <Button type="button" variant="ghost" size="sm" onClick={() => { setFilterItemQ(""); setFilterEvento("__all"); setQ(""); }}>
+          <Select value={filterEmpresa} onValueChange={setFilterEmpresa}>
+            <SelectTrigger className="w-[200px]"><SelectValue placeholder="Filtrar por empresa" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todas empresas</SelectItem>
+              {EMPRESAS.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {(filterItemQ || filterEvento !== "__all" || filterEmpresa !== "__all" || q) && (
+            <Button type="button" variant="ghost" size="sm" onClick={() => { setFilterItemQ(""); setFilterEvento("__all"); setFilterEmpresa("__all"); setQ(""); }}>
               <X className="h-3 w-3 mr-1" /> Limpar
             </Button>
           )}
@@ -400,6 +413,7 @@ function SaidasPage() {
                 <th className="px-3 py-3 w-8"></th>
                 <SortableTh sort={sort} onToggle={toggleSort} k="numero" label="REQ" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="data_movimento" label="Data" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="empresa" label="Empresa" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="evento_projeto" label="Evento/Projeto" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="solicitante" label="Solicitante" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="saida_tipo" label="Tipo" />
@@ -413,7 +427,7 @@ function SaidasPage() {
             <tbody>
               {grupos.length ? grupos.map((g: any) => {
                 const isOpen = !!expandido[g.id];
-                const colCount = (isAdmin ? 1 : 0) + 1 + 9 + (isAdmin ? 1 : 0);
+                const colCount = (isAdmin ? 1 : 0) + 1 + 10 + (isAdmin ? 1 : 0);
                 return (
                   <>
                     <tr key={g.id} className="border-t border-border hover:bg-muted/30">
@@ -432,6 +446,7 @@ function SaidasPage() {
                         {g.numero != null ? `REQ-${String(g.numero).padStart(4, "0")}` : "—"}
                       </td>
                       <td className="px-4 py-3 tabular-nums whitespace-nowrap">{format(new Date(g.data_movimento), "dd/MM/yyyy HH:mm")}</td>
+                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{g.empresa ?? "—"}</td>
                       <td className="px-4 py-3 text-foreground">{g.evento_projeto ?? "—"}</td>
                       <td className="px-4 py-3 text-muted-foreground">{g.solicitante?.nome ?? "—"}</td>
                       <td className="px-4 py-3 text-muted-foreground">{g.saida_tipo ? saidaTipoLabels[g.saida_tipo] : "—"}</td>
@@ -489,7 +504,7 @@ function SaidasPage() {
                   </>
                 );
               }) : (
-                <tr><td colSpan={isAdmin ? 12 : 10} className="text-center py-10 text-muted-foreground">Nenhuma saída encontrada.</td></tr>
+                <tr><td colSpan={isAdmin ? 13 : 11} className="text-center py-10 text-muted-foreground">Nenhuma saída encontrada.</td></tr>
               )}
             </tbody>
           </table>
@@ -575,6 +590,7 @@ function SaidaForm({ prefill, isEditing, itens, solicitantes, onEditSolicitante,
       ? new Date(prefill.data_movimento).toISOString().slice(0, 16)
       : new Date().toISOString().slice(0, 16),
     saida_tipo: prefill?.saida_tipo ?? "evento",
+    empresa: prefill?.empresa ?? "",
     solicitante_id: prefill?.solicitante_id ?? "",
     evento_projeto: prefill?.evento_projeto ?? "",
     finalidade: prefill?.finalidade ?? "",
@@ -639,6 +655,7 @@ function SaidaForm({ prefill, isEditing, itens, solicitantes, onEditSolicitante,
     <form onSubmit={(e) => {
       e.preventDefault();
       if (isEvento && !meta.evento_projeto) return toast.error("Evento/Projeto é obrigatório");
+      if (!meta.empresa) return toast.error("Empresa é obrigatória");
       if (meta.sera_devolvido === "sim" && !meta.data_prevista_devolucao) {
         return toast.error("Informe a data prevista de devolução");
       }
@@ -648,6 +665,7 @@ function SaidaForm({ prefill, isEditing, itens, solicitantes, onEditSolicitante,
         {
           data_movimento: new Date(meta.data_movimento).toISOString(),
           saida_tipo: meta.saida_tipo,
+          empresa: meta.empresa || null,
           solicitante_id: meta.solicitante_id || null,
           evento_projeto: isEvento ? meta.evento_projeto : null,
           finalidade: meta.finalidade || null,
@@ -670,6 +688,15 @@ function SaidaForm({ prefill, isEditing, itens, solicitantes, onEditSolicitante,
             <SelectContent>{Object.entries(saidaTipoLabels).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent>
           </Select>
         </FormField>
+        <FormField label="Empresa*">
+          <Select value={meta.empresa} onValueChange={(v) => setM("empresa", v)}>
+            <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+            <SelectContent>
+              {EMPRESAS.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </FormField>
+
 
         {isEvento && (
           <FormField label="Evento / Projeto*" wide>
