@@ -30,6 +30,7 @@ import { useBulkSelection } from "@/hooks/useBulkSelection";
 import { BulkActionsBar } from "@/components/BulkActionsBar";
 import { BulkEditDialog, normalizeBulkPatch, type BulkField } from "@/components/BulkEditDialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { EMPRESAS } from "@/lib/empresas";
 
 export const Route = createFileRoute("/saidas")({
   component: SaidasPage,
