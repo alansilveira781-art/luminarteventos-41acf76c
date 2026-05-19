@@ -46,8 +46,13 @@ export const FORNECEDOR_TEMPLATE = {
 };
 
 export const ENTRADA_TEMPLATE = {
-  headers: ["codigo_item", "quantidade", "valor_unitario", "fornecedor_nome", "nota_fiscal", "data_movimento", "observacoes"],
-  example: { codigo_item: "ITM-001", quantidade: 5, valor_unitario: 89.9, fornecedor_nome: "Distribuidora ABC", nota_fiscal: "NF 12345", data_movimento: "2026-05-06", observacoes: "" },
+  headers: ["codigo_item", "quantidade", "valor_unitario", "empresa", "fornecedor_nome", "nota_fiscal", "data_movimento", "observacoes"],
+  example: { codigo_item: "ITM-001", quantidade: 5, valor_unitario: 89.9, empresa: "Luminart Eventos", fornecedor_nome: "Distribuidora ABC", nota_fiscal: "NF 12345", data_movimento: "2026-05-06", observacoes: "" },
+};
+
+export const SAIDA_TEMPLATE = {
+  headers: ["codigo_item", "quantidade", "empresa", "solicitante_nome", "evento_projeto", "finalidade", "data_movimento", "observacoes"],
+  example: { codigo_item: "ITM-001", quantidade: 2, empresa: "Luminart Tecnologia", solicitante_nome: "João Silva", evento_projeto: "Evento XYZ", finalidade: "Montagem palco", data_movimento: "2026-05-06", observacoes: "" },
 };
 
 export function normalizeKey(s: string) {
