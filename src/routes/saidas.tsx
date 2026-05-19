@@ -655,6 +655,7 @@ function SaidaForm({ prefill, isEditing, itens, solicitantes, onEditSolicitante,
     <form onSubmit={(e) => {
       e.preventDefault();
       if (isEvento && !meta.evento_projeto) return toast.error("Evento/Projeto é obrigatório");
+      if (!meta.empresa) return toast.error("Empresa é obrigatória");
       if (meta.sera_devolvido === "sim" && !meta.data_prevista_devolucao) {
         return toast.error("Informe a data prevista de devolução");
       }
@@ -664,6 +665,7 @@ function SaidaForm({ prefill, isEditing, itens, solicitantes, onEditSolicitante,
         {
           data_movimento: new Date(meta.data_movimento).toISOString(),
           saida_tipo: meta.saida_tipo,
+          empresa: meta.empresa || null,
           solicitante_id: meta.solicitante_id || null,
           evento_projeto: isEvento ? meta.evento_projeto : null,
           finalidade: meta.finalidade || null,
