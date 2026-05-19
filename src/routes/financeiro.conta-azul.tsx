@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
@@ -15,6 +15,15 @@ export const Route = createFileRoute("/financeiro/conta-azul")({
   component: ContaAzulPage,
 });
 
+const RECURSOS = [
+  { key: "plano_contas", label: "Plano de Contas" },
+  { key: "centros_custo", label: "Centros de Custo" },
+  { key: "contas_pagar", label: "Contas a Pagar" },
+  { key: "contas_receber", label: "Contas a Receber" },
+  { key: "extrato", label: "Extrato Bancário" },
+] as const;
+type RecursoKey = (typeof RECURSOS)[number]["key"];
+
 async function authHeaders(): Promise<Record<string, string>> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
@@ -26,14 +35,20 @@ function ContaAzulPage() {
   const { isAdmin, isModuleAdmin } = useAuth();
   const canManage = isAdmin || isModuleAdmin("financeiro");
 
-  const today = new Date();
-  const ninetyAgo = new Date(today);
-  ninetyAgo.setDate(ninetyAgo.getDate() - 90);
-  const isoDate = (d: Date) => d.toISOString().slice(0, 10);
-
-  const [from, setFrom] = useState(isoDate(ninetyAgo));
-  const [to, setTo] = useState(isoDate(today));
+  const [defaults] = useState(() => {
+    const today = new Date();
+    const ninetyAgo = new Date(today);
+    ninetyAgo.setDate(ninetyAgo.getDate() - 90);
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    return { from: iso(ninetyAgo), to: iso(today) };
+  });
+  const [from, setFrom] = useState(defaults.from);
+  const [to, setTo] = useState(defaults.to);
   const [busy, setBusy] = useState<null | "connect" | "sync" | "disconnect">(null);
+  const [progress, setProgress] = useState<{ current: RecursoKey | null; done: number }>({
+    current: null,
+    done: 0,
+  });
 
   // Show toast from OAuth callback redirect
   useEffect(() => {
@@ -51,6 +66,7 @@ function ContaAzulPage() {
   const status = useQuery({
     queryKey: ["ca-status"],
     enabled: canManage,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       const res = await fetch("/api/contaazul/status", { headers: await authHeaders() });
       if (!res.ok) throw new Error(await res.text());
@@ -60,6 +76,8 @@ function ContaAzulPage() {
 
   const logs = useQuery({
     queryKey: ["ca-sync-log"],
+    enabled: canManage,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("ca_sync_log")
@@ -115,34 +133,38 @@ function ContaAzulPage() {
   }
 
   async function handleSync() {
+    // Roda um recurso por request — evita timeouts e dá feedback de progresso.
+    setBusy("sync");
+    setProgress({ current: null, done: 0 });
+    const headers = { ...(await authHeaders()), "Content-Type": "application/json" };
+    let total = 0;
+    const errors: string[] = [];
     try {
-      setBusy("sync");
-      const res = await fetch("/api/contaazul/sync", {
-        method: "POST",
-        headers: { ...(await authHeaders()), "Content-Type": "application/json" },
-        body: JSON.stringify({ from, to }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const result = (await res.json()) as {
-        plano_contas: number;
-        centros_custo: number;
-        contas_pagar: number;
-        contas_receber: number;
-        extrato: number;
-        errors: string[];
-      };
-      const total =
-        result.plano_contas + result.centros_custo + result.contas_pagar + result.contas_receber + result.extrato;
-      if (result.errors.length > 0) {
-        toast.error(`Sincronização parcial (${total} reg.). Erros: ${result.errors.join(" | ")}`);
+      for (let i = 0; i < RECURSOS.length; i++) {
+        const r = RECURSOS[i];
+        setProgress({ current: r.key, done: i });
+        try {
+          const res = await fetch("/api/contaazul/sync", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ from, to, recurso: r.key }),
+          });
+          if (!res.ok) throw new Error(await res.text());
+          const { qtd } = (await res.json()) as { qtd: number };
+          total += qtd ?? 0;
+        } catch (e: any) {
+          errors.push(`${r.label}: ${e?.message ?? e}`);
+        }
+        qc.invalidateQueries({ queryKey: ["ca-sync-log"] });
+      }
+      if (errors.length > 0) {
+        toast.error(`Sincronização parcial (${total} reg.). ${errors.join(" | ")}`);
       } else {
         toast.success(`Sincronização concluída — ${total} registros`);
       }
-      qc.invalidateQueries({ queryKey: ["ca-sync-log"] });
-    } catch (e: any) {
-      toast.error(`Erro ao sincronizar: ${e?.message ?? e}`);
     } finally {
       setBusy(null);
+      setProgress({ current: null, done: 0 });
     }
   }
 

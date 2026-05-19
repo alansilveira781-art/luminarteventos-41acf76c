@@ -14,7 +14,11 @@ export function getClientCreds() {
   return { id, secret };
 }
 
-export function buildAuthorizeUrl(redirectUri: string, state: string, scope = "sales") {
+// Full scope set needed to read Plano de Contas, Centros de Custo,
+// Contas a Pagar/Receber e Extrato Bancário.
+const DEFAULT_SCOPES = "sales finance accounts cost-centers bank-statements";
+
+export function buildAuthorizeUrl(redirectUri: string, state: string, scope = DEFAULT_SCOPES) {
   const { id } = getClientCreds();
   const params = new URLSearchParams({
     client_id: id,
@@ -132,16 +136,45 @@ export async function getValidAccessToken(): Promise<string> {
   return refreshed.access_token;
 }
 
+async function forceRefreshToken(): Promise<string> {
+  const row = await getCredsRow();
+  if (!row) throw new Error("Conta Azul não conectado");
+  const refreshed = await refreshTokens(row.refresh_token);
+  const newExpiresAt = new Date(Date.now() + refreshed.expires_in * 1000).toISOString();
+  await (supabaseAdmin as any)
+    .from("conta_azul_credentials")
+    .update({
+      access_token: refreshed.access_token,
+      refresh_token: refreshed.refresh_token,
+      expires_at: newExpiresAt,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", row.id);
+  return refreshed.access_token;
+}
+
 export async function caFetch(path: string, init: RequestInit = {}) {
-  const token = await getValidAccessToken();
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers: {
-      ...(init.headers || {}),
-      Authorization: `Bearer ${token}`,
-      Accept: "application/json",
-    },
-  });
+  const doFetch = async (token: string) =>
+    fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers: {
+        ...(init.headers || {}),
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+    });
+
+  let token = await getValidAccessToken();
+  let res = await doFetch(token);
+  // Retry once on 401 with a forced refresh (token may have been revoked early).
+  if (res.status === 401) {
+    try {
+      token = await forceRefreshToken();
+      res = await doFetch(token);
+    } catch {
+      // fall through with original 401
+    }
+  }
   const text = await res.text();
   if (!res.ok) throw new Error(`Conta Azul API ${path} [${res.status}]: ${text.slice(0, 500)}`);
   try {

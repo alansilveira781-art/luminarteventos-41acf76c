@@ -3,6 +3,9 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { caFetch } from "./client.server";
 
 const sb = supabaseAdmin as any;
+const PAGE_SIZE = 100;
+const MAX_PAGES = 50; // safety cap (50 * 100 = 5000 itens por recurso)
+const UPSERT_BATCH = 500;
 
 async function logStart(recurso: string): Promise<string> {
   const { data, error } = await sb
@@ -26,12 +29,14 @@ async function logFinish(id: string, status: "ok" | "erro", qtd: number, mensage
     .eq("id", id);
 }
 
-// Generic paged fetch — Conta Azul v1 uses ?page=&size=
-async function fetchPaged(path: string, extraParams: Record<string, string> = {}, size = 100) {
+async function fetchPaged(
+  path: string,
+  extraParams: Record<string, string> = {},
+  size = PAGE_SIZE,
+) {
   const all: any[] = [];
   let page = 0;
-  // safety cap
-  for (let i = 0; i < 200; i++) {
+  for (let i = 0; i < MAX_PAGES; i++) {
     const params = new URLSearchParams({ ...extraParams, page: String(page), size: String(size) });
     const sep = path.includes("?") ? "&" : "?";
     const result = await caFetch(`${path}${sep}${params.toString()}`);
@@ -44,11 +49,20 @@ async function fetchPaged(path: string, extraParams: Record<string, string> = {}
   return all;
 }
 
+async function upsertBatched(table: string, rows: any[], onConflict: string) {
+  for (let i = 0; i < rows.length; i += UPSERT_BATCH) {
+    const chunk = rows.slice(i, i + UPSERT_BATCH);
+    const { error } = await sb.from(table).upsert(chunk, { onConflict });
+    if (error) throw error;
+  }
+}
+
 export async function syncPlanoContas() {
   const logId = await logStart("plano_contas");
   try {
     const items = await fetchPaged("/plan-of-accounts");
     if (items.length > 0) {
+      const syncedAt = new Date().toISOString();
       const rows = items.map((it: any) => ({
         external_id: String(it.id ?? it.uuid ?? it.code),
         codigo: it.code ?? null,
@@ -56,10 +70,9 @@ export async function syncPlanoContas() {
         tipo: it.type ?? it.kind ?? null,
         pai_external_id: it.parent_id ? String(it.parent_id) : null,
         ativo: it.active !== false,
-        synced_at: new Date().toISOString(),
+        synced_at: syncedAt,
       }));
-      const { error } = await sb.from("ca_plano_contas").upsert(rows, { onConflict: "external_id" });
-      if (error) throw error;
+      await upsertBatched("ca_plano_contas", rows, "external_id");
     }
     await logFinish(logId, "ok", items.length);
     return items.length;
@@ -74,14 +87,14 @@ export async function syncCentrosCusto() {
   try {
     const items = await fetchPaged("/cost-centers");
     if (items.length > 0) {
+      const syncedAt = new Date().toISOString();
       const rows = items.map((it: any) => ({
         external_id: String(it.id ?? it.uuid),
         nome: it.name ?? it.description ?? "—",
         ativo: it.active !== false,
-        synced_at: new Date().toISOString(),
+        synced_at: syncedAt,
       }));
-      const { error } = await sb.from("ca_centros_custo").upsert(rows, { onConflict: "external_id" });
-      if (error) throw error;
+      await upsertBatched("ca_centros_custo", rows, "external_id");
     }
     await logFinish(logId, "ok", items.length);
     return items.length;
@@ -108,6 +121,7 @@ export async function syncContasPagar(from: string, to: string) {
       due_date_to: to,
     });
     if (items.length > 0) {
+      const syncedAt = new Date().toISOString();
       const rows = items.map((it: any) => ({
         external_id: String(it.id ?? it.uuid),
         descricao: it.description ?? it.title ?? null,
@@ -120,10 +134,9 @@ export async function syncContasPagar(from: string, to: string) {
         status: normalizeStatus(it.status),
         documento: it.document ?? null,
         observacoes: it.notes ?? null,
-        synced_at: new Date().toISOString(),
+        synced_at: syncedAt,
       }));
-      const { error } = await sb.from("ca_contas_pagar").upsert(rows, { onConflict: "external_id" });
-      if (error) throw error;
+      await upsertBatched("ca_contas_pagar", rows, "external_id");
     }
     await logFinish(logId, "ok", items.length);
     return items.length;
@@ -142,6 +155,7 @@ export async function syncContasReceber(from: string, to: string) {
       due_date_to: to,
     });
     if (items.length > 0) {
+      const syncedAt = new Date().toISOString();
       const rows = items.map((it: any) => ({
         external_id: String(it.id ?? it.uuid),
         descricao: it.description ?? it.title ?? null,
@@ -154,10 +168,9 @@ export async function syncContasReceber(from: string, to: string) {
         status: normalizeStatus(it.status),
         documento: it.document ?? null,
         observacoes: it.notes ?? null,
-        synced_at: new Date().toISOString(),
+        synced_at: syncedAt,
       }));
-      const { error } = await sb.from("ca_contas_receber").upsert(rows, { onConflict: "external_id" });
-      if (error) throw error;
+      await upsertBatched("ca_contas_receber", rows, "external_id");
     }
     await logFinish(logId, "ok", items.length);
     return items.length;
@@ -172,6 +185,7 @@ export async function syncExtrato(from: string, to: string) {
   try {
     const items = await fetchPaged("/bank-statements", { from, to });
     if (items.length > 0) {
+      const syncedAt = new Date().toISOString();
       const rows = items.map((it: any) => ({
         external_id: String(it.id ?? it.uuid),
         conta_bancaria: it.bank_account?.name ?? it.account?.name ?? null,
@@ -181,16 +195,37 @@ export async function syncExtrato(from: string, to: string) {
         tipo: (it.value ?? 0) >= 0 ? "credito" : "debito",
         categoria_external_id: it.category?.id ? String(it.category.id) : null,
         centro_custo_external_id: it.cost_center?.id ? String(it.cost_center.id) : null,
-        synced_at: new Date().toISOString(),
+        synced_at: syncedAt,
       }));
-      const { error } = await sb.from("ca_extrato").upsert(rows, { onConflict: "external_id" });
-      if (error) throw error;
+      await upsertBatched("ca_extrato", rows, "external_id");
     }
     await logFinish(logId, "ok", items.length);
     return items.length;
   } catch (e: any) {
     await logFinish(logId, "erro", 0, String(e?.message ?? e));
     throw e;
+  }
+}
+
+export type Recurso =
+  | "plano_contas"
+  | "centros_custo"
+  | "contas_pagar"
+  | "contas_receber"
+  | "extrato";
+
+export async function syncRecurso(recurso: Recurso, from: string, to: string): Promise<number> {
+  switch (recurso) {
+    case "plano_contas":
+      return syncPlanoContas();
+    case "centros_custo":
+      return syncCentrosCusto();
+    case "contas_pagar":
+      return syncContasPagar(from, to);
+    case "contas_receber":
+      return syncContasReceber(from, to);
+    case "extrato":
+      return syncExtrato(from, to);
   }
 }
 
@@ -203,13 +238,14 @@ export async function syncTudo(from: string, to: string) {
     extrato: 0,
     errors: [] as string[],
   };
-  for (const [key, fn] of [
+  const tasks: Array<[Recurso, () => Promise<number>]> = [
     ["plano_contas", () => syncPlanoContas()],
     ["centros_custo", () => syncCentrosCusto()],
     ["contas_pagar", () => syncContasPagar(from, to)],
     ["contas_receber", () => syncContasReceber(from, to)],
     ["extrato", () => syncExtrato(from, to)],
-  ] as const) {
+  ];
+  for (const [key, fn] of tasks) {
     try {
       (result as any)[key] = await fn();
     } catch (e: any) {

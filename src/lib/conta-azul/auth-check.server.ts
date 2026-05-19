@@ -1,5 +1,4 @@
 // Helper to verify an authenticated user from a Bearer token in a server route.
-import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export async function requireAdminOfModule(request: Request, moduleSlug: string) {
@@ -7,13 +6,8 @@ export async function requireAdminOfModule(request: Request, moduleSlug: string)
   if (!auth?.startsWith("Bearer ")) return { error: "Não autenticado", status: 401 as const };
   const token = auth.slice(7);
 
-  const supaUrl = process.env.SUPABASE_URL!;
-  const supaAnon = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY!;
-  const c = createClient(supaUrl, supaAnon, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-  const { data: userRes, error } = await c.auth.getUser(token);
-  if (error || !userRes.user) return { error: "Token inválido", status: 401 as const };
+  const { data: userRes, error } = await (supabaseAdmin as any).auth.getUser(token);
+  if (error || !userRes?.user) return { error: "Token inválido", status: 401 as const };
 
   const userId = userRes.user.id;
   const { data: ok, error: rpcErr } = await (supabaseAdmin as any).rpc("is_module_admin", {
