@@ -29,6 +29,11 @@ import {
   FileText,
   Link2,
   BookOpen,
+  Calculator,
+  Settings,
+  Search,
+  Scale,
+  UserPlus,
 } from "lucide-react";
 import logo from "@/assets/luminart-logo-white.png";
 import { useAuth } from "@/contexts/AuthContext";
