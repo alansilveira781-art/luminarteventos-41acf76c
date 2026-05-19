@@ -30,6 +30,9 @@ import { useBulkSelection } from "@/hooks/useBulkSelection";
 import { BulkActionsBar } from "@/components/BulkActionsBar";
 import { BulkEditDialog, normalizeBulkPatch, type BulkField } from "@/components/BulkEditDialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { NotasSefaz } from "@/components/estoque/NotasSefaz";
+import { EMPRESAS } from "@/lib/empresas";
 
 export const Route = createFileRoute("/entradas")({
   component: EntradasPage,
@@ -329,6 +332,14 @@ function EntradasPage() {
         }
       />
 
+      <Tabs defaultValue="entradas" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="entradas">Entradas</TabsTrigger>
+          <TabsTrigger value="sefaz">Notas emitidas (SEFAZ)</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="entradas" className="space-y-4 mt-0">
+
       <Card className="p-4 mb-4 space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-[260px] max-w-md">
@@ -606,6 +617,13 @@ function EntradasPage() {
         qc.invalidateQueries({ queryKey: ["itens"] });
         qc.invalidateQueries({ queryKey: ["fornecedores"] });
       }} />
+
+        </TabsContent>
+
+        <TabsContent value="sefaz" className="mt-0">
+          <NotasSefaz />
+        </TabsContent>
+      </Tabs>
     </>
   );
 }
