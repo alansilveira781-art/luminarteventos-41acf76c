@@ -30,7 +30,7 @@ import {
   Link2,
   BookOpen,
 } from "lucide-react";
-import logo from "@/assets/luminart-logo.png";
+import logo from "@/assets/luminart-logo-white.png";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { NotificationBell } from "@/components/NotificationBell";
