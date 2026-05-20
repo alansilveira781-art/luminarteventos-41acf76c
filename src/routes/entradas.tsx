@@ -33,6 +33,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { NotasSefaz } from "@/components/estoque/NotasSefaz";
 import { EMPRESAS } from "@/lib/empresas";
+import { PeriodoFilter, filterByPeriodo, periodoFromPreset, type Periodo, type PeriodoPreset } from "@/components/PeriodoFilter";
+import { TablePagination } from "@/components/TablePagination";
 
 export const Route = createFileRoute("/entradas")({
   component: EntradasPage,
