@@ -434,7 +434,7 @@ function EntradasPage() {
               </tr>
             </thead>
             <tbody>
-              {grupos.length ? grupos.map((g: any) => {
+              {pageGrupos.length ? pageGrupos.map((g: any) => {
                 const isOpen = !!expandido[g.id];
                 const colCount = (isAdmin ? 1 : 0) + 1 + 9 + (isAdmin ? 1 : 0);
                 return (
