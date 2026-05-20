@@ -69,7 +69,7 @@ function FornecedoresPage() {
       const { error } = await supabase.from("fornecedores").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["fornecedores"] }); toast.success("Fornecedor removido"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["fornecedores"] }); qc.invalidateQueries({ queryKey: ["fornecedores-select"] }); toast.success("Fornecedor removido"); },
     onError: (e: any) => {
       const msg = String(e?.message ?? "");
       if (msg.toLowerCase().includes("foreign") || msg.includes("violates") || msg.includes("23503")) {
