@@ -321,7 +321,7 @@ function DevolucoesPage() {
             saidas={saidasAbertas ?? []}
             devolvidoPorOrigem={devolvidoPorOrigem ?? new Map()}
             solicitantes={solicitantes ?? []}
-            onSubmit={(linhas: any) => mut.mutate(linhas)}
+            onSubmit={(payload: any) => mut.mutate(payload)}
             submitting={mut.isPending}
           />
         </DialogContent>
