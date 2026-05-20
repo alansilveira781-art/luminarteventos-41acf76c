@@ -26,6 +26,10 @@ const baseSchema = z.object({
   descricao: z.string().trim().max(4000).optional().or(z.literal("")),
   valor_total: z.number().nonnegative().max(100_000_000).optional().nullable(),
   itens: z.array(itemSchema).max(50).optional(),
+  pago: z.boolean().optional().nullable(),
+  parcelamento: z.string().trim().max(100).optional().or(z.literal("")),
+  condicao_pagamento: z.string().trim().max(100).optional().or(z.literal("")),
+  data_compra: z.string().trim().max(20).optional().or(z.literal("")),
 });
 
 // In-memory IP rate limiter (best-effort; works per worker instance).
