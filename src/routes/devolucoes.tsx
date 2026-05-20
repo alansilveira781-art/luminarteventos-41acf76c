@@ -349,15 +349,22 @@ function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["dashboard-movs"] });
 }
 
-// Agrupa as saídas em "lotes" por (data_movimento + solicitante + evento)
+// Agrupa as saídas em "lotes" por requisicao_numero (ou data+solicitante+evento)
 function groupSaidas(saidas: any[]) {
-  const groups = new Map<string, { key: string; label: string; data: string; solicitante: any; evento: string | null; itens: any[] }>();
+  const groups = new Map<string, { key: string; numero: number | null; label: string; searchKey: string; data: string; solicitante: any; evento: string | null; itens: any[] }>();
   for (const s of saidas) {
-    const key = `${s.data_movimento}__${s.solicitante_id ?? "null"}__${s.evento_projeto ?? "null"}`;
+    const key = s.requisicao_numero != null
+      ? `req-${s.requisicao_numero}`
+      : `${s.data_movimento}__${s.solicitante_id ?? "null"}__${s.evento_projeto ?? "null"}`;
     if (!groups.has(key)) {
+      const numeroStr = s.requisicao_numero != null ? `#${String(s.requisicao_numero).padStart(4, "0")} · ` : "";
+      const dataStr = format(new Date(s.data_movimento), "dd/MM/yyyy HH:mm");
+      const solNome = s.solicitante?.nome ?? "s/ solicitante";
       groups.set(key, {
         key,
-        label: `${format(new Date(s.data_movimento), "dd/MM/yyyy HH:mm")} · ${s.solicitante?.nome ?? "s/ solicitante"}${s.evento_projeto ? " · " + s.evento_projeto : ""}`,
+        numero: s.requisicao_numero ?? null,
+        label: `${numeroStr}${dataStr} · ${solNome}${s.evento_projeto ? " · " + s.evento_projeto : ""}`,
+        searchKey: "",
         data: s.data_movimento,
         solicitante: s.solicitante,
         evento: s.evento_projeto,
@@ -366,7 +373,20 @@ function groupSaidas(saidas: any[]) {
     }
     groups.get(key)!.itens.push(s);
   }
-  return Array.from(groups.values()).sort((a, b) => b.data.localeCompare(a.data));
+  const arr = Array.from(groups.values());
+  for (const g of arr) {
+    g.searchKey = [
+      g.numero != null ? String(g.numero).padStart(4, "0") : "",
+      g.numero != null ? `#${String(g.numero).padStart(4, "0")}` : "",
+      g.numero != null ? `req-${g.numero}` : "",
+      format(new Date(g.data), "dd/MM/yyyy"),
+      format(new Date(g.data), "dd/MM/yyyy HH:mm"),
+      g.solicitante?.nome ?? "",
+      g.evento ?? "",
+      g.itens.map((i: any) => `${i.item?.codigo ?? ""} ${i.item?.nome ?? ""}`).join(" "),
+    ].join(" ");
+  }
+  return arr.sort((a, b) => b.data.localeCompare(a.data));
 }
 
 function DevolucaoForm({ saidas, devolvidoPorOrigem, solicitantes, onSubmit, submitting }: any) {
