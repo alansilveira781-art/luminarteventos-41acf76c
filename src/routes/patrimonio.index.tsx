@@ -74,9 +74,11 @@ function PatrimonioInventario() {
     return Array.from(s).sort();
   }, [itens]);
 
+  const { sort, toggleSort, applySort } = useSort();
+
   const filtered = useMemo(() => {
     const nq = normalize(q);
-    return (itens ?? []).filter((i) => {
+    const base = (itens ?? []).filter((i) => {
       if (filterCat !== "__all" && i.categoria !== filterCat) return false;
       if (filterEstado !== "__all" && i.estado !== filterEstado) return false;
       if (filterLoc !== "__all" && i.localizacao !== filterLoc) return false;
@@ -84,7 +86,8 @@ function PatrimonioInventario() {
       return [i.nome, i.id_item, i.especificacao, i.localizacao, i.subcategoria]
         .some((v) => normalize(String(v ?? "")).includes(nq));
     });
-  }, [itens, q, filterCat, filterEstado, filterLoc]);
+    return applySort(base);
+  }, [itens, q, filterCat, filterEstado, filterLoc, sort]);
 
   const totals = useMemo(() => {
     const t = { count: filtered.length, valor: 0, qtd: 0 };
