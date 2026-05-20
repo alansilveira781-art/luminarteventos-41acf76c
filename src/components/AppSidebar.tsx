@@ -89,6 +89,7 @@ const FINANCEIRO_ROUTES = ["/financeiro"];
 const COMERCIAL_ROUTES = ["/comercial"];
 const CONTABIL_ROUTES = ["/contabil"];
 const JURIDICO_ROUTES = ["/juridico"];
+const PATRIMONIO_ROUTES = ["/patrimonio"];
 const RH_ROUTES = ["/rh"];
 
 function isActiveUrl(pathname: string, url: string, allUrls: string[] = []) {
