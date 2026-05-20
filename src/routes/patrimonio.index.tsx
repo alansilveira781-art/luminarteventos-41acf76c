@@ -201,10 +201,21 @@ function PatrimonioInventario() {
               </tr>
             </thead>
             <tbody>
-              {isLoading && <tr><td colSpan={11} className="p-4 text-center text-muted-foreground">Carregando…</td></tr>}
-              {!isLoading && filtered.length === 0 && <tr><td colSpan={11} className="p-4 text-center text-muted-foreground">Nenhum item.</td></tr>}
+              {isLoading && <tr><td colSpan={12} className="p-4 text-center text-muted-foreground">Carregando…</td></tr>}
+              {!isLoading && filtered.length === 0 && <tr><td colSpan={12} className="p-4 text-center text-muted-foreground">Nenhum item.</td></tr>}
               {filtered.slice(0, 500).map((i) => (
                 <tr key={i.id} className="border-t border-border hover:bg-muted/30">
+                  <td className="px-2 py-1.5">
+                    {i.imagem_url ? (
+                      <a href={i.imagem_url} target="_blank" rel="noreferrer">
+                        <img src={i.imagem_url} alt={i.nome} className="h-9 w-9 rounded object-cover border border-border" />
+                      </a>
+                    ) : (
+                      <div className="h-9 w-9 rounded border border-dashed border-border flex items-center justify-center text-muted-foreground">
+                        <ImagePlus className="h-3.5 w-3.5" />
+                      </div>
+                    )}
+                  </td>
                   <td className="px-2 py-1.5">{i.cod}</td>
                   <td className="px-2 py-1.5 font-mono text-[11px]">{i.id_item}</td>
                   <td className="px-2 py-1.5">{i.categoria}</td>
