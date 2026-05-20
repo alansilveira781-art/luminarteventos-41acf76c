@@ -74,7 +74,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     roles,
     modulos,
     hasModule: (slug) => roles.includes("admin") || modulos.some((m) => m.slug === slug),
-    isModuleAdmin: (slug) => roles.includes("admin") || modulos.some((m) => m.slug === slug && m.is_admin),
+    isModuleAdmin: (slug) => {
+      if (roles.includes("admin")) return true;
+      // Regra: ter acesso ao módulo = acesso total, exceto no estoque,
+      // onde a marcação "admin do módulo" continua valendo (devoluções, etc).
+      if (slug === "estoque") return modulos.some((m) => m.slug === slug && m.is_admin);
+      return modulos.some((m) => m.slug === slug);
+    },
     refresh: () => loadAccess(session?.user.id ?? null),
     signOut: async () => {
       await supabase.auth.signOut();
