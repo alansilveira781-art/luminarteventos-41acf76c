@@ -407,6 +407,10 @@ function ItemDialog({ open, onOpenChange, editing, onSave }: {
           </div>
           <div><Label>Data de compra</Label><Input type="date" value={f.data_compra ?? ""} onChange={(e) => set("data_compra", e.target.value || null)} /></div>
           <div className="col-span-2"><Label>Local</Label><Input value={f.localizacao ?? ""} onChange={(e) => set("localizacao", e.target.value)} /></div>
+          <div className="col-span-2">
+            <Label>Foto do item</Label>
+            <PatFotoUpload value={f.imagem_url ?? ""} onChange={(url) => set("imagem_url", url)} />
+          </div>
           <div className="col-span-2"><Label>Observações</Label><Textarea rows={2} value={f.observacoes ?? ""} onChange={(e) => set("observacoes", e.target.value)} /></div>
         </div>
         <DialogFooter>
