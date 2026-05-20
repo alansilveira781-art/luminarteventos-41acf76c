@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { normalize } from "@/lib/utils";
+import { SortableTh, useSort } from "@/components/SortableTh";
 
 export const Route = createFileRoute("/patrimonio/")({ component: PatrimonioInventario });
 
