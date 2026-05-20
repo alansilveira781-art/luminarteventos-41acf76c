@@ -259,6 +259,12 @@ function PatrimonioInventario() {
 
       <ItemDialog open={open} onOpenChange={setOpen} editing={editing} onSave={(p) => saveMut.mutate(p)} />
       <ExportDialog open={exportOpen} onOpenChange={setExportOpen} all={itens ?? []} filtered={filtered} />
+      <BulkPhotosDialog
+        open={bulkPhotosOpen}
+        onOpenChange={setBulkPhotosOpen}
+        itens={itens ?? []}
+        onDone={() => qc.invalidateQueries({ queryKey: ["pat_itens"] })}
+      />
     </>
   );
 }
