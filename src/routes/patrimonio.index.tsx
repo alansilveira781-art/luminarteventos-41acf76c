@@ -257,7 +257,7 @@ function PatrimonioInventario() {
         </div>
       </Card>
 
-      <ItemDialog open={open} onOpenChange={setOpen} editing={editing} onSave={(p) => saveMut.mutate(p)} />
+      <ItemDialog open={open} onOpenChange={setOpen} editing={editing} itens={itens ?? []} onSave={(p) => saveMut.mutate(p)} />
       <ExportDialog open={exportOpen} onOpenChange={setExportOpen} all={itens ?? []} filtered={filtered} />
       <BulkPhotosDialog
         open={bulkPhotosOpen}
