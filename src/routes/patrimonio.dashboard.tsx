@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Boxes, DollarSign, ArrowDownToLine, ArrowUpFromLine, AlertTriangle } from "lucide-react";
+import { Boxes, DollarSign, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell, Legend,
