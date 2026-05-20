@@ -41,6 +41,10 @@ type FormState = {
   descricao: string;
   valor_total: string;
   itens: ItemRow[];
+  pago: boolean | null;
+  parcelamento: string;
+  condicao_pagamento: string;
+  data_compra: string;
 };
 
 const emptyItem = (): ItemRow => ({ descricao: "", quantidade: "1", unidade: "un", valor_unitario: "" });
@@ -56,7 +60,13 @@ const initial: FormState = {
   descricao: "",
   valor_total: "",
   itens: [emptyItem()],
+  pago: null,
+  parcelamento: "",
+  condicao_pagamento: "",
+  data_compra: "",
 };
+
+const TIPOS_DEMANDA_PAGAVEIS = ["alimentacao", "estacionamento", "manutencao_galpao"];
 
 function SolicitarPage() {
   const [step, setStep] = useState(0);
