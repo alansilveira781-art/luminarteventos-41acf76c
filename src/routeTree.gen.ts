@@ -28,6 +28,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RhIndexRouteImport } from './routes/rh.index'
+import { Route as PatrimonioIndexRouteImport } from './routes/patrimonio.index'
 import { Route as JuridicoIndexRouteImport } from './routes/juridico.index'
 import { Route as FinanceiroIndexRouteImport } from './routes/financeiro.index'
 import { Route as EstoqueIndexRouteImport } from './routes/estoque.index'
@@ -151,6 +152,11 @@ const RhIndexRoute = RhIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => RhRoute,
+} as any)
+const PatrimonioIndexRoute = PatrimonioIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PatrimonioRoute,
 } as any)
 const JuridicoIndexRoute = JuridicoIndexRouteImport.update({
   id: '/',
@@ -308,7 +314,7 @@ export interface FileRoutesByFullPath {
   '/financeiro': typeof FinanceiroRouteWithChildren
   '/fornecedores': typeof FornecedoresRoute
   '/juridico': typeof JuridicoRouteWithChildren
-  '/patrimonio': typeof PatrimonioRoute
+  '/patrimonio': typeof PatrimonioRouteWithChildren
   '/relatorios': typeof RelatoriosRoute
   '/rh': typeof RhRouteWithChildren
   '/saidas': typeof SaidasRoute
@@ -337,6 +343,7 @@ export interface FileRoutesByFullPath {
   '/estoque/': typeof EstoqueIndexRoute
   '/financeiro/': typeof FinanceiroIndexRoute
   '/juridico/': typeof JuridicoIndexRoute
+  '/patrimonio/': typeof PatrimonioIndexRoute
   '/rh/': typeof RhIndexRoute
   '/api/contaazul/status': typeof ApiContaazulStatusRoute
   '/api/contaazul/sync': typeof ApiContaazulSyncRoute
@@ -351,7 +358,6 @@ export interface FileRoutesByTo {
   '/devolucoes': typeof DevolucoesRoute
   '/entradas': typeof EntradasRoute
   '/fornecedores': typeof FornecedoresRoute
-  '/patrimonio': typeof PatrimonioRoute
   '/relatorios': typeof RelatoriosRoute
   '/saidas': typeof SaidasRoute
   '/solicitantes': typeof SolicitantesRoute
@@ -379,6 +385,7 @@ export interface FileRoutesByTo {
   '/estoque': typeof EstoqueIndexRoute
   '/financeiro': typeof FinanceiroIndexRoute
   '/juridico': typeof JuridicoIndexRoute
+  '/patrimonio': typeof PatrimonioIndexRoute
   '/rh': typeof RhIndexRoute
   '/api/contaazul/status': typeof ApiContaazulStatusRoute
   '/api/contaazul/sync': typeof ApiContaazulSyncRoute
@@ -400,7 +407,7 @@ export interface FileRoutesById {
   '/financeiro': typeof FinanceiroRouteWithChildren
   '/fornecedores': typeof FornecedoresRoute
   '/juridico': typeof JuridicoRouteWithChildren
-  '/patrimonio': typeof PatrimonioRoute
+  '/patrimonio': typeof PatrimonioRouteWithChildren
   '/relatorios': typeof RelatoriosRoute
   '/rh': typeof RhRouteWithChildren
   '/saidas': typeof SaidasRoute
@@ -429,6 +436,7 @@ export interface FileRoutesById {
   '/estoque/': typeof EstoqueIndexRoute
   '/financeiro/': typeof FinanceiroIndexRoute
   '/juridico/': typeof JuridicoIndexRoute
+  '/patrimonio/': typeof PatrimonioIndexRoute
   '/rh/': typeof RhIndexRoute
   '/api/contaazul/status': typeof ApiContaazulStatusRoute
   '/api/contaazul/sync': typeof ApiContaazulSyncRoute
@@ -480,6 +488,7 @@ export interface FileRouteTypes {
     | '/estoque/'
     | '/financeiro/'
     | '/juridico/'
+    | '/patrimonio/'
     | '/rh/'
     | '/api/contaazul/status'
     | '/api/contaazul/sync'
@@ -494,7 +503,6 @@ export interface FileRouteTypes {
     | '/devolucoes'
     | '/entradas'
     | '/fornecedores'
-    | '/patrimonio'
     | '/relatorios'
     | '/saidas'
     | '/solicitantes'
@@ -522,6 +530,7 @@ export interface FileRouteTypes {
     | '/estoque'
     | '/financeiro'
     | '/juridico'
+    | '/patrimonio'
     | '/rh'
     | '/api/contaazul/status'
     | '/api/contaazul/sync'
@@ -571,6 +580,7 @@ export interface FileRouteTypes {
     | '/estoque/'
     | '/financeiro/'
     | '/juridico/'
+    | '/patrimonio/'
     | '/rh/'
     | '/api/contaazul/status'
     | '/api/contaazul/sync'
@@ -592,7 +602,7 @@ export interface RootRouteChildren {
   FinanceiroRoute: typeof FinanceiroRouteWithChildren
   FornecedoresRoute: typeof FornecedoresRoute
   JuridicoRoute: typeof JuridicoRouteWithChildren
-  PatrimonioRoute: typeof PatrimonioRoute
+  PatrimonioRoute: typeof PatrimonioRouteWithChildren
   RelatoriosRoute: typeof RelatoriosRoute
   RhRoute: typeof RhRouteWithChildren
   SaidasRoute: typeof SaidasRoute
@@ -742,6 +752,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/rh/'
       preLoaderRoute: typeof RhIndexRouteImport
       parentRoute: typeof RhRoute
+    }
+    '/patrimonio/': {
+      id: '/patrimonio/'
+      path: '/'
+      fullPath: '/patrimonio/'
+      preLoaderRoute: typeof PatrimonioIndexRouteImport
+      parentRoute: typeof PatrimonioRoute
     }
     '/juridico/': {
       id: '/juridico/'
@@ -1039,6 +1056,18 @@ const JuridicoRouteWithChildren = JuridicoRoute._addFileChildren(
   JuridicoRouteChildren,
 )
 
+interface PatrimonioRouteChildren {
+  PatrimonioIndexRoute: typeof PatrimonioIndexRoute
+}
+
+const PatrimonioRouteChildren: PatrimonioRouteChildren = {
+  PatrimonioIndexRoute: PatrimonioIndexRoute,
+}
+
+const PatrimonioRouteWithChildren = PatrimonioRoute._addFileChildren(
+  PatrimonioRouteChildren,
+)
+
 interface RhRouteChildren {
   RhIndexRoute: typeof RhIndexRoute
 }
@@ -1062,7 +1091,7 @@ const rootRouteChildren: RootRouteChildren = {
   FinanceiroRoute: FinanceiroRouteWithChildren,
   FornecedoresRoute: FornecedoresRoute,
   JuridicoRoute: JuridicoRouteWithChildren,
-  PatrimonioRoute: PatrimonioRoute,
+  PatrimonioRoute: PatrimonioRouteWithChildren,
   RelatoriosRoute: RelatoriosRoute,
   RhRoute: RhRouteWithChildren,
   SaidasRoute: SaidasRoute,
