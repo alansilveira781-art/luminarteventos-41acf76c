@@ -313,6 +313,8 @@ function EstoquePage() {
         </div>
       </Card>
 
+      <TablePagination page={page} pageCount={pageCount} onPageChange={setPage} />
+
       <Dialog open={creating || !!editing || !!duplicating} onOpenChange={(o) => { if (!o) { setCreating(false); setEditing(null); setDuplicating(null); } }}>
         <DialogContent className="max-w-[min(1100px,96vw)] w-[96vw]">
           <DialogHeader>
