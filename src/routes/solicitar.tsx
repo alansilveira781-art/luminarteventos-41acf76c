@@ -349,6 +349,8 @@ function SolicitarPage() {
                 )}
               </div>
             )}
+          </div>
+        </Step>
       )}
 
       {step === 2 && (
