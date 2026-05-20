@@ -259,7 +259,7 @@ function EstoquePage() {
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={isAdmin ? 10 : 9} className="text-center py-10 text-muted-foreground">Nenhum item encontrado.</td></tr>
               ) : (
-                filtered.map((i) => (
+                pageItems.map((i) => (
                   <tr key={i.id} className="border-t border-border hover:bg-muted/30">
                     {isAdmin && (
                       <td className="px-3 py-3">
