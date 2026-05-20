@@ -298,7 +298,7 @@ function PatrimonioInventario() {
       <TablePagination page={page} pageCount={pageCount} onPageChange={setPage} />
 
       <ItemDialog open={open} onOpenChange={setOpen} editing={editing} itens={itens ?? []} onSave={(p) => saveMut.mutate(p)} />
-      <ExportDialog open={exportOpen} onOpenChange={setExportOpen} all={itens ?? []} filtered={filtered} />
+      <ExportDialog open={exportOpen} onOpenChange={setExportOpen} all={itens ?? []} filtered={filteredPeriodo} />
       <BulkPhotosDialog
         open={bulkPhotosOpen}
         onOpenChange={setBulkPhotosOpen}
