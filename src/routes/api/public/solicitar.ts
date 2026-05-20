@@ -171,8 +171,7 @@ export const Route = createFileRoute("/api/public/solicitar")({
         }
 
         // Demanda
-        const tiposPagaveis = ["alimentacao", "estacionamento", "manutencao_galpao"];
-        const aceitaPgto = d.subtipo ? tiposPagaveis.includes(d.subtipo) : false;
+        const aceitaPgto = true;
         const demandaInsert: any = {
           status: "solicitacao",
           titulo: d.titulo,
