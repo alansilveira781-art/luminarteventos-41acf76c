@@ -148,6 +148,11 @@ function PatrimonioInventario() {
               <Download className="h-4 w-4 mr-1" /> Exportar
             </Button>
             {isAdmin && (
+              <Button variant="outline" onClick={() => setBulkPhotosOpen(true)}>
+                <Upload className="h-4 w-4 mr-1" /> Importar fotos
+              </Button>
+            )}
+            {isAdmin && (
               <Button onClick={() => { setEditing(null); setOpen(true); }}>
                 <Plus className="h-4 w-4 mr-1" /> Novo item
               </Button>
