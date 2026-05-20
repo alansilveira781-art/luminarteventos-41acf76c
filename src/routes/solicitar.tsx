@@ -475,66 +475,8 @@ function SolicitarPage() {
                     {form.descricao.length}/4000
                   </p>
                 </Field>
-
-                {TIPOS_DEMANDA_PAGAVEIS.includes(form.subtipo) && (
-                  <div className="space-y-3 rounded-lg border border-border p-3 bg-muted/20">
-                    <Field label="Foi pago?">
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => update({ pago: true })}
-                          className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                            form.pago === true
-                              ? "border-primary ring-2 ring-primary/30 bg-primary/5 text-primary"
-                              : "border-border hover:border-primary/50"
-                          }`}
-                        >
-                          Sim
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => update({ pago: false, parcelamento: "", condicao_pagamento: "", data_compra: "" })}
-                          className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                            form.pago === false
-                              ? "border-primary ring-2 ring-primary/30 bg-primary/5 text-primary"
-                              : "border-border hover:border-primary/50"
-                          }`}
-                        >
-                          Não
-                        </button>
-                      </div>
-                    </Field>
-
-                    {form.pago === true && (
-                      <div className="space-y-3">
-                        <Field label="Parcelamento">
-                          <Input
-                            value={form.parcelamento}
-                            maxLength={100}
-                            onChange={(e) => update({ parcelamento: e.target.value })}
-                            placeholder="Ex.: À vista, 2x, 3x…"
-                          />
-                        </Field>
-                        <Field label="Condição de pagamento">
-                          <Input
-                            value={form.condicao_pagamento}
-                            maxLength={100}
-                            onChange={(e) => update({ condicao_pagamento: e.target.value })}
-                            placeholder="Ex.: PIX, Boleto, Cartão…"
-                          />
-                        </Field>
-                        <Field label="Data da compra">
-                          <Input
-                            type="date"
-                            value={form.data_compra}
-                            onChange={(e) => update({ data_compra: e.target.value })}
-                          />
-                        </Field>
-                      </div>
-                    )}
-                  </div>
-                )}
               </>
+
             )}
           </div>
         </Step>
