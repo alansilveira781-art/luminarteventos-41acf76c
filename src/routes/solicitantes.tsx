@@ -90,6 +90,7 @@ function SolicitantesPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["solicitantes"] });
+      qc.invalidateQueries({ queryKey: ["solicitantes-select"] });
       toast.success("Solicitantes atualizados");
       setBulkOpen(false);
       sel.clear();
