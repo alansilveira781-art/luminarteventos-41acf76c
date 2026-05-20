@@ -60,7 +60,7 @@ function FornecedoresPage() {
         if (error) throw error;
       }
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["fornecedores"] }); toast.success("Salvo"); setOpen(false); setEditing(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["fornecedores"] }); qc.invalidateQueries({ queryKey: ["fornecedores-select"] }); toast.success("Salvo"); setOpen(false); setEditing(null); },
     onError: (e: any) => toast.error(e.message),
   });
 
