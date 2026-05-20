@@ -235,8 +235,125 @@ function PatrimonioInventario() {
       </Card>
 
       <ItemDialog open={open} onOpenChange={setOpen} editing={editing} onSave={(p) => saveMut.mutate(p)} />
+      <ExportDialog open={exportOpen} onOpenChange={setExportOpen} all={itens ?? []} filtered={filtered} />
     </>
   );
+}
+
+const EXPORT_COLS: { key: keyof Pat; label: string }[] = [
+  { key: "cod", label: "COD" },
+  { key: "id_item", label: "ID" },
+  { key: "categoria", label: "Categoria" },
+  { key: "subcategoria", label: "Subcategoria" },
+  { key: "nome", label: "Item" },
+  { key: "especificacao", label: "Especificação" },
+  { key: "dimensoes", label: "Dimensões" },
+  { key: "quantidade", label: "Quantidade" },
+  { key: "unidade", label: "Unidade" },
+  { key: "valor", label: "Valor unitário" },
+  { key: "estado", label: "Estado" },
+  { key: "localizacao", label: "Local" },
+  { key: "data_compra", label: "Data compra" },
+  { key: "observacoes", label: "Observações" },
+];
+
+function ExportDialog({ open, onOpenChange, all, filtered }: {
+  open: boolean; onOpenChange: (v: boolean) => void; all: Pat[]; filtered: Pat[];
+}) {
+  const [scope, setScope] = useState<"filtered" | "all">("filtered");
+  const [format, setFormat] = useState<"csv" | "xls">("csv");
+  const [cols, setCols] = useState<string[]>(EXPORT_COLS.map((c) => c.key as string));
+
+  const toggle = (k: string) => setCols((p) => p.includes(k) ? p.filter((x) => x !== k) : [...p, k]);
+
+  const doExport = () => {
+    const rows = scope === "all" ? all : filtered;
+    const selected = EXPORT_COLS.filter((c) => cols.includes(c.key as string));
+    if (!selected.length) return toast.error("Selecione ao menos uma coluna");
+    const date = new Date().toISOString().slice(0, 10);
+    const filename = `inventario_patrimonio_${date}.${format === "csv" ? "csv" : "xls"}`;
+
+    if (format === "csv") {
+      const esc = (v: any) => {
+        const s = v == null ? "" : String(v);
+        return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const lines = [selected.map((c) => esc(c.label)).join(";")];
+      rows.forEach((r) => lines.push(selected.map((c) => esc(r[c.key])).join(";")));
+      const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+      downloadBlob(blob, filename);
+    } else {
+      const esc = (v: any) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const head = selected.map((c) => `<th>${esc(c.label)}</th>`).join("");
+      const body = rows.map((r) => `<tr>${selected.map((c) => `<td>${esc(r[c.key])}</td>`).join("")}</tr>`).join("");
+      const html = `<html><head><meta charset="utf-8"></head><body><table border="1"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></body></html>`;
+      const blob = new Blob([html], { type: "application/vnd.ms-excel" });
+      downloadBlob(blob, filename);
+    }
+    toast.success(`${rows.length} itens exportados`);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader><DialogTitle>Exportar relatório do inventário</DialogTitle></DialogHeader>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Escopo</Label>
+              <Select value={scope} onValueChange={(v: any) => setScope(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="filtered">Itens filtrados ({filtered.length})</SelectItem>
+                  <SelectItem value="all">Todos os itens ({all.length})</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Formato</Label>
+              <Select value={format} onValueChange={(v: any) => setFormat(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="csv">CSV (Excel/Google Sheets)</SelectItem>
+                  <SelectItem value="xls">Excel (.xls)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <Label>Colunas</Label>
+              <div className="flex gap-2 text-xs">
+                <button className="text-primary hover:underline" onClick={() => setCols(EXPORT_COLS.map((c) => c.key as string))}>Marcar todas</button>
+                <button className="text-muted-foreground hover:underline" onClick={() => setCols([])}>Limpar</button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 border rounded-md">
+              {EXPORT_COLS.map((c) => (
+                <label key={c.key as string} className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox checked={cols.includes(c.key as string)} onCheckedChange={() => toggle(c.key as string)} />
+                  {c.label}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={doExport}><Download className="h-4 w-4 mr-1" />Exportar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function ItemDialog({ open, onOpenChange, editing, onSave }: {
