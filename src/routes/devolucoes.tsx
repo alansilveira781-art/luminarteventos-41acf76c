@@ -389,6 +389,65 @@ function groupSaidas(saidas: any[]) {
   return arr.sort((a, b) => b.data.localeCompare(a.data));
 }
 
+function SaidaCombobox({ grupos, value, onChange }: { grupos: any[]; value: string; onChange: (key: string) => void }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const selected = grupos.find((g) => g.key === value);
+
+  const filtered = useMemo(() => {
+    const terms = normalize(search).split(/\s+/).filter(Boolean);
+    if (!terms.length) return grupos;
+    return grupos.filter((g) => {
+      const hay = normalize(g.searchKey);
+      return terms.every((t) => hay.includes(t));
+    });
+  }, [grupos, search]);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <Button type="button" variant="outline" role="combobox" aria-expanded={open}
+        className="w-full justify-between font-normal" onClick={() => setOpen((c) => !c)}>
+        <span className="truncate text-left">
+          {selected ? selected.label : <span className="text-muted-foreground">Escolha uma saída em aberto…</span>}
+        </span>
+        <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+      </Button>
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-1 w-full min-w-[360px] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md">
+          <div className="flex items-center border-b px-3">
+            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+            <Input autoFocus value={search} onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
+              placeholder="Buscar por nº, solicitante, data, item…"
+              className="h-10 border-0 bg-transparent px-0 py-3 shadow-none focus-visible:ring-0" />
+          </div>
+          <div className="max-h-[320px] overflow-y-auto p-1">
+            {filtered.length === 0 ? (
+              <div className="py-6 text-center text-sm text-muted-foreground">Nenhuma saída encontrada.</div>
+            ) : filtered.map((g) => (
+              <button key={g.key} type="button"
+                className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                onPointerDown={(e) => { e.preventDefault(); onChange(g.key); setSearch(""); setOpen(false); }}>
+                <span className="truncate">{g.label} <span className="text-muted-foreground">({g.itens.length} item{g.itens.length > 1 ? "s" : ""})</span></span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DevolucaoForm({ saidas, devolvidoPorOrigem, solicitantes, onSubmit, submitting }: any) {
   const grupos = useMemo(() => groupSaidas(saidas), [saidas]);
   const [grupoKey, setGrupoKey] = useState("");
@@ -399,6 +458,7 @@ function DevolucaoForm({ saidas, devolvidoPorOrigem, solicitantes, onSubmit, sub
     observacoes: "",
   });
   const [qtds, setQtds] = useState<Record<string, string>>({});
+  const [semDevolucao, setSemDevolucao] = useState<Record<string, boolean>>({});
 
   const grupo = grupos.find((g) => g.key === grupoKey);
   const setM = (k: string, v: any) => setMeta((p) => ({ ...p, [k]: v }));
@@ -406,6 +466,7 @@ function DevolucaoForm({ saidas, devolvidoPorOrigem, solicitantes, onSubmit, sub
   const handleSelectGrupo = (key: string) => {
     setGrupoKey(key);
     setQtds({});
+    setSemDevolucao({});
   };
 
   return (
@@ -414,7 +475,12 @@ function DevolucaoForm({ saidas, devolvidoPorOrigem, solicitantes, onSubmit, sub
       if (!grupo) return toast.error("Selecione uma saída");
 
       const linhas: any[] = [];
+      const idsSemDevolucao: string[] = [];
       for (const s of grupo.itens) {
+        if (semDevolucao[s.id]) {
+          idsSemDevolucao.push(s.id);
+          continue;
+        }
         const qtd = Number(qtds[s.id] || 0);
         if (qtd <= 0) continue;
         const jaDev = devolvidoPorOrigem.get(s.id) ?? 0;
@@ -435,41 +501,26 @@ function DevolucaoForm({ saidas, devolvidoPorOrigem, solicitantes, onSubmit, sub
           observacoes: meta.observacoes || null,
         });
       }
-      onSubmit(linhas);
+      if (linhas.length === 0 && idsSemDevolucao.length === 0) {
+        return toast.error("Informe a quantidade devolvida ou marque ao menos um item como sem devolução");
+      }
+      onSubmit({ linhas, idsSemDevolucao });
     }} className="space-y-4">
       <FormSection>
         <FormField label="Saída vinculada*" wide>
-          <Select value={grupoKey} onValueChange={handleSelectGrupo}>
-            <SelectTrigger><SelectValue placeholder="Escolha uma saída em aberto…" /></SelectTrigger>
-            <SelectContent>
-              {grupos.length === 0 && <div className="px-3 py-2 text-sm text-muted-foreground">Nenhuma saída em aberto</div>}
-              {grupos.map((g) => (
-                <SelectItem key={g.key} value={g.key}>{g.label} ({g.itens.length} item{g.itens.length > 1 ? "s" : ""})</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SaidaCombobox grupos={grupos} value={grupoKey} onChange={handleSelectGrupo} />
         </FormField>
         <FormField label="Data*"><Input required type="datetime-local" value={meta.data_movimento} onChange={(e) => setM("data_movimento", e.target.value)} /></FormField>
         <FormField label="Responsável pela devolução">
-          <Input
-            list="solicitantes-list"
-            value={meta.responsavel_lancamento}
-            onChange={(e) => setM("responsavel_lancamento", e.target.value)}
-            placeholder="Pesquise ou digite um nome…"
-          />
+          <Input list="solicitantes-list" value={meta.responsavel_lancamento}
+            onChange={(e) => setM("responsavel_lancamento", e.target.value)} placeholder="Pesquise ou digite um nome…" />
         </FormField>
         <FormField label="Responsável pelo recebimento">
-          <Input
-            list="solicitantes-list"
-            value={meta.responsavel_recebimento}
-            onChange={(e) => setM("responsavel_recebimento", e.target.value)}
-            placeholder="Pesquise ou digite um nome…"
-          />
+          <Input list="solicitantes-list" value={meta.responsavel_recebimento}
+            onChange={(e) => setM("responsavel_recebimento", e.target.value)} placeholder="Pesquise ou digite um nome…" />
         </FormField>
         <datalist id="solicitantes-list">
-          {(solicitantes ?? []).map((s: any) => (
-            <option key={s.id} value={s.nome} />
-          ))}
+          {(solicitantes ?? []).map((s: any) => (<option key={s.id} value={s.nome} />))}
         </datalist>
         <FormField label="Observações" wide><Textarea rows={2} value={meta.observacoes} onChange={(e) => setM("observacoes", e.target.value)} /></FormField>
       </FormSection>
@@ -486,6 +537,7 @@ function DevolucaoForm({ saidas, devolvidoPorOrigem, solicitantes, onSubmit, sub
                   <col className="w-24" />
                   <col className="w-20" />
                   <col className="w-28" />
+                  <col className="w-24" />
                 </colgroup>
                 <thead className="bg-muted/50">
                   <tr className="text-xs uppercase text-muted-foreground">
@@ -494,12 +546,14 @@ function DevolucaoForm({ saidas, devolvidoPorOrigem, solicitantes, onSubmit, sub
                     <th className="px-3 py-2 font-medium text-right whitespace-nowrap">Já devolvido</th>
                     <th className="px-3 py-2 font-medium text-right whitespace-nowrap">Saldo</th>
                     <th className="px-3 py-2 font-medium text-right whitespace-nowrap">Devolver agora</th>
+                    <th className="px-3 py-2 font-medium text-center whitespace-nowrap">Sem devolução</th>
                   </tr>
                 </thead>
                 <tbody>
                   {grupo.itens.map((s: any) => {
                     const jaDev = devolvidoPorOrigem.get(s.id) ?? 0;
                     const saldo = Number(s.quantidade) - jaDev;
+                    const sem = !!semDevolucao[s.id];
                     return (
                       <tr key={s.id} className="border-t border-border">
                         <td className="px-3 py-2 font-medium truncate">{s.item?.nome}</td>
@@ -507,17 +561,16 @@ function DevolucaoForm({ saidas, devolvidoPorOrigem, solicitantes, onSubmit, sub
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground whitespace-nowrap">{jaDev}</td>
                         <td className="px-3 py-2 text-right tabular-nums font-medium whitespace-nowrap">{saldo}</td>
                         <td className="px-3 py-2">
-                          <Input
-                            type="number"
-                            min="0"
-                            max={saldo}
-                            step="0.01"
-                            value={qtds[s.id] ?? ""}
+                          <Input type="number" min="0" max={saldo} step="0.01"
+                            value={sem ? "" : (qtds[s.id] ?? "")}
                             onChange={(e) => setQtds((q) => ({ ...q, [s.id]: e.target.value }))}
-                            placeholder="0"
-                            disabled={saldo <= 0}
-                            className="h-8 text-right"
-                          />
+                            placeholder="0" disabled={saldo <= 0 || sem} className="h-8 text-right" />
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <Checkbox checked={sem} onCheckedChange={(v) => {
+                            setSemDevolucao((m) => ({ ...m, [s.id]: !!v }));
+                            if (v) setQtds((q) => ({ ...q, [s.id]: "" }));
+                          }} />
                         </td>
                       </tr>
                     );
@@ -526,7 +579,7 @@ function DevolucaoForm({ saidas, devolvidoPorOrigem, solicitantes, onSubmit, sub
               </table>
             </div>
           </Card>
-          <p className="text-xs text-muted-foreground">Deixe em branco ou 0 nos itens que não estão sendo devolvidos agora.</p>
+          <p className="text-xs text-muted-foreground">Marque "Sem devolução" para encerrar o saldo do item sem registrar uma devolução. Deixe a quantidade em branco/0 nos itens que não estão sendo devolvidos agora.</p>
         </div>
       )}
 
