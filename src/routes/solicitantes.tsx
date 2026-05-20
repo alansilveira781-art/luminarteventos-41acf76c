@@ -59,7 +59,7 @@ function SolicitantesPage() {
         if (error) throw error;
       }
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["solicitantes"] }); toast.success("Salvo"); setOpen(false); setEditing(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["solicitantes"] }); qc.invalidateQueries({ queryKey: ["solicitantes-select"] }); toast.success("Salvo"); setOpen(false); setEditing(null); },
     onError: (e: any) => toast.error(e.message),
   });
 
