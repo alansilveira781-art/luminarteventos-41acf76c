@@ -398,7 +398,7 @@ function ItemDialog({ open, onOpenChange, editing, onSave }: {
         <DialogHeader><DialogTitle>{editing ? "Editar item" : "Novo item"}</DialogTitle></DialogHeader>
         <div className="grid grid-cols-2 gap-3">
           <div><Label>COD</Label><Input type="number" value={f.cod ?? ""} onChange={(e) => set("cod", e.target.value === "" ? null : Number(e.target.value))} /></div>
-          <div><Label>ID</Label><Input value={f.id_item ?? ""} onChange={(e) => set("id_item", e.target.value || null)} /></div>
+          <div><Label>ID</Label><Input value={f.id_item ?? ""} disabled placeholder="Gerado automaticamente" /></div>
           <div className="col-span-2"><Label>Nome *</Label><Input value={f.nome ?? ""} onChange={(e) => set("nome", e.target.value)} /></div>
           <div><Label>Categoria</Label>
             <Select value={f.categoria ?? ""} onValueChange={(v) => set("categoria", v)}>
