@@ -38,6 +38,7 @@ import { Route as ComercialIndexRouteImport } from './routes/comercial.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as PatrimonioSaidasRouteImport } from './routes/patrimonio.saidas'
 import { Route as PatrimonioEntradasRouteImport } from './routes/patrimonio.entradas'
+import { Route as PatrimonioDashboardRouteImport } from './routes/patrimonio.dashboard'
 import { Route as JuridicoModelosRouteImport } from './routes/juridico.modelos'
 import { Route as FinanceiroRotinasRouteImport } from './routes/financeiro.rotinas'
 import { Route as FinanceiroDashboardRouteImport } from './routes/financeiro.dashboard'
@@ -206,6 +207,11 @@ const PatrimonioEntradasRoute = PatrimonioEntradasRouteImport.update({
   path: '/entradas',
   getParentRoute: () => PatrimonioRoute,
 } as any)
+const PatrimonioDashboardRoute = PatrimonioDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => PatrimonioRoute,
+} as any)
 const JuridicoModelosRoute = JuridicoModelosRouteImport.update({
   id: '/modelos',
   path: '/modelos',
@@ -355,6 +361,7 @@ export interface FileRoutesByFullPath {
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
+  '/patrimonio/dashboard': typeof PatrimonioDashboardRoute
   '/patrimonio/entradas': typeof PatrimonioEntradasRoute
   '/patrimonio/saidas': typeof PatrimonioSaidasRoute
   '/admin/': typeof AdminIndexRoute
@@ -400,6 +407,7 @@ export interface FileRoutesByTo {
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
+  '/patrimonio/dashboard': typeof PatrimonioDashboardRoute
   '/patrimonio/entradas': typeof PatrimonioEntradasRoute
   '/patrimonio/saidas': typeof PatrimonioSaidasRoute
   '/admin': typeof AdminIndexRoute
@@ -454,6 +462,7 @@ export interface FileRoutesById {
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
+  '/patrimonio/dashboard': typeof PatrimonioDashboardRoute
   '/patrimonio/entradas': typeof PatrimonioEntradasRoute
   '/patrimonio/saidas': typeof PatrimonioSaidasRoute
   '/admin/': typeof AdminIndexRoute
@@ -509,6 +518,7 @@ export interface FileRouteTypes {
     | '/financeiro/dashboard'
     | '/financeiro/rotinas'
     | '/juridico/modelos'
+    | '/patrimonio/dashboard'
     | '/patrimonio/entradas'
     | '/patrimonio/saidas'
     | '/admin/'
@@ -554,6 +564,7 @@ export interface FileRouteTypes {
     | '/financeiro/dashboard'
     | '/financeiro/rotinas'
     | '/juridico/modelos'
+    | '/patrimonio/dashboard'
     | '/patrimonio/entradas'
     | '/patrimonio/saidas'
     | '/admin'
@@ -607,6 +618,7 @@ export interface FileRouteTypes {
     | '/financeiro/dashboard'
     | '/financeiro/rotinas'
     | '/juridico/modelos'
+    | '/patrimonio/dashboard'
     | '/patrimonio/entradas'
     | '/patrimonio/saidas'
     | '/admin/'
@@ -857,6 +869,13 @@ declare module '@tanstack/react-router' {
       path: '/entradas'
       fullPath: '/patrimonio/entradas'
       preLoaderRoute: typeof PatrimonioEntradasRouteImport
+      parentRoute: typeof PatrimonioRoute
+    }
+    '/patrimonio/dashboard': {
+      id: '/patrimonio/dashboard'
+      path: '/dashboard'
+      fullPath: '/patrimonio/dashboard'
+      preLoaderRoute: typeof PatrimonioDashboardRouteImport
       parentRoute: typeof PatrimonioRoute
     }
     '/juridico/modelos': {
@@ -1116,12 +1135,14 @@ const JuridicoRouteWithChildren = JuridicoRoute._addFileChildren(
 )
 
 interface PatrimonioRouteChildren {
+  PatrimonioDashboardRoute: typeof PatrimonioDashboardRoute
   PatrimonioEntradasRoute: typeof PatrimonioEntradasRoute
   PatrimonioSaidasRoute: typeof PatrimonioSaidasRoute
   PatrimonioIndexRoute: typeof PatrimonioIndexRoute
 }
 
 const PatrimonioRouteChildren: PatrimonioRouteChildren = {
+  PatrimonioDashboardRoute: PatrimonioDashboardRoute,
   PatrimonioEntradasRoute: PatrimonioEntradasRoute,
   PatrimonioSaidasRoute: PatrimonioSaidasRoute,
   PatrimonioIndexRoute: PatrimonioIndexRoute,
