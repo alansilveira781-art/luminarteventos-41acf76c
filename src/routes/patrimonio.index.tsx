@@ -18,6 +18,8 @@ import { toast } from "sonner";
 import { normalize } from "@/lib/utils";
 import { SortableTh, useSort } from "@/components/SortableTh";
 import { NumberInput } from "@/components/comercial/NumberInput";
+import { PeriodoFilter, filterByPeriodo, periodoFromPreset, type Periodo, type PeriodoPreset } from "@/components/PeriodoFilter";
+import { TablePagination } from "@/components/TablePagination";
 
 export const Route = createFileRoute("/patrimonio/")({ component: PatrimonioInventario });
 
@@ -31,6 +33,7 @@ type Pat = {
   nome: string; especificacao: string | null; dimensoes: string | null;
   quantidade: number; valor: number; estado: string; unidade: string;
   localizacao: string | null; imagem_url: string | null; observacoes: string | null;
+  created_at?: string | null;
 };
 
 const brl = (v: number) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -47,6 +50,10 @@ function PatrimonioInventario() {
   const [open, setOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [bulkPhotosOpen, setBulkPhotosOpen] = useState(false);
+  const [periodoPreset, setPeriodoPreset] = useState<PeriodoPreset>("todos");
+  const [periodo, setPeriodo] = useState<Periodo>(periodoFromPreset("todos"));
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 100;
 
   const { data: itens, isLoading } = useQuery({
     queryKey: ["pat_itens"],
