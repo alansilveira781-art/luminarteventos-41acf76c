@@ -36,6 +36,7 @@ import { Route as ContabilIndexRouteImport } from './routes/contabil.index'
 import { Route as ComprasIndexRouteImport } from './routes/compras.index'
 import { Route as ComercialIndexRouteImport } from './routes/comercial.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as PatrimonioEntradasRouteImport } from './routes/patrimonio.entradas'
 import { Route as FinanceiroRotinasRouteImport } from './routes/financeiro.rotinas'
 import { Route as FinanceiroDashboardRouteImport } from './routes/financeiro.dashboard'
 import { Route as FinanceiroContaAzulRouteImport } from './routes/financeiro.conta-azul'
@@ -193,6 +194,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const PatrimonioEntradasRoute = PatrimonioEntradasRouteImport.update({
+  id: '/entradas',
+  path: '/entradas',
+  getParentRoute: () => PatrimonioRoute,
+} as any)
 const FinanceiroRotinasRoute = FinanceiroRotinasRouteImport.update({
   id: '/rotinas',
   path: '/rotinas',
@@ -336,6 +342,7 @@ export interface FileRoutesByFullPath {
   '/financeiro/conta-azul': typeof FinanceiroContaAzulRoute
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
+  '/patrimonio/entradas': typeof PatrimonioEntradasRoute
   '/admin/': typeof AdminIndexRoute
   '/comercial/': typeof ComercialIndexRoute
   '/compras/': typeof ComprasIndexRoute
@@ -378,6 +385,7 @@ export interface FileRoutesByTo {
   '/financeiro/conta-azul': typeof FinanceiroContaAzulRoute
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
+  '/patrimonio/entradas': typeof PatrimonioEntradasRoute
   '/admin': typeof AdminIndexRoute
   '/comercial': typeof ComercialIndexRoute
   '/compras': typeof ComprasIndexRoute
@@ -429,6 +437,7 @@ export interface FileRoutesById {
   '/financeiro/conta-azul': typeof FinanceiroContaAzulRoute
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
+  '/patrimonio/entradas': typeof PatrimonioEntradasRoute
   '/admin/': typeof AdminIndexRoute
   '/comercial/': typeof ComercialIndexRoute
   '/compras/': typeof ComprasIndexRoute
@@ -481,6 +490,7 @@ export interface FileRouteTypes {
     | '/financeiro/conta-azul'
     | '/financeiro/dashboard'
     | '/financeiro/rotinas'
+    | '/patrimonio/entradas'
     | '/admin/'
     | '/comercial/'
     | '/compras/'
@@ -523,6 +533,7 @@ export interface FileRouteTypes {
     | '/financeiro/conta-azul'
     | '/financeiro/dashboard'
     | '/financeiro/rotinas'
+    | '/patrimonio/entradas'
     | '/admin'
     | '/comercial'
     | '/compras'
@@ -573,6 +584,7 @@ export interface FileRouteTypes {
     | '/financeiro/conta-azul'
     | '/financeiro/dashboard'
     | '/financeiro/rotinas'
+    | '/patrimonio/entradas'
     | '/admin/'
     | '/comercial/'
     | '/compras/'
@@ -808,6 +820,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/patrimonio/entradas': {
+      id: '/patrimonio/entradas'
+      path: '/entradas'
+      fullPath: '/patrimonio/entradas'
+      preLoaderRoute: typeof PatrimonioEntradasRouteImport
+      parentRoute: typeof PatrimonioRoute
     }
     '/financeiro/rotinas': {
       id: '/financeiro/rotinas'
@@ -1057,10 +1076,12 @@ const JuridicoRouteWithChildren = JuridicoRoute._addFileChildren(
 )
 
 interface PatrimonioRouteChildren {
+  PatrimonioEntradasRoute: typeof PatrimonioEntradasRoute
   PatrimonioIndexRoute: typeof PatrimonioIndexRoute
 }
 
 const PatrimonioRouteChildren: PatrimonioRouteChildren = {
+  PatrimonioEntradasRoute: PatrimonioEntradasRoute,
   PatrimonioIndexRoute: PatrimonioIndexRoute,
 }
 
