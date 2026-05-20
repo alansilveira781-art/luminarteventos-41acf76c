@@ -12,6 +12,15 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import DOMPurify from "dompurify";
+
+const SANITIZE_OPTS = {
+  ALLOWED_TAGS: ["p", "br", "strong", "em", "u", "h1", "h2", "h3", "ul", "ol", "li", "a", "span", "div", "blockquote"],
+  ALLOWED_ATTR: ["href", "target", "rel", "class", "style"],
+  FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "form", "input"],
+  FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover", "onfocus", "onblur"],
+};
+const sanitizeHtml = (html: string) => DOMPurify.sanitize(html ?? "", SANITIZE_OPTS);
 
 export const Route = createFileRoute("/juridico/modelos")({ component: ModelosPage });
 
@@ -50,8 +59,9 @@ function ModelosPage() {
 
   const saveMut = useMutation({
     mutationFn: async (p: any) => {
-      const variaveis = extractVars(p.corpo_html ?? "");
-      const payload = { ...p, variaveis };
+      const safeHtml = sanitizeHtml(p.corpo_html ?? "");
+      const variaveis = extractVars(safeHtml);
+      const payload = { ...p, corpo_html: safeHtml, variaveis };
       const { id, ...rest } = payload;
       if (id) {
         const { error } = await supabase.from("juridico_modelos").update(rest).eq("id", id);
@@ -121,7 +131,7 @@ function ModeloDialog({ open, onOpenChange, editing, onSave }: {
   useMemo(() => {
     const init = editing ?? { tipo: "corporativo", nome: "", corpo_html: "<p>Escreva o contrato aqui. Use <strong>{{cliente_nome}}</strong>, {{valor}}, {{cnpj}} para campos dinâmicos.</p>" };
     setF(init);
-    setTimeout(() => { if (ref.current) ref.current.innerHTML = init.corpo_html ?? ""; }, 50);
+    setTimeout(() => { if (ref.current) ref.current.innerHTML = sanitizeHtml(init.corpo_html ?? ""); }, 50);
   }, [editing, open]);
 
   const exec = (cmd: string, val?: string) => { document.execCommand(cmd, false, val); ref.current?.focus(); };

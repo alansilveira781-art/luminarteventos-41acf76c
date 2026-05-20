@@ -28,11 +28,45 @@ const baseSchema = z.object({
   itens: z.array(itemSchema).max(50).optional(),
 });
 
+// In-memory IP rate limiter (best-effort; works per worker instance).
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX = 5;
+const ipHits = new Map<string, number[]>();
+function rateLimit(ip: string): boolean {
+  const now = Date.now();
+  const arr = (ipHits.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
+  if (arr.length >= RATE_MAX) {
+    ipHits.set(ip, arr);
+    return false;
+  }
+  arr.push(now);
+  ipHits.set(ip, arr);
+  if (ipHits.size > 5000) {
+    // basic cleanup to avoid unbounded growth
+    for (const [k, v] of ipHits) {
+      if (!v.some((t) => now - t < RATE_WINDOW_MS)) ipHits.delete(k);
+    }
+  }
+  return true;
+}
+
 export const Route = createFileRoute("/api/public/solicitar")({
   server: {
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
       POST: async ({ request }) => {
+        const ip =
+          request.headers.get("cf-connecting-ip") ||
+          request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+          request.headers.get("x-real-ip") ||
+          "unknown";
+        if (!rateLimit(ip)) {
+          return new Response(
+            JSON.stringify({ error: "Muitas solicitações. Aguarde alguns instantes e tente novamente." }),
+            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+
         let body: unknown;
         try {
           body = await request.json();
