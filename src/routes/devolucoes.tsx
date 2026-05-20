@@ -300,6 +300,8 @@ function DevolucoesPage() {
         </div>
       </Card>
 
+      <TablePagination page={page} pageCount={pageCount} onPageChange={setPage} />
+
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Nova devolução</DialogTitle></DialogHeader>
