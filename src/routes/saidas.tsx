@@ -252,9 +252,9 @@ function SaidasPage() {
   // Filtros + agrupamento por requisicao_numero
   const sBusca = normalize(qd);
   const filteredBaseList = (saidas ?? []).filter((m: any) => {
-    if (filterItemQ.trim()) {
+    if (filterItemQd.trim()) {
       const itemHay = normalize(`${m.item?.codigo ?? ""} ${m.item?.nome ?? ""}`);
-      if (!itemHay.includes(normalize(filterItemQ))) return false;
+      if (!itemHay.includes(normalize(filterItemQd))) return false;
     }
     if (filterEvento !== "__all" && (m.evento_projeto ?? "") !== filterEvento) return false;
     if (filterEmpresa !== "__all" && (m.empresa ?? "") !== filterEmpresa) return false;
