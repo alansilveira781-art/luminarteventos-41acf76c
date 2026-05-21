@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef, useMemo } from "react";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/fetch-all";
@@ -44,8 +45,8 @@ function SaidasPage() {
   const [open, setOpen] = useState(false);
   const [prefill, setPrefill] = useState<any | null>(null);
   const [editing, setEditing] = useState<any | null>(null);
-  const [q, setQ] = useState("");
-  const [filterItemQ, setFilterItemQ] = useState<string>("");
+  const [q, setQ] = useState(""); const qd = useDebouncedValue(q, 300);
+  const [filterItemQ, setFilterItemQ] = useState<string>(""); const filterItemQd = useDebouncedValue(filterItemQ, 300);
   const [filterEvento, setFilterEvento] = useState<string>("__all");
   const [filterEmpresa, setFilterEmpresa] = useState<string>("__all");
   const { sort, toggleSort, applySort } = useSort();
@@ -249,7 +250,7 @@ function SaidasPage() {
   });
 
   // Filtros + agrupamento por requisicao_numero
-  const sBusca = normalize(q);
+  const sBusca = normalize(qd);
   const filteredBaseList = (saidas ?? []).filter((m: any) => {
     if (filterItemQ.trim()) {
       const itemHay = normalize(`${m.item?.codigo ?? ""} ${m.item?.nome ?? ""}`);

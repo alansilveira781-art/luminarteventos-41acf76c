@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { Plus, Pencil, Trash2, Search, Download, Upload, ImagePlus, X } from "lucide-react";
 import { useRef } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -42,7 +43,7 @@ function PatrimonioInventario() {
   const qc = useQueryClient();
   const { isModuleAdmin } = useAuth();
   const isAdmin = isModuleAdmin("patrimonio");
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(""); const qd = useDebouncedValue(q, 300);
   const [filterCat, setFilterCat] = useState<string>("__all");
   const [filterEstado, setFilterEstado] = useState<string>("__all");
   const [filterLoc, setFilterLoc] = useState<string>("__all");
@@ -86,7 +87,7 @@ function PatrimonioInventario() {
   const { sort, toggleSort, applySort } = useSort();
 
   const filtered = useMemo(() => {
-    const nq = normalize(q);
+    const nq = normalize(qd);
     const base = (itens ?? []).filter((i) => {
       if (filterCat !== "__all" && i.categoria !== filterCat) return false;
       if (filterEstado !== "__all" && i.estado !== filterEstado) return false;

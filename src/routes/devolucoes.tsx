@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo, useRef, useEffect } from "react";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { FormActions, FormField, FormSection } from "@/components/FormSection";
@@ -32,7 +33,7 @@ function DevolucoesPage() {
   const { isModuleAdmin } = useAuth();
   const isAdmin = isModuleAdmin("estoque");
   const [open, setOpen] = useState(false);
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(""); const qd = useDebouncedValue(q, 300);
   const { sort, toggleSort, applySort } = useSort();
   const [bulkOpen, setBulkOpen] = useState(false);
   const [periodoPreset, setPeriodoPreset] = useState<PeriodoPreset>("mes");
@@ -143,7 +144,7 @@ function DevolucoesPage() {
   });
 
   // Filtro
-  const sBusca = normalize(q);
+  const sBusca = normalize(qd);
   const filtered = useMemo(() => {
     const list = (devolucoes ?? []).filter((m: any) => {
       if (!sBusca) return true;

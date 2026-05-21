@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
@@ -43,7 +44,7 @@ function ComprasKanban() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [defaultStatus, setDefaultStatus] = useState<CompraStatus>("solicitacao");
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(""); const qd = useDebouncedValue(q, 300);
 
   const { data: compras = [] } = useQuery({
     queryKey: ["compras"],
@@ -58,14 +59,14 @@ function ComprasKanban() {
   });
 
   const filteredCompras = useMemo(() => {
-    const s = q.toLowerCase().trim();
+    const s = qd.toLowerCase().trim();
     if (!s) return compras;
     return compras.filter((c) => {
       const num = c.numero != null ? `compra-${c.numero}` : "";
       return [num, String(c.numero ?? ""), c.titulo, c.solicitante, c.fornecedor, c.comprador]
         .some((v) => String(v ?? "").toLowerCase().includes(s));
     });
-  }, [compras, q]);
+  }, [compras, qd]);
 
   const byStatus = useMemo(() => {
     const m: Record<CompraStatus, Compra[]> = {} as any;

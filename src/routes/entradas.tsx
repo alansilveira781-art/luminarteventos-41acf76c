@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef, useMemo } from "react";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/fetch-all";
@@ -48,8 +49,8 @@ function EntradasPage() {
   const [editing, setEditing] = useState<any | null>(null);
   const [importingExcel, setImportingExcel] = useState(false);
   const [importingXml, setImportingXml] = useState(false);
-  const [q, setQ] = useState("");
-  const [filterItemQ, setFilterItemQ] = useState<string>("");
+  const [q, setQ] = useState(""); const qd = useDebouncedValue(q, 300);
+  const [filterItemQ, setFilterItemQ] = useState<string>(""); const filterItemQd = useDebouncedValue(filterItemQ, 300);
   const [periodoPreset, setPeriodoPreset] = useState<PeriodoPreset>("mes");
   const [periodo, setPeriodo] = useState<Periodo>(periodoFromPreset("mes"));
   const [page, setPage] = useState(1);
@@ -228,7 +229,7 @@ function EntradasPage() {
   });
 
   // Filtros + agrupamento por requisicao_numero
-  const sBusca = normalize(q);
+  const sBusca = normalize(qd);
   const filteredBaseList = (entradas ?? []).filter((m: any) => {
     if (filterItemQ.trim()) {
       const itemHay = normalize(`${m.item?.codigo ?? ""} ${m.item?.nome ?? ""}`);

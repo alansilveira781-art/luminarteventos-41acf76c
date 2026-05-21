@@ -48,6 +48,7 @@ function EstoquePage() {
   const qc = useQueryClient();
   const { isModuleAdmin } = useAuth(); const isAdmin = isModuleAdmin("estoque");
   const [q, setQ] = useState("");
+  const qd = useDebouncedValue(q, 300);
   const [editing, setEditing] = useState<any | null>(null);
   const [duplicating, setDuplicating] = useState<any | null>(null);
   const [creating, setCreating] = useState(false);
@@ -125,7 +126,7 @@ function EstoquePage() {
   const filtered = useMemo(() => {
     if (!itens) return [];
     let arr = itens as any[];
-    const s = normalize(q);
+    const s = normalize(qd);
     if (s) {
       arr = arr.filter((i) =>
         normalize([i.nome, i.codigo, i.categoria, i.localizacao, i.status].join(" ")).includes(s),
