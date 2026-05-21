@@ -44,7 +44,7 @@ function FornecedoresPage() {
   const { data } = useQuery({
     queryKey: ["fornecedores"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("fornecedores").select("*").order("nome");
+      const { data, error } = await supabase.from("fornecedores").select("id,nome,nome_fantasia,documento,contato_nome,telefone,email,endereco,tipo_fornecimento,status,observacoes").order("nome");
       if (error) throw error;
       return data;
     },

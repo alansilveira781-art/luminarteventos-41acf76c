@@ -43,7 +43,7 @@ function SolicitantesPage() {
   const { data } = useQuery({
     queryKey: ["solicitantes"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("solicitantes").select("*").order("nome");
+      const { data, error } = await supabase.from("solicitantes").select("id,nome,apelido,setor,cargo,telefone,email,status,observacoes").order("nome");
       if (error) throw error;
       return data;
     },
