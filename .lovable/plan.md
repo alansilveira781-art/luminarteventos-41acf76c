@@ -1,63 +1,89 @@
-# Corrigir integração Uber Business
+# Envio de e-mails para clientes (Comercial)
 
-## Diagnóstico
+## Objetivo
+Permitir disparar e-mails para clientes diretamente do card no Kanban do Comercial, com suporte a:
+- **Envio manual avulso** (você escreve assunto/mensagem na hora)
+- **Templates pré-definidos** (envio de proposta, follow-up, agradecimento, cobrança)
+- **Automações em eventos** (ex.: ao mover card para "Orçamento Enviado", ao aprovar proposta)
+- **PDF da proposta** incluído como link de download seguro no corpo do e-mail
 
-O erro `400 invalid_scope` vem do `POST https://auth.uber.com/oauth/v2/token` porque pedimos `scope=business.trips`, mas:
+## Pré-requisitos (configuração)
+1. **Configurar domínio remetente** na Lovable Cloud (você adiciona registros DNS — eu te entrego o passo a passo no diálogo). Sem isso os e-mails não saem com sua marca.
+2. **Infraestrutura de e-mails da Lovable**: fila de envio com retry, logs, supressão de bounces/reclamações e link de unsubscribe automático.
 
-1. A documentação oficial ([Receipts API → Authentication](https://developer.uber.com/docs/businesses/receipts/guides/authentication)) usa o escopo **`business.receipts`** para `client_credentials`.
-2. O escopo `business.trips` existe, mas pertence à **Employees Trips API** (`POST /v1/trips/search`) e precisa estar **explicitamente habilitado no painel do app** em developer.uber.com → Apps → Auth → Scopes. Se não estiver habilitado, o servidor responde exatamente com `invalid_scope`.
-3. O endpoint atual no nosso código (`GET /v1/business/trips`) **não existe** na API pública atual. O que existe é:
-   - `POST /v1/trips/search` (escopo `business.trips`) — lista trips paginadas, **este é o que queremos**.
-   - `GET /v1/business/trips/{trip_id}/receipt` (escopo `business.receipts`) — recibo único, marcado como **deprecated**.
+## Funcionalidades
 
-Ou seja, temos dois bugs combinados: escopo errado **e** endpoint inexistente.
+### 1. Botão "Enviar e-mail" no card (Kanban Comercial)
+Adicionado no `DetalhesDrawer.tsx` do card. Abre um diálogo com:
+- Destinatário pré-preenchido (e-mail do cliente do card)
+- Seletor de template: **Personalizado**, **Envio de Proposta**, **Follow-up**, **Agradecimento**, **Cobrança**
+- Campos de assunto e mensagem (editáveis — template apenas pré-preenche)
+- Checkbox **"Anexar PDF da proposta"** (visível quando o card tem proposta vinculada)
+- Histórico de e-mails enviados para aquele card
 
-## Pergunta antes de implementar
+### 2. PDF da proposta como link de download
+Como a Lovable não suporta anexo nativo, o fluxo é:
+1. Gerar o PDF da proposta (já existe `src/lib/comercial/pdf.ts`)
+2. Subir o PDF em um bucket privado do Storage (`propostas-pdf`)
+3. Criar uma URL assinada de 30 dias
+4. Incluir o link como botão **"Baixar proposta (PDF)"** no corpo do e-mail
 
-Precisamos saber quais escopos estão marcados como "Approved" no painel do seu app Uber (developer.uber.com → seu app → Auth → OAuth Scopes). As duas opções abaixo decidem o caminho:
+### 3. Templates de e-mail (React Email)
+Quatro templates branded com a identidade visual do app:
+- `proposta-envio` — envio de proposta com link do PDF e dados do evento
+- `proposta-followup` — follow-up de proposta enviada
+- `proposta-agradecimento` — agradecimento pós-fechamento
+- `proposta-cobranca` — lembrete educado de retorno
+- `comercial-personalizado` — template genérico para envios manuais
 
-- **Opção A — `business.trips` aprovado**: caminho ideal. Conseguimos listar todas as trips da organização com um único endpoint e montar todos os gráficos do dashboard.
-- **Opção B — apenas `business.receipts` aprovado**: API Receipts só entrega recibo trip-a-trip a partir de um `trip_id` que você já tem (ex.: via webhook). Não dá pra listar viagens só com client_credentials. Nesse caso precisaríamos configurar webhook `trips.receipt.ready` + tabela no banco pra armazenar histórico — escopo bem maior.
+### 4. Automações opcionais (você liga/desliga)
+- Ao mover card para **Orçamento Enviado** → sugere disparar e-mail "Envio de Proposta" (não envia automático, só pré-abre o diálogo, para você revisar antes)
+- Ao aprovar proposta → opção de disparar agradecimento
 
-Confirma qual está habilitado? Se não tiver certeza, mande print da seção "OAuth Scopes" do app.
+### 5. Histórico de e-mails
+Nova aba/sessão no drawer do card listando: data, destinatário, template, assunto, status (enviado / falhou / suprimido), com link para reenvio.
 
-## Mudanças (assumindo Opção A)
+## Detalhes técnicos
 
-### `src/lib/uber/auth.server.ts`
-- Trocar `scope: "business.trips"` — manter, **mas** garantir que o app realmente tenha esse escopo aprovado.
-- Mensagem de erro mais explícita quando vier `invalid_scope`: instruir o usuário a habilitar o escopo no painel.
+### Banco de dados (nova tabela)
+- `comercial_email_log` — registro de e-mails enviados por card/proposta:
+  - `card_id`, `proposta_id`, `cliente_email`, `template_name`, `subject`, `pdf_url`, `status`, `enviado_por` (user_id)
+  - RLS: apenas usuários autenticados com acesso ao módulo Comercial leem/escrevem
+  - GRANTs para `authenticated` e `service_role`
 
-### `src/lib/uber.functions.ts`
-Reescrever `getUberTrips` para usar `POST /v1/trips/search`:
+### Storage
+- Novo bucket privado `propostas-pdf` com policy que restringe leitura via URL assinada
+- Path: `{proposta_id}/v{version}-{timestamp}.pdf`
 
-```ts
-const res = await fetch("https://api.uber.com/v1/trips/search", {
-  method: "POST",
-  headers: {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-    "Accept-Language": "pt-BR",
-  },
-  body: JSON.stringify({
-    third_party_customer_organization_id: orgUuid,
-    search_filters: {
-      interval: { starts_at: fromMs, ends_at: toMs },
-    },
-    paging_option: { page_size: 50, cursor: nextCursor ?? undefined },
-  }),
-});
-```
+### Infraestrutura de e-mail
+- `email_domain--setup_email_infra` + `email_domain--scaffold_transactional_email`
+- Server route `/lovable/email/transactional/send` (criado pelo scaffold) — usado por todo envio
+- Server function `sendComercialEmail` em `src/lib/comercial/email.functions.ts` que:
+  1. Gera PDF (se solicitado), faz upload e gera URL assinada
+  2. Chama o template registrado com os dados do card/proposta
+  3. Registra em `comercial_email_log`
 
-- Paginação por cursor (`paging_option.cursor` / `response.next_cursor`) em vez de offset.
-- Ajustar `normalize()` para o shape real do response (`trips[].fare_breakdown.total`, `trips[].vehicle_view_name`, `trips[].rider.{name,email}`, `trips[].request_time_ms`, etc.) — mantendo o DTO `UberTrip` já consumido pela UI.
-- Manter retorno `{ trips, error }` com tratamento amigável para 401/403/invalid_scope.
+### Arquivos a criar
+- `src/lib/email-templates/proposta-envio.tsx` (+ 3 outros templates)
+- `src/lib/email-templates/registry.ts` (atualizado)
+- `src/lib/comercial/email.functions.ts` (server functions)
+- `src/components/comercial/EnviarEmailDialog.tsx` (diálogo no drawer)
+- `src/components/comercial/HistoricoEmails.tsx` (lista no drawer)
+- Migration: tabela `comercial_email_log` + bucket `propostas-pdf` + policies
 
-### UI (`UberDashboard.tsx`)
-Sem mudanças — o componente consome o DTO normalizado.
+### Arquivos a editar
+- `src/components/comercial/DetalhesDrawer.tsx` — botão "Enviar e-mail" + aba histórico
+- `src/lib/comercial/store.ts` — helper para buscar e-mails enviados de um card
+- `package.json` — adicionar `@react-email/components`, `react-email`, `@lovable.dev/email-js`, `@lovable.dev/webhooks-js`
 
-### Se for Opção B
-Mudo o plano: troco para `scope: "business.receipts"`, removo o fetch de listagem, e proponho separadamente o caminho webhook + persistência. Não implemento sem confirmar.
+## Fluxo de aprovação
+1. Você aprova este plano
+2. Eu rodo a migration (cria tabela + bucket)
+3. Eu configuro a infraestrutura de e-mail e abro o diálogo de domínio para você colar os DNS
+4. Eu crio os templates, server functions e UI do diálogo
+5. Você testa enviando para você mesmo antes de usar com cliente real
 
-## Próximo passo
-
-Me confirma quais escopos o app tem aprovados no painel (ou peça pra habilitar `business.trips` lá) e eu sigo com a Opção A.
+## Fora do escopo (não será feito)
+- Envio em massa / newsletter / marketing (não permitido pela política de e-mail transacional)
+- Editor visual de templates (templates são código com branding fixo; texto/assunto editáveis no envio)
+- Recebimento de respostas dentro do app (respostas vão para sua caixa de entrada normal via "Reply-To")
