@@ -286,7 +286,7 @@ function FornecedorItensSection() {
       const itemIds = Array.from(new Set(linhasRaw.map((l) => l.item_id).filter(Boolean)));
       if (!itemIds.length) return [];
       const { data: itens } = await sb.from("itens").select("id,nome,codigo,unidade").in("id", itemIds);
-      const itemMap = new Map((itens ?? []).map((i: any) => [i.id, i]));
+      const itemMap = new Map<string, any>((itens ?? []).map((i: any) => [i.id, i]));
 
       const byItem = new Map<string, {
         item_id: string; nome: string; codigo: string; unidade: string;
