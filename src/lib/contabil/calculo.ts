@@ -1,7 +1,7 @@
 // Cálculo de impostos — Lucro Presumido (serviços, base 32%)
 // Compatível com a planilha "Grupo Luminart – Contábil".
 
-export type Aliquota = { imposto: string; aliquota: number };
+export type Aliquota = { imposto: string; aliquota: number; observacoes?: string | null };
 
 export type ApuracaoResultado = {
   faturamento: number;
@@ -15,18 +15,32 @@ export type ApuracaoResultado = {
     total: number;
   }>;
   totalImpostos: number;
+  irpjDetalhe: {
+    irpjNormal: number;
+    limite: number;
+    excedente: number;
+    aliquotaAdicional: number;
+    adicional: number;
+  };
 };
 
 const BASE_PRESUMIDA_SERVICOS = 0.32; // 32%
-const LIMITE_IRPJ_ADICIONAL_MENSAL = 20000; // R$ 20.000/mês de lucro presumido
-const ALIQUOTA_IRPJ_ADICIONAL = 0.10; // 10%
+export const LIMITE_IRPJ_ADICIONAL_PADRAO = 20000; // R$ 20.000/mês de IRPJ apurado
+export const ALIQUOTA_IRPJ_ADICIONAL_PADRAO = 10; // 10%
+
+/** Extrai "limite=20000" do campo observacoes, se presente. */
+export function extrairLimiteAdicional(observacoes?: string | null): number {
+  if (!observacoes) return LIMITE_IRPJ_ADICIONAL_PADRAO;
+  const m = /limite\s*=\s*([0-9]+(?:\.[0-9]+)?)/i.exec(observacoes);
+  return m ? Number(m[1]) : LIMITE_IRPJ_ADICIONAL_PADRAO;
+}
 
 /**
- * Calcula PIS, COFINS, IRPJ (com adicional) e CSLL no Lucro Presumido
- * para empresas de serviços (base 32%).
- *
- * @param faturamento Soma dos valores recebidos no período (mês).
- * @param aliquotas Lista de alíquotas por imposto (em %, ex.: PIS=0.65, IRPJ=15).
+ * Lucro Presumido — serviços (base 32%).
+ * Adicional de IRPJ incide sobre o VALOR DO IRPJ APURADO que ultrapassar
+ * o limite mensal (padrão R$ 20.000):
+ *    excedente   = max(0, IRPJ_normal − limite)
+ *    adicional   = excedente × alíquota_adicional
  */
 export function calcularImpostosPresumido(
   faturamento: number,
@@ -34,8 +48,11 @@ export function calcularImpostosPresumido(
 ): ApuracaoResultado {
   const fat = Math.max(0, Number(faturamento) || 0);
   const basePresumida = +(fat * BASE_PRESUMIDA_SERVICOS).toFixed(2);
+
+  const find = (nome: string) =>
+    aliquotas.find((x) => x.imposto.toUpperCase() === nome.toUpperCase());
   const get = (nome: string) => {
-    const a = aliquotas.find((x) => x.imposto.toUpperCase() === nome);
+    const a = find(nome);
     return a ? Number(a.aliquota) / 100 : 0;
   };
 
@@ -48,18 +65,23 @@ export function calcularImpostosPresumido(
     itens.push({ imposto: imp, base: fat, aliquota: aliq * 100, valor, adicional: 0, total: valor });
   }
 
-  // IRPJ sobre lucro presumido + adicional 10% sobre o que exceder R$ 20.000
+  // IRPJ sobre lucro presumido + adicional sobre o IRPJ que excede o limite
   const aliqIRPJ = get("IRPJ");
-  const valorIRPJ = +(basePresumida * aliqIRPJ).toFixed(2);
-  const excedente = Math.max(0, basePresumida - LIMITE_IRPJ_ADICIONAL_MENSAL);
-  const adicionalIRPJ = +(excedente * ALIQUOTA_IRPJ_ADICIONAL).toFixed(2);
+  const irpjNormal = +(basePresumida * aliqIRPJ).toFixed(2);
+
+  const cfgAdicional = find("IRPJ_ADICIONAL");
+  const aliqAdicional = cfgAdicional ? Number(cfgAdicional.aliquota) : ALIQUOTA_IRPJ_ADICIONAL_PADRAO;
+  const limite = extrairLimiteAdicional(cfgAdicional?.observacoes);
+  const excedente = Math.max(0, +(irpjNormal - limite).toFixed(2));
+  const adicionalIRPJ = +(excedente * (aliqAdicional / 100)).toFixed(2);
+
   itens.push({
     imposto: "IRPJ",
     base: basePresumida,
     aliquota: aliqIRPJ * 100,
-    valor: valorIRPJ,
+    valor: irpjNormal,
     adicional: adicionalIRPJ,
-    total: +(valorIRPJ + adicionalIRPJ).toFixed(2),
+    total: +(irpjNormal + adicionalIRPJ).toFixed(2),
   });
 
   // CSLL sobre lucro presumido
@@ -76,7 +98,19 @@ export function calcularImpostosPresumido(
 
   const totalImpostos = +itens.reduce((s, i) => s + i.total, 0).toFixed(2);
 
-  return { faturamento: fat, basePresumida, itens, totalImpostos };
+  return {
+    faturamento: fat,
+    basePresumida,
+    itens,
+    totalImpostos,
+    irpjDetalhe: {
+      irpjNormal,
+      limite,
+      excedente,
+      aliquotaAdicional: aliqAdicional,
+      adicional: adicionalIRPJ,
+    },
+  };
 }
 
 export const MESES = [
