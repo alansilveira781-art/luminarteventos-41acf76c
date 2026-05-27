@@ -4,11 +4,14 @@ import {
   DndContext, PointerSensor, useSensor, useSensors,
   useDroppable, useDraggable, type DragEndEvent,
 } from "@dnd-kit/core";
-import { Plus, FileText, CheckCircle2, XCircle, Pencil, Eye, Printer } from "lucide-react";
+import { Plus, FileText, CheckCircle2, XCircle, Pencil, Eye, Printer, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { CARD_STATUSES, type CardStatus, type ComercialCard } from "@/lib/comercial/types";
+import { CARD_STATUSES, type CardStatus, type ComercialCard, TIPOS_EVENTO } from "@/lib/comercial/types";
 import { useComercial, moveCard } from "@/lib/comercial/store";
 import { CardDialog } from "@/components/comercial/CardDialog";
 import { PerdaDialog } from "@/components/comercial/PerdaDialog";
