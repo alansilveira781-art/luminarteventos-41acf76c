@@ -348,6 +348,8 @@ function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["itens"] });
   qc.invalidateQueries({ queryKey: ["dashboard-itens"] });
   qc.invalidateQueries({ queryKey: ["dashboard-movs"] });
+  qc.invalidateQueries({ queryKey: ["item-movs"] });
+  qc.invalidateQueries({ queryKey: ["item"] });
 }
 
 // Agrupa as saídas em "lotes" por requisicao_numero (ou data+solicitante+evento)
