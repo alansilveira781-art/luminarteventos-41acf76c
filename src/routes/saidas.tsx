@@ -480,7 +480,7 @@ function SaidasPage() {
                       <td className="px-4 py-3 text-muted-foreground">{g.saida_tipo ? saidaTipoLabels[g.saida_tipo] : "—"}</td>
                       <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{g.linhas.length}</td>
                       <td className="px-4 py-3 text-right tabular-nums text-destructive">-{g.qtd_total}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{g.data_prevista_devolucao ? format(new Date(g.data_prevista_devolucao), "dd/MM/yyyy") : "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{g.data_prevista_devolucao ? formatBRT(g.data_prevista_devolucao, { dateStyle: "short" }) : "—"}</td>
                       <td className="px-4 py-3"><StatusBadge status={g.saida_status} /></td>
                       {isAdmin && (
                         <td className="px-4 py-3">
