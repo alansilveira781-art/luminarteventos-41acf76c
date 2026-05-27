@@ -48,6 +48,18 @@ function ComprasKanban() {
   const [defaultStatus, setDefaultStatus] = useState<CompraStatus>("solicitacao");
   const [q, setQ] = useState(""); const qd = useDebouncedValue(q, 300);
 
+  // Abre o card automaticamente quando a URL tem ?id=...
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("id");
+    if (id) {
+      setEditId(id);
+      setOpen(true);
+    }
+  }, []);
+
+
   const { data: compras = [] } = useQuery({
     queryKey: ["compras"],
     queryFn: async () => {
