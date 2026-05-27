@@ -178,7 +178,6 @@ export const Route = createFileRoute("/api/public/solicitar")({
         }
 
         // Demanda
-        const aceitaPgto = true;
         const demandaInsert: any = {
           status: "solicitacao",
           titulo: d.titulo,
@@ -188,9 +187,9 @@ export const Route = createFileRoute("/api/public/solicitar")({
           observacoes,
           valor_total: d.valor_total ?? null,
           data_solicitacao: new Date().toISOString().slice(0, 10),
-          tipo_demanda: d.subtipo || null,
+          tipo_demanda: d.is_reembolso ? "reembolso" : (d.subtipo || null),
         };
-        if (aceitaPgto && d.pago === true) {
+        if (!d.is_reembolso && d.pago === true) {
           demandaInsert.parcelamento = d.parcelamento || null;
           demandaInsert.condicao_pagamento = d.condicao_pagamento || null;
           demandaInsert.data_compra = d.data_compra || null;
