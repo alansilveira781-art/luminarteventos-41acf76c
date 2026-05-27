@@ -30,6 +30,7 @@ import {
   addConsultor,
 } from "@/lib/comercial/store";
 import { NumberInput } from "@/components/comercial/NumberInput";
+import { MoneyInput } from "@/components/MoneyInput";
 
 type Props = {
   open: boolean;
