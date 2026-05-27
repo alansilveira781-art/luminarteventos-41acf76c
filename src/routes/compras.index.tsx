@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +19,8 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { toast } from "sonner";
+import { AvancarCardDialog } from "@/components/AvancarCardDialog";
+import { notifyResponsavel } from "@/lib/notify";
 
 const sb = supabase as any;
 
@@ -45,6 +47,18 @@ function ComprasKanban() {
   const [editId, setEditId] = useState<string | null>(null);
   const [defaultStatus, setDefaultStatus] = useState<CompraStatus>("solicitacao");
   const [q, setQ] = useState(""); const qd = useDebouncedValue(q, 300);
+
+  // Abre o card automaticamente quando a URL tem ?id=...
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("id");
+    if (id) {
+      setEditId(id);
+      setOpen(true);
+    }
+  }, []);
+
 
   const { data: compras = [] } = useQuery({
     queryKey: ["compras"],
@@ -77,9 +91,16 @@ function ComprasKanban() {
     return m;
   }, [filteredCompras]);
 
+  const [pendingMove, setPendingMove] = useState<{ id: string; status: CompraStatus; titulo: string } | null>(null);
+
   const moveStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: CompraStatus }) => {
-      const { error } = await sb.from("compras").update({ status }).eq("id", id);
+    mutationFn: async (vars: { id: string; status: CompraStatus; responsavelId?: string; responsavelNome?: string }) => {
+      const patch: any = { status: vars.status };
+      if (vars.responsavelId) {
+        patch.responsavel_id = vars.responsavelId;
+        patch.responsavel_nome = vars.responsavelNome;
+      }
+      const { error } = await sb.from("compras").update(patch).eq("id", vars.id);
       if (error) throw error;
     },
     onMutate: async ({ id, status }) => {
@@ -108,8 +129,16 @@ function ComprasKanban() {
     const status = overId as CompraStatus;
     const compra = compras.find((c) => c.id === id);
     if (!compra || compra.status === status) return;
-    moveStatus.mutate({ id, status });
+    const oldIdx = COMPRA_STATUSES.findIndex((s) => s.key === compra.status);
+    const newIdx = COMPRA_STATUSES.findIndex((s) => s.key === status);
+    // Avanço (ou status especial): pede responsável. Retorno: muda direto.
+    if (newIdx > oldIdx) {
+      setPendingMove({ id, status, titulo: compra.titulo || compra.fornecedor || `Compra ${compra.numero ?? ""}` });
+    } else {
+      moveStatus.mutate({ id, status });
+    }
   }
+
 
   return (
     <>
@@ -191,6 +220,28 @@ function ComprasKanban() {
       )}
 
       <CompraDialog open={open} onOpenChange={setOpen} compraId={editId} defaultStatus={defaultStatus} />
+
+      <AvancarCardDialog
+        open={!!pendingMove}
+        onOpenChange={(v) => { if (!v) setPendingMove(null); }}
+        statusLabel={pendingMove ? (COMPRA_STATUSES.find((s) => s.key === pendingMove.status)?.label || "") : ""}
+        onConfirm={async ({ responsavelId, responsavelNome, observacao }) => {
+          if (!pendingMove) return;
+          const { id, status, titulo } = pendingMove;
+          const statusLabel = COMPRA_STATUSES.find((s) => s.key === status)?.label || status;
+          moveStatus.mutate({ id, status, responsavelId, responsavelNome });
+          await notifyResponsavel({
+            userId: responsavelId,
+            titulo: `Compra: ${statusLabel}`,
+            mensagem: `${titulo}${observacao ? ` — ${observacao}` : ""}`,
+            link: `/compras?id=${id}`,
+            tipo: "compra_responsavel",
+          });
+          toast.success(`Card movido. ${responsavelNome} foi notificado.`);
+          setPendingMove(null);
+        }}
+      />
+
     </>
   );
 }

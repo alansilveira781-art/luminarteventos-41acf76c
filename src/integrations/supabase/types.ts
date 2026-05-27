@@ -450,6 +450,8 @@ export type Database = {
           observacoes: string | null
           ordem: number
           parcelamento: string | null
+          responsavel_id: string | null
+          responsavel_nome: string | null
           solicitante: string | null
           solicitante_id: string | null
           status: Database["public"]["Enums"]["compra_status"]
@@ -474,6 +476,8 @@ export type Database = {
           observacoes?: string | null
           ordem?: number
           parcelamento?: string | null
+          responsavel_id?: string | null
+          responsavel_nome?: string | null
           solicitante?: string | null
           solicitante_id?: string | null
           status?: Database["public"]["Enums"]["compra_status"]
@@ -498,6 +502,8 @@ export type Database = {
           observacoes?: string | null
           ordem?: number
           parcelamento?: string | null
+          responsavel_id?: string | null
+          responsavel_nome?: string | null
           solicitante?: string | null
           solicitante_id?: string | null
           status?: Database["public"]["Enums"]["compra_status"]
@@ -1601,6 +1607,8 @@ export type Database = {
       }
       notificacoes: {
         Row: {
+          concluida: boolean
+          concluida_em: string | null
           created_at: string
           id: string
           lida: boolean
@@ -1611,6 +1619,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          concluida?: boolean
+          concluida_em?: string | null
           created_at?: string
           id?: string
           lida?: boolean
@@ -1621,6 +1631,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          concluida?: boolean
+          concluida_em?: string | null
           created_at?: string
           id?: string
           lida?: boolean

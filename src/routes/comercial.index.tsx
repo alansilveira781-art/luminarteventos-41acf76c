@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   DndContext, PointerSensor, useSensor, useSensors,
   useDroppable, useDraggable, type DragEndEvent,
@@ -19,6 +19,9 @@ import { EnvioDialog } from "@/components/comercial/EnvioDialog";
 import { DetalhesDrawer } from "@/components/comercial/DetalhesDrawer";
 import { PropostaWizard } from "@/components/comercial/PropostaWizard";
 import { gerarPropostaPDF } from "@/lib/comercial/pdf";
+import { AvancarCardDialog } from "@/components/AvancarCardDialog";
+import { notifyResponsavel } from "@/lib/notify";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/comercial/")({
   component: QuadroVendas,
@@ -86,6 +89,19 @@ function QuadroVendas() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
+  const [pendingMove, setPendingMove] = useState<{ id: string; status: CardStatus } | null>(null);
+
+  // Abre detalhes via ?card=...
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const cardId = new URLSearchParams(window.location.search).get("card");
+    if (cardId) {
+      const c = cards.find((x) => x.id === cardId);
+      if (c) setDetalhesCard(c);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cards.length]);
+
   function onDragEnd(e: DragEndEvent) {
     const id = String(e.active.id);
     const overId = e.over?.id ? String(e.over.id) : null;
@@ -93,16 +109,17 @@ function QuadroVendas() {
     const status = overId as CardStatus;
     const card = cards.find((c) => c.id === id);
     if (!card || card.status === status) return;
-    if (status === "perda") {
-      setPerdaCardId(id);
-      return;
+    if (status === "perda") { setPerdaCardId(id); return; }
+    if (status === "orcamento_enviado") { setEnvioCardId(id); return; }
+    const oldIdx = CARD_STATUSES.findIndex((s) => s.key === card.status);
+    const newIdx = CARD_STATUSES.findIndex((s) => s.key === status);
+    if (newIdx > oldIdx) {
+      setPendingMove({ id, status });
+    } else {
+      moveCard(id, status);
     }
-    if (status === "orcamento_enviado") {
-      setEnvioCardId(id);
-      return;
-    }
-    moveCard(id, status);
   }
+
 
   return (
     <>
@@ -203,6 +220,29 @@ function QuadroVendas() {
         onConfirm={(data) => { if (envioCardId) moveCard(envioCardId, "orcamento_enviado", { dataEnvio: data }); setEnvioCardId(null); }}
       />
       <DetalhesDrawer open={!!detalhesCard} onOpenChange={(v) => { if (!v) setDetalhesCard(null); }} card={detalhesCard} />
+
+      <AvancarCardDialog
+        open={!!pendingMove}
+        onOpenChange={(v) => { if (!v) setPendingMove(null); }}
+        statusLabel={pendingMove ? (CARD_STATUSES.find((s) => s.key === pendingMove.status)?.label || "") : ""}
+        onConfirm={async ({ responsavelId, responsavelNome, observacao }) => {
+          if (!pendingMove) return;
+          const { id, status } = pendingMove;
+          const card = cards.find((c) => c.id === id);
+          moveCard(id, status);
+          const statusLabel = CARD_STATUSES.find((s) => s.key === status)?.label || status;
+          await notifyResponsavel({
+            userId: responsavelId,
+            titulo: `Venda: ${statusLabel}`,
+            mensagem: `${card?.clienteNome ?? "Card"}${card?.eventoNome ? ` — ${card.eventoNome}` : ""}${observacao ? ` — ${observacao}` : ""}`,
+            link: `/comercial?card=${id}`,
+            tipo: "comercial_responsavel",
+          });
+          toast.success(`Card movido. ${responsavelNome} foi notificado.`);
+          setPendingMove(null);
+        }}
+      />
+
       <PropostaWizard
         open={wizardOpen}
         onOpenChange={(v) => { setWizardOpen(v); if (!v) setWizardCardId(null); }}
