@@ -15,6 +15,7 @@ import { CARD_STATUSES, type CardStatus, type ComercialCard, TIPOS_EVENTO } from
 import { useComercial, moveCard } from "@/lib/comercial/store";
 import { CardDialog } from "@/components/comercial/CardDialog";
 import { PerdaDialog } from "@/components/comercial/PerdaDialog";
+import { EnvioDialog } from "@/components/comercial/EnvioDialog";
 import { DetalhesDrawer } from "@/components/comercial/DetalhesDrawer";
 import { PropostaWizard } from "@/components/comercial/PropostaWizard";
 import { gerarPropostaPDF } from "@/lib/comercial/pdf";
