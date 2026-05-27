@@ -347,7 +347,9 @@ function RecebimentoForm({
         <Textarea value={obs} onChange={(e) => setObs(e.target.value)} rows={2} />
       </FormField>
       <FormActions>
-        <Button onClick={submit} disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Button>
+        <Button onClick={submit} disabled={saving || quitada || excedeRestante}>
+          {saving ? "Salvando..." : "Salvar"}
+        </Button>
       </FormActions>
     </div>
   );
