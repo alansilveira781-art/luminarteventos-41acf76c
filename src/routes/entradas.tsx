@@ -859,7 +859,7 @@ function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor
       if (validas.length === 0) return toast.error("Adicione pelo menos um item");
       onSubmit(
         {
-          data_movimento: new Date(meta.data_movimento).toISOString(),
+          data_movimento: fromBRTInputDateTime(meta.data_movimento),
           entrada_tipo: meta.entrada_tipo,
           fornecedor_id: meta.fornecedor_id || null,
           empresa: meta.empresa || null,
