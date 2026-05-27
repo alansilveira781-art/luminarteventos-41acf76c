@@ -45,6 +45,8 @@ type FormState = {
   parcelamento: string;
   condicao_pagamento: string;
   data_compra: string;
+  is_reembolso: boolean;
+  reembolsar_para: string;
 };
 
 const emptyItem = (): ItemRow => ({ descricao: "", quantidade: "1", unidade: "un", valor_unitario: "" });
@@ -64,6 +66,8 @@ const initial: FormState = {
   parcelamento: "",
   condicao_pagamento: "",
   data_compra: "",
+  is_reembolso: false,
+  reembolsar_para: "",
 };
 
 const TIPOS_DEMANDA_PAGAVEIS = ["alimentacao", "estacionamento", "manutencao_galpao"];
