@@ -74,7 +74,7 @@ function Propostas() {
           <tbody>
             {aprovadas.map((p) => (
               <tr key={p.id} className="border-t border-border hover:bg-muted/20">
-                <td className="p-3 font-mono text-xs text-muted-foreground">#{p.numero}</td>
+                <td className="p-3 font-mono text-xs text-muted-foreground">#{p.numero} <span className="ml-1 text-[10px] uppercase">v{p.version ?? 1}</span></td>
                 <td className="p-3">{p.cliente.nome}</td>
                 <td className="p-3">{p.evento.tipo || "—"}</td>
                 <td className="p-3">{fmt(p.evento.dataInicio)}</td>
