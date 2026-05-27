@@ -1,47 +1,36 @@
-## Ajuste do adicional de IRPJ
 
-### Nova regra
-Adicional incide sobre o **valor do IRPJ apurado** que ultrapassar **R$ 20.000** no mês:
+## Diagnóstico
 
-```
-IRPJ_normal  = base_presumida × 15%
-excedente    = max(0, IRPJ_normal − 20.000)
-IRPJ_adicional = excedente × aliquota_adicional   (padrão 10%)
-IRPJ_total   = IRPJ_normal + IRPJ_adicional
-```
+**1. Tabela cortando valores**
+A tabela "Impostos apurados" está dentro de um grid de 2 colunas (`lg:grid-cols-2`) em viewport de ~1090px. Com 6 colunas (Imposto, Base, Alíq., Valor, Adicional, Total) e padding `px-4`, valores em BRL como "R$ 21.600,00" não cabem e ficam quebrando/cortando. Isso só piora quando há adicional de IRPJ.
 
-### 1. Cálculo (`src/lib/contabil/calculo.ts`)
-- Substituir a lógica atual (que aplica o adicional sobre `basePresumida − 20.000`) pela nova fórmula acima.
-- Ler do array de alíquotas dois parâmetros configuráveis:
-  - `IRPJ` → alíquota normal (padrão 15%).
-  - `IRPJ_ADICIONAL` → alíquota adicional (padrão 10%).
-- Limite mensal continua R$ 20.000 (também configurável, ver item 3).
+**2. "Registrar apuração" — onde vai?**
+Hoje o botão grava na tabela `contabil_consultas_impostos` (histórico interno). Aparece logo abaixo, no card **"Apurações registradas"** na mesma tela. **Não** envia para Financeiro/Contas a Pagar, **não** gera boleto/DARF, **não** notifica ninguém. É apenas um registro/histórico consultável.
 
-### 2. Configuração — alíquotas (`src/routes/contabil.configuracao.tsx`)
-- Garantir que cada empresa de regime presumido tenha, além das linhas atuais (PIS / COFINS / IRPJ / CSLL), uma linha extra `imposto = "IRPJ_ADICIONAL"` com `aliquota = 10`.
-- Ajustar o botão "Criar impostos padrão" para já incluir essa linha.
-- Exibir o IRPJ adicional na tabela com rótulo amigável (ex.: "IRPJ — Adicional (acima de R$ 20.000)").
+---
 
-### 3. Configuração — limite mensal
-Como o limite (R$ 20.000) também pode mudar por empresa, salvá-lo no campo `observacoes` da linha `IRPJ_ADICIONAL` no formato `limite=20000`, e ler isso no cálculo. Sem migração de banco.
-- Default: 20.000 quando não informado.
-- Campo editável na tela de configuração junto com a alíquota adicional.
+## Plano
 
-### 4. Tela de Apurações (`src/routes/contabil.apuracoes.tsx`)
-- Continuar mostrando uma linha "IRPJ" com a coluna **Adicional** preenchida (já existe a coluna). A diferença é só no valor calculado.
-- Acrescentar abaixo da tabela um detalhamento curto: "IRPJ apurado R$ X — Excedente sobre R$ 20.000: R$ Y — Adicional 10%: R$ Z".
+### A) Corrigir corte de valores na tabela
 
-### 5. Seed
-Recalcular e atualizar via `supabase--insert` as duas apurações de exemplo (Mar/2026 e Abr/2026 de Luminart Eventos) com a nova regra, e inserir a linha `IRPJ_ADICIONAL` (10%, limite 20000) para Luminart Eventos e Luminart Planejados.
+1. Reduzir padding horizontal das células de `px-4` para `px-2` (ou `px-3`) na tabela de impostos.
+2. Encolher o cabeçalho ("Alíq." já está abreviado; abreviar "Adicional" para "Adic." em telas estreitas).
+3. Permitir scroll horizontal de segurança: envolver a tabela em `<div className="overflow-x-auto">` e adicionar `whitespace-nowrap` nas células numéricas para evitar quebra.
+4. Como alternativa para telas médias, fazer o grid colapsar mais cedo: trocar `lg:grid-cols-2` por `xl:grid-cols-2` para que abaixo de 1280px as duas tabelas fiquem uma embaixo da outra (cada uma com largura total) — assim os valores cabem com folga.
+5. Manter a linha "Total a pagar" destacada e legível.
+
+### B) Esclarecer/melhorar o "Registrar apuração"
+
+1. Adicionar um texto curto ao lado do botão (ou tooltip) explicando: *"Salva esta apuração no histórico abaixo (Apurações registradas)"*.
+2. Após salvar, dar scroll/realce no card de histórico para deixar visível que a linha foi adicionada.
+3. (Opcional, confirmar com você) Acrescentar na lista de **Apurações registradas** as colunas **Competência** e **Vencimento** (que já são salvos em `parametros`/`resultado`), para ficar claro o mês de pagamento.
+
+### Pergunta para decidir antes de implementar
+
+Sobre o destino da apuração registrada, quer que eu:
+- (a) Mantenha só como histórico interno (situação atual, apenas com os ajustes visuais acima), **ou**
+- (b) Também gere automaticamente uma **conta a pagar** (uma por imposto: PIS, COFINS, IRPJ+adicional, CSLL) com vencimento no mês seguinte, para aparecer no módulo Financeiro?
 
 ### Arquivos afetados
-- `src/lib/contabil/calculo.ts` — nova fórmula + leitura de `IRPJ_ADICIONAL` e limite.
-- `src/routes/contabil.configuracao.tsx` — campo adicional + seed padrão.
-- `src/routes/contabil.apuracoes.tsx` — pequeno detalhamento textual do adicional.
-- Sem migração de schema.
-
-### Validação rápida com os exemplos
-- **Mar/2026** — faturamento R$ 31.000 → base presumida R$ 9.920 → IRPJ R$ 1.488 → não ultrapassa R$ 20.000 → **adicional = 0**.
-- **Abr/2026** — faturamento R$ 70.000 → base presumida R$ 22.400 → IRPJ R$ 3.360 → também não ultrapassa R$ 20.000 → **adicional = 0**.
-
-Como nenhum dos dois exemplos atuais aciona o adicional pela nova regra, vou trocar o segundo exemplo por um mês com faturamento alto o bastante para disparar o adicional (ex.: **Maio/2026, R$ 450.000** → IRPJ R$ 21.600 → excedente R$ 1.600 → adicional R$ 160), assim você consegue medir a eficiência das duas situações: uma sem e outra com adicional.
+- `src/routes/contabil.apuracoes.tsx` (ajustes de layout da tabela, textos, colunas do histórico)
+- Se opção (b): nova migration + integração com `ca_contas_pagar` (ou tabela própria de obrigações fiscais).

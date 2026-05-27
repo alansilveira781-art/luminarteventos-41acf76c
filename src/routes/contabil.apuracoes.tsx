@@ -174,9 +174,12 @@ function ApuracoesPage() {
         title="Apurações de impostos"
         description="Cálculo de PIS, COFINS, IRPJ e CSLL (Lucro Presumido). Escolha entre regime de caixa (valores recebidos) ou competência (notas emitidas)."
         actions={
-          <Button onClick={() => salvarMut.mutate()} disabled={salvarMut.isPending || faturamento <= 0}>
-            <Save className="h-4 w-4 mr-1" /> Registrar apuração
-          </Button>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground hidden sm:block">Salva no histórico abaixo</span>
+            <Button onClick={() => salvarMut.mutate()} disabled={salvarMut.isPending || faturamento <= 0} title="Salva esta apuração no card 'Apurações registradas' abaixo">
+              <Save className="h-4 w-4 mr-1" /> Registrar apuração
+            </Button>
+          </div>
         }
       />
 
@@ -221,7 +224,7 @@ function ApuracoesPage() {
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4">
         <Card className="overflow-hidden">
           <div className="px-4 py-3 border-b border-border flex justify-between items-center">
             <div className="text-sm font-semibold">
@@ -284,34 +287,36 @@ function ApuracoesPage() {
           <div className="px-4 py-3 border-b border-border text-sm font-semibold">
             Impostos apurados — Base presumida (32%): <span className="tabular-nums">{fmtBRL(apuracao.basePresumida)}</span>
           </div>
+          <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
               <tr>
-                <th className="px-4 py-2 text-left">Imposto</th>
-                <th className="px-4 py-2 text-right">Base</th>
-                <th className="px-4 py-2 text-right">Alíq.</th>
-                <th className="px-4 py-2 text-right">Valor</th>
-                <th className="px-4 py-2 text-right">Adicional</th>
-                <th className="px-4 py-2 text-right">Total</th>
+                <th className="px-2 py-2 text-left">Imposto</th>
+                <th className="px-2 py-2 text-right">Base</th>
+                <th className="px-2 py-2 text-right">Alíq.</th>
+                <th className="px-2 py-2 text-right">Valor</th>
+                <th className="px-2 py-2 text-right">Adic.</th>
+                <th className="px-2 py-2 text-right">Total</th>
               </tr>
             </thead>
             <tbody>
               {apuracao.itens.map((i) => (
                 <tr key={i.imposto} className="border-t border-border">
-                  <td className="px-4 py-2 font-medium">{i.imposto}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{fmtBRL(i.base)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{i.aliquota.toFixed(2)}%</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{fmtBRL(i.valor)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{i.adicional ? fmtBRL(i.adicional) : "—"}</td>
-                  <td className="px-4 py-2 text-right tabular-nums font-medium">{fmtBRL(i.total)}</td>
+                  <td className="px-2 py-2 font-medium whitespace-nowrap">{i.imposto}</td>
+                  <td className="px-2 py-2 text-right tabular-nums whitespace-nowrap">{fmtBRL(i.base)}</td>
+                  <td className="px-2 py-2 text-right tabular-nums whitespace-nowrap">{i.aliquota.toFixed(2)}%</td>
+                  <td className="px-2 py-2 text-right tabular-nums whitespace-nowrap">{fmtBRL(i.valor)}</td>
+                  <td className="px-2 py-2 text-right tabular-nums whitespace-nowrap">{i.adicional ? fmtBRL(i.adicional) : "—"}</td>
+                  <td className="px-2 py-2 text-right tabular-nums font-medium whitespace-nowrap">{fmtBRL(i.total)}</td>
                 </tr>
               ))}
               <tr className="border-t-2 border-border bg-muted/30">
-                <td colSpan={5} className="px-4 py-2 text-sm font-semibold">Total a pagar</td>
-                <td className="px-4 py-2 text-right tabular-nums font-semibold">{fmtBRL(apuracao.totalImpostos)}</td>
+                <td colSpan={5} className="px-2 py-2 text-sm font-semibold">Total a pagar</td>
+                <td className="px-2 py-2 text-right tabular-nums font-semibold whitespace-nowrap">{fmtBRL(apuracao.totalImpostos)}</td>
               </tr>
             </tbody>
           </table>
+          </div>
           <div className="px-4 py-2 text-xs text-muted-foreground border-t border-border">
             <strong>IRPJ:</strong> apurado {fmtBRL(apuracao.irpjDetalhe.irpjNormal)}
             {" — "}Limite mensal {fmtBRL(apuracao.irpjDetalhe.limite)}
@@ -327,12 +332,18 @@ function ApuracoesPage() {
       </div>
 
       <Card className="overflow-hidden">
-        <div className="px-4 py-3 border-b border-border text-sm font-semibold">Apurações registradas</div>
+        <div className="px-4 py-3 border-b border-border text-sm font-semibold">
+          Apurações registradas
+          <span className="ml-2 text-xs font-normal text-muted-foreground">Histórico interno — não envia para Financeiro/Contas a Pagar</span>
+        </div>
+        <div className="overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
             <tr>
-              <th className="px-4 py-2 text-left">Período</th>
+              <th className="px-4 py-2 text-left">Competência</th>
+              <th className="px-4 py-2 text-left">Vencimento</th>
               <th className="px-4 py-2 text-left">Empresa</th>
+              <th className="px-4 py-2 text-left">Regime</th>
               <th className="px-4 py-2 text-right">Faturamento</th>
               <th className="px-4 py-2 text-right">Total impostos</th>
               <th className="px-4 py-2 text-left">Registrado em</th>
@@ -341,14 +352,16 @@ function ApuracoesPage() {
           </thead>
           <tbody>
             {(historico ?? []).length === 0 ? (
-              <tr><td colSpan={6} className="text-center py-6 text-muted-foreground text-xs">Nenhuma apuração registrada.</td></tr>
+              <tr><td colSpan={8} className="text-center py-6 text-muted-foreground text-xs">Nenhuma apuração registrada.</td></tr>
             ) : (historico ?? []).map((h) => (
               <tr key={h.id} className="border-t border-border hover:bg-muted/30">
-                <td className="px-4 py-2">{h.parametros?.mes}/{h.parametros?.ano}</td>
+                <td className="px-4 py-2 whitespace-nowrap">{h.parametros?.mes}/{h.parametros?.ano}</td>
+                <td className="px-4 py-2 whitespace-nowrap text-xs text-muted-foreground">{h.parametros?.vencimento ?? h.resultado?.vencimento ?? "—"}</td>
                 <td className="px-4 py-2">{h.empresa ?? "—"}</td>
-                <td className="px-4 py-2 text-right tabular-nums">{fmtBRL(Number(h.resultado?.faturamento ?? 0))}</td>
-                <td className="px-4 py-2 text-right tabular-nums font-medium">{fmtBRL(Number(h.resultado?.totalImpostos ?? 0))}</td>
-                <td className="px-4 py-2 text-xs text-muted-foreground">{format(new Date(h.created_at), "dd/MM/yyyy HH:mm")}</td>
+                <td className="px-4 py-2 text-xs capitalize">{h.parametros?.regime ?? h.resultado?.regime ?? "—"}</td>
+                <td className="px-4 py-2 text-right tabular-nums whitespace-nowrap">{fmtBRL(Number(h.resultado?.faturamento ?? 0))}</td>
+                <td className="px-4 py-2 text-right tabular-nums font-medium whitespace-nowrap">{fmtBRL(Number(h.resultado?.totalImpostos ?? 0))}</td>
+                <td className="px-4 py-2 text-xs text-muted-foreground whitespace-nowrap">{format(new Date(h.created_at), "dd/MM/yyyy HH:mm")}</td>
                 <td className="px-4 py-2 text-right">
                   <Button variant="ghost" size="icon" onClick={() => { if (confirm("Remover apuração?")) delMut.mutate(h.id); }}>
                     <Trash2 className="h-4 w-4 text-destructive" />
@@ -358,6 +371,7 @@ function ApuracoesPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </Card>
     </>
   );
