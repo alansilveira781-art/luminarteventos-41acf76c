@@ -172,7 +172,7 @@ function ApuracoesPage() {
     <>
       <PageHeader
         title="Apurações de impostos"
-        description="Cálculo automático de PIS, COFINS, IRPJ e CSLL sobre os recebimentos do mês (Lucro Presumido — serviços, base 32%)."
+        description="Cálculo de PIS, COFINS, IRPJ e CSLL (Lucro Presumido). Escolha entre regime de caixa (valores recebidos) ou competência (notas emitidas)."
         actions={
           <Button onClick={() => salvarMut.mutate()} disabled={salvarMut.isPending || faturamento <= 0}>
             <Save className="h-4 w-4 mr-1" /> Registrar apuração
@@ -190,7 +190,7 @@ function ApuracoesPage() {
               </SelectContent>
             </Select>
           </FormField>
-          <FormField label="Mês">
+          <FormField label="Competência (mês)">
             <Select value={mes} onValueChange={setMes}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -206,42 +206,79 @@ function ApuracoesPage() {
               </SelectContent>
             </Select>
           </FormField>
+          <FormField label="Regime de apuração">
+            <Select value={regime} onValueChange={(v) => setRegime(v as "caixa" | "competencia")}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="caixa">Caixa (valor recebido)</SelectItem>
+                <SelectItem value="competencia">Competência (valor emitido)</SelectItem>
+              </SelectContent>
+            </Select>
+          </FormField>
         </FormSection>
+        <div className="mt-3 text-xs text-muted-foreground">
+          Competência: <strong className="text-foreground">{mes}/{ano}</strong> · Vencimento dos impostos: <strong className="text-foreground">{vencimento}</strong>
+        </div>
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         <Card className="overflow-hidden">
           <div className="px-4 py-3 border-b border-border flex justify-between items-center">
-            <div className="text-sm font-semibold">Recebimentos do mês</div>
-            <div className="text-xs text-muted-foreground">{(recebimentos ?? []).length} registros</div>
+            <div className="text-sm font-semibold">
+              {regime === "caixa" ? "Recebimentos do mês" : "Notas emitidas no mês"}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {regime === "caixa" ? (recebimentos ?? []).length : (notasEmitidas ?? []).length} registros
+            </div>
           </div>
           <table className="min-w-full text-sm">
             <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
-              <tr><th className="px-4 py-2 text-left">Data</th><th className="px-4 py-2 text-left">Nº NF</th><th className="px-4 py-2 text-left">Evento</th><th className="px-4 py-2 text-right">Recebido</th></tr>
+              <tr>
+                <th className="px-4 py-2 text-left">Data</th>
+                <th className="px-4 py-2 text-left">Nº NF</th>
+                <th className="px-4 py-2 text-left">Evento</th>
+                <th className="px-4 py-2 text-right">{regime === "caixa" ? "Recebido" : "Valor bruto"}</th>
+              </tr>
             </thead>
             <tbody>
-              {(recebimentos ?? []).length === 0 ? (
-                <tr><td colSpan={4} className="text-center py-6 text-muted-foreground text-xs">Nenhum recebimento no período.</td></tr>
-              ) : (recebimentos ?? []).map((r) => {
-                const ev = (r.nota_id && notasMap?.map.get(r.nota_id)?.nome_evento)
-                  || (r.numero_nf && notasMap?.byNum.get(String(r.numero_nf))?.nome_evento)
-                  || "—";
-                return (
-                  <tr key={r.id} className="border-t border-border">
-                    <td className="px-4 py-2 text-xs">{format(new Date(r.data_recebimento), "dd/MM/yyyy")}</td>
-                    <td className="px-4 py-2 font-mono text-xs">{r.numero_nf ?? "—"}</td>
-                    <td className="px-4 py-2">{ev}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{fmtBRL(Number(r.valor_recebido))}</td>
+              {regime === "caixa" ? (
+                (recebimentos ?? []).length === 0 ? (
+                  <tr><td colSpan={4} className="text-center py-6 text-muted-foreground text-xs">Nenhum recebimento no período.</td></tr>
+                ) : (recebimentos ?? []).map((r) => {
+                  const ev = (r.nota_id && notasMap?.map.get(r.nota_id)?.nome_evento)
+                    || (r.numero_nf && notasMap?.byNum.get(String(r.numero_nf))?.nome_evento)
+                    || "—";
+                  return (
+                    <tr key={r.id} className="border-t border-border">
+                      <td className="px-4 py-2 text-xs">{format(new Date(r.data_recebimento), "dd/MM/yyyy")}</td>
+                      <td className="px-4 py-2 font-mono text-xs">{r.numero_nf ?? "—"}</td>
+                      <td className="px-4 py-2">{ev}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">{fmtBRL(Number(r.valor_recebido))}</td>
+                    </tr>
+                  );
+                })
+              ) : (
+                (notasEmitidas ?? []).length === 0 ? (
+                  <tr><td colSpan={4} className="text-center py-6 text-muted-foreground text-xs">Nenhuma nota emitida no período.</td></tr>
+                ) : (notasEmitidas ?? []).map((n) => (
+                  <tr key={n.id} className="border-t border-border">
+                    <td className="px-4 py-2 text-xs">{format(new Date(n.data_emissao), "dd/MM/yyyy")}</td>
+                    <td className="px-4 py-2 font-mono text-xs">{n.numero ?? "—"}</td>
+                    <td className="px-4 py-2">{n.nome_evento ?? n.tomador_nome ?? "—"}</td>
+                    <td className="px-4 py-2 text-right tabular-nums">{fmtBRL(Number(n.valor_bruto))}</td>
                   </tr>
-                );
-              })}
+                ))
+              )}
               <tr className="border-t-2 border-border bg-muted/30">
-                <td colSpan={3} className="px-4 py-2 text-sm font-semibold">Faturamento do mês</td>
+                <td colSpan={3} className="px-4 py-2 text-sm font-semibold">
+                  Faturamento ({regime === "caixa" ? "caixa" : "competência"})
+                </td>
                 <td className="px-4 py-2 text-right tabular-nums font-semibold">{fmtBRL(faturamento)}</td>
               </tr>
             </tbody>
           </table>
         </Card>
+
 
         <Card className="overflow-hidden">
           <div className="px-4 py-3 border-b border-border text-sm font-semibold">
