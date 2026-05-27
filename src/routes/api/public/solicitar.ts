@@ -117,10 +117,15 @@ export const Route = createFileRoute("/api/public/solicitar")({
           .filter(Boolean)
           .join(" · ");
 
+        const reembolsoNota = d.is_reembolso && d.reembolsar_para
+          ? `\n\n[REEMBOLSO] Reembolsar para: ${d.reembolsar_para}`
+          : "";
+
         const observacoes =
           `[Solicitação enviada via formulário público]\n` +
           `Solicitante: ${d.solicitante_nome}${contato ? ` (${contato})` : ""}` +
-          (d.descricao ? `\n\n${d.descricao}` : "");
+          (d.descricao ? `\n\n${d.descricao}` : "") +
+          reembolsoNota;
 
         if (d.tipo === "compra") {
           const somaItens = d.itens!.reduce(
