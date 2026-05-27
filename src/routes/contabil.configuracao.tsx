@@ -82,17 +82,33 @@ function ConfiguracaoPage() {
   const seedMut = useMutation({
     mutationFn: async (empresa: Empresa) => {
       const regime = EMPRESA_REGIME[empresa];
+      const defaults: Record<string, { aliquota: number; observacoes?: string }> = {
+        ISS: { aliquota: 0 },
+        PIS: { aliquota: 0.65 },
+        COFINS: { aliquota: 3 },
+        IRPJ: { aliquota: 15 },
+        IRPJ_ADICIONAL: { aliquota: 10, observacoes: "limite=20000" },
+        CSLL: { aliquota: 9 },
+        DAS: { aliquota: 0 },
+      };
       const existentes = new Set((aliquotas ?? []).filter((a) => a.empresa === empresa).map((a) => a.imposto));
       const toInsert = IMPOSTOS_POR_REGIME[regime]
         .filter((i) => !existentes.has(i))
-        .map((imposto) => ({ empresa, regime, imposto, aliquota: 0, ativo: true }));
+        .map((imposto) => ({
+          empresa,
+          regime,
+          imposto,
+          aliquota: defaults[imposto]?.aliquota ?? 0,
+          observacoes: defaults[imposto]?.observacoes ?? null,
+          ativo: true,
+        }));
       if (!toInsert.length) return;
       const { error } = await sb.from("contabil_configuracao_aliquotas").insert(toInsert);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["contabil-aliquotas-full"] });
-      toast.success("Impostos padrão criados — defina as alíquotas");
+      toast.success("Impostos padrão criados");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -140,7 +156,7 @@ function ConfiguracaoPage() {
                   <tr><td colSpan={5} className="text-center py-6 text-muted-foreground text-xs">Nenhuma alíquota cadastrada.</td></tr>
                 ) : linhas.map((a) => (
                   <tr key={a.id} className="border-t border-border hover:bg-muted/30">
-                    <td className="px-4 py-2 font-medium">{a.imposto}</td>
+                    <td className="px-4 py-2 font-medium">{a.imposto === "IRPJ_ADICIONAL" ? "IRPJ — Adicional (acima do limite)" : a.imposto}</td>
                     <td className="px-4 py-2 text-right tabular-nums">{Number(a.aliquota).toFixed(2)}%</td>
                     <td className="px-4 py-2 text-muted-foreground text-xs">{a.observacoes ?? "—"}</td>
                     <td className="px-4 py-2 text-xs">{a.ativo ? "Sim" : "Não"}</td>
