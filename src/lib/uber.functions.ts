@@ -18,43 +18,43 @@ export type UberTrip = {
 };
 
 type ApiTrip = {
-  trip_uuid?: string;
-  uuid?: string;
-  request_time?: string;
-  requested_at?: string;
-  fare?: number | string;
-  cost_total?: number | string;
-  currency_code?: string;
-  product_type?: string;
-  vehicle_type?: string;
-  expense_code?: string | null;
-  expense_memo?: string | null;
-  start_address?: string | null;
-  end_address?: string | null;
-  pickup?: { address?: string };
-  dropoff?: { address?: string };
-  employee?: { name?: string; email?: string };
-  rider?: { name?: string; email?: string };
-  city?: string;
-  distance?: number;
-  duration?: number;
+  trip_id?: string;
+  order_id?: string;
+  trip_status?: string;
+  requested_at?: number;
+  start_at?: number;
+  end_at?: number;
+  user_info?: {
+    email_address?: string;
+    phone_number?: string;
+    first_name?: string;
+    last_name?: string;
+  };
+  client_fare?: {
+    currency_code?: string;
+    total?: number;
+  };
 };
 
 function normalize(t: ApiTrip): UberTrip {
+  const first = t.user_info?.first_name ?? "";
+  const last = t.user_info?.last_name ?? "";
+  const nome = `${first} ${last}`.trim() || t.user_info?.email_address || "—";
+  const requestedAt = t.requested_at ? new Date(t.requested_at).toISOString() : new Date().toISOString();
   return {
-    trip_uuid: t.trip_uuid ?? t.uuid ?? crypto.randomUUID(),
-    request_time: t.request_time ?? t.requested_at ?? new Date().toISOString(),
-    fare: Number(t.fare ?? t.cost_total ?? 0) || 0,
-    currency_code: t.currency_code ?? "BRL",
-    product_type: t.product_type ?? t.vehicle_type ?? "—",
-    employee: t.employee ?? t.rider ?? {},
-    expense_code: t.expense_code ?? null,
-    expense_memo: t.expense_memo ?? null,
-    start_address: t.start_address ?? t.pickup?.address ?? null,
-    end_address: t.end_address ?? t.dropoff?.address ?? null,
-    city: t.city ?? null,
-    distance: Number(t.distance ?? 0) || 0,
-    duration: Number(t.duration ?? 0) || 0,
+    trip_uuid: t.trip_id ?? t.order_id ?? crypto.randomUUID(),
+    request_time: requestedAt,
+    fare: Number(t.client_fare?.total ?? 0) || 0,
+    currency_code: t.client_fare?.currency_code ?? "BRL",
+    product_type: "—",
+    employee: { name: nome, email: t.user_info?.email_address },
+    expense_code: null,
+    expense_memo: null,
+    start_address: null,
+    end_address: null,
+    city: null,
+    distance: 0,
+    duration: t.start_at && t.end_at ? Math.max(0, t.end_at - t.start_at) / 1000 : 0,
   };
 }
 
@@ -62,34 +62,39 @@ export const getUberTrips = createServerFn({ method: "POST" })
   .inputValidator((input: { from: string; to: string }) => input)
   .handler(async ({ data }): Promise<{ trips: UberTrip[]; error: string | null }> => {
     try {
-      const orgUuid = process.env.UBER_ORG_UUID;
-      if (!orgUuid) {
-        return { trips: [], error: "UBER_ORG_UUID não configurado" };
-      }
-
-      const token = await getUberAccessToken();
+      const token = await getUberAccessToken("business.trips");
       const fromMs = new Date(data.from + "T00:00:00Z").getTime();
       const toMs = new Date(data.to + "T23:59:59Z").getTime();
 
       const trips: UberTrip[] = [];
-      let offset = 0;
-      const limit = 50;
+      let pageToken: string | undefined = undefined;
       let safety = 0;
 
       while (safety < 200) {
         safety++;
-        const url = new URL(`https://api.uber.com/v1/business/trips`);
-        url.searchParams.set("org_uuid", orgUuid);
-        url.searchParams.set("start_time", String(fromMs));
-        url.searchParams.set("end_time", String(toMs));
-        url.searchParams.set("limit", String(limit));
-        url.searchParams.set("offset", String(offset));
 
-        const res = await fetch(url.toString(), {
+        const body: Record<string, unknown> = {
+          request: {
+            search_filters: {
+              user_identifiers: [],
+              trip_statuses: ["PAST"],
+              interval: { starts_at: fromMs, ends_at: toMs },
+            },
+            paging_option: {
+              limit: 100,
+              ...(pageToken ? { page_token: pageToken } : {}),
+            },
+          },
+        };
+
+        const res = await fetch("https://api.uber.com/v1/trips/search", {
+          method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
             "Accept-Language": "pt-BR",
           },
+          body: JSON.stringify(body),
         });
 
         if (!res.ok) {
@@ -98,18 +103,22 @@ export const getUberTrips = createServerFn({ method: "POST" })
             return {
               trips,
               error:
-                "App Uber não tem o escopo 'business.trips' aprovado. Solicite o escopo no painel developer.uber.com.",
+                "Acesso negado pela Uber (403). Verifique no painel developer.uber.com se o app está aprovado para a API de Trips da sua organização Uber for Business.",
             };
           }
-          return { trips, error: `Erro Uber (${res.status}): ${text.slice(0, 200)}` };
+          return { trips, error: `Erro Uber (${res.status}): ${text.slice(0, 300)}` };
         }
 
-        const json = (await res.json()) as { trips?: ApiTrip[]; count?: number };
+        const json = (await res.json()) as {
+          trips?: ApiTrip[];
+          paging_result?: { next_page_token?: string };
+        };
         const batch = json.trips ?? [];
         trips.push(...batch.map(normalize));
 
-        if (batch.length < limit) break;
-        offset += limit;
+        const next = json.paging_result?.next_page_token;
+        if (!next) break;
+        pageToken = next;
       }
 
       return { trips, error: null };
