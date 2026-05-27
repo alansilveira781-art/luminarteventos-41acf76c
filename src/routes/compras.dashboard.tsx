@@ -225,9 +225,9 @@ function FornecedorItensSection() {
   const qd = useDebouncedValue(q, 250);
 
   const { data: fornecedores = [] } = useQuery({
-    queryKey: ["compras-forn-lookup"],
+    queryKey: ["estoque-forn-lookup"],
     queryFn: async () => {
-      const { data } = await sb.from("compras_fornecedores").select("id,nome").order("nome");
+      const { data } = await sb.from("fornecedores").select("id,nome").order("nome");
       return (data ?? []) as { id: string; nome: string }[];
     },
   });
