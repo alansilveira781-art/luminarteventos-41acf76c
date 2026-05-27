@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, CartesianGrid,
@@ -212,7 +213,175 @@ function ComprasDashboard() {
           </ResponsiveContainer>
         </ChartCard>
       </div>
+
+      <FornecedorItensSection />
     </>
+  );
+}
+
+// ---- Cruzamento Fornecedor × Itens comprados ----
+function FornecedorItensSection() {
+  const [q, setQ] = useState("");
+  const qd = useDebouncedValue(q, 250);
+
+  const { data: fornecedores = [] } = useQuery({
+    queryKey: ["compras-forn-lookup"],
+    queryFn: async () => {
+      const { data } = await sb.from("compras_fornecedores").select("id,nome").order("nome");
+      return (data ?? []) as { id: string; nome: string }[];
+    },
+  });
+
+  const filtered = useMemo(() => {
+    const term = qd.trim().toLowerCase();
+    if (!term) return [] as typeof fornecedores;
+    return fornecedores.filter((f) => f.nome.toLowerCase().includes(term)).slice(0, 8);
+  }, [qd, fornecedores]);
+
+  const [selected, setSelected] = useState<{ id: string; nome: string } | null>(null);
+
+  const { data: linhas = [], isLoading } = useQuery({
+    queryKey: ["forn-itens", selected?.id],
+    enabled: !!selected?.id,
+    queryFn: async () => {
+      // entradas diretas (1 item)
+      const { data: diretas } = await sb
+        .from("movimentacoes")
+        .select("id,item_id,quantidade,valor_unitario,data_movimento")
+        .eq("tipo", "entrada")
+        .eq("fornecedor_id", selected!.id);
+
+      // entradas multi-item: pega movimentacoes do fornecedor e seus filhos
+      const { data: mae } = await sb
+        .from("movimentacoes")
+        .select("id,data_movimento")
+        .eq("tipo", "entrada")
+        .eq("fornecedor_id", selected!.id)
+        .is("item_id", null);
+      const maeIds = (mae ?? []).map((m: any) => m.id);
+      let filhos: any[] = [];
+      if (maeIds.length) {
+        const { data } = await sb
+          .from("movimentacao_itens")
+          .select("movimentacao_id,item_id,quantidade,valor_unitario")
+          .in("movimentacao_id", maeIds);
+        const dataMap = new Map((mae ?? []).map((m: any) => [m.id, m.data_movimento]));
+        filhos = (data ?? []).map((f: any) => ({
+          item_id: f.item_id,
+          quantidade: Number(f.quantidade || 0),
+          valor_unitario: f.valor_unitario,
+          data_movimento: dataMap.get(f.movimentacao_id),
+        }));
+      }
+      const linhasRaw = [
+        ...(diretas ?? []).filter((d: any) => d.item_id).map((d: any) => ({
+          item_id: d.item_id,
+          quantidade: Number(d.quantidade || 0),
+          valor_unitario: d.valor_unitario,
+          data_movimento: d.data_movimento,
+        })),
+        ...filhos,
+      ];
+
+      const itemIds = Array.from(new Set(linhasRaw.map((l) => l.item_id).filter(Boolean)));
+      if (!itemIds.length) return [];
+      const { data: itens } = await sb.from("itens").select("id,nome,codigo,unidade").in("id", itemIds);
+      const itemMap = new Map<string, any>((itens ?? []).map((i: any) => [i.id, i]));
+
+      const byItem = new Map<string, {
+        item_id: string; nome: string; codigo: string; unidade: string;
+        quantidade: number; ultima_data: string; ultimo_valor: number | null; compras: number;
+      }>();
+      for (const l of linhasRaw) {
+        const it = itemMap.get(l.item_id);
+        if (!it) continue;
+        const cur = byItem.get(l.item_id) ?? {
+          item_id: l.item_id, nome: it.nome, codigo: it.codigo, unidade: it.unidade,
+          quantidade: 0, ultima_data: "", ultimo_valor: null, compras: 0,
+        };
+        cur.quantidade += l.quantidade;
+        cur.compras += 1;
+        if (!cur.ultima_data || (l.data_movimento && l.data_movimento > cur.ultima_data)) {
+          cur.ultima_data = l.data_movimento;
+          cur.ultimo_valor = l.valor_unitario != null ? Number(l.valor_unitario) : cur.ultimo_valor;
+        }
+        byItem.set(l.item_id, cur);
+      }
+      return Array.from(byItem.values()).sort((a, b) => b.quantidade - a.quantidade);
+    },
+  });
+
+  const brl = (n: number | null) =>
+    n == null ? "—" : n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const fmtData = (d: string) => (d ? new Date(d).toLocaleDateString("pt-BR") : "—");
+
+  return (
+    <Card className="p-4 mt-4">
+      <div className="text-sm font-semibold mb-1">Itens comprados por fornecedor</div>
+      <div className="text-xs text-muted-foreground mb-3">
+        Digite o nome do fornecedor para ver os itens já adquiridos dele.
+      </div>
+      <div className="relative max-w-md">
+        <Input
+          value={q}
+          onChange={(e) => { setQ(e.target.value); setSelected(null); }}
+          placeholder="Buscar fornecedor…"
+        />
+        {!selected && filtered.length > 0 && (
+          <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-md">
+            {filtered.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
+                onClick={() => { setSelected(f); setQ(f.nome); }}
+              >
+                {f.nome}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {selected && (
+        <div className="mt-4">
+          {isLoading ? (
+            <div className="text-sm text-muted-foreground py-6 text-center">Carregando…</div>
+          ) : linhas.length === 0 ? (
+            <div className="text-sm text-muted-foreground py-6 text-center">
+              Nenhuma entrada registrada para este fornecedor.
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-md border border-border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40 text-xs">
+                  <tr>
+                    <th className="text-left p-2">Código</th>
+                    <th className="text-left p-2">Item</th>
+                    <th className="text-right p-2">Qtd total</th>
+                    <th className="text-right p-2">Último valor</th>
+                    <th className="text-right p-2">Última compra</th>
+                    <th className="text-right p-2">Nº compras</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {linhas.map((l) => (
+                    <tr key={l.item_id} className="border-t border-border">
+                      <td className="p-2 font-mono text-xs text-muted-foreground">{l.codigo}</td>
+                      <td className="p-2">{l.nome}</td>
+                      <td className="p-2 text-right">{l.quantidade.toLocaleString("pt-BR")} {l.unidade}</td>
+                      <td className="p-2 text-right">{brl(l.ultimo_valor)}</td>
+                      <td className="p-2 text-right">{fmtData(l.ultima_data)}</td>
+                      <td className="p-2 text-right">{l.compras}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
   );
 }
 

@@ -1,9 +1,10 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Printer } from "lucide-react";
+import { Printer, GitBranch } from "lucide-react";
+import { toast } from "sonner";
 import { CARD_STATUSES, type ComercialCard, PROPOSTA_STATUS_LABEL, propostaTotal } from "@/lib/comercial/types";
-import { useComercial } from "@/lib/comercial/store";
+import { useComercial, criarNovaVersaoProposta, getVersoesProposta, getRootPropostaId } from "@/lib/comercial/store";
 import { gerarPropostaPDF } from "@/lib/comercial/pdf";
 
 const brl = (v: number) =>
@@ -58,16 +59,53 @@ export function DetalhesDrawer({
             )}
           </Section>
 
-          {proposta && (
-            <Section title="Proposta vinculada">
-              <Field label="Número" value={`#${proposta.numero}`} />
-              <Field label="Status" value={PROPOSTA_STATUS_LABEL[proposta.status]} />
-              <Field label="Total" value={brl(propostaTotal(proposta))} />
-              <Button className="w-full mt-3" size="sm" onClick={() => gerarPropostaPDF(proposta)}>
-                <Printer className="h-3.5 w-3.5 mr-1" /> Imprimir proposta (PDF)
-              </Button>
-            </Section>
-          )}
+          {proposta && (() => {
+            const rootId = getRootPropostaId(proposta);
+            const versoes = getVersoesProposta(rootId);
+            const podeNovaVersao = ["enviado", "em_negociacao", "em_revisao"].includes(proposta.status);
+            return (
+              <Section title="Proposta vinculada">
+                <Field label="Número" value={`#${proposta.numero} · v${proposta.version ?? 1}`} />
+                <Field label="Status" value={PROPOSTA_STATUS_LABEL[proposta.status]} />
+                <Field label="Total" value={brl(propostaTotal(proposta))} />
+
+                {versoes.length > 1 && (
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <div className="text-xs font-medium text-muted-foreground mb-1.5">Histórico de versões</div>
+                    <ul className="space-y-1 text-xs">
+                      {versoes.map((v) => (
+                        <li key={v.id} className="flex justify-between gap-2">
+                          <span className={v.id === proposta.id ? "font-semibold" : ""}>
+                            v{v.version ?? 1} {v.id === proposta.id ? "(atual)" : ""}
+                          </span>
+                          <span className="text-muted-foreground">
+                            {PROPOSTA_STATUS_LABEL[v.status]} · {brl(propostaTotal(v))}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <Button className="w-full mt-3" size="sm" onClick={() => gerarPropostaPDF(proposta)}>
+                  <Printer className="h-3.5 w-3.5 mr-1" /> Imprimir proposta (PDF)
+                </Button>
+                {podeNovaVersao && (
+                  <Button
+                    className="w-full mt-2"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const nova = criarNovaVersaoProposta(proposta.id);
+                      if (nova) toast.success(`Nova versão criada (v${nova.version})`);
+                    }}
+                  >
+                    <GitBranch className="h-3.5 w-3.5 mr-1" /> Criar nova versão
+                  </Button>
+                )}
+              </Section>
+            );
+          })()}
         </div>
       </SheetContent>
     </Sheet>

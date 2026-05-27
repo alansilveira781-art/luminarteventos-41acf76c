@@ -45,6 +45,8 @@ type FormState = {
   parcelamento: string;
   condicao_pagamento: string;
   data_compra: string;
+  is_reembolso: boolean;
+  reembolsar_para: string;
 };
 
 const emptyItem = (): ItemRow => ({ descricao: "", quantidade: "1", unidade: "un", valor_unitario: "" });
@@ -64,6 +66,8 @@ const initial: FormState = {
   parcelamento: "",
   condicao_pagamento: "",
   data_compra: "",
+  is_reembolso: false,
+  reembolsar_para: "",
 };
 
 const TIPOS_DEMANDA_PAGAVEIS = ["alimentacao", "estacionamento", "manutencao_galpao"];
@@ -102,7 +106,11 @@ function SolicitarPage() {
 
   function canAdvance(): boolean {
     if (step === 0) return !!form.tipo;
-    if (step === 1) return form.titulo.trim().length > 0;
+    if (step === 1) {
+      if (form.titulo.trim().length === 0) return false;
+      if (form.tipo === "demanda" && form.is_reembolso && form.reembolsar_para.trim().length === 0) return false;
+      return true;
+    }
     if (step === 2) {
       if (form.solicitante_nome.trim().length === 0) return false;
       if (form.tipo === "compra") {
@@ -145,10 +153,12 @@ function SolicitarPage() {
           descricao: form.descricao.trim(),
           valor_total: form.valor_total ? Number(form.valor_total) : null,
           itens: itensValidos,
-          pago: form.tipo === "demanda" ? form.pago : null,
-          parcelamento: form.parcelamento || "",
-          condicao_pagamento: form.condicao_pagamento || "",
-          data_compra: form.data_compra || "",
+          pago: form.tipo === "demanda" && !form.is_reembolso ? form.pago : null,
+          parcelamento: form.is_reembolso ? "" : (form.parcelamento || ""),
+          condicao_pagamento: form.is_reembolso ? "" : (form.condicao_pagamento || ""),
+          data_compra: form.is_reembolso ? "" : (form.data_compra || ""),
+          is_reembolso: form.tipo === "demanda" ? form.is_reembolso : false,
+          reembolsar_para: form.is_reembolso ? form.reembolsar_para.trim() : "",
         }),
       });
       const json = await res.json();
@@ -279,73 +289,107 @@ function SolicitarPage() {
 
             {!isCompra && (
               <div className="space-y-3 rounded-lg border border-border p-3 bg-muted/20">
-                <Field label="Foi pago?">
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => update({ pago: true })}
-                      className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                        form.pago === true
-                          ? "border-primary ring-2 ring-primary/30 bg-primary/5 text-primary"
-                          : "border-border hover:border-primary/50"
-                      }`}
-                    >
-                      Sim
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => update({ pago: false, parcelamento: "", condicao_pagamento: "", data_compra: "" })}
-                      className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                        form.pago === false
-                          ? "border-primary ring-2 ring-primary/30 bg-primary/5 text-primary"
-                          : "border-border hover:border-primary/50"
-                      }`}
-                    >
-                      Não
-                    </button>
-                  </div>
-                </Field>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 rounded border-border accent-primary"
+                    checked={form.is_reembolso}
+                    onChange={(e) => update({
+                      is_reembolso: e.target.checked,
+                      pago: e.target.checked ? null : form.pago,
+                      parcelamento: e.target.checked ? "" : form.parcelamento,
+                      condicao_pagamento: e.target.checked ? "" : form.condicao_pagamento,
+                      data_compra: e.target.checked ? "" : form.data_compra,
+                    })}
+                  />
+                  <span className="text-sm">
+                    <span className="font-medium">É um reembolso?</span>
+                    <span className="block text-xs text-muted-foreground">
+                      Marque se esta demanda é um reembolso a alguém da equipe.
+                    </span>
+                  </span>
+                </label>
 
-                {form.pago === true && (
-                  <div className="space-y-3">
-                    <Field label="Parcelamento">
-                      <Select
-                        value={form.parcelamento || undefined}
-                        onValueChange={(v) => update({ parcelamento: v })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione…" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {opcoes.parcelamentos.map((p) => (
-                            <SelectItem key={p} value={p}>{p}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                {form.is_reembolso ? (
+                  <Field label="Nome de quem será reembolsado *">
+                    <Input
+                      value={form.reembolsar_para}
+                      maxLength={160}
+                      onChange={(e) => update({ reembolsar_para: e.target.value })}
+                      placeholder="Nome completo"
+                    />
+                  </Field>
+                ) : (
+                  <>
+                    <Field label="Foi pago?">
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => update({ pago: true })}
+                          className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                            form.pago === true
+                              ? "border-primary ring-2 ring-primary/30 bg-primary/5 text-primary"
+                              : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          Sim
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => update({ pago: false, parcelamento: "", condicao_pagamento: "", data_compra: "" })}
+                          className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                            form.pago === false
+                              ? "border-primary ring-2 ring-primary/30 bg-primary/5 text-primary"
+                              : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          Não
+                        </button>
+                      </div>
                     </Field>
-                    <Field label="Condição de pagamento">
-                      <Select
-                        value={form.condicao_pagamento || undefined}
-                        onValueChange={(v) => update({ condicao_pagamento: v })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione…" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {opcoes.condicoes_pagamento.map((c) => (
-                            <SelectItem key={c} value={c}>{c}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </Field>
-                    <Field label="Data da compra">
-                      <Input
-                        type="date"
-                        value={form.data_compra}
-                        onChange={(e) => update({ data_compra: e.target.value })}
-                      />
-                    </Field>
-                  </div>
+
+                    {form.pago === true && (
+                      <div className="space-y-3">
+                        <Field label="Parcelamento">
+                          <Select
+                            value={form.parcelamento || undefined}
+                            onValueChange={(v) => update({ parcelamento: v })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {opcoes.parcelamentos.map((p) => (
+                                <SelectItem key={p} value={p}>{p}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                        <Field label="Condição de pagamento">
+                          <Select
+                            value={form.condicao_pagamento || undefined}
+                            onValueChange={(v) => update({ condicao_pagamento: v })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {opcoes.condicoes_pagamento.map((c) => (
+                                <SelectItem key={c} value={c}>{c}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                        <Field label="Data da compra">
+                          <Input
+                            type="date"
+                            value={form.data_compra}
+                            onChange={(e) => update({ data_compra: e.target.value })}
+                          />
+                        </Field>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}

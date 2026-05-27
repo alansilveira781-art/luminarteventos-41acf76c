@@ -4,9 +4,9 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileDown, Send } from "lucide-react";
+import { FileDown, Send, GitBranch } from "lucide-react";
 import { toast } from "sonner";
-import { useComercial, updatePropostaStatus, updateCard } from "@/lib/comercial/store";
+import { useComercial, updatePropostaStatus, updateCard, criarNovaVersaoProposta } from "@/lib/comercial/store";
 import { PROPOSTA_STATUS_LABEL, type Proposta, type PropostaStatus, propostaTotal } from "@/lib/comercial/types";
 import { gerarPropostaPDF } from "@/lib/comercial/pdf";
 
@@ -74,7 +74,7 @@ function Propostas() {
           <tbody>
             {aprovadas.map((p) => (
               <tr key={p.id} className="border-t border-border hover:bg-muted/20">
-                <td className="p-3 font-mono text-xs text-muted-foreground">#{p.numero}</td>
+                <td className="p-3 font-mono text-xs text-muted-foreground">#{p.numero} <span className="ml-1 text-[10px] uppercase">v{p.version ?? 1}</span></td>
                 <td className="p-3">{p.cliente.nome}</td>
                 <td className="p-3">{p.evento.tipo || "—"}</td>
                 <td className="p-3">{fmt(p.evento.dataInicio)}</td>
@@ -94,6 +94,18 @@ function Propostas() {
                     <Button size="sm" variant="outline" onClick={() => gerarPropostaPDF(p)}>
                       <FileDown className="h-3.5 w-3.5 mr-1" /> PDF
                     </Button>
+                    {["enviado", "em_negociacao", "em_revisao"].includes(p.status) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const nova = criarNovaVersaoProposta(p.id);
+                          if (nova) toast.success(`Nova versão criada (v${nova.version})`);
+                        }}
+                      >
+                        <GitBranch className="h-3.5 w-3.5 mr-1" /> Nova versão
+                      </Button>
+                    )}
                     <Button size="sm" onClick={() => toast.success("Proposta enviada com sucesso!")}>
                       <Send className="h-3.5 w-3.5 mr-1" /> Enviar
                     </Button>
