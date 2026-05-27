@@ -124,17 +124,25 @@ function ApuracoesPage() {
         empresa,
         periodo_inicio: periodoInicio,
         periodo_fim: periodoFim,
-        parametros: { ano, mes, empresa },
+        parametros: { ano, mes, empresa, regime, vencimento },
         resultado: {
+          regime,
+          vencimento,
           faturamento: apuracao.faturamento,
           basePresumida: apuracao.basePresumida,
           totalImpostos: apuracao.totalImpostos,
           itens: apuracao.itens,
-          recebimentos: (recebimentos ?? []).map((r) => ({
+          recebimentos: regime === "caixa" ? (recebimentos ?? []).map((r) => ({
             numero_nf: r.numero_nf,
             valor_recebido: r.valor_recebido,
             data_recebimento: r.data_recebimento,
-          })),
+          })) : [],
+          notas: regime === "competencia" ? (notasEmitidas ?? []).map((n) => ({
+            numero: n.numero,
+            valor_bruto: n.valor_bruto,
+            data_emissao: n.data_emissao,
+            nome_evento: n.nome_evento,
+          })) : [],
         },
         status: "concluida",
       };
