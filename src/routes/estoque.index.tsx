@@ -36,7 +36,7 @@ const ITEM_BULK_FIELDS: BulkField[] = [
     { value: "inativo", label: "Inativo" },
   ]},
   { key: "quantidade_minima", label: "Quantidade mínima", type: "number" },
-  { key: "valor_unitario", label: "Valor unitário (R$)", type: "number" },
+  { key: "valor_unitario", label: "Valor unitário (R$)", type: "money" },
   { key: "observacoes", label: "Observações", type: "textarea" },
 ];
 
