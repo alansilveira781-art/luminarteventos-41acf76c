@@ -693,7 +693,7 @@ function SaidaForm({ prefill, isEditing, itens, solicitantes, onEditSolicitante,
       if (validas.length === 0) return toast.error("Adicione pelo menos um item");
       onSubmit(
         {
-          data_movimento: new Date(meta.data_movimento).toISOString(),
+          data_movimento: fromBRTInputDateTime(meta.data_movimento),
           saida_tipo: meta.saida_tipo,
           empresa: meta.empresa || null,
           solicitante_id: meta.solicitante_id || null,
