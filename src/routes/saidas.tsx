@@ -18,7 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { formatBRT, toBRTInputDateTime, fromBRTInputDateTime } from "@/lib/datetime";
 import { saidaTipoLabels } from "@/lib/labels";
 import { listEventos } from "@/server/sheets.functions";
 import { ItemSearchSelect } from "@/components/ItemSearchSelect";
