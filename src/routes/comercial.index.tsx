@@ -110,6 +110,46 @@ function QuadroVendas() {
         }
       />
 
+      {/* Filtros */}
+      <div className="flex flex-wrap items-end gap-3 mb-4 rounded-lg border border-border bg-muted/20 p-3">
+        <div className="min-w-[180px]">
+          <Label className="text-xs text-muted-foreground">Vendedor</Label>
+          <Select value={fVendedor} onValueChange={setFVendedor}>
+            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos</SelectItem>
+              {consultores.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="min-w-[180px]">
+          <Label className="text-xs text-muted-foreground">Tipo de negócio</Label>
+          <Select value={fTipo} onValueChange={setFTipo}>
+            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos</SelectItem>
+              {TIPOS_EVENTO.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">Data do evento — de</Label>
+          <Input type="date" value={fDe} onChange={(e) => setFDe(e.target.value)} className="h-9 w-44" />
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">até</Label>
+          <Input type="date" value={fAte} onChange={(e) => setFAte(e.target.value)} className="h-9 w-44" />
+        </div>
+        {filtrosAtivos && (
+          <Button variant="ghost" size="sm" onClick={limparFiltros} className="text-muted-foreground">
+            <X className="h-3.5 w-3.5 mr-1" /> Limpar
+          </Button>
+        )}
+        <div className="ml-auto text-xs text-muted-foreground">
+          {filteredCards.length} card{filteredCards.length === 1 ? "" : "s"}
+        </div>
+      </div>
+
       <TooltipProvider>
         <DndContext sensors={sensors} onDragEnd={onDragEnd}>
           <div className="flex gap-3 overflow-auto pb-4 max-h-[calc(100vh-180px)] items-start">
