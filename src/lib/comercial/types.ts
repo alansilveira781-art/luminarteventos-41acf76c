@@ -114,6 +114,10 @@ export type Proposta = {
   status: PropostaStatus;
   createdAt: string;
   approvedAt?: string | null;
+  /** id da primeira versão (proposta raiz). Null/undefined em propostas v1. */
+  parentId?: string | null;
+  /** número da versão (1 = original). */
+  version?: number;
 };
 
 export const PROPOSTA_STATUS_LABEL: Record<PropostaStatus, string> = {
