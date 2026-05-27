@@ -255,6 +255,8 @@ export function createProposta(p: Omit<Proposta, "id" | "numero" | "createdAt" |
     numero: nextPropostaNumero(),
     createdAt: new Date().toISOString(),
     status: p.status ?? "aguardando_aprovacao",
+    version: 1,
+    parentId: null,
     ...p,
   } as Proposta;
   setState({ propostas: [proposta, ...state.propostas] });
