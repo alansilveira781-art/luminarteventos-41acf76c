@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { toBRTInputDateTime, fromBRTInputDateTime } from "@/lib/datetime";
 import { entradaTipoLabels } from "@/lib/labels";
 import { ImportDialog } from "@/components/ImportDialog";
 import { ENTRADA_TEMPLATE } from "@/lib/import-utils";
