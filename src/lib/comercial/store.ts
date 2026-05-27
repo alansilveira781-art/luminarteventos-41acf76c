@@ -285,11 +285,67 @@ export function aprovarProposta(id: string) {
   if (p.cardId) {
     const card = state.cards.find((c) => c.id === p.cardId);
     if (card && card.status !== "fechamento" && card.status !== "perda") {
-      updateCard(p.cardId, { status: "orcamento_enviado" });
+      // Ao validar/aprovar a proposta o card vai para "Orçamento Validado".
+      // Movimentação para "Orçamento Enviado" acontece quando o time enviar
+      // a proposta ao cliente (ação separada no módulo Propostas).
+      updateCard(p.cardId, { status: "orcamento_validado" });
     }
   }
 }
 
 export function reprovarProposta(id: string) {
   updatePropostaStatus(id, "em_revisao");
+}
+
+// ----- Versionamento de propostas -----
+export function getRootPropostaId(p: Proposta): string {
+  return p.parentId ?? p.id;
+}
+
+export function getVersoesProposta(rootId: string): Proposta[] {
+  return state.propostas
+    .filter((p) => (p.parentId ?? p.id) === rootId)
+    .sort((a, b) => (a.version ?? 1) - (b.version ?? 1));
+}
+
+/**
+ * Cria nova versão de uma proposta (usado quando o cliente pede ajustes
+ * em negociação). Clona o conteúdo, incrementa version, mantém parentId
+ * apontando para a raiz e marca a versão anterior como "em_revisao".
+ * Move o card vinculado de volta para "projeto".
+ */
+export function criarNovaVersaoProposta(propostaId: string): Proposta | null {
+  const orig = state.propostas.find((p) => p.id === propostaId);
+  if (!orig) return null;
+  const rootId = orig.parentId ?? orig.id;
+  const versoes = getVersoesProposta(rootId);
+  const maxVersion = versoes.reduce((m, v) => Math.max(m, v.version ?? 1), 1);
+
+  const nova: Proposta = {
+    ...orig,
+    id: uid(),
+    numero: orig.numero, // mesmo número, versão diferente
+    createdAt: new Date().toISOString(),
+    approvedAt: null,
+    status: "aguardando_aprovacao",
+    parentId: rootId,
+    version: maxVersion + 1,
+  };
+
+  // marca a versão anterior como em revisão (substituída por nova versão)
+  setState({
+    propostas: [
+      nova,
+      ...state.propostas.map((p) =>
+        p.id === orig.id ? { ...p, status: "em_revisao" as PropostaStatus } : p,
+      ),
+    ],
+  });
+
+  // card vinculado: aponta para a nova proposta e volta para "projeto"
+  if (orig.cardId) {
+    updateCard(orig.cardId, { propostaId: nova.id, status: "projeto" });
+  }
+
+  return nova;
 }
