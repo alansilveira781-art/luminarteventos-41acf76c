@@ -1,81 +1,47 @@
-## Análise da planilha enviada
+## Ajuste do adicional de IRPJ
 
-A planilha "Grupo Luminart – Contábil" implementa uma apuração mensal de impostos no regime **Lucro Presumido** para Luminart Eventos e Luminart Planejados, com a seguinte mecânica:
+### Nova regra
+Adicional incide sobre o **valor do IRPJ apurado** que ultrapassar **R$ 20.000** no mês:
 
-**Alíquotas (aba Config):**
-| Imposto | Base de Cálculo | Alíquota | Adicional |
-|---|---|---|---|
-| PIS | — | 0,65% | — |
-| COFINS | — | 3,00% | — |
-| IRPJ | 32% do faturamento | 15% | 10% sobre o que exceder R$ 20.000/mês de lucro presumido |
-| CSLL | 32% do faturamento | 9% | — |
+```
+IRPJ_normal  = base_presumida × 15%
+excedente    = max(0, IRPJ_normal − 20.000)
+IRPJ_adicional = excedente × aliquota_adicional   (padrão 10%)
+IRPJ_total   = IRPJ_normal + IRPJ_adicional
+```
 
-**Fluxo de dados:**
-1. **Base Emissão de Nota** → NF emitida (nº, evento, empresa, valor) → controla saldo a receber.
-2. **Base de Recebimento** → registra recebimentos por nº NF (com data, valor, banco).
-3. **Painel** → seleciona Ano + Mês + Empresa → lista recebimentos do mês daquela empresa e calcula automaticamente PIS/COFINS/IRPJ (com adicional) /CSLL sobre o total recebido no mês.
-4. **Base de Impostos** → guarda o histórico de impostos apurados pagos (data, competência, empresa, imposto, faturamento, valor).
+### 1. Cálculo (`src/lib/contabil/calculo.ts`)
+- Substituir a lógica atual (que aplica o adicional sobre `basePresumida − 20.000`) pela nova fórmula acima.
+- Ler do array de alíquotas dois parâmetros configuráveis:
+  - `IRPJ` → alíquota normal (padrão 15%).
+  - `IRPJ_ADICIONAL` → alíquota adicional (padrão 10%).
+- Limite mensal continua R$ 20.000 (também configurável, ver item 3).
 
-## O que vou construir
+### 2. Configuração — alíquotas (`src/routes/contabil.configuracao.tsx`)
+- Garantir que cada empresa de regime presumido tenha, além das linhas atuais (PIS / COFINS / IRPJ / CSLL), uma linha extra `imposto = "IRPJ_ADICIONAL"` com `aliquota = 10`.
+- Ajustar o botão "Criar impostos padrão" para já incluir essa linha.
+- Exibir o IRPJ adicional na tabela com rótulo amigável (ex.: "IRPJ — Adicional (acima de R$ 20.000)").
 
-### 1. Remover a barra de abas do topo do módulo Contábil
-Atualmente `/contabil` (layout em `src/routes/contabil.tsx`) mostra uma nav horizontal com "Dashboard / Notas / Consulta de impostos / Configuração". A sidebar já expõe os mesmos quatro itens, então a barra superior é redundante. Vou remover apenas a `<nav>`, mantendo o `<Outlet />` e o guard de acesso.
+### 3. Configuração — limite mensal
+Como o limite (R$ 20.000) também pode mudar por empresa, salvá-lo no campo `observacoes` da linha `IRPJ_ADICIONAL` no formato `limite=20000`, e ler isso no cálculo. Sem migração de banco.
+- Default: 20.000 quando não informado.
+- Campo editável na tela de configuração junto com a alíquota adicional.
 
-### 2. Aproveitar tabelas existentes (sem migração nova)
-- `contabil_notas_fiscais` → já guarda emissão de NF (empresa, número, tomador, valor_bruto, data_emissao, status). Vai virar a **Base de Emissão de Nota**.
-- `contabil_configuracao_aliquotas` → já guarda alíquotas por empresa/imposto. Vou popular com os valores corretos do Lucro Presumido (PIS 0,65 / COFINS 3 / IRPJ 15 / CSLL 9) e adicionar campos derivados (base presumida 32%, adicional IRPJ 10% > 20k) calculados em código.
-- `contabil_consultas_impostos` → vai ser **transformada** em "Apurações de Impostos" (registro de cada apuração mensal feita), guardando o resultado calculado em `resultado` (JSONB) e o período em `periodo_inicio/fim`.
+### 4. Tela de Apurações (`src/routes/contabil.apuracoes.tsx`)
+- Continuar mostrando uma linha "IRPJ" com a coluna **Adicional** preenchida (já existe a coluna). A diferença é só no valor calculado.
+- Acrescentar abaixo da tabela um detalhamento curto: "IRPJ apurado R$ X — Excedente sobre R$ 20.000: R$ Y — Adicional 10%: R$ Z".
 
-Vou precisar de **uma migração leve** apenas para:
-- Criar `contabil_recebimentos` (nf_id, data_recebimento, valor_recebido, banco, observacoes) – espelhando a "Base de Recebimento" da planilha.
-- Acrescentar `numero_evento` / `nome_evento` na `contabil_notas_fiscais` para casar com "ID_Evento" e "Nome Evento" da planilha (campos opcionais).
+### 5. Seed
+Recalcular e atualizar via `supabase--insert` as duas apurações de exemplo (Mar/2026 e Abr/2026 de Luminart Eventos) com a nova regra, e inserir a linha `IRPJ_ADICIONAL` (10%, limite 20000) para Luminart Eventos e Luminart Planejados.
 
-### 3. Nova tela `/contabil/apuracoes` (renomeia a aba existente "Consulta de impostos" → "Apurações de impostos")
-Funcionalidades:
-- Filtros: **Ano**, **Mês**, **Empresa**.
-- Carrega todos os recebimentos da empresa no mês (via `contabil_recebimentos` + join com `contabil_notas_fiscais`).
-- Calcula em tempo real:
-  - Faturamento do mês = Σ valor_recebido.
-  - PIS = faturamento × alíquota PIS.
-  - COFINS = faturamento × alíquota COFINS.
-  - Lucro presumido = faturamento × 32%.
-  - IRPJ = lucro presumido × 15%.
-  - Adicional IRPJ = max(0, lucro presumido − 20.000) × 10%.
-  - CSLL = lucro presumido × 9%.
-- Mostra duas tabelas:
-  1. **NFs / recebimentos do mês** (nº NF, evento, valor recebido).
-  2. **Impostos apurados** (imposto, base, alíquota, adicional, total a pagar).
-- Botão **"Registrar apuração"** salva o resultado em `contabil_consultas_impostos` para histórico.
-- Lista abaixo as apurações já registradas (com botão de excluir).
+### Arquivos afetados
+- `src/lib/contabil/calculo.ts` — nova fórmula + leitura de `IRPJ_ADICIONAL` e limite.
+- `src/routes/contabil.configuracao.tsx` — campo adicional + seed padrão.
+- `src/routes/contabil.apuracoes.tsx` — pequeno detalhamento textual do adicional.
+- Sem migração de schema.
 
-### 4. Dados de exemplo para medir eficiência
-Inserir via tool de insert duas apurações completas baseadas nos números da planilha:
+### Validação rápida com os exemplos
+- **Mar/2026** — faturamento R$ 31.000 → base presumida R$ 9.920 → IRPJ R$ 1.488 → não ultrapassa R$ 20.000 → **adicional = 0**.
+- **Abr/2026** — faturamento R$ 70.000 → base presumida R$ 22.400 → IRPJ R$ 3.360 → também não ultrapassa R$ 20.000 → **adicional = 0**.
 
-**Exemplo 1 – Luminart Eventos, Março/2026 (faturamento R$ 31.000)**
-- PIS R$ 201,50 / COFINS R$ 930,00 / IRPJ R$ 1.488,00 / CSLL R$ 892,80 → Total R$ 3.512,30
-- NFs vinculadas: 120 (Casamento Rochele e Anderson – R$ 4.000), 122 (Casamento Marcelina e Anderson – R$ 25.000), 135 (Casamento Juliana e Marcus – R$ 2.000).
-
-**Exemplo 2 – Luminart Eventos, Abril/2026 (faturamento R$ 70.000)**
-- Recebimentos: NF 135 (R$ 3.000), NF 120 (R$ 21.000), NF 122 (R$ 25.000), NF 136 (R$ 20.000), NF 137 (R$ 1.000)
-- Lucro presumido R$ 22.400 → adicional IRPJ R$ 240 sobre o excedente
-- PIS R$ 455 / COFINS R$ 2.100 / IRPJ R$ 3.360 + adicional R$ 240 / CSLL R$ 2.016 → Total R$ 8.171
-
-Esses dois meses permitem comparar a apuração e validar que o cálculo bate com a planilha.
-
-### 5. Configuração de alíquotas (aba existente)
-Vou garantir que a aba `/contabil/configuracao` esteja semeada para Luminart Eventos e Luminart Planejados (regime presumido) com PIS 0,65 / COFINS 3 / IRPJ 15 / CSLL 9 – usando o botão "Criar impostos padrão" já existente, ou inserindo via SQL caso não exista.
-
-## Detalhes técnicos
-
-- Arquivos editados:
-  - `src/routes/contabil.tsx` – remover a `<nav>` de abas (manter guard + Outlet).
-  - `src/routes/contabil.consultas.tsx` → renomear conceitualmente para "Apurações" e reconstruir UI com filtros Ano/Mês/Empresa, cálculo em tempo real, listagem das NFs do mês e botão de registrar apuração.
-  - `src/components/AppSidebar.tsx` – renomear o label "Consulta de impostos" → "Apurações de impostos".
-  - `src/routes/contabil.notas.tsx` – adicionar campos `numero_evento` e `nome_evento` ao formulário de NF.
-- Arquivos criados:
-  - `src/routes/contabil.recebimentos.tsx` (nova aba para registrar recebimentos por NF, espelho da "Base de Recebimento").
-  - `src/lib/contabil/calculo.ts` – função pura `calcularImpostosPresumido({ faturamento, aliquotas })` com regra do adicional IRPJ (limite R$ 20.000/mês de lucro presumido).
-- Migração SQL: criar `contabil_recebimentos` (com RLS `has_module_access('contabil')` + GRANTs) e adicionar duas colunas opcionais em `contabil_notas_fiscais`.
-- Seed via `supabase--insert`: 2 apurações de exemplo + NFs e recebimentos correspondentes.
-
-A configuração já existente em `/contabil/configuracao` permite editar alíquotas no futuro; o cálculo lê de lá em tempo real.
+Como nenhum dos dois exemplos atuais aciona o adicional pela nova regra, vou trocar o segundo exemplo por um mês com faturamento alto o bastante para disparar o adicional (ex.: **Maio/2026, R$ 450.000** → IRPJ R$ 21.600 → excedente R$ 1.600 → adicional R$ 160), assim você consegue medir a eficiência das duas situações: uma sem e outra com adicional.
