@@ -27,6 +27,6 @@ export const REGIME_LABEL: Record<"presumido" | "simples", string> = {
 
 // Impostos padrão por regime (sugestão inicial para a aba de configuração)
 export const IMPOSTOS_POR_REGIME: Record<"presumido" | "simples", string[]> = {
-  presumido: ["ISS", "PIS", "COFINS", "IRPJ", "CSLL"],
+  presumido: ["ISS", "PIS", "COFINS", "IRPJ", "IRPJ_ADICIONAL", "CSLL"],
   simples: ["DAS"],
 };
