@@ -97,6 +97,10 @@ function QuadroVendas() {
       setPerdaCardId(id);
       return;
     }
+    if (status === "orcamento_enviado") {
+      setEnvioCardId(id);
+      return;
+    }
     moveCard(id, status);
   }
 
