@@ -465,9 +465,9 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
           {step === 3 && (
             <div className="space-y-3">
               <div className="grid gap-3 sm:grid-cols-3">
-                <div><Label>Frete (R$)</Label><NumberInput step="0.01" value={custos.frete} onChange={(n) => setCustos({ ...custos, frete: n })} /></div>
-                <div><Label>Montagem (R$)</Label><NumberInput step="0.01" value={custos.montagem} onChange={(n) => setCustos({ ...custos, montagem: n })} /></div>
-                <div><Label>Desmontagem (R$)</Label><NumberInput step="0.01" value={custos.desmontagem} onChange={(n) => setCustos({ ...custos, desmontagem: n })} /></div>
+                <div><Label>Frete (R$)</Label><MoneyInput value={custos.frete} onChange={(n) => setCustos({ ...custos, frete: n })} /></div>
+                <div><Label>Montagem (R$)</Label><MoneyInput value={custos.montagem} onChange={(n) => setCustos({ ...custos, montagem: n })} /></div>
+                <div><Label>Desmontagem (R$)</Label><MoneyInput value={custos.desmontagem} onChange={(n) => setCustos({ ...custos, desmontagem: n })} /></div>
               </div>
 
               <div className="rounded-lg border border-border p-3">
