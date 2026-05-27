@@ -1,85 +1,70 @@
-# Plano de performance — backend e frontend
+# Plano de ajustes
 
-Objetivo: deixar o ERP mais rápido sem mudar comportamento de negócio. Mudanças divididas em 3 frentes.
+## 1. Estoque — histórico de movimentação do item
 
-## 1. Backend (banco de dados)
+**Bug raiz:** a query em `src/routes/estoque.$itemId.tsx` lê apenas `movimentacoes` filtrando por `item_id`. Mas saídas/devoluções com vários itens são gravadas em `movimentacao_itens` (filhos) com `movimentacoes.item_id = NULL`. Por isso essas operações não aparecem no histórico.
 
-### 1.1 Índices nas colunas mais consultadas
-Migration única adicionando índices `IF NOT EXISTS` (não bloqueante, sem perda de dados):
+**Correção:**
+- Buscar movimentações onde `item_id = X` **OU** que tenham linha em `movimentacao_itens` com aquele `item_id`.
+- Trazer a quantidade efetiva: se vier de `movimentacao_itens`, usar a quantidade do item; caso contrário, `movimentacoes.quantidade`.
+- Adicionar **coluna "Requisição"** exibindo `requisicao_numero` (link para a movimentação quando aplicável).
+- Garantir refresh após nova saída/devolução: invalidar `["item-movs", itemId]` e `["item", itemId]` (já é feito globalmente, mas conferir no diálogo de saída/devolução para invalidar essas chaves específicas).
 
-- `itens`: `codigo`, `codigo_proprio`, `categoria`, `status`, `created_at desc`, `nome` (trigram p/ busca).
-- `movimentacoes`: `(tipo, data_movimento desc)`, `item_id`, `fornecedor_id`, `solicitante_id`, `saida_origem_id`, `saida_status`, `created_at desc`, `requisicao_numero`.
-- `movimentacao_itens`: `movimentacao_id`, `item_id`.
-- `fornecedores`: `documento`, `nome`, `status`.
-- `solicitantes`: `nome`, `status`.
-- `compras`: `status`, `(status, ordem)`, `created_at desc`, `fornecedor_id`, `solicitante_id`, `numero`.
-- `compra_itens`: `compra_id`, `item_id`.
-- `pat_itens`: `cod` (único parcial), `categoria`, `created_at desc`.
-- `pat_movimentacoes`: `item_id`, `(tipo, data_movimento desc)`, `saida_origem_id`.
-- `demandas`: `status`, `created_at desc`.
-- `notificacoes`: `(user_id, lida, created_at desc)`.
-- `contabil_notas_fiscais`: `(empresa, data_emissao desc)`, `status`.
+**Arquivo:** `src/routes/estoque.$itemId.tsx` + invalidações em `src/routes/saidas.tsx` e `src/routes/devolucoes.tsx`.
 
-Habilitar extensão `pg_trgm` para buscas por nome (índices GIN nos campos de texto pesquisados).
+## 2. Compras — Dashboard cruzamento Fornecedor × Itens comprados
 
-### 1.2 Restrição de COD duplicado no patrimônio
-Índice único parcial em `pat_itens.cod` (já solicitado em iteração anterior — confirmar presença).
+Em `src/routes/compras.dashboard.tsx`, adicionar uma seção nova:
+- Campo de busca por nome de fornecedor (com debounce).
+- Ao selecionar/digitar, listar os itens já comprados desse fornecedor (origem: `movimentacoes` tipo `entrada` com `fornecedor_id` + join com `itens`), agregando: quantidade total comprada, último valor unitário, última data de compra, nº de compras.
+- Tabela ordenável.
 
-## 2. Backend (queries)
+**Arquivo:** `src/routes/compras.dashboard.tsx`.
 
-Substituir `select("*")` por listas explícitas de colunas nas listagens das tabelas dos módulos:
+## 3. Comercial
 
-- `estoque.index.tsx` — itens: só `id, codigo, codigo_proprio, nome, categoria, unidade, quantidade_atual, quantidade_minima, status, valor_unitario, localizacao, foto_url`.
-- `entradas.tsx` / `saidas.tsx` / `devolucoes.tsx` — movimentações: campos exibidos + ids p/ joins; remover `observacoes` longos da listagem (carregar só no detalhe).
-- `patrimonio.index.tsx` — pat_itens: omitir `imagem_url` e `observacoes` na listagem (carregar no dialog).
-- `compras.index.tsx` — `compras`: omitir `observacoes`, `motivo_negacao` da listagem do kanban.
-- `fornecedores.tsx` / `solicitantes.tsx` — listar só campos da tabela.
-- Hovers/selects (`ItemSearchSelect`, `EntitySearchSelect`) — manter já enxutos.
+### 3a. Novo status "Orçamento Validado" entre Projeto e Orçamento Enviado
+- Em `src/lib/comercial/types.ts` adicionar `{ key: "orcamento_validado", label: "Orçamento Validado", color: "bg-violet-500" }` entre `projeto` e `orcamento_enviado`.
+- Regra: ao **criar** proposta o card vai para `orcamento_validado` (antes ia para `orcamento_enviado` via aprovação). Só ao **validar/aprovar** a proposta o card avança para `orcamento_enviado`.
+- Ajustar `aprovarProposta` em `src/lib/comercial/store.ts` (ele continua movendo para `orcamento_enviado` quando a proposta é aprovada — manter, mas `createProposta` agora move o card para `orcamento_validado`, não diretamente para `orcamento_enviado`).
 
-Detalhes pesados (observações, anexos, histórico) seguem carregados sob demanda nos dialogs já existentes.
+### 3b. Filtros no Quadro de Vendas
+- Em `src/routes/comercial.index.tsx` adicionar barra de filtros: vendedor (responsável), período (de/até em `eventoDataInicio`), tipo de negócio (`TIPOS_EVENTO`).
+- Filtrar `cards` antes de agrupar por status.
 
-## 3. Frontend
+### 3c. Versionamento de propostas
+- Adicionar campos em `Proposta` (types.ts):
+  - `parentId?: string | null` — id da proposta original
+  - `version: number` (default 1)
+- Nova ação `criarNovaVersao(propostaId)` no store: clona a proposta, incrementa version, mantém o mesmo `parentId` (ou usa o id da raiz), e:
+  - move o card vinculado de volta para `projeto` → depois quando aprovada vai para `orcamento_validado` → quando enviada vai para `orcamento_enviado`.
+- No drawer/listagem de propostas (`comercial.propostas.tsx` e `DetalhesDrawer.tsx`): mostrar histórico de versões da proposta (todas que compartilham `parentId`/raiz), com botão "Nova versão" quando status estiver em negociação.
+- Helper `getVersoesProposta(rootId)` para listar versões ordenadas.
 
-### 3.1 Debounce 300ms
-Criar `src/hooks/useDebouncedValue.ts` e aplicar nos inputs de busca/filtro de:
-- `estoque.index.tsx`, `entradas.tsx`, `saidas.tsx`, `devolucoes.tsx`, `patrimonio.index.tsx`
-- `compras.index.tsx`, `fornecedores.tsx`, `solicitantes.tsx`
-- `relatorios.tsx`, `contabil.notas.tsx`, `contabil.consultas.tsx`
+**Arquivos:** `src/lib/comercial/types.ts`, `src/lib/comercial/store.ts`, `src/routes/comercial.index.tsx`, `src/routes/comercial.propostas.tsx`, `src/components/comercial/DetalhesDrawer.tsx`, `src/components/comercial/PropostaWizard.tsx` (para gerar nova versão a partir da existente).
 
-O valor exibido no input continua imediato; só o valor usado para filtrar/queryKey é debounced.
+## 4. Formulário público `/solicitar` — opção Reembolso
 
-### 3.2 Listas grandes — virtualização
-Adicionar `@tanstack/react-virtual` e virtualizar o `<TableBody>` quando >100 linhas em:
-- estoque, entradas, saídas, devoluções, patrimônio, compras (lista), fornecedores, solicitantes.
+Em `src/routes/solicitar.tsx`:
+- Adicionar checkbox/switch **"É um reembolso?"**.
+- Quando marcado:
+  - Mostrar campo obrigatório **"Nome de quem será reembolsado"**.
+  - **Ocultar** os campos relativos a "foi pago" / condições de pagamento já preenchidas (manter dados de produto/valor).
+- Persistir no payload (tipo de demanda = reembolso ou flag dedicada). Verificar endpoint `src/routes/api/public/solicitar.ts` para aceitar os novos campos e gravá-los em `observacoes`/`tipo_demanda` ou colunas equivalentes em `demandas`.
 
-Como já há paginação client-side (100/página), a virtualização entra como salvaguarda quando o usuário aumenta o page size ou usa o filtro "ano".
+**Sem mudanças de schema obrigatórias:** usar `tipo_demanda = "reembolso"` e armazenar o nome no campo `observacoes` ou `descritivo` da tabela `demandas` (já existem). Se preferível, adiciono coluna `reembolsar_para text` em `demandas` via migração — confirme se quer essa coluna dedicada.
 
-### 3.3 Lazy loading / code splitting
-Converter rotas pesadas para `createLazyFileRoute` (split do componente, loader continua crítico):
-- `compras.dashboard.tsx`, `patrimonio.dashboard.tsx`, `financeiro.dashboard.tsx`
-- `contabil.index.tsx`, `contabil.consultas.tsx`, `contabil.notas.tsx`
-- `relatorios.tsx`, `comercial.propostas.tsx`, `comercial.catalogo.tsx`
-- `financeiro.rotinas.tsx`, `financeiro.conta-azul.tsx`
+---
 
-Recharts e libs pesadas ficam isoladas no chunk lazy de cada dashboard.
+## Resumo de arquivos a editar
+- `src/routes/estoque.$itemId.tsx` (histórico + coluna requisição)
+- `src/routes/saidas.tsx`, `src/routes/devolucoes.tsx` (invalidações)
+- `src/routes/compras.dashboard.tsx` (cruzamento fornecedor × itens)
+- `src/lib/comercial/types.ts`, `src/lib/comercial/store.ts`
+- `src/routes/comercial.index.tsx` (filtros + novo status)
+- `src/routes/comercial.propostas.tsx`, `src/components/comercial/DetalhesDrawer.tsx`, `src/components/comercial/PropostaWizard.tsx` (versionamento)
+- `src/routes/solicitar.tsx`, `src/routes/api/public/solicitar.ts` (reembolso)
 
-### 3.4 Revisão de re-renders
-- Memoizar linhas de tabela pesadas com `React.memo` (`EstoqueRow`, `MovimentacaoRow`, `PatrimonioRow`).
-- Estabilizar callbacks com `useCallback` onde passados a filhos memoizados.
-- Trocar `useMemo`/derivações que recriam objetos a cada render por valores derivados de queryData direto.
-- Mover filtros de período (`PeriodoFilter`) para estado local memoizado; só recalcular `from/to` quando muda o tipo.
-- Garantir `queryKey` estável (arrays primitivos), evitando objetos novos a cada render.
-- Auditar `staleTime: 0` colocado em iteração anterior nos selects de itens/fornecedores — manter só onde necessário para sincronização imediata (form de entrada/saída logo após cadastro); demais selects voltam a `staleTime` padrão.
-
-## Arquivos afetados (resumo)
-
-Migration: 1 nova (índices + extensão pg_trgm).
-Hooks novos: `src/hooks/useDebouncedValue.ts`.
-Dependência nova: `@tanstack/react-virtual`.
-Componentes/rotas editados: ~18 arquivos listados acima, com edições cirúrgicas (select de colunas, debounce no filtro, memoização de linhas, conversão para lazy route quando aplicável).
-
-## Fora do escopo
-
-- Nenhuma mudança de UI/UX visível.
-- Nenhuma mudança em RLS ou regras de negócio.
-- Sem alteração nos triggers/funções do banco.
+## Pontos a confirmar
+1. Para reembolso em `/solicitar`: prefere coluna dedicada `reembolsar_para` em `demandas` (migração) ou guardo no campo `observacoes`/`descritivo`?
+2. Versionamento: quando criar nova versão, o card volta para **"projeto"** (como você descreveu) e depois segue o fluxo normal (projeto → orçamento validado → orçamento enviado). Confirma?

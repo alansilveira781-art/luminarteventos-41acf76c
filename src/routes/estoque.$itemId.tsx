@@ -28,13 +28,39 @@ function ItemHistorico() {
   const { data: movs } = useQuery({
     queryKey: ["item-movs", itemId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // 1) Movimentações diretas (item_id direto)
+      const { data: diretas, error: e1 } = await supabase
         .from("movimentacoes")
-        .select("*, fornecedor:fornecedores(nome), solicitante:solicitantes(nome)")
+        .select(
+          "id,tipo,data_movimento,quantidade,entrada_tipo,saida_tipo,condicao,observacoes,responsavel_lancamento,requisicao_numero,fornecedor:fornecedores(nome),solicitante:solicitantes(nome)"
+        )
         .eq("item_id", itemId)
         .order("data_movimento", { ascending: false });
-      if (error) throw error;
-      return data;
+      if (e1) throw e1;
+
+      // 2) Movimentações vindas de movimentacao_itens (multi-item)
+      const { data: filhos, error: e2 } = await supabase
+        .from("movimentacao_itens")
+        .select(
+          "quantidade,movimentacao:movimentacoes(id,tipo,data_movimento,entrada_tipo,saida_tipo,condicao,observacoes,responsavel_lancamento,requisicao_numero,fornecedor:fornecedores(nome),solicitante:solicitantes(nome))"
+        )
+        .eq("item_id", itemId);
+      if (e2) throw e2;
+
+      const indiretas = (filhos ?? [])
+        .filter((f: any) => f.movimentacao)
+        .map((f: any) => ({ ...f.movimentacao, quantidade: f.quantidade }));
+
+      const seen = new Set<string>();
+      const all = [...(diretas ?? []), ...indiretas].filter((m: any) => {
+        if (!m?.id || seen.has(m.id)) return false;
+        seen.add(m.id);
+        return true;
+      });
+      all.sort((a: any, b: any) =>
+        new Date(b.data_movimento).getTime() - new Date(a.data_movimento).getTime()
+      );
+      return all;
     },
   });
 
@@ -74,6 +100,7 @@ function ItemHistorico() {
                   <th className="py-2 pr-4">Tipo</th>
                   <th className="py-2 pr-4">Subtipo</th>
                   <th className="py-2 pr-4 text-right">Qtd</th>
+                  <th className="py-2 pr-4">Requisição</th>
                   <th className="py-2 pr-4">Origem</th>
                   <th className="py-2 pr-4">Responsável</th>
                   <th className="py-2 pr-0">Obs</th>
@@ -94,12 +121,15 @@ function ItemHistorico() {
                         {m.tipo === "saida" ? "-" : "+"}{Number(m.quantidade)}
                       </span>
                     </td>
+                    <td className="py-2.5 pr-4 tabular-nums text-muted-foreground">
+                      {m.requisicao_numero ? `REQ-${m.requisicao_numero}` : "—"}
+                    </td>
                     <td className="py-2.5 pr-4 text-muted-foreground">{m.fornecedor?.nome ?? m.solicitante?.nome ?? "—"}</td>
                     <td className="py-2.5 pr-4 text-muted-foreground">{m.responsavel_lancamento ?? "—"}</td>
                     <td className="py-2.5 text-muted-foreground truncate max-w-[200px]">{m.observacoes ?? ""}</td>
                   </tr>
                 )) : (
-                  <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">Sem movimentações.</td></tr>
+                  <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">Sem movimentações.</td></tr>
                 )}
               </tbody>
             </table>

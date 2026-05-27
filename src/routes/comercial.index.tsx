@@ -4,11 +4,14 @@ import {
   DndContext, PointerSensor, useSensor, useSensors,
   useDroppable, useDraggable, type DragEndEvent,
 } from "@dnd-kit/core";
-import { Plus, FileText, CheckCircle2, XCircle, Pencil, Eye, Printer } from "lucide-react";
+import { Plus, FileText, CheckCircle2, XCircle, Pencil, Eye, Printer, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { CARD_STATUSES, type CardStatus, type ComercialCard } from "@/lib/comercial/types";
+import { CARD_STATUSES, type CardStatus, type ComercialCard, TIPOS_EVENTO } from "@/lib/comercial/types";
 import { useComercial, moveCard } from "@/lib/comercial/store";
 import { CardDialog } from "@/components/comercial/CardDialog";
 import { PerdaDialog } from "@/components/comercial/PerdaDialog";
@@ -34,7 +37,7 @@ const fmtPeriodo = (ini: string, fim: string) => {
 };
 
 function QuadroVendas() {
-  const { cards, propostas } = useComercial();
+  const { cards, propostas, consultores } = useComercial();
   const [editCard, setEditCard] = useState<ComercialCard | null>(null);
   const [defaultStatus, setDefaultStatus] = useState<CardStatus>("lead");
   const [openCard, setOpenCard] = useState(false);
@@ -43,12 +46,41 @@ function QuadroVendas() {
   const [wizardCardId, setWizardCardId] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
 
+  // Filtros
+  const [fVendedor, setFVendedor] = useState<string>("__all__");
+  const [fTipo, setFTipo] = useState<string>("__all__");
+  const [fDe, setFDe] = useState<string>("");
+  const [fAte, setFAte] = useState<string>("");
+
+  const filteredCards = useMemo(() => {
+    return cards.filter((c) => {
+      if (fVendedor !== "__all__" && c.responsavel !== fVendedor) return false;
+      if (fTipo !== "__all__") {
+        const prop = c.propostaId ? propostas.find((p) => p.id === c.propostaId) : null;
+        const tipo = prop?.evento.tipo || "";
+        if (tipo !== fTipo) return false;
+      }
+      if (fDe && c.eventoDataInicio && c.eventoDataInicio < fDe) return false;
+      if (fAte && c.eventoDataInicio && c.eventoDataInicio > fAte) return false;
+      return true;
+    });
+  }, [cards, propostas, fVendedor, fTipo, fDe, fAte]);
+
   const byStatus = useMemo(() => {
     const m: Record<CardStatus, ComercialCard[]> = {} as any;
     CARD_STATUSES.forEach((s) => (m[s.key] = []));
-    cards.forEach((c) => (m[c.status] ??= []).push(c));
+    filteredCards.forEach((c) => (m[c.status] ??= []).push(c));
     return m;
-  }, [cards]);
+  }, [filteredCards]);
+
+  const limparFiltros = () => {
+    setFVendedor("__all__");
+    setFTipo("__all__");
+    setFDe("");
+    setFAte("");
+  };
+  const filtrosAtivos =
+    fVendedor !== "__all__" || fTipo !== "__all__" || !!fDe || !!fAte;
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -77,6 +109,46 @@ function QuadroVendas() {
           </Button>
         }
       />
+
+      {/* Filtros */}
+      <div className="flex flex-wrap items-end gap-3 mb-4 rounded-lg border border-border bg-muted/20 p-3">
+        <div className="min-w-[180px]">
+          <Label className="text-xs text-muted-foreground">Vendedor</Label>
+          <Select value={fVendedor} onValueChange={setFVendedor}>
+            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos</SelectItem>
+              {consultores.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="min-w-[180px]">
+          <Label className="text-xs text-muted-foreground">Tipo de negócio</Label>
+          <Select value={fTipo} onValueChange={setFTipo}>
+            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos</SelectItem>
+              {TIPOS_EVENTO.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">Data do evento — de</Label>
+          <Input type="date" value={fDe} onChange={(e) => setFDe(e.target.value)} className="h-9 w-44" />
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">até</Label>
+          <Input type="date" value={fAte} onChange={(e) => setFAte(e.target.value)} className="h-9 w-44" />
+        </div>
+        {filtrosAtivos && (
+          <Button variant="ghost" size="sm" onClick={limparFiltros} className="text-muted-foreground">
+            <X className="h-3.5 w-3.5 mr-1" /> Limpar
+          </Button>
+        )}
+        <div className="ml-auto text-xs text-muted-foreground">
+          {filteredCards.length} card{filteredCards.length === 1 ? "" : "s"}
+        </div>
+      </div>
 
       <TooltipProvider>
         <DndContext sensors={sensors} onDragEnd={onDragEnd}>

@@ -1,6 +1,7 @@
 export const CARD_STATUSES = [
   { key: "lead", label: "Lead", color: "bg-slate-400" },
   { key: "projeto", label: "Projeto", color: "bg-blue-500" },
+  { key: "orcamento_validado", label: "Orçamento Validado", color: "bg-violet-500" },
   { key: "orcamento_enviado", label: "Orçamento Enviado", color: "bg-indigo-500" },
   { key: "negociacao", label: "Negociação", color: "bg-amber-500" },
   { key: "fechamento", label: "Fechamento", color: "bg-emerald-500" },
@@ -113,6 +114,10 @@ export type Proposta = {
   status: PropostaStatus;
   createdAt: string;
   approvedAt?: string | null;
+  /** id da primeira versão (proposta raiz). Null/undefined em propostas v1. */
+  parentId?: string | null;
+  /** número da versão (1 = original). */
+  version?: number;
 };
 
 export const PROPOSTA_STATUS_LABEL: Record<PropostaStatus, string> = {

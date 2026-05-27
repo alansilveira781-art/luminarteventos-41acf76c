@@ -243,6 +243,8 @@ function SaidasPage() {
       qc.invalidateQueries({ queryKey: ["itens-select-saida"] });
       qc.invalidateQueries({ queryKey: ["dashboard-itens"] });
       qc.invalidateQueries({ queryKey: ["dashboard-movs"] });
+      qc.invalidateQueries({ queryKey: ["item-movs"] });
+      qc.invalidateQueries({ queryKey: ["item"] });
       toast.success("Saída registrada");
       setOpen(false);
     },
