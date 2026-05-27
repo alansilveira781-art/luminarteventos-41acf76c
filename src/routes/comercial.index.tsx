@@ -43,6 +43,7 @@ function QuadroVendas() {
   const [defaultStatus, setDefaultStatus] = useState<CardStatus>("lead");
   const [openCard, setOpenCard] = useState(false);
   const [perdaCardId, setPerdaCardId] = useState<string | null>(null);
+  const [envioCardId, setEnvioCardId] = useState<string | null>(null);
   const [detalhesCard, setDetalhesCard] = useState<ComercialCard | null>(null);
   const [wizardCardId, setWizardCardId] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
