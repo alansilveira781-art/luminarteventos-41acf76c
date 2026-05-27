@@ -204,6 +204,7 @@ function RecebimentosPage() {
           <RecebimentoForm
             initial={editing}
             notas={notas ?? []}
+            recebimentos={recebimentos ?? []}
             onSubmit={(p) => saveMut.mutate(p)}
             saving={saveMut.isPending}
           />
@@ -216,11 +217,13 @@ function RecebimentosPage() {
 function RecebimentoForm({
   initial,
   notas,
+  recebimentos,
   onSubmit,
   saving,
 }: {
   initial: Recebimento | null;
   notas: NotaOpt[];
+  recebimentos: Recebimento[];
   onSubmit: (p: Partial<Recebimento>) => void;
   saving: boolean;
 }) {
