@@ -36,11 +36,16 @@ export type ApuracaoResultado = {
 
 export const LIMITE_IRPJ_ADICIONAL_PADRAO = 20000; // R$ 20.000/mês de IRPJ apurado
 
-/** Extrai "limite=20000" do campo observacoes, se presente. */
+/** Extrai o limite mensal do IRPJ a partir do campo observacoes.
+ *  Aceita formatos: "limite=20000", "R$ 20.000,00", "20000" etc. */
 export function extrairLimiteAdicional(observacoes?: string | null): number {
   if (!observacoes) return LIMITE_IRPJ_ADICIONAL_PADRAO;
-  const m = /limite\s*=\s*([0-9]+(?:\.[0-9]+)?)/i.exec(observacoes);
-  return m ? Number(m[1]) : LIMITE_IRPJ_ADICIONAL_PADRAO;
+  const m = observacoes.match(/([\d][\d.]*)(?:,(\d+))?/);
+  if (!m) return LIMITE_IRPJ_ADICIONAL_PADRAO;
+  const inteiro = m[1].replace(/\./g, "");
+  const decimal = m[2] ?? "0";
+  const n = Number(`${inteiro}.${decimal}`);
+  return Number.isFinite(n) && n > 0 ? n : LIMITE_IRPJ_ADICIONAL_PADRAO;
 }
 
 export function calcularImpostosPresumido(
