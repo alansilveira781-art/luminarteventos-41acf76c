@@ -38,7 +38,7 @@ function ApuracoesPage() {
     queryFn: async () => {
       const { data, error } = await sb
         .from("contabil_configuracao_aliquotas")
-        .select("imposto, aliquota")
+        .select("imposto, aliquota, observacoes")
         .eq("empresa", empresa)
         .eq("ativo", true);
       if (error) throw error;
