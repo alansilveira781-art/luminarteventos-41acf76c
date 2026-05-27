@@ -3,8 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Printer, GitBranch } from "lucide-react";
 import { toast } from "sonner";
-import { CARD_STATUSES, type ComercialCard, PROPOSTA_STATUS_LABEL, propostaTotal } from "@/lib/comercial/types";
-import { useComercial, criarNovaVersaoProposta, getVersoesProposta, getRootPropostaId } from "@/lib/comercial/store";
+import { CARD_STATUSES, type ComercialCard, PROPOSTA_STATUS_LABEL, propostaTotal, type Proposta } from "@/lib/comercial/types";
+import { useComercial, criarNovaVersaoProposta, getPropostasDoCard, getRootPropostaId } from "@/lib/comercial/store";
 import { gerarPropostaPDF } from "@/lib/comercial/pdf";
 
 const brl = (v: number) =>
@@ -23,10 +23,22 @@ const fmtPeriodo = (ini: string, fim: string) => {
 export function DetalhesDrawer({
   open, onOpenChange, card,
 }: { open: boolean; onOpenChange: (v: boolean) => void; card: ComercialCard | null }) {
-  const { propostas } = useComercial();
+  // Subscribe to store so versions/cards atualizam em tempo real
+  useComercial();
   if (!card) return null;
   const status = CARD_STATUSES.find((s) => s.key === card.status);
-  const proposta = propostas.find((p) => p.id === card.propostaId);
+  const propostasDoCard = getPropostasDoCard(card.id);
+
+  // Agrupa propostas por raiz (numero) -> lista de versões
+  const grupos = new Map<string, Proposta[]>();
+  propostasDoCard.forEach((p) => {
+    const root = getRootPropostaId(p);
+    if (!grupos.has(root)) grupos.set(root, []);
+    grupos.get(root)!.push(p);
+  });
+  grupos.forEach((arr) =>
+    arr.sort((a, b) => (b.version ?? 1) - (a.version ?? 1)),
+  );
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -49,6 +61,9 @@ export function DetalhesDrawer({
             <Field label="Nome" value={card.eventoNome || "—"} />
             <Field label="Período" value={fmtPeriodo(card.eventoDataInicio, card.eventoDataFim)} />
             <Field label="Valor estimado" value={brl(card.valorEstimado)} />
+            {card.dataEnvio && (
+              <Field label="Data de envio" value={fmt(card.dataEnvio)} />
+            )}
           </Section>
 
           <Section title="Atendimento">
@@ -59,53 +74,88 @@ export function DetalhesDrawer({
             )}
           </Section>
 
-          {proposta && (() => {
-            const rootId = getRootPropostaId(proposta);
-            const versoes = getVersoesProposta(rootId);
-            const podeNovaVersao = ["enviado", "em_negociacao", "em_revisao"].includes(proposta.status);
-            return (
-              <Section title="Proposta vinculada">
-                <Field label="Número" value={`#${proposta.numero} · v${proposta.version ?? 1}`} />
-                <Field label="Status" value={PROPOSTA_STATUS_LABEL[proposta.status]} />
-                <Field label="Total" value={brl(propostaTotal(proposta))} />
+          <div className="rounded-lg border border-border p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Propostas vinculadas
+              </div>
+              <span className="text-[10px] text-muted-foreground">
+                {propostasDoCard.length}
+              </span>
+            </div>
 
-                {versoes.length > 1 && (
-                  <div className="mt-3 pt-3 border-t border-border">
-                    <div className="text-xs font-medium text-muted-foreground mb-1.5">Histórico de versões</div>
-                    <ul className="space-y-1 text-xs">
-                      {versoes.map((v) => (
-                        <li key={v.id} className="flex justify-between gap-2">
-                          <span className={v.id === proposta.id ? "font-semibold" : ""}>
-                            v{v.version ?? 1} {v.id === proposta.id ? "(atual)" : ""}
-                          </span>
-                          <span className="text-muted-foreground">
-                            {PROPOSTA_STATUS_LABEL[v.status]} · {brl(propostaTotal(v))}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+            {propostasDoCard.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Nenhuma proposta criada para este card ainda.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {Array.from(grupos.entries()).map(([rootId, versoes]) => {
+                  const atual = versoes[0]; // versão mais recente
+                  return (
+                    <div key={rootId} className="rounded border border-border bg-muted/20 p-2">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="font-semibold text-sm">
+                          Proposta #{String(atual.numero).padStart(4, "0")}
+                        </div>
+                        <Badge variant="outline" className="text-[10px]">
+                          {versoes.length} versão{versoes.length === 1 ? "" : "ões"}
+                        </Badge>
+                      </div>
 
-                <Button className="w-full mt-3" size="sm" onClick={() => gerarPropostaPDF(proposta)}>
-                  <Printer className="h-3.5 w-3.5 mr-1" /> Imprimir proposta (PDF)
-                </Button>
-                {podeNovaVersao && (
-                  <Button
-                    className="w-full mt-2"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      const nova = criarNovaVersaoProposta(proposta.id);
-                      if (nova) toast.success(`Nova versão criada (v${nova.version})`);
-                    }}
-                  >
-                    <GitBranch className="h-3.5 w-3.5 mr-1" /> Criar nova versão
-                  </Button>
-                )}
-              </Section>
-            );
-          })()}
+                      <ul className="space-y-1 text-xs">
+                        {versoes.map((v) => (
+                          <li
+                            key={v.id}
+                            className="flex items-center justify-between gap-2 py-1 border-t border-border first:border-t-0"
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="font-medium">v{v.version ?? 1}</span>
+                              <span className="text-muted-foreground">
+                                {PROPOSTA_STATUS_LABEL[v.status]}
+                              </span>
+                              {v.id === card.propostaId && (
+                                <Badge variant="secondary" className="text-[9px] py-0">
+                                  atual
+                                </Badge>
+                              )}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <span className="text-muted-foreground">
+                                {brl(propostaTotal(v))}
+                              </span>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6"
+                                title="Imprimir PDF"
+                                onClick={() => gerarPropostaPDF(v)}
+                              >
+                                <Printer className="h-3 w-3" />
+                              </Button>
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+
+                      <Button
+                        className="w-full mt-2"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const nova = criarNovaVersaoProposta(atual.id);
+                          if (nova) toast.success(`Nova versão criada (v${nova.version})`);
+                          else toast.error("Não foi possível criar nova versão");
+                        }}
+                      >
+                        <GitBranch className="h-3.5 w-3.5 mr-1" /> Criar nova versão
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </SheetContent>
     </Sheet>
