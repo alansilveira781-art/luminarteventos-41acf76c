@@ -1,0 +1,1 @@
+UPDATE public.modulos SET nome = 'Despesas' WHERE slug = 'financeiro';
