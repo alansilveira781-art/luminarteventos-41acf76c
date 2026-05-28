@@ -72,6 +72,16 @@ function ComprasKanban() {
     },
   });
 
+  const { data: statusDefaults = [] } = useQuery({
+    queryKey: ["compras_status_defaults"],
+    queryFn: async () => {
+      const { data } = await sb
+        .from("compras_status_defaults")
+        .select("status, responsavel_id, responsavel_nome");
+      return (data ?? []) as { status: CompraStatus; responsavel_id: string | null; responsavel_nome: string | null }[];
+    },
+  });
+
   const filteredCompras = useMemo(() => {
     const s = qd.toLowerCase().trim();
     if (!s) return compras;
