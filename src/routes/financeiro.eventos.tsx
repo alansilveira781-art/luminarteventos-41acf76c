@@ -230,8 +230,8 @@ function EventoDialog({
           <DialogTitle>{form.id ? "Editar evento / projeto" : "Novo evento / projeto"}</DialogTitle>
         </DialogHeader>
 
-        <FormSection title="Identificação">
-          <FormField label="Nome do evento" required>
+        <><h3 className="text-sm font-semibold mt-4 mb-2">Identificação</h3><FormSection>
+          <FormField label="Nome do evento" >
             <Input value={form.nome ?? ""} onChange={(e) => set("nome", e.target.value)} />
           </FormField>
           <FormField label="Código">
@@ -241,9 +241,9 @@ function EventoDialog({
               placeholder="ex: 46115"
             />
           </FormField>
-        </FormSection>
+        </FormSection></>
 
-        <FormSection title="Período">
+        <><h3 className="text-sm font-semibold mt-4 mb-2">Período</h3><FormSection>
           <FormField label="Início">
             <Input
               type="date"
@@ -258,9 +258,9 @@ function EventoDialog({
               onChange={(e) => set("data_fim", e.target.value)}
             />
           </FormField>
-        </FormSection>
+        </FormSection></>
 
-        <FormSection title="Local">
+        <><h3 className="text-sm font-semibold mt-4 mb-2">Local</h3><FormSection>
           <FormField label="Local">
             <Input value={form.local ?? ""} onChange={(e) => set("local", e.target.value)} />
           </FormField>
@@ -274,9 +274,9 @@ function EventoDialog({
           <FormField label="Produtor">
             <Input value={form.produtor ?? ""} onChange={(e) => set("produtor", e.target.value)} />
           </FormField>
-        </FormSection>
+        </FormSection></>
 
-        <FormSection title="Montagem">
+        <><h3 className="text-sm font-semibold mt-4 mb-2">Montagem</h3><FormSection>
           <FormField label="Início montagem">
             <Input
               type="date"
@@ -291,9 +291,9 @@ function EventoDialog({
               onChange={(e) => set("montagem_fim", e.target.value)}
             />
           </FormField>
-        </FormSection>
+        </FormSection></>
 
-        <FormSection title="Desmontagem">
+        <><h3 className="text-sm font-semibold mt-4 mb-2">Desmontagem</h3><FormSection>
           <FormField label="Início desmontagem">
             <Input
               type="date"
@@ -308,17 +308,17 @@ function EventoDialog({
               onChange={(e) => set("desmontagem_fim", e.target.value)}
             />
           </FormField>
-        </FormSection>
+        </FormSection></>
 
-        <FormSection title="Observações">
-          <FormField label="Observações" full>
+        <><h3 className="text-sm font-semibold mt-4 mb-2">Observações</h3><FormSection>
+          <FormField label="Observações" wide>
             <Textarea
               rows={4}
               value={form.observacoes ?? ""}
               onChange={(e) => set("observacoes", e.target.value)}
             />
           </FormField>
-        </FormSection>
+        </FormSection></>
 
         <FormActions>
           <Button variant="outline" onClick={onClose}>
