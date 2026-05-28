@@ -494,12 +494,16 @@ function MovForm({ tipo, editing, itens, onSubmit, submitting }: {
           {linhas.map((l, i) => (
             <div key={i} className="grid grid-cols-12 gap-2 items-start">
               <div className="col-span-8">
-                <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Item</label>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  Item
+                  {l.item_id && <PatItemInfoHover itemId={l.item_id} />}
+                </label>
                 <ItemSearchSelect
                   itens={itemOptions}
                   value={l.item_id}
                   onChange={(id) => setL(i, "item_id", id)}
                   placeholder="Buscar por COD, ID ou nome…"
+                  showStock
                   onAfterSelect={() => focusQty(i)}
                 />
               </div>
