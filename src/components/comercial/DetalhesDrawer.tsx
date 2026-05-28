@@ -144,8 +144,10 @@ export function DetalhesDrawer({
                         variant="outline"
                         onClick={() => {
                           const nova = criarNovaVersaoProposta(atual.id);
-                          if (nova) toast.success(`Nova versão criada (v${nova.version})`);
-                          else toast.error("Não foi possível criar nova versão");
+                          if (nova) {
+                            toast.success(`Nova versão criada (v${nova.version})`);
+                            onEditProposta?.(nova);
+                          } else toast.error("Não foi possível criar nova versão");
                         }}
                       >
                         <GitBranch className="h-3.5 w-3.5 mr-1" /> Criar nova versão
