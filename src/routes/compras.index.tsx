@@ -132,7 +132,7 @@ function ComprasKanban() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-  function onDragEnd(e: DragEndEvent) {
+  async function onDragEnd(e: DragEndEvent) {
     const id = String(e.active.id);
     const overId = e.over?.id ? String(e.over.id) : null;
     if (!overId) return;
@@ -141,8 +141,28 @@ function ComprasKanban() {
     if (!compra || compra.status === status) return;
     const oldIdx = COMPRA_STATUSES.findIndex((s) => s.key === compra.status);
     const newIdx = COMPRA_STATUSES.findIndex((s) => s.key === status);
-    // Avanço (ou status especial): pede responsável. Retorno: muda direto.
+    // Avanço: se existe responsável padrão para esse status, aplica direto.
     if (newIdx > oldIdx) {
+      const def = statusDefaults.find((d) => d.status === status && d.responsavel_id);
+      if (def?.responsavel_id) {
+        moveStatus.mutate({
+          id,
+          status,
+          responsavelId: def.responsavel_id,
+          responsavelNome: def.responsavel_nome ?? undefined,
+        });
+        const statusLabel = COMPRA_STATUSES.find((s) => s.key === status)?.label || status;
+        const titulo = compra.titulo || compra.fornecedor || `Compra ${compra.numero ?? ""}`;
+        await notifyResponsavel({
+          userId: def.responsavel_id,
+          titulo: `Compra: ${statusLabel}`,
+          mensagem: titulo,
+          link: `/compras?id=${id}`,
+          tipo: "compra_responsavel",
+        });
+        toast.success(`Card movido. ${def.responsavel_nome ?? "Responsável"} foi notificado.`);
+        return;
+      }
       setPendingMove({ id, status, titulo: compra.titulo || compra.fornecedor || `Compra ${compra.numero ?? ""}` });
     } else {
       moveStatus.mutate({ id, status });
