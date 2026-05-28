@@ -52,6 +52,7 @@ import { Route as ContabilNotasRouteImport } from './routes/contabil.notas'
 import { Route as ContabilConfiguracaoRouteImport } from './routes/contabil.configuracao'
 import { Route as ContabilApuracoesRouteImport } from './routes/contabil.apuracoes'
 import { Route as ComprasDashboardRouteImport } from './routes/compras.dashboard'
+import { Route as ComprasConfiguracoesRouteImport } from './routes/compras.configuracoes'
 import { Route as ComercialValidacoesRouteImport } from './routes/comercial.validacoes'
 import { Route as ComercialPropostasRouteImport } from './routes/comercial.propostas'
 import { Route as ComercialClientesRouteImport } from './routes/comercial.clientes'
@@ -281,6 +282,11 @@ const ComprasDashboardRoute = ComprasDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => ComprasRoute,
 } as any)
+const ComprasConfiguracoesRoute = ComprasConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => ComprasRoute,
+} as any)
 const ComercialValidacoesRoute = ComercialValidacoesRouteImport.update({
   id: '/validacoes',
   path: '/validacoes',
@@ -377,6 +383,7 @@ export interface FileRoutesByFullPath {
   '/comercial/clientes': typeof ComercialClientesRoute
   '/comercial/propostas': typeof ComercialPropostasRoute
   '/comercial/validacoes': typeof ComercialValidacoesRoute
+  '/compras/configuracoes': typeof ComprasConfiguracoesRoute
   '/compras/dashboard': typeof ComprasDashboardRoute
   '/contabil/apuracoes': typeof ContabilApuracoesRoute
   '/contabil/configuracao': typeof ContabilConfiguracaoRoute
@@ -427,6 +434,7 @@ export interface FileRoutesByTo {
   '/comercial/clientes': typeof ComercialClientesRoute
   '/comercial/propostas': typeof ComercialPropostasRoute
   '/comercial/validacoes': typeof ComercialValidacoesRoute
+  '/compras/configuracoes': typeof ComprasConfiguracoesRoute
   '/compras/dashboard': typeof ComprasDashboardRoute
   '/contabil/apuracoes': typeof ContabilApuracoesRoute
   '/contabil/configuracao': typeof ContabilConfiguracaoRoute
@@ -486,6 +494,7 @@ export interface FileRoutesById {
   '/comercial/clientes': typeof ComercialClientesRoute
   '/comercial/propostas': typeof ComercialPropostasRoute
   '/comercial/validacoes': typeof ComercialValidacoesRoute
+  '/compras/configuracoes': typeof ComprasConfiguracoesRoute
   '/compras/dashboard': typeof ComprasDashboardRoute
   '/contabil/apuracoes': typeof ContabilApuracoesRoute
   '/contabil/configuracao': typeof ContabilConfiguracaoRoute
@@ -546,6 +555,7 @@ export interface FileRouteTypes {
     | '/comercial/clientes'
     | '/comercial/propostas'
     | '/comercial/validacoes'
+    | '/compras/configuracoes'
     | '/compras/dashboard'
     | '/contabil/apuracoes'
     | '/contabil/configuracao'
@@ -596,6 +606,7 @@ export interface FileRouteTypes {
     | '/comercial/clientes'
     | '/comercial/propostas'
     | '/comercial/validacoes'
+    | '/compras/configuracoes'
     | '/compras/dashboard'
     | '/contabil/apuracoes'
     | '/contabil/configuracao'
@@ -654,6 +665,7 @@ export interface FileRouteTypes {
     | '/comercial/clientes'
     | '/comercial/propostas'
     | '/comercial/validacoes'
+    | '/compras/configuracoes'
     | '/compras/dashboard'
     | '/contabil/apuracoes'
     | '/contabil/configuracao'
@@ -1020,6 +1032,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ComprasDashboardRouteImport
       parentRoute: typeof ComprasRoute
     }
+    '/compras/configuracoes': {
+      id: '/compras/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/compras/configuracoes'
+      preLoaderRoute: typeof ComprasConfiguracoesRouteImport
+      parentRoute: typeof ComprasRoute
+    }
     '/comercial/validacoes': {
       id: '/comercial/validacoes'
       path: '/validacoes'
@@ -1151,11 +1170,13 @@ const ComercialRouteWithChildren = ComercialRoute._addFileChildren(
 )
 
 interface ComprasRouteChildren {
+  ComprasConfiguracoesRoute: typeof ComprasConfiguracoesRoute
   ComprasDashboardRoute: typeof ComprasDashboardRoute
   ComprasIndexRoute: typeof ComprasIndexRoute
 }
 
 const ComprasRouteChildren: ComprasRouteChildren = {
+  ComprasConfiguracoesRoute: ComprasConfiguracoesRoute,
   ComprasDashboardRoute: ComprasDashboardRoute,
   ComprasIndexRoute: ComprasIndexRoute,
 }
