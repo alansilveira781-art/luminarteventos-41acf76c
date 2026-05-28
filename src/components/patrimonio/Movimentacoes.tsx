@@ -183,7 +183,7 @@ function MovDialog({ open, onOpenChange, editing, tipo, itens, onSave }: {
   tipo: "entrada" | "saida"; itens: any[]; onSave: (p: any) => void;
 }) {
   const [f, setF] = useState<any>({});
-  useMemo(() => {
+  useEffect(() => {
     setF(editing ?? {
       quantidade: 1,
       data_movimento: new Date().toISOString().slice(0, 16),
@@ -191,33 +191,74 @@ function MovDialog({ open, onOpenChange, editing, tipo, itens, onSave }: {
   }, [editing, open]);
   const set = (k: string, v: any) => setF((p: any) => ({ ...p, [k]: v }));
 
+  // Solicitantes do módulo estoque, usados como sugestão para "Responsável"
+  const { data: solicitantes = [] } = useQuery({
+    queryKey: ["solicitantes-select"],
+    queryFn: async () => (await supabase.from("solicitantes").select("nome").eq("status", "ativo").order("nome")).data ?? [],
+  });
+  const responsavelOptions = useMemo(
+    () => Array.from(new Set((solicitantes as any[]).map((s) => s.nome).filter(Boolean))),
+    [solicitantes],
+  );
+
+  // Adapta itens do patrimônio ao formato do ItemSearchSelect
+  const itemOptions = useMemo(
+    () => (itens ?? []).map((i: any) => ({
+      id: i.id,
+      nome: i.nome,
+      codigo: i.id_item ?? "",
+      codigo_proprio: i.cod != null ? String(i.cod) : null,
+      unidade: undefined,
+      quantidade_atual: undefined,
+    })),
+    [itens],
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader><DialogTitle>{editing ? "Editar" : "Nova"} {tipo === "entrada" ? "entrada" : "saída"}</DialogTitle></DialogHeader>
         <div className="grid grid-cols-2 gap-3">
-          <div className="col-span-2"><Label>Item *</Label>
-            <Select value={f.item_id ?? ""} onValueChange={(v) => set("item_id", v)}>
-              <SelectTrigger><SelectValue placeholder="Selecione um item do patrimônio" /></SelectTrigger>
-              <SelectContent className="max-h-80">
-                {itens.slice(0, 1000).map((i) => (
-                  <SelectItem key={i.id} value={i.id}>
-                    <span className="font-mono text-[10px] text-muted-foreground">{i.id_item}</span> · {i.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="col-span-2">
+            <Label>Item *</Label>
+            <ItemSearchSelect
+              itens={itemOptions}
+              value={f.item_id ?? ""}
+              onChange={(id) => set("item_id", id)}
+              placeholder="Buscar item por COD, ID ou nome…"
+            />
           </div>
           <div><Label>Quantidade *</Label><Input type="number" step="0.01" value={f.quantidade ?? 1} onChange={(e) => set("quantidade", Number(e.target.value))} /></div>
           <div><Label>Data</Label><Input type="datetime-local" value={f.data_movimento?.slice(0, 16) ?? ""} onChange={(e) => set("data_movimento", e.target.value)} /></div>
-          <div><Label>Responsável</Label><Input value={f.responsavel ?? ""} onChange={(e) => set("responsavel", e.target.value)} /></div>
-          <div><Label>Evento / Projeto</Label><Input value={f.evento_projeto ?? ""} onChange={(e) => set("evento_projeto", e.target.value)} /></div>
-          <div className="col-span-2"><Label>Finalidade</Label>
-            <Select value={f.finalidade ?? ""} onValueChange={(v) => set("finalidade", v)}>
-              <SelectTrigger><SelectValue placeholder="Motivo da movimentação" /></SelectTrigger>
-              <SelectContent>{FINALIDADES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-            </Select>
+          <div>
+            <Label>Responsável</Label>
+            <ComboboxCreatable
+              options={responsavelOptions}
+              value={f.responsavel ?? ""}
+              onChange={(v) => set("responsavel", v)}
+              placeholder="Selecione ou digite…"
+              searchPlaceholder="Buscar solicitante ou digitar novo…"
+            />
           </div>
+          <div>
+            <Label>Evento / Projeto</Label>
+            <DbComboboxCreatable
+              table="eventos_projetos"
+              value={f.evento_projeto ?? ""}
+              onChange={(v) => set("evento_projeto", v)}
+              placeholder="Selecione ou cadastre…"
+            />
+          </div>
+          <div className="col-span-2"><Label>Finalidade</Label>
+            <ComboboxCreatable
+              options={FINALIDADES}
+              value={f.finalidade ?? ""}
+              onChange={(v) => set("finalidade", v)}
+              placeholder="Motivo da movimentação"
+              searchPlaceholder="Buscar ou digitar…"
+            />
+          </div>
+
           {tipo === "saida" && (
             <div className="col-span-2"><Label>Previsão de devolução</Label><Input type="date" value={f.data_prevista_devolucao ?? ""} onChange={(e) => set("data_prevista_devolucao", e.target.value || null)} /></div>
           )}
