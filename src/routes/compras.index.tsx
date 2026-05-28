@@ -230,7 +230,7 @@ function ComprasKanban() {
         </div>
       ) : (
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-        <div className="flex gap-3 overflow-x-auto pb-4 items-start">
+        <div className="flex gap-3 overflow-x-auto overflow-y-hidden pb-4 items-stretch h-[calc(100dvh-200px)] min-h-[420px]">
           {COMPRA_STATUSES.map((s) => (
             <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={byStatus[s.key]?.length ?? 0}>
               {(byStatus[s.key] ?? []).map((c) => (
@@ -283,16 +283,16 @@ function Column({
   return (
     <div
       ref={setNodeRef}
-      className={`flex-shrink-0 w-72 rounded-lg border bg-muted/30 ${isOver ? "border-primary ring-2 ring-primary/30" : "border-border"}`}
+      className={`flex-shrink-0 w-72 flex flex-col h-full rounded-lg border bg-muted/30 ${isOver ? "border-primary ring-2 ring-primary/30" : "border-border"}`}
     >
-      <div className="px-3 py-2 border-b border-border flex items-center justify-between">
+      <div className="px-3 py-2 border-b border-border flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <span className={`h-2 w-2 rounded-full ${color}`} />
           <span className="text-xs font-semibold truncate">{label}</span>
         </div>
         <span className="text-[10px] text-muted-foreground">{count}</span>
       </div>
-      <div className="p-2 space-y-2 min-h-[120px]">{children}</div>
+      <div className="p-2 space-y-2 flex-1 overflow-y-auto">{children}</div>
     </div>
   );
 }
