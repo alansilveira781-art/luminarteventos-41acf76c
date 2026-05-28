@@ -78,7 +78,7 @@ export const Route = createFileRoute("/api/public/send-push")({
               const res = await fetch(s.endpoint as string, {
                 method: req.method,
                 headers: req.headers,
-                body: req.body,
+                body: req.body as BodyInit,
               });
               if (res.status === 404 || res.status === 410) {
                 await supabaseAdmin.from("push_subscriptions").delete().eq("id", s.id);
