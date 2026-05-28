@@ -1834,6 +1834,7 @@ export type Database = {
           item_id: string | null
           observacoes: string | null
           quantidade: number
+          requisicao_numero: number | null
           responsavel: string | null
           saida_origem_id: string | null
           saida_status: string | null
@@ -1851,6 +1852,7 @@ export type Database = {
           item_id?: string | null
           observacoes?: string | null
           quantidade?: number
+          requisicao_numero?: number | null
           responsavel?: string | null
           saida_origem_id?: string | null
           saida_status?: string | null
@@ -1868,6 +1870,7 @@ export type Database = {
           item_id?: string | null
           observacoes?: string | null
           quantidade?: number
+          requisicao_numero?: number | null
           responsavel?: string | null
           saida_origem_id?: string | null
           saida_status?: string | null
@@ -2105,6 +2108,7 @@ export type Database = {
         Args: { _slug: string; _user_id: string }
         Returns: boolean
       }
+      next_pat_requisicao_numero: { Args: never; Returns: number }
       next_requisicao_numero: { Args: never; Returns: number }
       refresh_item_status: { Args: { p_item_id: string }; Returns: undefined }
       show_limit: { Args: never; Returns: number }

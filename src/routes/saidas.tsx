@@ -25,6 +25,7 @@ import { ItemSearchSelect } from "@/components/ItemSearchSelect";
 import { ItemInfoHover } from "@/components/ItemInfoHover";
 import { EntitySearchSelect } from "@/components/EntitySearchSelect";
 import { ComboboxCreatable } from "@/components/ComboboxCreatable";
+import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { SolicitanteForm } from "@/components/forms/SolicitanteForm";
 import { SortableTh, useSort } from "@/components/SortableTh";
 import { useBulkSelection } from "@/hooks/useBulkSelection";
@@ -730,21 +731,10 @@ function SaidaForm({ prefill, isEditing, itens, solicitantes, onEditSolicitante,
 
         {isEvento && (
           <FormField label="Evento / Projeto*" wide>
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <ComboboxCreatable
-                  options={eventos}
-                  value={meta.evento_projeto}
-                  onChange={(v) => setM("evento_projeto", v)}
-                  placeholder="Selecione ou digite um novo…"
-                  searchPlaceholder="Buscar (sem acentos OK)…"
-                />
-              </div>
-              <Button type="button" variant="outline" size="icon" onClick={onReloadEventos} disabled={reloadingEventos} title="Recarregar lista">
-                <RefreshCw className={`h-4 w-4 ${reloadingEventos ? "animate-spin" : ""}`} />
-              </Button>
-            </div>
-            {eventosError && <p className="text-xs text-destructive mt-1">Erro: {eventosError}</p>}
+            <EventoSheetCombobox
+              value={meta.evento_projeto}
+              onChange={(v) => setM("evento_projeto", v ?? "")}
+            />
           </FormField>
         )}
 
@@ -886,12 +876,9 @@ function SaidaEditForm({ original, itens, solicitantes, onEditSolicitante, event
         <FormField label="Quantidade*"><Input required type="number" min="0.01" step="0.01" value={form.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></FormField>
         {isEvento && (
           <FormField label="Evento / Projeto*" wide>
-            <ComboboxCreatable
-              options={eventos}
+            <EventoSheetCombobox
               value={form.evento_projeto}
-              onChange={(v) => set("evento_projeto", v)}
-              placeholder="Selecione ou digite um novo…"
-              searchPlaceholder="Buscar (sem acentos OK)…"
+              onChange={(v) => set("evento_projeto", v ?? "")}
             />
           </FormField>
         )}

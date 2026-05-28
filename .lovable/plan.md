@@ -1,55 +1,53 @@
-## Objetivo
 
-Remover a página "Eventos / Projetos" do módulo Financeiro e fazer com que toda a lista de eventos venha **diretamente da planilha do Google Sheets** (a mesma que já é lida em Estoque > Saídas via `listEventos`), em vez de uma tabela editável no banco.
+## 1) Patrimônio — Saídas (form maior + múltiplos itens + códigos na tabela)
 
-A planilha tem estas colunas:
-`ID | Nome do evento | Início | Final | Local | UF | Produtor | Início Montagem | Final Montagem | Início Desmontagem | Final Desmontagem | Observações | (ids de calendar)`
+**`src/components/patrimonio/Movimentacoes.tsx`** (componente reusado por Entradas/Saídas)
 
-A coluna **ID** (ex: `46115 - FEIRA RT 360º - CENTRO DE EVENTOS DO CEARÁ`) é o identificador legível que será usado em todo o sistema.
+- Aumentar o `DialogContent` de `max-w-2xl` para `max-w-5xl w-[min(1100px,96vw)] max-h-[90vh] overflow-y-auto` para acabar com o scroll horizontal.
+- Reformular o `MovDialog` para suportar **múltiplos itens em uma saída** (espelhando o padrão de `src/routes/saidas.tsx`):
+  - Cabeçalho único: Data, Responsável (combobox de solicitantes do estoque, livre p/ digitar), Evento/Projeto (`EventoSheetCombobox`), Finalidade, Previsão de devolução, Observações.
+  - Seção "Itens da saída" com lista de linhas `{ item_id, quantidade }`, botão "Adicionar item" e remover, usando `ItemSearchSelect` (já busca por COD/ID/nome).
+  - Validação: pelo menos uma linha válida; quantidade > 0.
+- **Persistência agrupada por requisição:**
+  - Adicionar coluna `requisicao_numero` em `pat_movimentacoes` (migration nova) + sequence `pat_requisicao_numero_seq` + RPC `next_pat_requisicao_numero()`.
+  - Ao salvar saída, obter um único `requisicao_numero` e inserir N linhas (uma por item) compartilhando todos os metadados.
+  - Em edição: editar grupo inteiro (apagar linhas antigas e reinserir mantendo o `requisicao_numero`), bloqueando edição se houver devoluções vinculadas.
+- **Tabela de Saídas** (apenas no `tipo="saida"`):
+  - Agrupar por `requisicao_numero` (linhas sem número viram grupos individuais).
+  - Coluna inicial **REQ** (`REQ-0001`), linha expansível mostrando subtabela com **Código (id_item)**, Nome, Qtd, UN — espelhando o expand do módulo Estoque.
+  - Mantém colunas Responsável, Evento/Projeto, Finalidade, Prev. devol.
+- Entradas continua single-item (sem mudança estrutural além do tamanho do dialog).
 
-## Mudanças
+## 2) Patrimônio — nova aba "Devoluções"
 
-### 1. Remover a página Eventos/Projetos do Financeiro
-- Apagar `src/routes/financeiro.eventos.tsx`.
-- Remover o item "Eventos / Projetos" do `src/components/AppSidebar.tsx`.
-- Manter a tabela `eventos_projetos` no banco intacta (não vamos mais escrever nela, mas dados antigos ficam preservados) — sem migration de drop.
+- Nova rota `src/routes/patrimonio.devolucoes.tsx` + entrada na sidebar (`src/components/AppSidebar.tsx`) no grupo Patrimônio com ícone `Undo2`.
+- Novo componente `src/components/patrimonio/Devolucoes.tsx` (espelhando `src/routes/devolucoes.tsx`):
+  - Lista devoluções (`pat_movimentacoes` com `tipo='devolucao'`), com filtro de período/busca e exclusão (revertendo nada de estoque — patrimônio só rastreia movimentação).
+  - Dialog "Nova devolução": combobox de **saídas em aberto** agrupadas por `requisicao_numero`, exibindo data + responsável + evento; ao escolher, listar os itens da saída com input de quantidade devolvida (validado contra `qtd_saida − já_devolvido`), campo Condição (perfeito/danificado/quebrado/faltando_peca/em_manutencao), Responsável recebimento, Observações.
+  - Insere uma linha de `pat_movimentacoes` por item devolvido com `tipo='devolucao'` e `saida_origem_id` apontando para a linha da saída original.
+- Quando todas as linhas de uma saída estiverem 100% devolvidas, atualizar `saida_status='finalizada'`; parciais ficam `parcialmente_devolvida`.
 
-### 2. Expandir `listEventos` (server function)
-Em `src/server/sheets.functions.ts`:
-- Continuar lendo a primeira aba da mesma planilha.
-- Retornar um array de objetos com todos os campos relevantes (id, nome, dataInicio, dataFim, local, uf, produtor, montagem, desmontagem, observacoes).
-- Manter cache leve no cliente via React Query (`staleTime` ~5 min) como já é feito em Saídas.
+**Migration nova** (`pat_movimentacoes`):
+- `ADD COLUMN requisicao_numero integer` + sequence `pat_requisicao_numero_seq` + função `next_pat_requisicao_numero()`.
+- Status de saída via texto livre já existente (`saida_status`), sem novo tipo.
 
-### 3. Novo componente `EventoSheetCombobox`
-Criar `src/components/EventoSheetCombobox.tsx`:
-- Mesmo visual e UX do `DbComboboxCreatable` (digitar para filtrar, texto selecionável, fecha ao escolher).
-- **Read-only** (sem botão "+", sem excluir) — fonte da verdade é a planilha.
-- Filtro tolerante a acento, casando contra `id`, `nome`, `local`, `produtor`.
-- Mostra "ID" como label principal e uma segunda linha com `local · período` para facilitar identificar o evento certo.
-- Botão discreto "Atualizar" que invalida a query (útil quando alguém acabou de adicionar na planilha).
-- Valor armazenado: a string do ID do evento (mesmo padrão atual que grava texto em `evento_projeto`).
+## 3) Estoque — Saídas: usar combobox da planilha no Evento/Projeto + copy on hover
 
-### 4. Trocar `DbComboboxCreatable(table="eventos_projetos")` por `EventoSheetCombobox`
-Substituir em:
-- `src/components/DemandaDialog.tsx` (Financeiro > Quadro de Demandas, aba Descritivo)
-- `src/components/patrimonio/Movimentacoes.tsx` (Patrimônio > Saídas e Entradas)
-
-Os demais usos de `DbComboboxCreatable` (ex: Finalidade) continuam usando o banco — não mudam.
-
-### 5. Tratamento de erro
-Se o conector do Google Sheets não responder (sem chave / 401), o combobox mostra mensagem clara no popover ("Não foi possível carregar eventos da planilha") com um botão "Tentar novamente", sem quebrar o formulário.
-
-## Pontos técnicos
-
-- Não vamos sincronizar a planilha para o Supabase — leitura é direta a cada carregamento (com cache do React Query).
-- A coluna `evento_projeto` nas tabelas `movimentacoes` e `demandas` continua sendo texto livre; só muda a origem das sugestões.
-- Sem migrations nesta etapa.
+- Em `src/routes/saidas.tsx` (componente `SaidaForm`), substituir o `ComboboxCreatable` + botão de refresh atual pelo `EventoSheetCombobox` (mesmo componente já usado em Patrimônio/Financeiro), removendo as props `eventos`, `eventosError`, `onReloadEventos`, `reloadingEventos` que ficam obsoletas para esse campo.
+- Em `src/components/EventoSheetCombobox.tsx`: adicionar, em cada linha do dropdown, um pequeno botão **Copiar** (ícone `Copy`) que aparece on hover (`opacity-0 group-hover:opacity-100`), usa `navigator.clipboard.writeText(r.id)` e mostra toast "Nome copiado". Texto da linha continua `select-text` (já está) e o clique principal continua selecionando o evento.
 
 ## Arquivos afetados
 
-- delete: `src/routes/financeiro.eventos.tsx`
-- create: `src/components/EventoSheetCombobox.tsx`
-- edit: `src/server/sheets.functions.ts` (retorna objetos ricos)
-- edit: `src/components/AppSidebar.tsx` (remove o item)
-- edit: `src/components/DemandaDialog.tsx`
-- edit: `src/components/patrimonio/Movimentacoes.tsx`
+- Migration: nova coluna + sequence + função em `pat_movimentacoes`.
+- `src/components/patrimonio/Movimentacoes.tsx` — dialog maior, multi-itens, tabela com REQ + expand de códigos.
+- `src/components/patrimonio/Devolucoes.tsx` — novo.
+- `src/routes/patrimonio.devolucoes.tsx` — novo.
+- `src/components/AppSidebar.tsx` — adicionar item "Devoluções" no grupo Patrimônio.
+- `src/components/EventoSheetCombobox.tsx` — botão copiar on hover.
+- `src/routes/saidas.tsx` — trocar combobox de Evento/Projeto pelo `EventoSheetCombobox`.
+
+## Detalhes técnicos
+
+- Reuso máximo: `ItemSearchSelect`, `ComboboxCreatable`, `EventoSheetCombobox`, `useBulkSelection`, `PeriodoFilter`, `SortableTh`.
+- Sem mexer em `src/integrations/supabase/{client,types}.ts`.
+- Comunicação com a planilha continua via `listEventos` (`src/server/sheets.functions.ts`), sem mudanças.

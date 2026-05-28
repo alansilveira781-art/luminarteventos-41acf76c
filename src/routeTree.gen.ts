@@ -39,6 +39,7 @@ import { Route as ComercialIndexRouteImport } from './routes/comercial.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as PatrimonioSaidasRouteImport } from './routes/patrimonio.saidas'
 import { Route as PatrimonioEntradasRouteImport } from './routes/patrimonio.entradas'
+import { Route as PatrimonioDevolucoesRouteImport } from './routes/patrimonio.devolucoes'
 import { Route as PatrimonioDashboardRouteImport } from './routes/patrimonio.dashboard'
 import { Route as JuridicoModelosRouteImport } from './routes/juridico.modelos'
 import { Route as FinanceiroRotinasRouteImport } from './routes/financeiro.rotinas'
@@ -215,6 +216,11 @@ const PatrimonioEntradasRoute = PatrimonioEntradasRouteImport.update({
   path: '/entradas',
   getParentRoute: () => PatrimonioRoute,
 } as any)
+const PatrimonioDevolucoesRoute = PatrimonioDevolucoesRouteImport.update({
+  id: '/devolucoes',
+  path: '/devolucoes',
+  getParentRoute: () => PatrimonioRoute,
+} as any)
 const PatrimonioDashboardRoute = PatrimonioDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -383,6 +389,7 @@ export interface FileRoutesByFullPath {
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
   '/patrimonio/dashboard': typeof PatrimonioDashboardRoute
+  '/patrimonio/devolucoes': typeof PatrimonioDevolucoesRoute
   '/patrimonio/entradas': typeof PatrimonioEntradasRoute
   '/patrimonio/saidas': typeof PatrimonioSaidasRoute
   '/admin/': typeof AdminIndexRoute
@@ -432,6 +439,7 @@ export interface FileRoutesByTo {
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
   '/patrimonio/dashboard': typeof PatrimonioDashboardRoute
+  '/patrimonio/devolucoes': typeof PatrimonioDevolucoesRoute
   '/patrimonio/entradas': typeof PatrimonioEntradasRoute
   '/patrimonio/saidas': typeof PatrimonioSaidasRoute
   '/admin': typeof AdminIndexRoute
@@ -490,6 +498,7 @@ export interface FileRoutesById {
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
   '/patrimonio/dashboard': typeof PatrimonioDashboardRoute
+  '/patrimonio/devolucoes': typeof PatrimonioDevolucoesRoute
   '/patrimonio/entradas': typeof PatrimonioEntradasRoute
   '/patrimonio/saidas': typeof PatrimonioSaidasRoute
   '/admin/': typeof AdminIndexRoute
@@ -549,6 +558,7 @@ export interface FileRouteTypes {
     | '/financeiro/rotinas'
     | '/juridico/modelos'
     | '/patrimonio/dashboard'
+    | '/patrimonio/devolucoes'
     | '/patrimonio/entradas'
     | '/patrimonio/saidas'
     | '/admin/'
@@ -598,6 +608,7 @@ export interface FileRouteTypes {
     | '/financeiro/rotinas'
     | '/juridico/modelos'
     | '/patrimonio/dashboard'
+    | '/patrimonio/devolucoes'
     | '/patrimonio/entradas'
     | '/patrimonio/saidas'
     | '/admin'
@@ -655,6 +666,7 @@ export interface FileRouteTypes {
     | '/financeiro/rotinas'
     | '/juridico/modelos'
     | '/patrimonio/dashboard'
+    | '/patrimonio/devolucoes'
     | '/patrimonio/entradas'
     | '/patrimonio/saidas'
     | '/admin/'
@@ -915,6 +927,13 @@ declare module '@tanstack/react-router' {
       path: '/entradas'
       fullPath: '/patrimonio/entradas'
       preLoaderRoute: typeof PatrimonioEntradasRouteImport
+      parentRoute: typeof PatrimonioRoute
+    }
+    '/patrimonio/devolucoes': {
+      id: '/patrimonio/devolucoes'
+      path: '/devolucoes'
+      fullPath: '/patrimonio/devolucoes'
+      preLoaderRoute: typeof PatrimonioDevolucoesRouteImport
       parentRoute: typeof PatrimonioRoute
     }
     '/patrimonio/dashboard': {
@@ -1198,6 +1217,7 @@ const JuridicoRouteWithChildren = JuridicoRoute._addFileChildren(
 
 interface PatrimonioRouteChildren {
   PatrimonioDashboardRoute: typeof PatrimonioDashboardRoute
+  PatrimonioDevolucoesRoute: typeof PatrimonioDevolucoesRoute
   PatrimonioEntradasRoute: typeof PatrimonioEntradasRoute
   PatrimonioSaidasRoute: typeof PatrimonioSaidasRoute
   PatrimonioIndexRoute: typeof PatrimonioIndexRoute
@@ -1205,6 +1225,7 @@ interface PatrimonioRouteChildren {
 
 const PatrimonioRouteChildren: PatrimonioRouteChildren = {
   PatrimonioDashboardRoute: PatrimonioDashboardRoute,
+  PatrimonioDevolucoesRoute: PatrimonioDevolucoesRoute,
   PatrimonioEntradasRoute: PatrimonioEntradasRoute,
   PatrimonioSaidasRoute: PatrimonioSaidasRoute,
   PatrimonioIndexRoute: PatrimonioIndexRoute,

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronsUpDown, Search, RefreshCw, AlertCircle } from "lucide-react";
+import { ChevronsUpDown, Search, RefreshCw, AlertCircle, Copy } from "lucide-react";
+import { toast } from "sonner";
 import { cn, normalize } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -143,6 +144,21 @@ export function EventoSheetCombobox({
                       {sub && (
                         <div className="truncate text-xs text-muted-foreground">{sub}</div>
                       )}
+                    </button>
+                    <button
+                      type="button"
+                      title="Copiar nome"
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(r.id).then(
+                          () => toast.success("Nome copiado"),
+                          () => toast.error("Não foi possível copiar"),
+                        );
+                      }}
+                      className="mr-1 mt-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-sm text-muted-foreground opacity-0 transition hover:bg-background hover:text-foreground group-hover:opacity-100"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 );
