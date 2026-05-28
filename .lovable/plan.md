@@ -1,86 +1,55 @@
-# Input monetário "cents-as-you-type" em R$
+## Objetivo
 
-## Comportamento
+Remover a página "Eventos / Projetos" do módulo Financeiro e fazer com que toda a lista de eventos venha **diretamente da planilha do Google Sheets** (a mesma que já é lida em Estoque > Saídas via `listEventos`), em vez de uma tabela editável no banco.
 
-Em qualquer campo de dinheiro do sistema o usuário digita só dígitos. A vírgula fica fixa nas duas últimas casas e o restante vai sendo deslocado:
+A planilha tem estas colunas:
+`ID | Nome do evento | Início | Final | Local | UF | Produtor | Início Montagem | Final Montagem | Início Desmontagem | Final Desmontagem | Observações | (ids de calendar)`
 
-```text
-(vazio)        R$ 0,00
-1              R$ 0,01
-12             R$ 0,12
-123            R$ 1,23
-1234           R$ 12,34
-12345          R$ 123,45
-123456         R$ 1.234,56
-1234567        R$ 12.345,67
-```
+A coluna **ID** (ex: `46115 - FEIRA RT 360º - CENTRO DE EVENTOS DO CEARÁ`) é o identificador legível que será usado em todo o sistema.
 
-- Backspace apaga o último dígito (12345 → 1234 → 123…).
-- Campo vazio salva como `0` (ou `null`, mantendo o comportamento atual de cada tela).
-- Prefixo "R$" fixo dentro do input (cinza, não editável).
-- Separador de milhar com ponto e decimal com vírgula (pt-BR).
-- `inputMode="decimal"` para abrir teclado numérico no mobile.
-- Aceita colar valores formatados ("1.234,56", "1234.56", "R$ 12,00") — normaliza tudo para centavos.
+## Mudanças
 
-## Novo componente
+### 1. Remover a página Eventos/Projetos do Financeiro
+- Apagar `src/routes/financeiro.eventos.tsx`.
+- Remover o item "Eventos / Projetos" do `src/components/AppSidebar.tsx`.
+- Manter a tabela `eventos_projetos` no banco intacta (não vamos mais escrever nela, mas dados antigos ficam preservados) — sem migration de drop.
 
-`src/components/MoneyInput.tsx`
+### 2. Expandir `listEventos` (server function)
+Em `src/server/sheets.functions.ts`:
+- Continuar lendo a primeira aba da mesma planilha.
+- Retornar um array de objetos com todos os campos relevantes (id, nome, dataInicio, dataFim, local, uf, produtor, montagem, desmontagem, observacoes).
+- Manter cache leve no cliente via React Query (`staleTime` ~5 min) como já é feito em Saídas.
 
-```ts
-type Props = {
-  value: number | null;          // valor em reais (ex.: 1234.56)
-  onChange: (v: number) => void; // sempre devolve number em reais
-  allowNull?: boolean;           // se true, campo vazio → onChange(null as any)
-  ...InputHTMLAttributes (menos value/onChange/type)
-}
-```
+### 3. Novo componente `EventoSheetCombobox`
+Criar `src/components/EventoSheetCombobox.tsx`:
+- Mesmo visual e UX do `DbComboboxCreatable` (digitar para filtrar, texto selecionável, fecha ao escolher).
+- **Read-only** (sem botão "+", sem excluir) — fonte da verdade é a planilha.
+- Filtro tolerante a acento, casando contra `id`, `nome`, `local`, `produtor`.
+- Mostra "ID" como label principal e uma segunda linha com `local · período` para facilitar identificar o evento certo.
+- Botão discreto "Atualizar" que invalida a query (útil quando alguém acabou de adicionar na planilha).
+- Valor armazenado: a string do ID do evento (mesmo padrão atual que grava texto em `evento_projeto`).
 
-Internamente trabalha em centavos (inteiro). Conversão:
-- entrada: `Math.round(value * 100)` na inicialização / quando `value` muda externamente.
-- saída: `cents / 100` no `onChange`.
+### 4. Trocar `DbComboboxCreatable(table="eventos_projetos")` por `EventoSheetCombobox`
+Substituir em:
+- `src/components/DemandaDialog.tsx` (Financeiro > Quadro de Demandas, aba Descritivo)
+- `src/components/patrimonio/Movimentacoes.tsx` (Patrimônio > Saídas e Entradas)
 
-Renderiza um wrapper com o "R$" absoluto à esquerda e o `<Input>` com `pl-9 text-right tabular-nums`, reaproveitando o input shadcn já existente.
+Os demais usos de `DbComboboxCreatable` (ex: Finalidade) continuam usando o banco — não mudam.
 
-## Substituições no sistema
+### 5. Tratamento de erro
+Se o conector do Google Sheets não responder (sem chave / 401), o combobox mostra mensagem clara no popover ("Não foi possível carregar eventos da planilha") com um botão "Tentar novamente", sem quebrar o formulário.
 
-Trocar `<Input type="number">` / `<NumberInput>` por `<MoneyInput>` apenas em campos de dinheiro:
+## Pontos técnicos
 
-- **Estoque / Movimentações**
-  - `src/routes/entradas.tsx` — `valor_unitario` por linha (form de criação e edição).
-  - `src/components/patrimonio/Movimentacoes.tsx` — `valor_unitario`.
-- **Comercial**
-  - `src/components/comercial/PropostaWizard.tsx` — preços/valores da proposta.
-  - `src/components/comercial/CardDialog.tsx` — valor do card.
-  - `src/routes/comercial.catalogo.tsx` — preço dos itens do catálogo.
-- **Compras / Demandas**
-  - `src/components/CompraDialog.tsx` — valor estimado.
-  - `src/components/DemandaDialog.tsx` — valor estimado.
-- **Financeiro / Contábil**
-  - `src/routes/contabil.recebimentos.tsx` — valor recebido.
-  - `src/routes/contabil.notas.tsx` — valor da nota.
-  - `src/routes/contabil.configuracao.tsx` — parâmetros monetários.
-- **Cadastros**
-  - `src/components/forms/ItemForm.tsx` — preço de referência / custo médio.
-- **Edição em massa**
-  - `src/components/BulkEditDialog.tsx` — quando o campo selecionado for monetário.
+- Não vamos sincronizar a planilha para o Supabase — leitura é direta a cada carregamento (com cache do React Query).
+- A coluna `evento_projeto` nas tabelas `movimentacoes` e `demandas` continua sendo texto livre; só muda a origem das sugestões.
+- Sem migrations nesta etapa.
 
-Campos que **não** mudam: quantidades (inteiras ou fracionárias), códigos, NCM, ano, percentuais, qualquer coisa que não represente moeda.
+## Arquivos afetados
 
-## Itens fora do escopo
-
-- Quantidades, percentuais, datas, telefones — permanecem como hoje.
-- Não vou alterar o backend / schema; o valor continua sendo salvo como `number` em reais.
-- Não vou criar máscara para inputs de quantidade com decimais (ex.: 1,5 m²). Se quiser depois, é outro componente.
-
-## Validação
-
-- O componente sempre devolve `number ≥ 0`.
-- Mantenho os `toast.error` existentes ("informe um valor", etc.) — eles validam `value <= 0` e seguem funcionando.
-
-## Checagem final
-
-Depois de aplicar, abro Entradas, Comercial → Proposta e Compras no preview e digito alguns valores para confirmar:
-1. dígito vai sempre para os centavos;
-2. backspace funciona;
-3. salvar grava o número certo (sem fator 100);
-4. reabrir o registro reexibe formatado.
+- delete: `src/routes/financeiro.eventos.tsx`
+- create: `src/components/EventoSheetCombobox.tsx`
+- edit: `src/server/sheets.functions.ts` (retorna objetos ricos)
+- edit: `src/components/AppSidebar.tsx` (remove o item)
+- edit: `src/components/DemandaDialog.tsx`
+- edit: `src/components/patrimonio/Movimentacoes.tsx`

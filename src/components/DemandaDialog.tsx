@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FormField, FormSection } from "@/components/FormSection";
 import { SelectCreatable } from "@/components/SelectCreatable";
 import { DbComboboxCreatable } from "@/components/DbComboboxCreatable";
+import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { MentionInput, renderCommentText } from "@/components/MentionInput";
 import { Trash2, Upload, Download, FileIcon } from "lucide-react";
 import { MoneyInput } from "@/components/MoneyInput";
@@ -259,14 +260,11 @@ export function DemandaDialog({
           <TabsContent value="descritivo" className="space-y-3 pt-4">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">Evento / Projeto</label>
-              <DbComboboxCreatable
-                table="eventos_projetos"
+              <EventoSheetCombobox
                 value={form.evento_projeto}
                 onChange={(v) => {
                   setForm({ ...form, evento_projeto: v, evento_projeto_id: null });
                 }}
-                placeholder="Selecione ou cadastre um evento/projeto…"
-                searchPlaceholder="Buscar ou digitar novo evento/projeto…"
               />
             </div>
             <div className="space-y-1.5">

@@ -16,6 +16,7 @@ import { normalize } from "@/lib/utils";
 import { ItemSearchSelect } from "@/components/ItemSearchSelect";
 import { ComboboxCreatable } from "@/components/ComboboxCreatable";
 import { DbComboboxCreatable } from "@/components/DbComboboxCreatable";
+import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 
 
 type Mov = {
@@ -242,11 +243,9 @@ function MovDialog({ open, onOpenChange, editing, tipo, itens, onSave }: {
           </div>
           <div>
             <Label>Evento / Projeto</Label>
-            <DbComboboxCreatable
-              table="eventos_projetos"
+            <EventoSheetCombobox
               value={f.evento_projeto ?? ""}
               onChange={(v) => set("evento_projeto", v)}
-              placeholder="Selecione ou cadastre…"
             />
           </div>
           <div className="col-span-2"><Label>Finalidade</Label>
