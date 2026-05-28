@@ -1,37 +1,36 @@
-## Plano — finalizar pendências
+## Objetivo
 
-A central de notificações (modal sobre a tela atual + bolinha = pendentes) já foi implementada em iteração anterior. Resta concluir os 3 itens abaixo.
+Resolver dois pontos:
+1. O conteúdo fica "preso" na tela, sem rolagem vertical natural — especialmente nos quadros Kanban do Comercial e Compras.
+2. Permitir que o sistema seja instalado no celular (iOS e Android) como um app.
 
-### 1. Aba de Configurações (Compras e Comercial)
+## Parte 1 — Rolagem do sistema
 
-Criar duas rotas admin-only com a mesma estrutura visual:
+Hoje a área principal usa `min-h-dvh` e cada Kanban usa alturas fixas (`max-h-[calc(100vh-140px)]`) com rolagem interna própria. Isso cria "rolagens dentro de rolagens" e prende o conteúdo.
 
-- `src/routes/compras.configuracoes.tsx` (acessível só a admin do módulo `compras` ou admin geral)
-- `src/routes/comercial.configuracoes.tsx` (admin do módulo `comercial` ou admin geral)
+Ajustes:
+- Em `src/routes/__root.tsx`, transformar a área principal (`<main>`) em uma coluna com rolagem vertical própria e altura de tela (`h-dvh` + `overflow-y-auto`), mantendo a barra lateral fixa. Assim a página inteira rola de forma natural.
+- Em `src/routes/comercial.index.tsx` e `src/routes/compras.index.tsx`, remover/relaxar as alturas fixas dos quadros Kanban (`max-h-[calc(100vh-...)]`) para que:
+  - a rolagem **horizontal** entre colunas continue funcionando;
+  - a rolagem **vertical** acompanhe a página principal, sem prender o usuário em um painel interno.
+- Garantir que apareça uma barra de rolagem vertical visível quando o conteúdo passar da altura da tela.
 
-Cada página lista os status do kanban respectivo em uma tabela com uma coluna "Responsável padrão" — um Select carregando usuários com acesso ao módulo. Salvar grava em `compras_status_defaults` / `comercial_status_defaults` (tabelas já criadas) usando `status` como chave (upsert). Botão "Limpar" remove o default daquele status.
+## Parte 2 — App instalável no celular (iOS/Android)
 
-Adicionar item "Configurações" no `AppSidebar` para Compras e Comercial, visível apenas para admins do módulo.
+A forma recomendada para "baixar no celular" sem complexidade é tornar o sistema **instalável** (Adicionar à Tela de Início) via Web App Manifest — funciona em Android (Chrome) e iOS (Safari), abrindo em tela cheia como um app.
 
-### 2. Aplicar responsável padrão ao mover card
+Ajustes:
+- Criar `public/manifest.json` com nome ("Grupo Luminart"), `display: standalone`, cores de tema e ícones.
+- Gerar ícones do app (192px e 512px) com a identidade Luminart e salvá-los em `public/`.
+- Referenciar o manifest e ícones no `head()` de `src/routes/__root.tsx` (link do manifest, apple-touch-icon, theme-color).
 
-- **Compras** (`src/store.ts` / handler de drag no `compras.index.tsx`): em `moveStatus`, antes/depois de atualizar o status, ler `compras_status_defaults` do novo status; se existir, sobrescrever `responsavel_id` e `responsavel_nome` do card (sem abrir o `AvancarCardDialog`). Se não houver default, manter fluxo atual.
-- **Comercial** (`moveCard`): mesmo padrão usando `comercial_status_defaults`. Sobrescreve `card.responsavel` sempre que houver default configurado para o novo status.
+Observação importante: **não** será adicionado service worker / modo offline. Isso evita problemas conhecidos com o preview do editor. O recurso de instalação ("Adicionar à Tela de Início") só aparece no app publicado, não dentro do preview do editor.
 
-Carregar os defaults uma vez no store (cache em memória, recarregar quando a tela de Configurações salva).
+### Detalhes técnicos
+- Manifest mínimo (sem service worker), seguindo a abordagem "manifest-only" para instalabilidade.
+- Ícones gerados via gerador de imagem e externalizados em `public/` (não como import ES6, pois manifest aponta por URL).
+- Nenhuma alteração de backend ou lógica de negócio.
 
-### 3. Comercial — data de envio e nova versão
-
-- **Data de envio no card do Kanban**: quando o card está em `orcamento_enviado`, exibir uma linha pequena no `KanbanCard` (`Enviado: dd/MM`) lendo `dataEnvio`. O drawer já mostra. *(Observação: na rodada anterior você pediu "só no drawer". Confirme se mantemos só no drawer ou se agora quer também no card — pelo texto desta mensagem, "fique registrado no cartão" sugere mostrar no card. Vou assumir **no card** salvo indicação contrária.)*
-- **Criar nova versão**: no `DetalhesDrawer`, ao clicar "Criar nova versão":
-  1. Clonar dados da proposta atual (cliente, itens, condições, observações) em um rascunho de nova versão.
-  2. Mover o card para o status `projeto`.
-  3. Fechar o drawer e abrir o `PropostaWizard` em `comercial.index.tsx` pré-preenchido com o clone, em modo edição, salvando como `versao = atual.versao + 1` ao concluir.
-
-### Arquivos afetados
-
-**Criar**: `src/routes/compras.configuracoes.tsx`, `src/routes/comercial.configuracoes.tsx`.
-
-**Editar**: `src/components/AppSidebar.tsx` (entradas de menu admin-only), `src/store.ts` ou stores específicos (lógica de defaults em `moveStatus`/`moveCard`), `src/routes/compras.index.tsx`, `src/routes/comercial.index.tsx` (handler de abrir wizard pré-preenchido), `src/components/comercial/DetalhesDrawer.tsx` (botão "Criar nova versão" dispara callback), `src/components/comercial/KanbanCard.tsx` (exibir `dataEnvio` quando status = `orcamento_enviado`, se confirmado).
-
-Sem migrações novas — as tabelas `compras_status_defaults` e `comercial_status_defaults` já existem.
+## Fora de escopo
+- Suporte offline real / cache de dados.
+- Publicação nas lojas App Store / Google Play (isso exigiria empacotamento nativo, que pode ser uma etapa futura).
