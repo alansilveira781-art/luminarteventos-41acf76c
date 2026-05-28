@@ -876,12 +876,9 @@ function SaidaEditForm({ original, itens, solicitantes, onEditSolicitante, event
         <FormField label="Quantidade*"><Input required type="number" min="0.01" step="0.01" value={form.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></FormField>
         {isEvento && (
           <FormField label="Evento / Projeto*" wide>
-            <ComboboxCreatable
-              options={eventos}
+            <EventoSheetCombobox
               value={form.evento_projeto}
-              onChange={(v) => set("evento_projeto", v)}
-              placeholder="Selecione ou digite um novo…"
-              searchPlaceholder="Buscar (sem acentos OK)…"
+              onChange={(v) => set("evento_projeto", v ?? "")}
             />
           </FormField>
         )}
