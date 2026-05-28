@@ -119,12 +119,12 @@ function FinanceiroDashboard() {
         className="w-full"
       >
         <TabsList className="mb-4">
-          <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
+          <TabsTrigger value="financeiro">Despesas</TabsTrigger>
           <TabsTrigger value="uber">Uber</TabsTrigger>
         </TabsList>
 
         <TabsContent value="financeiro" className="mt-0">
-          <PageHeader title="Dashboard Financeiro" description="Indicadores e gráficos do período selecionado" />
+          <PageHeader title="Dashboard de Despesas" description="Indicadores e gráficos do período selecionado" />
 
           <div className="flex flex-wrap gap-3 mb-4 items-end">
             <div>
