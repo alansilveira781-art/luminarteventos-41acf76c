@@ -16,6 +16,7 @@ import { normalize } from "@/lib/utils";
 import { ItemSearchSelect } from "@/components/ItemSearchSelect";
 import { ComboboxCreatable } from "@/components/ComboboxCreatable";
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
+import { PatItemInfoHover } from "@/components/patrimonio/PatItemInfoHover";
 
 
 type Mov = {
