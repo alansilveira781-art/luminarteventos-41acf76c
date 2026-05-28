@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronsUpDown, Search, RefreshCw, AlertCircle } from "lucide-react";
+import { ChevronsUpDown, Search, RefreshCw, AlertCircle, Copy } from "lucide-react";
+import { toast } from "sonner";
 import { cn, normalize } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
