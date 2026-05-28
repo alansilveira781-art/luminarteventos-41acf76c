@@ -64,7 +64,7 @@ const allItems: NavItem[] = [
   { title: "Conta Azul", url: "/financeiro/conta-azul", icon: Link2, group: "Financeiro", module: "financeiro" },
   { title: "Quadro de Vendas", url: "/comercial", icon: KanbanSquare, group: "Comercial", module: "comercial" },
   { title: "Propostas", url: "/comercial/propostas", icon: FileText, group: "Comercial", module: "comercial" },
-  { title: "Validações", url: "/comercial/validacoes", icon: ClipboardCheck, group: "Comercial", module: "comercial" },
+  { title: "Validações", url: "/comercial/validacoes", icon: ClipboardCheck, group: "Comercial", module: "comercial", moduleAdminOnly: "comercial" },
   { title: "Clientes", url: "/comercial/clientes", icon: Users2, group: "Comercial", module: "comercial" },
   { title: "Catálogo", url: "/comercial/catalogo", icon: BookOpen, group: "Comercial", module: "comercial" },
   { title: "Dashboard", url: "/contabil", icon: BarChart3, group: "Contábil", module: "contabil" },
@@ -120,11 +120,14 @@ function getContext(pathname: string): "home" | "estoque" | "compras" | "finance
 }
 
 function useNavItems(pathname: string) {
-  const { isAdmin, hasModule } = useAuth();
+  const { isAdmin, hasModule, modulos } = useAuth();
   const ctx = getContext(pathname);
   return allItems.filter((i) => {
     if (i.url === "/") return true;
     if (i.adminOnly) return ctx === "admin" && isAdmin;
+    if (i.moduleAdminOnly) {
+      return ctx === i.moduleAdminOnly && (isAdmin || modulos.some((m) => m.slug === i.moduleAdminOnly && m.is_admin));
+    }
     if (i.module === "estoque") return ctx === "estoque" && (isAdmin || hasModule("estoque"));
     if (i.module === "compras") return ctx === "compras" && (isAdmin || hasModule("compras"));
     if (i.module === "financeiro") return ctx === "financeiro" && (isAdmin || hasModule("financeiro"));
