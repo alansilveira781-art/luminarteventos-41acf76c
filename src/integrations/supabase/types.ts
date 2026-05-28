@@ -1108,19 +1108,55 @@ export type Database = {
       }
       eventos_projetos: {
         Row: {
+          codigo: string | null
           created_at: string
+          data_fim: string | null
+          data_inicio: string | null
+          desmontagem_fim: string | null
+          desmontagem_inicio: string | null
           id: string
+          local: string | null
+          montagem_fim: string | null
+          montagem_inicio: string | null
           nome: string
+          observacoes: string | null
+          produtor: string | null
+          uf: string | null
+          updated_at: string
         }
         Insert: {
+          codigo?: string | null
           created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          desmontagem_fim?: string | null
+          desmontagem_inicio?: string | null
           id?: string
+          local?: string | null
+          montagem_fim?: string | null
+          montagem_inicio?: string | null
           nome: string
+          observacoes?: string | null
+          produtor?: string | null
+          uf?: string | null
+          updated_at?: string
         }
         Update: {
+          codigo?: string | null
           created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          desmontagem_fim?: string | null
+          desmontagem_inicio?: string | null
           id?: string
+          local?: string | null
+          montagem_fim?: string | null
+          montagem_inicio?: string | null
           nome?: string
+          observacoes?: string | null
+          produtor?: string | null
+          uf?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
