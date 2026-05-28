@@ -13,7 +13,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Plus, Search, Trash2, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { normalize, cn } from "@/lib/utils";
-import { ComboboxCreatable } from "@/components/ComboboxCreatable";
 
 type Mov = {
   id: string; tipo: string; item_id: string | null; quantidade: number;
@@ -33,13 +32,13 @@ export function PatrimonioDevolucoes() {
   const [open, setOpen] = useState(false);
 
   const { data: itens } = useQuery({
-    queryKey: ["pat_itens_lite"],
+    queryKey: ["pat_itens_lite_dev"],
     queryFn: async () => {
       const all: any[] = [];
       let from = 0;
       while (true) {
         const { data, error } = await supabase
-          .from("pat_itens").select("id,id_item,nome,unidade")
+          .from("pat_itens").select("id,id_item,nome,especificacao,dimensoes,unidade,categoria,subcategoria")
           .order("nome").range(from, from + 999);
         if (error) throw error;
         all.push(...(data ?? []));
@@ -216,6 +215,17 @@ export function PatrimonioDevolucoes() {
   );
 }
 
+type GrupoVisual = {
+  key: string;
+  nome: string;
+  especificacao: string;
+  unidade: string;
+  linhas: Array<{ saida: Mov; jaDev: number; saldo: number }>;
+  totalSaida: number;
+  totalJaDev: number;
+  totalSaldo: number;
+};
+
 function DevolucaoForm({ saidas, devolvidoPorOrigem, itemMap, onSubmit, submitting }: {
   saidas: Mov[];
   devolvidoPorOrigem: Map<string, number>;
@@ -252,6 +262,40 @@ function DevolucaoForm({ saidas, devolvidoPorOrigem, itemMap, onSubmit, submitti
   const [grupoKey, setGrupoKey] = useState<string>("");
   const grupo = grupos.find((g) => g.key === grupoKey) ?? null;
 
+  // Agrupa peças do grupo selecionado por "grupo de item" (nome + especificação)
+  const gruposVisuais: GrupoVisual[] = useMemo(() => {
+    if (!grupo) return [];
+    const map = new Map<string, GrupoVisual>();
+    for (const s of grupo.itens) {
+      const it: any = s.item_id ? (itemMap as any)[s.item_id] : null;
+      const key = [
+        normalize(it?.nome ?? ""), normalize(it?.especificacao ?? ""),
+        normalize(it?.dimensoes ?? ""), normalize(it?.unidade ?? ""),
+      ].join("|");
+      if (!map.has(key)) {
+        map.set(key, {
+          key, nome: it?.nome ?? "—",
+          especificacao: it?.especificacao ?? "",
+          unidade: it?.unidade ?? "",
+          linhas: [],
+          totalSaida: 0, totalJaDev: 0, totalSaldo: 0,
+        });
+      }
+      const g = map.get(key)!;
+      const jaDev = devolvidoPorOrigem.get(s.id) ?? 0;
+      const saldo = Math.max(0, Number(s.quantidade) - jaDev);
+      g.linhas.push({ saida: s, jaDev, saldo });
+      g.totalSaida += Number(s.quantidade);
+      g.totalJaDev += jaDev;
+      g.totalSaldo += saldo;
+    }
+    // ordena linhas por data_movimento (mais antigas primeiro → devolve elas primeiro)
+    for (const g of map.values()) {
+      g.linhas.sort((a, b) => a.saida.data_movimento.localeCompare(b.saida.data_movimento));
+    }
+    return Array.from(map.values()).sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [grupo, itemMap, devolvidoPorOrigem]);
+
   const [meta, setMeta] = useState({
     data_movimento: new Date().toISOString().slice(0, 16),
     responsavel: "",
@@ -259,9 +303,9 @@ function DevolucaoForm({ saidas, devolvidoPorOrigem, itemMap, onSubmit, submitti
     observacoes: "",
   });
 
-  // linhas: por id da saída, qtd a devolver
-  const [qtds, setQtds] = useState<Record<string, string>>({});
-  useEffect(() => { setQtds({}); }, [grupoKey]);
+  // Qtds a devolver por chave de grupo visual
+  const [qtdsGrupo, setQtdsGrupo] = useState<Record<string, string>>({});
+  useEffect(() => { setQtdsGrupo({}); }, [grupoKey]);
 
   const setM = (k: string, v: any) => setMeta((p) => ({ ...p, [k]: v }));
 
@@ -271,36 +315,44 @@ function DevolucaoForm({ saidas, devolvidoPorOrigem, itemMap, onSubmit, submitti
         e.preventDefault();
         if (!grupo) return toast.error("Selecione uma saída");
         const linhas: any[] = [];
-        const idsParaChecar: { id: string; qtdSaida: number; jaDevolvido: number; novaDevolucao: number }[] = [];
-        for (const s of grupo.itens) {
-          const valor = Number(qtds[s.id] ?? 0);
-          const jaDev = devolvidoPorOrigem.get(s.id) ?? 0;
-          const saldo = Number(s.quantidade) - jaDev;
-          if (valor <= 0) {
-            idsParaChecar.push({ id: s.id, qtdSaida: Number(s.quantidade), jaDevolvido: jaDev, novaDevolucao: 0 });
-            continue;
+        const novaDevPorSaidaId = new Map<string, number>();
+
+        for (const gv of gruposVisuais) {
+          const desejado = Math.floor(Number(qtdsGrupo[gv.key] ?? 0));
+          if (desejado <= 0) continue;
+          if (desejado > gv.totalSaldo) return toast.error(`Quantidade maior que o saldo para ${gv.nome} (saldo: ${gv.totalSaldo})`);
+          // distribui entre as linhas (saídas) — mais antigas primeiro
+          let restante = desejado;
+          for (const ln of gv.linhas) {
+            if (restante <= 0) break;
+            if (ln.saldo <= 0) continue;
+            const usar = Math.min(ln.saldo, restante);
+            linhas.push({
+              tipo: "devolucao",
+              item_id: ln.saida.item_id,
+              quantidade: usar,
+              data_movimento: meta.data_movimento ? new Date(meta.data_movimento).toISOString() : new Date().toISOString(),
+              responsavel: meta.responsavel || null,
+              evento_projeto: ln.saida.evento_projeto ?? null,
+              condicao: meta.condicao || null,
+              observacoes: meta.observacoes || null,
+              saida_origem_id: ln.saida.id,
+            });
+            novaDevPorSaidaId.set(ln.saida.id, (novaDevPorSaidaId.get(ln.saida.id) ?? 0) + usar);
+            restante -= usar;
           }
-          if (valor > saldo) return toast.error(`Quantidade maior que o saldo para ${(itemMap as any)[s.item_id ?? ""]?.nome ?? "item"} (saldo: ${saldo})`);
-          linhas.push({
-            tipo: "devolucao",
-            item_id: s.item_id,
-            quantidade: valor,
-            data_movimento: meta.data_movimento ? new Date(meta.data_movimento).toISOString() : new Date().toISOString(),
-            responsavel: meta.responsavel || null,
-            evento_projeto: s.evento_projeto ?? null,
-            condicao: meta.condicao || null,
-            observacoes: meta.observacoes || null,
-            saida_origem_id: s.id,
-          });
-          idsParaChecar.push({ id: s.id, qtdSaida: Number(s.quantidade), jaDevolvido: jaDev, novaDevolucao: valor });
         }
+
         if (!linhas.length) return toast.error("Informe ao menos uma quantidade a devolver");
+
         const idsFinalizar: string[] = [];
         const idsParciais: string[] = [];
-        for (const r of idsParaChecar) {
-          const totalDevolvido = r.jaDevolvido + r.novaDevolucao;
-          if (totalDevolvido >= r.qtdSaida) idsFinalizar.push(r.id);
-          else if (totalDevolvido > 0) idsParciais.push(r.id);
+        for (const s of grupo.itens) {
+          const jaDev = devolvidoPorOrigem.get(s.id) ?? 0;
+          const novo = novaDevPorSaidaId.get(s.id) ?? 0;
+          const total = jaDev + novo;
+          if (total >= Number(s.quantidade)) idsFinalizar.push(s.id);
+          else if (total > 0) idsParciais.push(s.id);
         }
         onSubmit({ linhas, idsFinalizar, idsParciais });
       }}
@@ -312,45 +364,50 @@ function DevolucaoForm({ saidas, devolvidoPorOrigem, itemMap, onSubmit, submitti
       </div>
 
       {grupo && (
-        <Card className="p-3">
-          <div className="text-xs text-muted-foreground mb-2">Itens da requisição</div>
-          <table className="w-full text-xs">
-            <thead className="text-muted-foreground">
-              <tr>
-                <th className="text-left py-1">Código</th>
-                <th className="text-left py-1">Item</th>
-                <th className="text-right py-1">Qtd saída</th>
-                <th className="text-right py-1">Já devolvido</th>
-                <th className="text-right py-1">Saldo</th>
-                <th className="text-right py-1 w-32">Devolver agora</th>
-              </tr>
-            </thead>
-            <tbody>
-              {grupo.itens.map((s) => {
-                const it: any = s.item_id ? (itemMap as any)[s.item_id] : null;
-                const jaDev = devolvidoPorOrigem.get(s.id) ?? 0;
-                const saldo = Number(s.quantidade) - jaDev;
-                return (
-                  <tr key={s.id} className="border-t border-border/40">
-                    <td className="py-1 font-mono text-muted-foreground">{it?.id_item ?? "—"}</td>
-                    <td className="py-1 font-medium">{it?.nome ?? "—"}</td>
-                    <td className="py-1 text-right">{Number(s.quantidade)}</td>
-                    <td className="py-1 text-right">{jaDev}</td>
-                    <td className="py-1 text-right">{saldo}</td>
+        <Card className="p-3 space-y-3">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+            <div><span className="text-muted-foreground">REQ:</span> <span className="font-mono">{grupo.numero != null ? `REQ-${String(grupo.numero).padStart(4, "0")}` : "—"}</span></div>
+            <div><span className="text-muted-foreground">Data:</span> {new Date(grupo.data).toLocaleDateString("pt-BR")}</div>
+            <div className="truncate"><span className="text-muted-foreground">Responsável:</span> {grupo.responsavel ?? "—"}</div>
+            <div className="truncate"><span className="text-muted-foreground">Evento:</span> {grupo.evento ?? "—"}</div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="text-muted-foreground">
+                <tr>
+                  <th className="text-left py-1 min-w-[200px]">Item</th>
+                  <th className="text-left py-1">Especificação</th>
+                  <th className="text-right py-1 w-20">Saída</th>
+                  <th className="text-right py-1 w-24">Já devolv.</th>
+                  <th className="text-right py-1 w-20">Saldo</th>
+                  <th className="text-left py-1 pl-2 w-12">UN</th>
+                  <th className="text-right py-1 w-28">Devolver agora</th>
+                </tr>
+              </thead>
+              <tbody>
+                {gruposVisuais.map((gv) => (
+                  <tr key={gv.key} className="border-t border-border/40 align-middle">
+                    <td className="py-1 font-medium truncate">{gv.nome}</td>
+                    <td className="py-1 text-muted-foreground truncate">{gv.especificacao}</td>
+                    <td className="py-1 text-right tabular-nums">{gv.totalSaida}</td>
+                    <td className="py-1 text-right tabular-nums">{gv.totalJaDev}</td>
+                    <td className="py-1 text-right tabular-nums">{gv.totalSaldo}</td>
+                    <td className="py-1 pl-2 text-muted-foreground">{gv.unidade}</td>
                     <td className="py-1 text-right">
                       <Input
-                        type="number" min="0" max={saldo} step="0.01"
-                        value={qtds[s.id] ?? ""}
-                        onChange={(e) => setQtds((p) => ({ ...p, [s.id]: e.target.value }))}
-                        className="h-7 text-right"
-                        disabled={saldo <= 0}
+                        type="number" min="0" max={gv.totalSaldo} step="1"
+                        value={qtdsGrupo[gv.key] ?? ""}
+                        onChange={(e) => setQtdsGrupo((p) => ({ ...p, [gv.key]: e.target.value }))}
+                        className="h-7 text-right w-24 ml-auto"
+                        disabled={gv.totalSaldo <= 0}
                       />
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Card>
       )}
 
@@ -441,7 +498,7 @@ function SaidaCombobox({ grupos, value, onChange }: {
                 >
                   <div className="min-w-0">
                     <div className="truncate font-medium">{label(g)}</div>
-                    <div className="truncate text-xs text-muted-foreground">{g.itens.length} {g.itens.length === 1 ? "item" : "itens"}</div>
+                    <div className="truncate text-xs text-muted-foreground">{g.itens.length} {g.itens.length === 1 ? "peça" : "peças"}</div>
                   </div>
                 </button>
               ))
