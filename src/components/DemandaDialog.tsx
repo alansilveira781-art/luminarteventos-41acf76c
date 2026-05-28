@@ -259,13 +259,14 @@ export function DemandaDialog({
           <TabsContent value="descritivo" className="space-y-3 pt-4">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">Evento / Projeto</label>
-              <SelectCreatable
+              <DbComboboxCreatable
                 table="eventos_projetos"
                 value={form.evento_projeto}
                 onChange={(v) => {
                   setForm({ ...form, evento_projeto: v, evento_projeto_id: null });
                 }}
                 placeholder="Selecione ou cadastre um evento/projeto…"
+                searchPlaceholder="Buscar ou digitar novo evento/projeto…"
               />
             </div>
             <div className="space-y-1.5">
