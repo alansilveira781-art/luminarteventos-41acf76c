@@ -383,8 +383,12 @@ export function AppTopBar() {
   const currentTitle = current?.title ?? "Dashboard";
 
   return (
-    <header className="sticky top-0 z-40 h-14 border-b border-border bg-background/90 backdrop-blur-md">
-      <div className="h-full px-4 sm:px-6 flex items-center gap-3">
+    <header
+      className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur-md"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
+    >
+      <div className="h-14 px-4 sm:px-6 flex items-center gap-3">
+
         <div className="flex items-center gap-2 text-sm min-w-0">
           <span className="text-muted-foreground hidden sm:inline">Luminart</span>
           <span className="text-muted-foreground hidden sm:inline">/</span>
