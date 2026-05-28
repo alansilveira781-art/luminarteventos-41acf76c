@@ -37,9 +37,13 @@ export const Route = createRootRouteWithContext<RouterContext>()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Grupo Luminart" },
       { name: "description", content: "Sistema do Grupo Luminart." },
+      { name: "theme-color", content: "#0a0a0a" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "Luminart" },
       { property: "og:title", content: "Grupo Luminart" },
       { name: "twitter:title", content: "Grupo Luminart" },
       { property: "og:description", content: "Sistema do Grupo Luminart." },
@@ -48,9 +52,14 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/c82de9c7-4ebf-4824-a70c-d6b5f9243ec6" },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:type", content: "website" },
+
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.json" },
+      { rel: "icon", href: "/app-icon-192.png", type: "image/png" },
+      { rel: "apple-touch-icon", href: "/app-icon-192.png" },
+
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -110,9 +119,9 @@ function AppShell() {
   if (!session) return <Navigate to="/auth" />;
 
   return (
-    <div className="flex min-h-dvh w-full bg-background text-foreground">
+    <div className="flex h-dvh w-full overflow-hidden bg-background text-foreground">
       <AppSidebar />
-      <main className="flex-1 min-w-0 overflow-x-hidden pl-16 sm:pl-20 lg:pl-0">
+      <main className="flex-1 min-w-0 h-dvh overflow-y-auto overflow-x-hidden pl-16 sm:pl-20 lg:pl-0">
         <AppTopBar />
         <div className="px-4 py-6 sm:px-8 sm:py-8 max-w-[1400px] mx-auto">
           <Outlet />

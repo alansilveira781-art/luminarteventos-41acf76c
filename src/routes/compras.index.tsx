@@ -230,7 +230,7 @@ function ComprasKanban() {
         </div>
       ) : (
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-        <div className="flex gap-3 overflow-auto pb-4 max-h-[calc(100vh-140px)] items-start">
+        <div className="flex gap-3 overflow-x-auto pb-4 items-start">
           {COMPRA_STATUSES.map((s) => (
             <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={byStatus[s.key]?.length ?? 0}>
               {(byStatus[s.key] ?? []).map((c) => (
