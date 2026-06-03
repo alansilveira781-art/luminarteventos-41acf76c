@@ -935,26 +935,26 @@ function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor
                 <Input ref={(el) => { qtyRefs.current[i] = el; }} type="number" min="0" step="any" value={l.quantidade} onChange={(e) => setL(i, "quantidade", e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (l.item_id && Number(l.quantidade) > 0) focusValor(i); } }} className="px-2" />
               </div>
-              <div className="w-[100px]">
+              <div className="w-[110px]">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">Cust. Unit.</label>
                 <MoneyInput value={Number(l.valor_unitario || 0)} onChange={(n) => setL(i, "valor_unitario", n ? String(n) : "")}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (l.item_id && Number(l.quantidade) > 0) goNextItem(i); } }} hidePrefix />
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (l.item_id && Number(l.quantidade) > 0) goNextItem(i); } }} hidePrefix decimals={4} />
               </div>
-              <div className="w-[80px]">
+              <div className="w-[90px]">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">Desconto</label>
-                <Input type="number" min="0" step="any" value={l.desconto} onChange={(e) => setL(i, "desconto", e.target.value)} className="px-2" />
+                <MoneyInput value={Number(l.desconto || 0)} onChange={(n) => setL(i, "desconto", String(n))} hidePrefix />
               </div>
-              <div className="w-[80px]">
+              <div className="w-[90px]">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">Frete</label>
-                <Input type="number" min="0" step="any" value={l.frete} onChange={(e) => setL(i, "frete", e.target.value)} className="px-2" />
+                <MoneyInput value={Number(l.frete || 0)} onChange={(n) => setL(i, "frete", String(n))} hidePrefix />
               </div>
-              <div className="w-[80px]">
+              <div className="w-[90px]">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">IPI</label>
-                <Input type="number" min="0" step="any" value={l.ipi} onChange={(e) => setL(i, "ipi", e.target.value)} className="px-2" />
+                <MoneyInput value={Number(l.ipi || 0)} onChange={(n) => setL(i, "ipi", String(n))} hidePrefix />
               </div>
-              <div className="w-[80px]">
+              <div className="w-[90px]">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">Outros</label>
-                <Input type="number" min="0" step="any" value={l.outros_custos} onChange={(e) => setL(i, "outros_custos", e.target.value)} className="px-2" />
+                <MoneyInput value={Number(l.outros_custos || 0)} onChange={(n) => setL(i, "outros_custos", String(n))} hidePrefix />
               </div>
               <div className="w-[110px]">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">Total linha</label>
