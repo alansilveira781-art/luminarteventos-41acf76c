@@ -155,7 +155,7 @@ function mapEvento(it: any, syncedAt: string, pessoaKey: "fornecedor_nome" | "cl
 }
 
 export async function syncContasPagar(from: string, to: string) {
-  const logId = await logStart("contas_pagar");
+  const logId = await logStart("contas_pagar", from, to);
   try {
     const items = await fetchPaged(
       "/financeiro/eventos-financeiros/contas-a-pagar/buscar",
