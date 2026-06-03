@@ -9,7 +9,8 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   ComposedChart, Line, Legend,
 } from "recharts";
-import { PiggyBank as Piggy, TrendingDown, Building2, BarChart3, Sprout } from "lucide-react";
+import { PiggyBank as Piggy, TrendingDown, Building2, BarChart3, Sprout, Users, X, ChevronRight, ChevronDown } from "lucide-react";
+import { DRE_STRUCTURE, grupoDoPlanoNome, isTransferencia, type DreGroupId } from "@/lib/conta-azul/dre";
 import { montarDRE, totaisExtrato, transferenciasNoPeriodo, type Visao } from "@/lib/conta-azul/dre";
 
 
