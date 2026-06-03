@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { MoneyInput } from "@/components/MoneyInput";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TIPO_COMPRA_OPTIONS } from "@/lib/compras";
@@ -277,12 +278,9 @@ function SolicitarPage() {
               />
             </Field>
             <Field label="Valor estimado total (R$)">
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                value={form.valor_total}
-                onChange={(e) => update({ valor_total: e.target.value })}
+              <MoneyInput
+                value={Number(String(form.valor_total).replace(",", ".")) || 0}
+                onChange={(n) => update({ valor_total: n ? String(n) : "" })}
                 placeholder="Opcional"
               />
             </Field>
@@ -457,11 +455,14 @@ function SolicitarPage() {
                           />
                           <div className="grid grid-cols-3 gap-2">
                             <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
+                              type="text"
+                              inputMode="decimal"
                               value={it.quantidade}
-                              onChange={(e) => updateItem(idx, { quantidade: e.target.value })}
+                              onFocus={(e) => e.currentTarget.select()}
+                              onChange={(e) => {
+                                const v = e.target.value.replace(/[^\d,.-]/g, "");
+                                updateItem(idx, { quantidade: v });
+                              }}
                               placeholder="Qtd"
                             />
                             <Input
@@ -470,12 +471,10 @@ function SolicitarPage() {
                               onChange={(e) => updateItem(idx, { unidade: e.target.value })}
                               placeholder="Un."
                             />
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={it.valor_unitario}
-                              onChange={(e) => updateItem(idx, { valor_unitario: e.target.value })}
+                            <MoneyInput
+                              hidePrefix
+                              value={Number(String(it.valor_unitario).replace(",", ".")) || 0}
+                              onChange={(n) => updateItem(idx, { valor_unitario: String(n) })}
                               placeholder="Vlr unit."
                             />
                           </div>
