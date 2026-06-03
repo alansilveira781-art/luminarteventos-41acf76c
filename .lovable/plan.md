@@ -1,33 +1,27 @@
-# Por que está travado
+# Erro 503 da Conta Azul
 
-Confirmei no banco: o job `de714f41…` foi criado às 18:15 com `status=em_andamento` e `progress={total_meses:0, concluidos:0}` — nunca avançou.
+O print mostra: `503 — Estamos passando por uma instabilidade, tente novamente mais tarde`. É **instabilidade transitória do lado da Conta Azul**, não bug nosso. Apesar disso, sincronizou 3.332 registros — só Contas a Pagar falhou no meio.
 
-Causa: em `runHistoricoBackfill` (`src/lib/conta-azul/sync.server.ts`) disparamos um `(async () => { … })()` **depois** de retornar o `jobId`. No runtime Cloudflare Workers (onde o app roda), assim que a resposta HTTP termina o worker é encerrado e qualquer promise pendente é morta. Por isso o job nasce, mas nenhum mês é processado.
+Mesmo sendo do lado deles, podemos tornar nosso cliente resiliente para não interromper a sincronização nesses casos.
 
 # Correção
 
-Trocar o "fire-and-forget" por um **processamento incremental orquestrado pelo cron** que já existe (`/api/public/contaazul/cron`, roda a cada minuto):
+Adicionar **retry com backoff exponencial** em `caFetch` (`src/lib/conta-azul/client.server.ts`):
 
-1. **`runHistoricoBackfill` vira apenas "enfileirar"**: cria a linha em `ca_sync_jobs` com status `pendente`, calcula a lista de meses e salva em `progress.meses` (array `[[from,to], …]`) + `total_meses`. Retorna `jobId` imediatamente.
+- Re-tenta automaticamente em respostas `503`, `502`, `504`, `429` e em erros de rede.
+- Até **4 tentativas** com espera 1s → 2s → 4s → 8s entre elas (respeitando `Retry-After` quando vier).
+- Não re-tenta `4xx` (a não ser `408`/`429`) — esses são erro nosso, não transiente.
+- Loga no console (`server-function-logs`) cada retry para diagnóstico.
 
-2. **Nova função `processNextHistoricoChunk()`** (server-only): pega o job mais antigo com status `pendente`/`em_andamento`, processa **1 mês por execução** (`syncContasPagar` + `syncContasReceber` do mês `concluidos`), incrementa `concluidos`, atualiza `mes_atual`. Quando `concluidos === total_meses`, marca `status=ok` + `finished_at` e chama `upsertSyncState` com a janela total. Em caso de erro, marca `status=erro` + `mensagem`.
+Isso beneficia tudo: sincronização manual, D-1 do cron e a carga histórica (que processa 1 mês por minuto e antes morria se um dos meses pegasse uma instabilidade).
 
-3. **`/api/public/contaazul/cron`** passa a, a cada chamada (1×/min):
-   - rodar `syncIncrementalD1()` se bater algum horário agendado (comportamento atual);
-   - **sempre** chamar `processNextHistoricoChunk()` se houver job pendente.
-   
-   Assim 36 meses (2023→ontem) terminam em ~36 minutos sem timeout.
+Adicionalmente, no toast da UI vou trocar o texto do erro: quando a mensagem contém `503` + `instabilidade`, mostrar **"Conta Azul está instável, vamos tentar de novo automaticamente"** em vez do JSON cru.
 
-4. **Botão "Rodar agora" na UI** (`financeiro.conta-azul.tsx`): além de criar o job, dispara uma chamada imediata ao endpoint do cron (`fetch('/api/public/contaazul/cron', { headers: { apikey } })`) para não esperar até 1 minuto pelo primeiro mês.
+# Arquivos
 
-5. **Job órfão atual** (`de714f41…`): a primeira execução do novo cron vai pegá-lo (está `em_andamento` com `total_meses:0`). Para evitar tratamento especial, no início do `processNextHistoricoChunk` se `total_meses === 0` e `progress.meses` estiver vazio, recalcula a lista a partir de `date_from`/`date_to`.
+- `src/lib/conta-azul/client.server.ts` — envolver `doFetch` num loop com retry.
+- `src/routes/financeiro.conta-azul.tsx` — formatar mensagem de erro 503 de forma amigável no toast.
 
-# Arquivos afetados
+Sem schema. Sem mudança de comportamento fora do retry.
 
-- `src/lib/conta-azul/sync.server.ts` — refatorar `runHistoricoBackfill` (sem `setTimeout`/IIFE) e adicionar `processNextHistoricoChunk()`.
-- `src/routes/api/public/contaazul/cron.ts` — chamar `processNextHistoricoChunk()` ao final.
-- `src/routes/financeiro.conta-azul.tsx` — após `POST /api/contaazul/historico`, disparar um `fetch` ao endpoint público do cron para começar imediatamente. O polling do progresso já existe e continuará funcionando.
-
-Sem mudanças de schema. Sem mexer no painel.
-
-Resposta direta à sua pergunta: **não, não é normal** — está travado de fato por causa do background promise morto no worker. Posso aplicar essa correção?
+Posso aplicar?

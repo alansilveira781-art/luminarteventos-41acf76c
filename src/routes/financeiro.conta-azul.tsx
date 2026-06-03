@@ -154,7 +154,11 @@ function ContaAzulPage() {
           const { qtd } = (await res.json()) as { qtd: number };
           total += qtd ?? 0;
         } catch (e: any) {
-          errors.push(`${r.label}: ${e?.message ?? e}`);
+          const raw = String(e?.message ?? e);
+          const friendly = /503|instabilidade|temporariamente/i.test(raw)
+            ? `${r.label}: Conta Azul instável no momento (503). Tente novamente em alguns minutos.`
+            : `${r.label}: ${raw}`;
+          errors.push(friendly);
         }
         qc.invalidateQueries({ queryKey: ["ca-sync-log"] });
       }

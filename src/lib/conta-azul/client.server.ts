@@ -153,6 +153,13 @@ async function forceRefreshToken(): Promise<string> {
   return refreshed.access_token;
 }
 
+const RETRY_STATUSES = new Set([408, 429, 502, 503, 504]);
+const MAX_ATTEMPTS = 4;
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 export async function caFetch(path: string, init: RequestInit = {}) {
   const doFetch = async (token: string) =>
     fetch(`${API_BASE}${path}`, {
@@ -165,16 +172,47 @@ export async function caFetch(path: string, init: RequestInit = {}) {
     });
 
   let token = await getValidAccessToken();
-  let res = await doFetch(token);
-  // Retry once on 401 with a forced refresh (token may have been revoked early).
-  if (res.status === 401) {
+  let res: Response | null = null;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      token = await forceRefreshToken();
       res = await doFetch(token);
-    } catch {
-      // fall through with original 401
+    } catch (e) {
+      if (attempt < MAX_ATTEMPTS) {
+        const wait = 1000 * 2 ** (attempt - 1);
+        console.warn(`[caFetch] ${path} network error (attempt ${attempt}/${MAX_ATTEMPTS}), retry in ${wait}ms`, e);
+        await sleep(wait);
+        continue;
+      }
+      throw e;
     }
+
+    // 401 -> force token refresh once, then retry the same attempt
+    if (res.status === 401 && attempt === 1) {
+      try {
+        token = await forceRefreshToken();
+        res = await doFetch(token);
+      } catch {
+        // fall through
+      }
+    }
+
+    if (res.ok) break;
+
+    if (RETRY_STATUSES.has(res.status) && attempt < MAX_ATTEMPTS) {
+      const retryAfter = Number(res.headers.get("retry-after"));
+      const wait = Number.isFinite(retryAfter) && retryAfter > 0
+        ? Math.min(retryAfter * 1000, 15000)
+        : 1000 * 2 ** (attempt - 1);
+      console.warn(`[caFetch] ${path} ${res.status} (attempt ${attempt}/${MAX_ATTEMPTS}), retry in ${wait}ms`);
+      await sleep(wait);
+      continue;
+    }
+
+    break; // non-retryable
   }
+
+  if (!res) throw new Error(`Conta Azul API ${path}: sem resposta`);
   const text = await res.text();
   if (!res.ok) throw new Error(`Conta Azul API ${path} [${res.status}]: ${text.slice(0, 500)}`);
   try {
