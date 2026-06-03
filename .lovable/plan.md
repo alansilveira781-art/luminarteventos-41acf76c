@@ -1,43 +1,21 @@
-# Associação Plano de Contas × Estrutura do DRE
+## Investigar divergências do DRE
 
-Hoje 18 contas do plano não têm prefixo (`XX -`) e caem como "Sem classificação". Vou adicionar um override por nome em `src/lib/conta-azul/dre.ts` para classificá-las nas linhas corretas do DRE conforme suas respostas.
+Você confirmou que `IN` (Investimentos) está correto e que todos os outros prefixos batem com o que já está em `src/lib/conta-azul/dre.ts`. Então estruturalmente o código já está alinhado com sua especificação.
 
-## Mapeamento confirmado
+Para corrigir os dados que não estão batendo, preciso saber **onde** está o erro.
 
-| Conta no Plano | Linha DRE |
-|---|---|
-| IRRF | DT — Despesas Tributárias |
-| ISS | DT |
-| PIS/COFINS/CSLL | DT |
-| Impostos retidos em vendas | DT |
-| Descontos incondicionais concedidos | DR — Deduções da Receita |
-| Descontos incondicionais obtidos | OE — Outras Entradas |
-| Descontos financeiros concedidos | DF — Despesas Financeiras |
-| Descontos financeiros obtidos | RF — Receitas Financeiras |
-| Juros pagos | DF |
-| Juros recebidos | RF |
-| Tarifas | DF |
-| Multas pagas | DF |
-| Multas recebidas | OE |
-| Fretes pagos | OS — Outras Saídas |
-| Fretes recebidos | OE |
-| Perdas | CD — Custos Diretos |
-| Compra | OS |
-| Receitas a Identificar | OE |
+### Pergunta
 
-## Alterações técnicas
+Me diga, no DRE atual da tela, **uma linha específica** com valor errado — por exemplo:
 
-**`src/lib/conta-azul/dre.ts`**
-1. Criar `NOME_OVERRIDE: Record<string, DreGroupId>` com os 18 nomes acima (chave normalizada em lowercase/trim, sem acentos).
-2. Atualizar `grupoDoPlanoNome(nome)`:
-   - normalizar `nome` (trim + lowercase + remover acentos);
-   - se existir em `NOME_OVERRIDE`, retornar esse grupo;
-   - senão, manter o comportamento atual (extrair prefixo `^([A-Z]{2,3})\s*-`).
-3. Manter `isTransferencia()` como está (continua filtrando transferências/saldo inicial antes da classificação).
+- "Receita Bruta está R$ X mas deveria ser R$ Y"
+- "Despesas Tributárias está zerada"
+- "Aparece muita coisa em (?) Sem classificação"
+- "Resultado Financeiro tem sinal trocado"
 
-Nenhuma mudança no schema do banco, nem na UI do Dashboard — o reflexo será imediato no DRE e na Conferência vs Extrato.
+Com isso eu consigo:
+1. Rodar uma query no banco para ver quais contas do plano estão caindo (ou não) na linha,
+2. Identificar se é problema de prefixo, de override por nome, de sinal, de período (realizado vs projetado), ou de transferência sendo classificada como receita/despesa,
+3. Propor o ajuste pontual em `dre.ts`.
 
-## Validação após implementar
-
-- Conferir que a linha "(?) Sem classificação" do DRE fica vazia (ou só com contas realmente não previstas).
-- Conferir que DT, DF, RF, OE, OS, CD, DR variam após o override.
+Se preferir, me mande um print/lista das linhas com valores errados que aparecem hoje na tela e eu investigo a partir daí.
