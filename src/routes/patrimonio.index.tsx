@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { Plus, Pencil, Trash2, Search, Download, Upload, ImagePlus, X } from "lucide-react";
 import { useRef } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
