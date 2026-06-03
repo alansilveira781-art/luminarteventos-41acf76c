@@ -658,15 +658,64 @@ function EntradasPage() {
   );
 }
 
+type XmlItemMap = {
+  mode: "existing" | "create" | "skip";
+  existing_item_id?: string;
+  codigo: string;
+  nome: string;
+  unidade: string;
+  quantidade: number;
+  valor_unitario: number;
+};
+
 function NfeImportDialog({ open, onOpenChange, onDone }: { open: boolean; onOpenChange: (v: boolean) => void; onDone: () => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<any | null>(null);
   const [busy, setBusy] = useState(false);
+  const [mappings, setMappings] = useState<XmlItemMap[]>([]);
+
+  const { data: itensAll } = useQuery({
+    queryKey: ["itens-select"],
+    queryFn: async () =>
+      await fetchAllRows<any>("itens", "id,nome,codigo,codigo_proprio,unidade,valor_unitario", {
+        orderBy: { column: "nome", ascending: true },
+        pageSize: 1000,
+      }),
+    staleTime: 60_000,
+  });
 
   const loadPreview = async (f: File) => {
-    try { setPreview(await parseNfeXml(f)); }
-    catch (e: any) { toast.error(e.message); setPreview(null); }
+    try {
+      const p = await parseNfeXml(f);
+      setPreview(p);
+      // Pré-mapeamento: tenta achar item existente por código
+      const itens = itensAll ?? [];
+      const next: XmlItemMap[] = p.itens.map((it: any) => {
+        const match = itens.find(
+          (x: any) =>
+            String(x.codigo).trim().toLowerCase() === String(it.codigo).trim().toLowerCase() ||
+            (x.codigo_proprio && String(x.codigo_proprio).trim().toLowerCase() === String(it.codigo).trim().toLowerCase()),
+        );
+        return {
+          mode: match ? "existing" : "create",
+          existing_item_id: match?.id,
+          codigo: it.codigo,
+          nome: it.nome,
+          unidade: it.unidade || "un",
+          quantidade: it.quantidade,
+          valor_unitario: it.valor_unitario,
+        };
+      });
+      setMappings(next);
+    } catch (e: any) {
+      toast.error(e.message);
+      setPreview(null);
+      setMappings([]);
+    }
   };
+
+  const updateMap = (idx: number, patch: Partial<XmlItemMap>) =>
+    setMappings((arr) => arr.map((m, i) => (i === idx ? { ...m, ...patch } : m)));
 
   const handleImport = async () => {
     if (!preview) return;
@@ -677,52 +726,73 @@ function NfeImportDialog({ open, onOpenChange, onDone }: { open: boolean; onOpen
       const { data: existente } = await supabase.from("fornecedores").select("id").ilike("nome", nome).maybeSingle();
       if (existente) fornecedor_id = existente.id;
       else {
-        const { data: novo, error } = await supabase.from("fornecedores").insert({
-          nome, documento: preview.fornecedor.cnpj ?? null,
-        }).select("id").single();
+        const { data: novo, error } = await supabase
+          .from("fornecedores")
+          .insert({ nome, documento: preview.fornecedor.cnpj ?? null })
+          .select("id")
+          .single();
         if (error) throw error;
         fornecedor_id = novo.id;
       }
 
       let inserted = 0;
-      for (const it of preview.itens) {
+      let skipped = 0;
+      for (const m of mappings) {
+        if (m.mode === "skip") { skipped++; continue; }
         let item_id: string | null = null;
-        const { data: existenteItem } = await supabase.from("itens").select("id").eq("codigo", it.codigo).maybeSingle();
-        if (existenteItem) item_id = existenteItem.id;
-        else {
-          const { data: novoItem, error: errIt } = await supabase.from("itens").insert({
-            codigo: it.codigo, nome: it.nome, unidade: it.unidade || "un",
-          }).select("id").single();
-          if (errIt) { toast.error(`Item ${it.codigo}: ${errIt.message}`); continue; }
-          item_id = novoItem.id;
+        if (m.mode === "existing") {
+          if (!m.existing_item_id) { skipped++; continue; }
+          item_id = m.existing_item_id;
+        } else {
+          // create
+          const codigo = m.codigo.trim();
+          const nomeIt = m.nome.trim();
+          if (!codigo || !nomeIt) { skipped++; continue; }
+          // dedupe por codigo
+          const { data: jaExiste } = await supabase.from("itens").select("id").eq("codigo", codigo).maybeSingle();
+          if (jaExiste) item_id = jaExiste.id;
+          else {
+            const { data: novoItem, error: errIt } = await supabase
+              .from("itens")
+              .insert({ codigo, nome: nomeIt, unidade: m.unidade || "un", valor_unitario: m.valor_unitario || null })
+              .select("id")
+              .single();
+            if (errIt) { toast.error(`Item ${codigo}: ${errIt.message}`); skipped++; continue; }
+            item_id = novoItem.id;
+          }
         }
         const { error: errMov } = await supabase.from("movimentacoes").insert({
-          tipo: "entrada", entrada_tipo: "compra", item_id, fornecedor_id,
-          quantidade: it.quantidade, valor_unitario: it.valor_unitario,
+          tipo: "entrada",
+          entrada_tipo: "compra",
+          item_id,
+          fornecedor_id,
+          quantidade: m.quantidade,
+          valor_unitario: m.valor_unitario,
           nota_fiscal: preview.numero ?? null,
           data_movimento: preview.emissao ? new Date(preview.emissao).toISOString() : new Date().toISOString(),
         });
         if (!errMov) inserted++;
+        else skipped++;
       }
-      toast.success(`${inserted} item(ns) importado(s) da NF-e`);
+      toast.success(`${inserted} item(ns) importado(s)${skipped ? ` · ${skipped} ignorado(s)` : ""}`);
       onDone();
       onOpenChange(false);
-      setFile(null); setPreview(null);
+      setFile(null); setPreview(null); setMappings([]);
     } catch (e: any) {
       toast.error(e.message);
     } finally { setBusy(false); }
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setFile(null); setPreview(null); } }}>
-      <DialogContent className="max-w-3xl">
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setFile(null); setPreview(null); setMappings([]); } }}>
+      <DialogContent className="max-w-5xl">
         <DialogHeader><DialogTitle>Importar NF-e (XML)</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <Card className="p-4 bg-muted/30 text-sm">
-            <div className="font-medium mb-1">Formato esperado</div>
+            <div className="font-medium mb-1">Como funciona</div>
             <div className="text-muted-foreground text-xs">
-              XML padrão SEFAZ (NF-e), normalmente disponibilizado pelo fornecedor após a emissão. Contém os dados do emitente, itens, quantidades e valores.
-              O sistema vai criar fornecedor e itens automaticamente caso ainda não existam.
+              Para cada item da NF-e você pode <strong>associar</strong> a um item já cadastrado no estoque,
+              <strong> cadastrar manualmente</strong> (editando código, nome e unidade) ou <strong>ignorar</strong>.
             </div>
           </Card>
 
@@ -730,7 +800,7 @@ function NfeImportDialog({ open, onOpenChange, onDone }: { open: boolean; onOpen
             <label className="text-xs font-medium text-muted-foreground">Arquivo XML</label>
             <Input type="file" accept=".xml" onChange={async (e) => {
               const f = e.target.files?.[0] ?? null;
-              setFile(f); setPreview(null);
+              setFile(f); setPreview(null); setMappings([]);
               if (f) await loadPreview(f);
             }} />
           </div>
@@ -738,15 +808,54 @@ function NfeImportDialog({ open, onOpenChange, onDone }: { open: boolean; onOpen
           {preview && (
             <Card className="p-3 text-sm space-y-2">
               <div><span className="text-muted-foreground">Fornecedor:</span> <strong>{preview.fornecedor.nome}</strong> {preview.fornecedor.cnpj ? `(${preview.fornecedor.cnpj})` : ""}</div>
-              <div><span className="text-muted-foreground">NF nº:</span> {preview.numero ?? "—"}</div>
-              <div className="text-xs text-muted-foreground">{preview.itens.length} item(ns)</div>
-              <div className="max-h-48 overflow-auto text-xs border-t border-border pt-2">
-                {preview.itens.map((i: any, idx: number) => (
-                  <div key={idx} className="flex justify-between gap-2 py-0.5 border-b border-border/50 last:border-0">
-                    <span className="font-mono text-muted-foreground">{i.codigo}</span>
-                    <span className="flex-1 truncate">{i.nome}</span>
-                    <span className="tabular-nums">{i.quantidade} {i.unidade}</span>
-                    <span className="tabular-nums text-muted-foreground">R$ {i.valor_unitario.toFixed(2)}</span>
+              <div><span className="text-muted-foreground">NF nº:</span> {preview.numero ?? "—"} · {preview.itens.length} item(ns)</div>
+
+              <div className="max-h-[55vh] overflow-auto border-t border-border pt-2 space-y-2">
+                {mappings.map((m, idx) => (
+                  <div key={idx} className="rounded-md border border-border p-2 space-y-2 bg-card">
+                    <div className="flex items-start justify-between gap-2 text-xs">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{preview.itens[idx].nome}</div>
+                        <div className="text-muted-foreground font-mono">
+                          XML: {preview.itens[idx].codigo} · {m.quantidade} {preview.itens[idx].unidade} · R$ {Number(m.valor_unitario).toFixed(2)}
+                        </div>
+                      </div>
+                      <Select value={m.mode} onValueChange={(v) => updateMap(idx, { mode: v as XmlItemMap["mode"] })}>
+                        <SelectTrigger className="w-[180px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="existing">Associar a existente</SelectItem>
+                          <SelectItem value="create">Cadastrar novo</SelectItem>
+                          <SelectItem value="skip">Ignorar este item</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {m.mode === "existing" && (
+                      <div>
+                        <ItemSearchSelect
+                          itens={itensAll ?? []}
+                          value={m.existing_item_id ?? ""}
+                          onChange={(v) => updateMap(idx, { existing_item_id: v })}
+                        />
+                      </div>
+                    )}
+
+                    {m.mode === "create" && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        <div className="col-span-1">
+                          <label className="text-[10px] uppercase text-muted-foreground">Código</label>
+                          <Input value={m.codigo} onChange={(e) => updateMap(idx, { codigo: e.target.value })} className="h-8 text-xs" />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="text-[10px] uppercase text-muted-foreground">Nome</label>
+                          <Input value={m.nome} onChange={(e) => updateMap(idx, { nome: e.target.value })} className="h-8 text-xs" />
+                        </div>
+                        <div className="col-span-1">
+                          <label className="text-[10px] uppercase text-muted-foreground">Unidade</label>
+                          <Input value={m.unidade} onChange={(e) => updateMap(idx, { unidade: e.target.value })} className="h-8 text-xs" />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
