@@ -637,3 +637,130 @@ function SyncStateCard() {
     </Card>
   );
 }
+
+function ReprocessarFalhasCard({
+  canManage,
+  connected,
+  defaultFrom,
+  defaultTo,
+}: {
+  canManage: boolean;
+  connected: boolean;
+  defaultFrom: string;
+  defaultTo: string;
+}) {
+  const qc = useQueryClient();
+  const [from, setFrom] = useState(defaultFrom);
+  const [to, setTo] = useState(defaultTo);
+  const [busyAll, setBusyAll] = useState(false);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+
+  useEffect(() => { setFrom(defaultFrom); setTo(defaultTo); }, [defaultFrom, defaultTo]);
+
+  const falhas = useQuery({
+    queryKey: ["ca-falhas", from, to],
+    enabled: canManage,
+    queryFn: async () => {
+      const params = new URLSearchParams({ from, to });
+      const res = await fetch(`/api/contaazul/reprocessar-falhas?${params}`, { headers: await authHeaders() });
+      if (!res.ok) throw new Error(await res.text());
+      return (await res.json()) as {
+        falhas: Array<{ recurso: string; mes_from: string; mes_to: string; mensagem: string | null; ultima_falha: string }>;
+      };
+    },
+  });
+
+  async function reprocessar(alvo?: Array<{ recurso: string; mes_from: string; mes_to: string }>) {
+    if (alvo && alvo[0]) setBusyKey(`${alvo[0].recurso}|${alvo[0].mes_from}`); else setBusyAll(true);
+    try {
+      const res = await fetch("/api/contaazul/reprocessar-falhas", {
+        method: "POST",
+        headers: { ...(await authHeaders()), "Content-Type": "application/json" },
+        body: JSON.stringify({ from, to, alvo }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const r = (await res.json()) as { tentados: number; sucesso: number; falhas: Array<{ recurso: string; mes: string; mensagem: string }> };
+      if (r.sucesso > 0 && r.falhas.length === 0) toast.success(`Reprocessado: ${r.sucesso}/${r.tentados}`);
+      else if (r.sucesso > 0) toast.warning(`Reprocessado parcial: ${r.sucesso}/${r.tentados} — ${r.falhas.length} ainda com erro`);
+      else toast.error(`Nenhum mês reprocessado com sucesso (${r.falhas.length} falhas)`);
+      await qc.invalidateQueries({ queryKey: ["ca-falhas"] });
+      await qc.invalidateQueries({ queryKey: ["ca-sync-log"] });
+    } catch (e: any) {
+      toast.error(`Erro: ${e?.message ?? e}`);
+    } finally {
+      setBusyAll(false);
+      setBusyKey(null);
+    }
+  }
+
+  const lista = falhas.data?.falhas ?? [];
+
+  return (
+    <Card className="mt-4">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 gap-2 flex-wrap">
+        <CardTitle className="text-base">Meses com falha (a reprocessar)</CardTitle>
+        <div className="flex items-center gap-2">
+          <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-8 w-[140px]" />
+          <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-8 w-[140px]" />
+          <Button size="sm" variant="outline" onClick={() => falhas.refetch()} disabled={!canManage || falhas.isFetching}>
+            {falhas.isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => reprocessar()}
+            disabled={!canManage || !connected || busyAll || lista.length === 0}
+          >
+            {busyAll ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
+            Reprocessar todos ({lista.length})
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
+              <tr>
+                <th className="text-left p-3">Recurso</th>
+                <th className="text-left p-3">Mês</th>
+                <th className="text-left p-3">Última falha</th>
+                <th className="text-left p-3">Mensagem</th>
+                <th className="p-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {falhas.isLoading && (
+                <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">Carregando…</td></tr>
+              )}
+              {!falhas.isLoading && lista.length === 0 && (
+                <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">
+                  Nenhuma falha pendente no período. 🎉
+                </td></tr>
+              )}
+              {lista.map((f) => {
+                const key = `${f.recurso}|${f.mes_from}`;
+                return (
+                  <tr key={key} className="border-t border-border">
+                    <td className="p-3 font-medium">{f.recurso}</td>
+                    <td className="p-3 font-mono text-xs">{f.mes_from.slice(0, 7)}</td>
+                    <td className="p-3 text-muted-foreground text-xs">{new Date(f.ultima_falha).toLocaleString("pt-BR")}</td>
+                    <td className="p-3 text-xs text-muted-foreground max-w-md truncate" title={f.mensagem ?? ""}>{f.mensagem ?? "—"}</td>
+                    <td className="p-3 text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => reprocessar([{ recurso: f.recurso, mes_from: f.mes_from, mes_to: f.mes_to }])}
+                        disabled={!canManage || !connected || busyKey === key || busyAll}
+                      >
+                        {busyKey === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Reprocessar"}
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
