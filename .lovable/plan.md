@@ -1,47 +1,29 @@
-## 1. Corrigir o "Something went wrong" em Entradas (e prevenir nas outras)
+## Diagnóstico
 
-**Causa raiz**: `usePersistedState` salva o filtro `periodo` no `localStorage` via `JSON.stringify`. Mas `Periodo = { from: Date | null; to: Date | null }` — depois do `JSON.parse` na hidratação, `from`/`to` voltam como **string**, não `Date`. Quando o código chama `periodo.from.getTime()` ou `.toISOString()` nas queries, dispara erro que cai no boundary do TanStack Router.
+A URL no print mostra `state=ESTADO` — esse é o **placeholder literal** da documentação do Conta Azul. Isso significa que essa chamada **não veio do botão "Conectar" do app** — veio de uma URL de teste/exemplo (provavelmente colada manualmente ou de um link de teste do painel do Conta Azul).
 
-**Correção**: parar de persistir filtros em `localStorage`. O próprio usuário pediu que filtros sejam lembrados **apenas enquanto a aba estiver aberta** — quando sair e voltar, devem ser limpos. Isso é exatamente o comportamento natural de `useState`, já que o componente da rota desmonta ao trocar de página.
+O cookie `ca_oauth_state` só é criado quando você clica em "Conectar" dentro de `/financeiro/conta-azul`. Como não havia cookie, o handler tenta redirecionar com erro "State inválido (sessão expirada)" — mas o `Response.redirect()` está sendo capturado pelo h3 como erro não tratado e retorna `{"status":500,"unhandled":true,"message":"HTTPError"}` em vez do redirect amigável.
 
-- Trocar todos os `usePersistedState(...)` por `useState(...)` em:
-  - `src/routes/entradas.tsx`
-  - `src/routes/saidas.tsx`
-  - `src/routes/devolucoes.tsx`
-  - `src/routes/patrimonio.index.tsx`
-  - `src/routes/estoque.index.tsx`
-- Remover o import de `usePersistedState` dessas telas (manter o arquivo do hook por enquanto, caso seja útil em outro lugar).
+Secrets `CONTA_AZUL_CLIENT_ID` / `CONTA_AZUL_CLIENT_SECRET` estão configurados — não é problema de credenciais.
 
-Isso elimina o crash e atende ao requisito de "lembrar só enquanto está na aba".
+## Correções
 
-## 2. Formulários de Entrada e Saída maiores, sem cortar nomes
+**1. `src/routes/api/contaazul/oauth.callback.ts`** — tornar o handler à prova de falhas:
+- Trocar `Response.redirect(url, 302)` por `new Response(null, { status: 302, headers: { Location: url } })` (mais confiável no workerd e não é interpretado como erro pelo h3).
+- Envolver o handler inteiro em um `try/catch` externo que sempre retorna um redirect 302 para `/financeiro/conta-azul?error=...` mesmo se algo inesperado lançar.
+- Logar o erro real no `console.error` antes de redirecionar (para aparecer nos logs).
 
-- Aumentar os diálogos de **Nova/Editar entrada** e **Nova/Editar saída** para `max-w-[min(1400px,98vw)] w-[98vw]` (hoje são `max-w-4xl` / `1200px`).
-- No seletor de item (`ItemSearchSelect`) e nos resumos de linha do formulário: remover `truncate` do nome do item e permitir quebra (`whitespace-normal break-words`). O código do item continua em mono, o nome aparece inteiro.
-- Garantir que a coluna de item da tabela do formulário use largura flexível para não cortar.
+**2. Mensagem ao usuário sobre o `state=ESTADO`:**
+Após o fix, se você acessar essa URL de novo, verá a tela do Conta Azul com a mensagem "State inválido (sessão expirada)" em vez do JSON cru. Para conectar de verdade:
+- Acesse `/financeiro/conta-azul` no app
+- Clique no botão **"Conectar"**
+- Será redirecionado para o Conta Azul, autorize, e voltará automaticamente com `?connected=1`
 
-## 3. Mostrar itens zerados no formulário de Entrada e Saída
+Não cole/abra manualmente a URL `/api/contaazul/oauth/callback` — ela só funciona dentro do fluxo iniciado pelo botão.
 
-- Em `src/routes/saidas.tsx` (~linha 188), remover o filtro `.filter((i) => Number(i.quantidade_atual) > 0)` da query de itens do formulário. Todos os itens passam a aparecer na busca.
-- Em `src/routes/entradas.tsx`, conferir e garantir o mesmo (entrada já deve listar tudo, mas validar).
-- Manter a validação de estoque insuficiente no submit da saída (apenas a listagem passa a incluir zerados).
+## Verificação
 
-## 4. Acelerar o lançamento
+- Abrir a URL antiga manualmente → deve redirecionar para `/financeiro/conta-azul` com toast de erro (não mais JSON 500).
+- Clicar em "Conectar" no app → fluxo completo deve funcionar e mostrar "Conta Azul conectado com sucesso!".
 
-Hoje o `handleSubmit` faz, para cada linha do lançamento, um `select quantidade_atual` seguido de um `update`, em **sequência**. Com várias linhas isso fica lento.
-
-- Substituir o loop por:
-  1. Um único `select id, quantidade_atual` com `.in("id", itemIds)` para todos os itens da movimentação.
-  2. Calcular em memória os novos saldos (somando entradas / subtraindo saídas e respeitando linhas duplicadas do mesmo item).
-  3. Disparar os `update` em paralelo com `Promise.all` (um por item).
-  4. Inserir as movimentações com um único `insert([...])` em lote (já é o caso em parte).
-- Aplicar o mesmo padrão em `entradas.tsx` e `saidas.tsx` (criação, edição e duplicação).
-- Manter as invalidações de cache atuais ao final.
-
-## 5. Verificação
-
-1. Abrir `/entradas` e `/saidas` e confirmar que a tela carrega sem o erro vermelho.
-2. Aplicar filtros, navegar para outra aba e voltar — filtros devem estar limpos.
-3. Abrir "Nova entrada" e "Nova saída": diálogos mais largos, nomes longos visíveis por inteiro.
-4. Confirmar que itens com estoque zero aparecem no seletor de itens da saída.
-5. Criar um lançamento com 5+ linhas e confirmar que salva visivelmente mais rápido.
+Arquivos alterados: 1 (`src/routes/api/contaazul/oauth.callback.ts`).
