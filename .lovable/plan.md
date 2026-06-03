@@ -1,45 +1,71 @@
+# Diagnóstico crítico — Conta Azul
 
-## Diagnóstico (confirmado pela doc oficial)
+## Como "está conectado" se o token muda?
 
-A API mudou de host **e** de paths. A nova plataforma usa `https://api-v2.contaazul.com/v1/...`, paginação em **português** (`pagina` começando em **1**, `tamanho_pagina` com valores fixos `10/20/50/100/200/500/1000`) e nomes de recursos novos. Não existe mais endpoint único de "Extrato Bancário" — ele é composto a partir de contas financeiras + parcelas + transferências.
+A conexão é real e renovada sozinha. O fluxo:
 
-## Mudanças
+1. Você autoriza uma vez → recebemos `access_token` (≈ 1h, JWT do Cognito) **+ `refresh_token` (longa duração)**.
+2. Os dois ficam em `conta_azul_credentials` (tabela única, apenas administradores acessam).
+3. A cada chamada à API, `getValidAccessToken()` confere `expires_at`. Se faltar menos de 60s, troca o `refresh_token` por um novo `access_token` automaticamente.
+4. Se mesmo assim a API responder 401, fazemos **um retry forçado** com refresh e tentamos de novo.
 
-### 1. `src/lib/conta-azul/client.server.ts`
-- `API_BASE` → `https://api-v2.contaazul.com/v1`
+Verifiquei agora no banco: `expires_at` foi renovado durante a última sincronização (`17:45:29`) — ou seja, o refresh **funcionou**. "Conectado" significa "temos refresh_token válido e estamos renovando o access_token sob demanda". Só quebra se o usuário revogar o acesso no Conta Azul ou se passarem ~30 dias sem uso.
 
-### 2. `src/lib/conta-azul/sync.server.ts` — reescrita do `fetchPaged` e dos paths
+## O que realmente falhou na última sincronização
 
-**Novo `fetchPaged`:**
-- Params: `pagina` (começa em 1) e `tamanho_pagina=100`.
-- Lê itens de `result.items` (fallback `content`/`data`) e total de `result.itens_totais` para decidir parar.
-- Mantém o limite de segurança (50 páginas = 5000 registros por recurso).
-
-**Novos paths e filtros:**
-
-| Recurso (mantém o slug interno) | Path novo | Filtros de período |
+| Recurso | Resultado | Causa real |
 |---|---|---|
-| `plano_contas` | `GET /categorias` | — |
-| `centros_custo` | `GET /centro-de-custo` | `filtro_rapido=TODOS` |
-| `contas_pagar` | `GET /financeiro/eventos-financeiros/contas-a-pagar/buscar` | `data_vencimento_inicio`, `data_vencimento_fim` |
-| `contas_receber` | `GET /financeiro/eventos-financeiros/contas-a-receber/buscar` | `data_vencimento_inicio`, `data_vencimento_fim` |
-| `extrato` | `GET /conta-financeira` | (sem filtro de data — lista as contas bancárias com saldo atual) |
+| plano_contas | ok / 0 reg | parâmetro obrigatório `permite_apenas_filhos` faltando + leitura do array errada (API devolve `itens`, código lê `items`) |
+| centros_custo | ok / 0 reg | leitura do array errada (`itens` vs `items`) |
+| contas_pagar | **400** | parâmetro errado: enviamos `data_vencimento_inicio`/`_fim`, doc exige `data_vencimento_de`/`_ate` |
+| contas_receber | **400** | mesma coisa |
+| extrato | ok / 0 reg | `/conta-financeira` devolve `itens`, código lê `items` |
 
-**Sobre "extrato":** mantenho o slug `extrato` no log/UI para não quebrar a tela, mas o que vai ser sincronizado agora é a **lista de contas financeiras** (banco, caixa, cartão) com saldo. Documento isso na mensagem da sincronização. Extrato completo (lançamentos por dia em uma conta) exige compor 3-4 endpoints — proponho fazer numa segunda iteração se você quiser, pra não atrasar essa entrega.
+Confirmei lendo a OpenAPI oficial:
+- `GET /v1/categorias` — `permite_apenas_filhos` é **required**; resposta = `{ itens_totais, itens[] }`
+- `GET /v1/centro-de-custo` — resposta = `{ itens_totais, items[] }` (sim, este usa `items`)
+- `GET /v1/financeiro/eventos-financeiros/contas-a-pagar/buscar` — `data_vencimento_de` e `data_vencimento_ate` são required; resposta = `{ itens_totais, itens[] }`; status enum = `PERDIDO | RECEBIDO | EM_ABERTO | RENEGOCIADO | RECEBIDO_PARCIAL | ATRASADO`
+- `GET /v1/conta-financeira` — resposta = `{ itens_totais, itens[] }`
 
-**Mapeamento de campos:** mantenho os mapeamentos atuais com múltiplos fallbacks (`it.id ?? it.uuid`, `it.nome ?? it.name ?? it.descricao`, etc.) — assim o upsert funciona mesmo com pequenas variações do schema novo, e ajustamos se algum campo importante vier vazio.
+# Plano de correção
 
-### 3. Status (apenas em contas a pagar/receber)
-A API nova usa `PENDENTE | QUITADO | CANCELADO | RENEGOCIADO | ATRASADO`. Atualizo o `normalizeStatus` para mapear esses valores PT → o enum que já está no DB (`em_aberto`/`pago`/`atrasado`).
+## 1. `src/lib/conta-azul/sync.server.ts`
 
-## Verificação
+**`fetchPaged`** — ler `result.itens` **primeiro** (esse é o padrão da API), com `items`/`content`/`data` como fallback. Isso por si só já desbloqueia `plano_contas`, `centros_custo` e `extrato`.
 
-1. Clicar **"Sincronizar agora"** na tela do Conta Azul.
-2. Esperado: as 5 linhas no histórico voltam com status **ok** e contagem de registros (ou 0 se não houver dados no período, sem erro).
-3. Se algum recurso falhar com 4xx, eu olho a mensagem (que vem da API) e ajusto os filtros — geralmente é nome de query param que mudou.
+**`syncPlanoContas`** — adicionar `permite_apenas_filhos=false` (busca raiz) na chamada de `/categorias`. Mapear campos reais: `id`, `nome`, `categoria_pai`, `tipo` (RECEITA/DESPESA), `entrada_dre`.
 
-## Arquivos alterados
+**`syncContasPagar` / `syncContasReceber`** — trocar parâmetros para `data_vencimento_de` / `data_vencimento_ate`. Reescrever mapeamento usando os campos documentados:
+- `external_id` ← `it.id`
+- `descricao` ← `it.descricao`
+- `valor` ← `it.total` (ou `it.nao_pago` + `it.pago`)
+- `data_vencimento` ← `it.data_vencimento`
+- `status` ← derivado de `it.status_traduzido`
+- `categoria_external_id` ← `it.categorias?.[0]?.id`
+- `centro_custo_external_id` ← `it.centros_custo?.[0]?.id`
+- `fornecedor_nome` / `cliente_nome` ← `it.fornecedor?.nome` / `it.cliente?.nome`
+- `documento` ← omitir (não existe na API v2) ou usar `it.numero_documento` se presente
 
-- `src/lib/conta-azul/client.server.ts` (mudança de 1 linha)
-- `src/lib/conta-azul/sync.server.ts` (reescrita do `fetchPaged`, paths e `normalizeStatus`)
+**`normalizeStatus`** — mapear o enum oficial:
+- `RECEBIDO` → `pago`
+- `ATRASADO` ou `PERDIDO` → `atrasado`
+- `EM_ABERTO`, `RENEGOCIADO`, `RECEBIDO_PARCIAL` → `em_aberto`
 
+**`syncExtrato`** — manter `/conta-financeira` (não há endpoint único de extrato na v2), mas mapear corretamente: `it.id`, `it.banco`, `it.nome`, `it.saldo_atual`. Manter o aviso no log de que é um snapshot de saldo, não um histórico de lançamentos. (Para extrato real do período seria preciso combinar `/saldo-inicial` + parcelas pagas — pode ser uma evolução futura, fora deste fix.)
+
+## 2. Verificação
+
+Após o deploy, rodar "Sincronizar agora" e conferir o histórico:
+
+- Esperado: as 5 linhas com status `ok`.
+- `plano_contas` e `centros_custo` devem trazer >0 registros (a menos que a conta realmente esteja vazia).
+- `contas_pagar`/`contas_receber` no período selecionado devem retornar os lançamentos reais.
+- `extrato` traz uma linha por conta financeira com o saldo atual.
+
+Se algum recurso ainda voltar 0 com `ok`, fazemos uma consulta direta no banco (`SELECT * FROM ca_*`) para descobrir se é dado vazio na origem ou ainda erro de mapeamento.
+
+## Fora de escopo (proponho discutir depois)
+
+- Extrato real diário (combinar saldo inicial + parcelas + transferências).
+- Sincronização incremental usando `/financeiro/eventos-financeiros/alteracoes` em vez de varrer tudo a cada clique.
+- Job agendado (cron) para sincronizar sozinho.
