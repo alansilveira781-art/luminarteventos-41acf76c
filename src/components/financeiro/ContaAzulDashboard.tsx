@@ -219,7 +219,7 @@ function PainelFinanceiro() {
       </div>
 
       <Card className="p-4">
-        <div className="text-sm font-semibold mb-3">Conferência vs Extrato (caixa)</div>
+        <div className="text-sm font-semibold mb-3">Conferência vs Extrato (realizado)</div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
           <div className="border rounded-md p-3">
             <div className="text-xs uppercase text-muted-foreground">Receitas</div>
