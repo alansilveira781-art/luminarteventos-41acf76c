@@ -215,6 +215,7 @@ function SolicitantesPage() {
             else { inserted++; setKey.add(key); }
           }
           qc.invalidateQueries({ queryKey: ["solicitantes"] });
+          qc.invalidateQueries({ queryKey: ["solicitantes-select"] });
           return { inserted, skipped, errors };
         }}
       />
