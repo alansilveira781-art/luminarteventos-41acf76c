@@ -125,10 +125,45 @@ function KpiCard({
   );
 }
 
-function PainelFinanceiro() {
-  const { planos, pagar, receber, extrato } = useContaAzulData();
+type LancRow = {
+  data: string | null;
+  nome: string | null;
+  descricao: string | null;
+  valor: number;
+  categoria_external_id: string | null;
+};
 
-  // Ano default: último ano com lançamentos sincronizados
+const GROUP_LABEL: Record<string, string> = {
+  RB: "(+) Receita Bruta",
+  DR: "(-) Deduções da Receita",
+  RL: "(=) Receita Líquida",
+  AC: "(-) Aquisição de Clientes",
+  DM: "(-) Despesas com Marketing",
+  DC: "(-) Despesas Comerciais",
+  RV: "(=) Resultado de Venda",
+  CV: "(-) Custos Variáveis",
+  CD: "(-) Custos Diretos",
+  CI: "(-) Custos Indiretos",
+  RO: "(=) Resultado da Operação",
+  DS: "(-) Despesas com Sócio",
+  DA: "(-) Despesas Administrativas",
+  DT: "(-) Despesas Tributárias",
+  RG: "(=) Resultado Gerencial",
+  RF_REC: "(+) Receitas Financeiras",
+  DF: "(-) Despesas Financeiras",
+  RF_TOT: "(=) Resultado Financeiro",
+  OE: "(+) Outras Entradas",
+  OS: "(-) Outras Saídas",
+  RNO: "(=) Resultado Não Operacional",
+  RN: "(=) Resultado do Negócio",
+  IN: "(-) Investimentos",
+  LU: "(=) Lucro",
+  SC: "(?) Sem classificação",
+};
+
+function PainelFinanceiro() {
+  const { planos, pagar, receber } = useContaAzulData();
+
   const anoDefault = useMemo(() => {
     const all = [
       ...(receber.data ?? []).map((c: any) => c.data_pagamento || c.data_vencimento),
@@ -141,222 +176,303 @@ function PainelFinanceiro() {
   const [ano, setAno] = useState<number | null>(null);
   const anoEfetivo = ano ?? anoDefault;
   const [mes, setMes] = useState(0);
-  const [visao, setVisao] = useState<Visao>("realizado");
+  const [categoriaSel, setCategoriaSel] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const planosArr = planos.data ?? [];
+  const planoMap = useMemo(() => {
+    const m = new Map<string, { nome: string }>();
+    planosArr.forEach((p) => m.set(p.external_id, { nome: p.nome }));
+    return m;
+  }, [planosArr]);
 
-  const { linhas, totais } = useMemo(
-    () => montarDRE(pagar.data ?? [], receber.data ?? [], planosArr, { ano: anoEfetivo, mes, visao }),
-    [pagar.data, receber.data, planosArr, anoEfetivo, mes, visao],
+  // DRE ano corrente (caixa = realizado)
+  const { totais, grupos } = useMemo(
+    () => calcularDRECaixa(pagar.data ?? [], receber.data ?? [], planoMap, anoEfetivo, mes),
+    [pagar.data, receber.data, planoMap, anoEfetivo, mes],
+  );
+  // DRE ano anterior (mesmo mês) para comparativo de Receita LY
+  const totaisAnt = useMemo(
+    () => calcularDRECaixa(pagar.data ?? [], receber.data ?? [], planoMap, anoEfetivo - 1, mes).totais,
+    [pagar.data, receber.data, planoMap, anoEfetivo, mes],
   );
 
   const rb = totais.RB ?? 0;
-  const rl = totais.RL ?? 0;
-  const ro = totais.RO ?? 0;
-  const rg = totais.RG ?? 0;
-  const lu = totais.LU ?? 0;
+  const pv = (totais.AC ?? 0) + (totais.DM ?? 0) + (totais.DC ?? 0); // já negativo
+  const desp = (totais.DS ?? 0) + (totais.DA ?? 0) + (totais.DT ?? 0);
+  const custos = (totais.CV ?? 0) + (totais.CD ?? 0) + (totais.CI ?? 0);
+  const lucro = totais.LU ?? 0;
+  const rbAnt = totaisAnt.RB ?? 0;
+  const yoyRb = rbAnt > 0 ? (rb - rbAnt) / rbAnt : null;
 
-  // Transferências ignoradas (auditoria)
-  const transf = useMemo(
-    () => transferenciasNoPeriodo(pagar.data ?? [], receber.data ?? [], planosArr, { ano: anoEfetivo, mes, visao }),
-    [pagar.data, receber.data, planosArr, anoEfetivo, mes, visao],
+  // Lançamentos do período (regime de caixa, sem transferências)
+  const lancamentos = useMemo<LancRow[]>(() => {
+    const list: LancRow[] = [];
+    const push = (rows: any[], isReceber: boolean) => {
+      rows.forEach((c) => {
+        if (c.status !== "pago") return;
+        if (!inPeriodo(c.data_pagamento, anoEfetivo, mes)) return;
+        const plano = c.categoria_external_id ? planoMap.get(c.categoria_external_id) : undefined;
+        if (isTransferencia(plano?.nome, c.descricao)) return;
+        const v = Number(c.valor || 0);
+        list.push({
+          data: c.data_pagamento,
+          nome: isReceber ? c.cliente_nome : c.fornecedor_nome,
+          descricao: c.descricao,
+          valor: isReceber ? v : -v,
+          categoria_external_id: c.categoria_external_id,
+        });
+      });
+    };
+    push(receber.data ?? [], true);
+    push(pagar.data ?? [], false);
+    return list.sort((a, b) => (a.data ?? "").localeCompare(b.data ?? ""));
+  }, [pagar.data, receber.data, planoMap, anoEfetivo, mes]);
+
+  const lancFiltrados = useMemo(
+    () => (categoriaSel ? lancamentos.filter((l) => l.categoria_external_id === categoriaSel) : lancamentos),
+    [lancamentos, categoriaSel],
   );
+  const totalLanc = lancFiltrados.reduce((s, l) => s + l.valor, 0);
+  const categoriaSelNome = categoriaSel ? planoMap.get(categoriaSel)?.nome ?? "" : "";
 
-  // Reconciliação com extrato (sempre realizado)
-  const extratoTot = useMemo(
-    () => totaisExtrato(extrato.data ?? [], planosArr, anoEfetivo, mes),
-    [extrato.data, planosArr, anoEfetivo, mes],
-  );
-  const dreRealizado = useMemo(() => {
-    if (visao === "realizado") return { receitas: rb, despesas: rb - lu };
-    const t = montarDRE(pagar.data ?? [], receber.data ?? [], planosArr, { ano: anoEfetivo, mes, visao: "realizado" }).totais;
-    const r = t.RB ?? 0;
-    const l = t.LU ?? 0;
-    return { receitas: r, despesas: r - l };
-  }, [visao, rb, lu, pagar.data, receber.data, planosArr, anoEfetivo, mes]);
+  // Linhas do Demonstrativo (estrutura oficial, com categorias expansíveis)
+  const linhasDre = useMemo(() => {
+    const out: { kind: "header" | "calc" | "detail"; id: string; label: string; valor: number; pct: number; catId?: string; groupId?: DreGroupId }[] = [];
+    const pct = (v: number) => (rb > 0 ? v / rb : 0);
+    for (const line of DRE_STRUCTURE) {
+      const v = totais[line.id] ?? 0;
+      if (line.kind === "sum") {
+        out.push({ kind: "header", id: line.id, label: GROUP_LABEL[line.id] ?? line.label, valor: v, pct: pct(v), groupId: line.id });
+        if (!collapsed[line.id]) {
+          const det = grupos.get(line.id);
+          if (det) {
+            Array.from(det.entries())
+              .sort((a, b) => (planoMap.get(a[0])?.nome ?? "").localeCompare(planoMap.get(b[0])?.nome ?? "", "pt-BR"))
+              .forEach(([catId, valor]) => {
+                const signed = valor * line.sign;
+                out.push({
+                  kind: "detail",
+                  id: `${line.id}:${catId}`,
+                  label: planoMap.get(catId)?.nome ?? "Sem categoria",
+                  valor: signed,
+                  pct: pct(signed),
+                  catId,
+                });
+              });
+          }
+        }
+      } else {
+        out.push({ kind: "calc", id: line.id, label: GROUP_LABEL[line.id] ?? line.label, valor: v, pct: pct(v) });
+      }
+    }
+    // Sem classificação
+    const sc = grupos.get("SC");
+    if (sc && sc.size > 0) {
+      const total = Array.from(sc.values()).reduce((s, v) => s + v, 0);
+      out.push({ kind: "header", id: "SC", label: GROUP_LABEL.SC, valor: total, pct: pct(total), groupId: "SC" });
+      if (!collapsed.SC) {
+        Array.from(sc.entries())
+          .sort((a, b) => (planoMap.get(a[0])?.nome ?? "").localeCompare(planoMap.get(b[0])?.nome ?? "", "pt-BR"))
+          .forEach(([catId, valor]) => {
+            out.push({ kind: "detail", id: `SC:${catId}`, label: planoMap.get(catId)?.nome ?? "Sem categoria", valor, pct: pct(valor), catId });
+          });
+      }
+    }
+    return out;
+  }, [totais, grupos, collapsed, planoMap, rb]);
 
-  const diffRec = dreRealizado.receitas - extratoTot.receitas;
-  const diffDes = dreRealizado.despesas - extratoTot.despesas;
-  const pctRec = extratoTot.receitas ? Math.abs(diffRec) / extratoTot.receitas : 0;
-  const pctDes = extratoTot.despesas ? Math.abs(diffDes) / extratoTot.despesas : 0;
-  const corDiff = (p: number) => (p <= 0.01 ? "text-green-600" : p <= 0.05 ? "text-yellow-600" : "text-red-600");
-
-  // Movimentos do período (mesma visão do DRE)
-  const movimentos = useMemo(() => {
-    const passa = (c: any) =>
-      visao === "realizado"
-        ? c.status === "pago" && inPeriodo(c.data_pagamento, anoEfetivo, mes)
-        : c.status !== "pago" && inPeriodo(c.data_vencimento, anoEfetivo, mes);
-    return [
-      ...(receber.data ?? []).filter(passa).map((c: any) => ({
-        data: visao === "realizado" ? c.data_pagamento : c.data_vencimento,
-        nome: c.cliente_nome, descricao: c.descricao, valor: Number(c.valor || 0),
-      })),
-      ...(pagar.data ?? []).filter(passa).map((c: any) => ({
-        data: visao === "realizado" ? c.data_pagamento : c.data_vencimento,
-        nome: c.fornecedor_nome, descricao: c.descricao, valor: -Number(c.valor || 0),
-      })),
-    ].sort((a, b) => (a.data ?? "").localeCompare(b.data ?? ""));
-  }, [pagar.data, receber.data, visao, anoEfetivo, mes]);
-
-  const totalMov = movimentos.reduce((s, m) => s + m.valor, 0);
-
+  const toggleGroup = (id: string) => setCollapsed((c) => ({ ...c, [id]: !c[id] }));
+  const onClickCategoria = (catId: string) =>
+    setCategoriaSel((cur) => (cur === catId ? null : catId));
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-3 items-end justify-end">
-        <div>
-          <label className="text-xs text-muted-foreground block mb-1">Visão</label>
-          <ToggleGroup type="single" value={visao} onValueChange={(v) => v && setVisao(v as Visao)} size="sm">
-            <ToggleGroupItem value="realizado">Realizado</ToggleGroupItem>
-            <ToggleGroupItem value="projetado">Projetado</ToggleGroupItem>
-          </ToggleGroup>
-        </div>
-
-        <div className="w-32">
-          <label className="text-xs text-muted-foreground">Ano</label>
-          <Select value={String(anoEfetivo)} onValueChange={(v) => setAno(Number(v))}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{YEARS.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-        <div className="w-40">
-          <label className="text-xs text-muted-foreground">Mês</label>
-          <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{MESES.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}</SelectContent>
-          </Select>
+      <div className="flex flex-wrap gap-3 items-end justify-between">
+        <h2 className="text-xl font-bold">Painel Financeiro</h2>
+        <div className="flex gap-3">
+          <div className="w-32">
+            <label className="text-xs text-muted-foreground">Ano</label>
+            <Select value={String(anoEfetivo)} onValueChange={(v) => setAno(Number(v))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{YEARS.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="w-40">
+            <label className="text-xs text-muted-foreground">Mês</label>
+            <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{MESES.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <KpiCard icon={Piggy} label="Receita Bruta" value={fmtMoney(rb)} subLabel="% RB" subValue={fmtPct(1)} subColor="text-green-600" />
-        <KpiCard icon={TrendingDown} label="Receita Líquida" value={fmtMoney(rl)} subLabel="% RB" subValue={fmtPct(rb ? rl / rb : 0)} />
-        <KpiCard icon={Building2} label="Result. Operação" value={fmtMoney(ro)} subLabel="% RB" subValue={fmtPct(rb ? ro / rb : 0)} subColor={ro >= 0 ? "text-green-600" : "text-red-600"} />
-        <KpiCard icon={BarChart3} label="Result. Gerencial" value={fmtMoney(rg)} subLabel="% RB" subValue={fmtPct(rb ? rg / rb : 0)} subColor={rg >= 0 ? "text-green-600" : "text-red-600"} />
-        <KpiCard icon={Sprout} label="Lucro" value={fmtMoney(lu)} subLabel="% RB" subValue={fmtPct(rb ? lu / rb : 0)} subColor={lu >= 0 ? "text-green-600" : "text-red-600"} />
+        <KpiCard
+          icon={Piggy} label="Receita Bruta" value={fmtMoney(rb)}
+          subLabel="% Receita LY"
+          subValue={yoyRb === null ? "—" : fmtPct(yoyRb)}
+          subColor={yoyRb === null ? "text-muted-foreground" : yoyRb >= 0 ? "text-emerald-600" : "text-rose-600"}
+        />
+        <KpiCard
+          icon={Users} label="Pot. de Vendas" value={fmtMoney(pv)}
+          subLabel="% PV" subValue={fmtPct(rb ? pv / rb : 0)}
+          subColor={pv >= 0 ? "text-emerald-600" : "text-rose-600"}
+        />
+        <KpiCard
+          icon={Building2} label="Despesas" value={fmtMoney(desp)}
+          subLabel="% Despesa" subValue={fmtPct(rb ? desp / rb : 0)}
+          subColor="text-rose-600"
+        />
+        <KpiCard
+          icon={BarChart3} label="Custos" value={fmtMoney(custos)}
+          subLabel="% Custos" subValue={fmtPct(rb ? custos / rb : 0)}
+          subColor="text-rose-600"
+        />
+        <KpiCard
+          icon={Sprout} label="Lucro" value={fmtMoney(lucro)}
+          subLabel="% Lucro" subValue={fmtPct(rb ? lucro / rb : 0)}
+          subColor={lucro >= 0 ? "text-emerald-600" : "text-rose-600"}
+        />
       </div>
 
-      {/* DRE detalhado (largura total, sem rolagem interna) */}
-      <Card className="p-0 overflow-hidden">
-        <div className="grid grid-cols-[1fr,180px,80px] text-xs uppercase text-muted-foreground bg-muted/50 px-3 py-2 font-semibold">
-          <div>Demonstrativo de Resultado (DRE)</div>
-          <div className="text-right">Valores</div>
-          <div className="text-right">% RB</div>
-        </div>
-        <div>
-          {linhas.map((row) => {
-            const isDetail = row.kind === "detail";
-            const isCalc = row.kind === "calc";
-            return (
-              <div
-                key={row.id}
-                className={`grid grid-cols-[1fr,180px,80px] px-3 py-1.5 border-t border-border ${
-                  isCalc
-                    ? "font-semibold bg-muted/40 text-sm"
-                    : isDetail
-                      ? "text-xs text-muted-foreground"
-                      : "font-semibold text-sm"
-                }`}
-              >
-                <div className={`truncate ${isDetail ? "pl-8" : ""}`} title={row.label.trim()}>
-                  {row.label.trim()}
-                </div>
-                <div className={`text-right tabular-nums ${row.valor < 0 ? "text-red-600" : ""}`}>{fmtMoney(row.valor)}</div>
-                <div className="text-right tabular-nums text-muted-foreground">{fmtPct(row.pct)}</div>
-              </div>
-            );
-          })}
-        </div>
-      </Card>
-
-      {/* Transferências bancárias ignoradas (auditoria) */}
-      <Card className="p-4">
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-sm font-semibold">Transferências bancárias ignoradas no DRE</div>
-          <div className="text-xs text-muted-foreground">
-            {transf.count} lançamento(s) · <span className="font-semibold text-foreground">{fmtMoney(transf.total)}</span>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        {/* DRE */}
+        <Card className="p-0 overflow-hidden lg:col-span-2">
+          <div className="grid grid-cols-[1fr,140px,70px] text-xs uppercase text-muted-foreground bg-muted/60 px-3 py-2 font-semibold">
+            <div>Demonstrativo</div>
+            <div className="text-right">Valores</div>
+            <div className="text-right">%</div>
           </div>
-        </div>
-        <p className="text-xs text-muted-foreground mb-2">
-          Movimentações de capital entre contas (transferências, ajustes de saldo, aplicações/resgates) não são receita nem despesa e são excluídas do demonstrativo.
-        </p>
-        {transf.count > 0 && (
-          <div className="border rounded-md overflow-hidden">
-            <div className="grid grid-cols-[100px,1fr,140px] text-xs uppercase text-muted-foreground bg-muted/40 px-3 py-1.5 font-semibold">
-              <div>Data</div><div>Descrição</div><div className="text-right">Valor</div>
-            </div>
-            <div className="max-h-[220px] overflow-y-auto">
-              {transf.itens.slice(0, 100).map((t, i) => (
-                <div key={i} className="grid grid-cols-[100px,1fr,140px] px-3 py-1 text-xs border-t border-border">
-                  <div className="text-muted-foreground">{t.data?.slice(0, 10) ?? "—"}</div>
-                  <div className="truncate">
-                    <span className="font-medium">{t.descricao ?? "—"}</span>
-                    {t.nome && <span className="text-muted-foreground"> · {t.nome}</span>}
+          <div>
+            {linhasDre.map((row) => {
+              if (row.kind === "header") {
+                const isOpen = !collapsed[row.id];
+                return (
+                  <button
+                    key={row.id}
+                    onClick={() => toggleGroup(row.id)}
+                    className="grid grid-cols-[1fr,140px,70px] w-full px-3 py-1.5 border-t border-border font-semibold text-sm hover:bg-muted/40 text-left"
+                  >
+                    <div className="flex items-center gap-1 truncate">
+                      {isOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
+                      <span className="truncate">{row.label}</span>
+                    </div>
+                    <div className={`text-right tabular-nums ${row.valor < 0 ? "text-rose-600" : ""}`}>{fmtMoney(row.valor)}</div>
+                    <div className="text-right tabular-nums text-muted-foreground">{fmtPct(row.pct)}</div>
+                  </button>
+                );
+              }
+              if (row.kind === "calc") {
+                return (
+                  <div key={row.id} className="grid grid-cols-[1fr,140px,70px] px-3 py-1.5 border-t border-border font-bold bg-muted/30 text-sm">
+                    <div className="truncate">{row.label}</div>
+                    <div className={`text-right tabular-nums ${row.valor < 0 ? "text-rose-600" : ""}`}>{fmtMoney(row.valor)}</div>
+                    <div className="text-right tabular-nums text-muted-foreground">{fmtPct(row.pct)}</div>
                   </div>
-                  <div className="text-right tabular-nums">{fmtMoney(t.valor)}</div>
-                </div>
-              ))}
-            </div>
+                );
+              }
+              const isSel = row.catId === categoriaSel;
+              return (
+                <button
+                  key={row.id}
+                  onClick={() => row.catId && onClickCategoria(row.catId)}
+                  className={`grid grid-cols-[1fr,140px,70px] w-full px-3 py-1 border-t border-border text-xs text-left hover:bg-accent ${isSel ? "bg-accent" : ""}`}
+                >
+                  <div className="pl-7 truncate" title={row.label}>{row.label}</div>
+                  <div className={`text-right tabular-nums ${row.valor < 0 ? "text-rose-600" : ""}`}>{fmtMoney(row.valor)}</div>
+                  <div className="text-right tabular-nums text-muted-foreground">{fmtPct(row.pct)}</div>
+                </button>
+              );
+            })}
           </div>
-        )}
-      </Card>
+        </Card>
 
-      <Card className="p-4">
-        <div className="text-sm font-semibold mb-3">Conferência vs Extrato (realizado)</div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-          <div className="border rounded-md p-3">
-            <div className="text-xs uppercase text-muted-foreground">Receitas</div>
-            <div className="mt-1 grid grid-cols-2 gap-x-2 tabular-nums">
-              <div className="text-muted-foreground">DRE</div><div className="text-right">{fmtMoney(dreRealizado.receitas)}</div>
-              <div className="text-muted-foreground">Extrato</div><div className="text-right">{fmtMoney(extratoTot.receitas)}</div>
-              <div className="font-semibold">Diferença</div>
-              <div className={`text-right font-semibold ${corDiff(pctRec)}`}>{fmtMoney(diffRec)} ({fmtPct(pctRec)})</div>
+        {/* Lançamentos */}
+        <Card className="p-0 overflow-hidden lg:col-span-3">
+          <div className="flex items-center justify-between bg-muted/60 px-3 py-2">
+            <div className="text-xs uppercase text-muted-foreground font-semibold">
+              Lançamentos {categoriaSel ? <>· filtro: <span className="text-foreground normal-case">{categoriaSelNome}</span></> : <span className="normal-case">· todos do período</span>}
             </div>
-          </div>
-          <div className="border rounded-md p-3">
-            <div className="text-xs uppercase text-muted-foreground">Despesas + Custos</div>
-            <div className="mt-1 grid grid-cols-2 gap-x-2 tabular-nums">
-              <div className="text-muted-foreground">DRE</div><div className="text-right">{fmtMoney(dreRealizado.despesas)}</div>
-              <div className="text-muted-foreground">Extrato</div><div className="text-right">{fmtMoney(extratoTot.despesas)}</div>
-              <div className="font-semibold">Diferença</div>
-              <div className={`text-right font-semibold ${corDiff(pctDes)}`}>{fmtMoney(diffDes)} ({fmtPct(pctDes)})</div>
-            </div>
-          </div>
-          <div className="border rounded-md p-3 text-xs text-muted-foreground">
-            <div className="font-semibold text-foreground mb-1">Como ler</div>
-            Verde ≤ 1%, amarelo ≤ 5%, vermelho acima. Diferenças grandes indicam meses sem sincronização — abra a aba <span className="font-semibold">Conta Azul → Meses com falha</span> e reprocesse.
-            {extratoTot.receitas === 0 && extratoTot.despesas === 0 && (
-              <div className="mt-2 text-red-600">Extrato vazio no período. Confira se a sincronização do recurso <em>extrato</em> rodou.</div>
+            {categoriaSel && (
+              <button onClick={() => setCategoriaSel(null)} className="text-xs flex items-center gap-1 text-muted-foreground hover:text-foreground">
+                <X className="h-3 w-3" /> limpar
+              </button>
             )}
           </div>
-        </div>
-      </Card>
-
-      <Card className="p-0 overflow-hidden">
-        <div className="grid grid-cols-[110px,1fr,140px] text-xs uppercase text-muted-foreground bg-muted/50 px-3 py-2 font-semibold">
-          <div>Data</div><div>Fornecedor/Cliente · Descrição</div><div className="text-right">Valor</div>
-        </div>
-        <div className="max-h-[520px] overflow-y-auto">
-          {movimentos.slice(0, 300).map((m, i) => (
-            <div key={i} className="grid grid-cols-[110px,1fr,140px] px-3 py-1.5 text-sm border-t border-border">
-              <div className="text-muted-foreground">{m.data?.slice(0, 10) ?? "—"}</div>
-              <div className="truncate">
-                <span className="font-medium">{m.nome ?? "—"}</span>
-                {m.descricao && <span className="text-muted-foreground"> · {m.descricao}</span>}
+          <div className="grid grid-cols-[110px,1fr,1.4fr,130px] text-xs uppercase text-muted-foreground bg-muted/30 px-3 py-2 font-semibold">
+            <div>Data movimento</div>
+            <div>Nome do fornecedor/cliente</div>
+            <div>Descrição</div>
+            <div className="text-right">Valor Total</div>
+          </div>
+          <div className="max-h-[600px] overflow-y-auto">
+            {lancFiltrados.length === 0 && (
+              <div className="px-3 py-6 text-center text-sm text-muted-foreground">Nenhum lançamento no período.</div>
+            )}
+            {lancFiltrados.slice(0, 1000).map((l, i) => (
+              <div key={i} className="grid grid-cols-[110px,1fr,1.4fr,130px] px-3 py-1.5 text-sm border-t border-border">
+                <div className="text-muted-foreground">{l.data?.slice(0, 10) ?? "—"}</div>
+                <div className="truncate">{l.nome ?? "—"}</div>
+                <div className="truncate text-muted-foreground" title={l.descricao ?? ""}>{l.descricao ?? "—"}</div>
+                <div className={`text-right tabular-nums ${l.valor < 0 ? "text-rose-600" : "text-emerald-700"}`}>{fmtMoney(l.valor)}</div>
               </div>
-              <div className={`text-right tabular-nums ${m.valor < 0 ? "text-red-600" : "text-green-700"}`}>{fmtMoney(m.valor)}</div>
-            </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-[1fr,140px] px-3 py-2 text-sm font-semibold bg-muted/40 border-t">
-          <div>Total ({movimentos.length} lançamentos)</div>
-          <div className={`text-right tabular-nums ${totalMov < 0 ? "text-red-600" : "text-green-700"}`}>{fmtMoney(totalMov)}</div>
-        </div>
-      </Card>
+            ))}
+          </div>
+          <div className="grid grid-cols-[1fr,130px] px-3 py-2 text-sm font-bold bg-muted/40 border-t">
+            <div>Total ({lancFiltrados.length})</div>
+            <div className={`text-right tabular-nums ${totalLanc < 0 ? "text-rose-600" : "text-emerald-700"}`}>{fmtMoney(totalLanc)}</div>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }
+
+/** DRE em regime de caixa (status='pago', por data_pagamento), excluindo transferências.
+ * Retorna totais por grupo (já com sinal aplicado) e detalhamento por categoria (valor absoluto). */
+function calcularDRECaixa(
+  pagar: any[],
+  receber: any[],
+  planoMap: Map<string, { nome: string }>,
+  ano: number,
+  mes: number,
+): { totais: Partial<Record<DreGroupId, number>>; grupos: Map<DreGroupId, Map<string, number>> } {
+  const grupos = new Map<DreGroupId, Map<string, number>>();
+  const totalSum = new Map<DreGroupId, number>();
+  const acumula = (rows: any[]) => {
+    rows.forEach((c) => {
+      if (c.status !== "pago") return;
+      if (!inPeriodo(c.data_pagamento, ano, mes)) return;
+      const plano = c.categoria_external_id ? planoMap.get(c.categoria_external_id) : undefined;
+      if (isTransferencia(plano?.nome, c.descricao)) return;
+      const g = grupoDoPlanoNome(plano?.nome);
+      const v = Math.abs(Number(c.valor || 0));
+      const k = c.categoria_external_id ?? "_";
+      const det = grupos.get(g) ?? new Map<string, number>();
+      det.set(k, (det.get(k) ?? 0) + v);
+      grupos.set(g, det);
+      totalSum.set(g, (totalSum.get(g) ?? 0) + v);
+    });
+  };
+  acumula(pagar);
+  acumula(receber);
+
+  const totais: Partial<Record<DreGroupId, number>> = {};
+  const getVal = (id: DreGroupId): number => {
+    if (totais[id] !== undefined) return totais[id]!;
+    const line = DRE_STRUCTURE.find((l) => l.id === id)!;
+    let v = 0;
+    if (line.kind === "sum") v = (totalSum.get(id) ?? 0) * line.sign;
+    else if (line.formula) v = line.formula.reduce((s, f) => s + getVal(f), 0);
+    totais[id] = v;
+    return v;
+  };
+  DRE_STRUCTURE.forEach((l) => getVal(l.id));
+  return { totais, grupos };
+}
+
 
 
 function AnaliseDetalhada() {
