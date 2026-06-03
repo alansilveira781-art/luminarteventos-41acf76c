@@ -5,7 +5,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 const AUTH_BASE = "https://auth.contaazul.com";
 const TOKEN_URL = `${AUTH_BASE}/oauth2/token`;
 const AUTHORIZE_URL = `${AUTH_BASE}/oauth2/authorize`;
-const API_BASE = `https://api.contaazul.com/v1`;
+const API_BASE = `https://api-v2.contaazul.com/v1`;
 
 export function getClientCreds() {
   const id = process.env.CONTA_AZUL_CLIENT_ID;
