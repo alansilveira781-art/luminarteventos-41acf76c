@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef, useMemo, useEffect } from "react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { usePersistedState } from "@/hooks/usePersistedState";
+
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/fetch-all";
@@ -52,10 +52,10 @@ function EntradasPage() {
   const [editing, setEditing] = useState<any | null>(null);
   const [importingExcel, setImportingExcel] = useState(false);
   const [importingXml, setImportingXml] = useState(false);
-  const [q, setQ] = usePersistedState<string>("entradas.q", ""); const qd = useDebouncedValue(q, 300);
+  const [q, setQ] = useState<string>(""); const qd = useDebouncedValue(q, 300);
   const [filterItemQ, setFilterItemQ] = useState<string>(""); const filterItemQd = useDebouncedValue(filterItemQ, 300);
-  const [periodoPreset, setPeriodoPreset] = usePersistedState<PeriodoPreset>("entradas.periodoPreset", "mes");
-  const [periodo, setPeriodo] = usePersistedState<Periodo>("entradas.periodo", periodoFromPreset("mes"));
+  const [periodoPreset, setPeriodoPreset] = useState<PeriodoPreset>("mes");
+  const [periodo, setPeriodo] = useState<Periodo>(() => periodoFromPreset("mes"));
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 100;
   const [filterEvento, setFilterEvento] = useState<string>("__all");
@@ -216,15 +216,13 @@ function EntradasPage() {
       const { error } = await supabase.from("movimentacoes").insert(inserts);
       if (error) throw error;
     },
-    onSuccess: async () => {
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: ["entradas"] }),
-        qc.invalidateQueries({ queryKey: ["itens"] }),
-        qc.invalidateQueries({ queryKey: ["itens-select"] }),
-        qc.invalidateQueries({ queryKey: ["itens-select-saida"] }),
-        qc.invalidateQueries({ queryKey: ["dashboard-itens"] }),
-        qc.invalidateQueries({ queryKey: ["dashboard-movs"] }),
-      ]);
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["entradas"] });
+      qc.invalidateQueries({ queryKey: ["itens"] });
+      qc.invalidateQueries({ queryKey: ["itens-select"] });
+      qc.invalidateQueries({ queryKey: ["itens-select-saida"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-itens"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-movs"] });
       toast.success("Entrada registrada");
       setOpen(false);
     },
@@ -546,7 +544,7 @@ function EntradasPage() {
       />
 
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setPrefill(null); }}>
-        <DialogContent className="max-w-[min(1200px,96vw)] w-[96vw]">
+        <DialogContent className="max-w-[min(1500px,98vw)] w-[98vw]">
           <DialogHeader><DialogTitle>{prefill ? "Duplicar entrada" : "Nova entrada"}</DialogTitle></DialogHeader>
           <EntradaForm
             key={prefill?.id ?? "new"}
@@ -561,7 +559,7 @@ function EntradasPage() {
       </Dialog>
 
       <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
-        <DialogContent className="max-w-[min(1200px,96vw)] w-[96vw]">
+        <DialogContent className="max-w-[min(1500px,98vw)] w-[98vw]">
           <DialogHeader>
             <DialogTitle>
               Editar entrada{editing?.numero != null ? ` REQ-${String(editing.numero).padStart(4, "0")}` : ""}

@@ -77,10 +77,10 @@ export function ItemSearchSelect({
         variant="outline"
         role="combobox"
         aria-expanded={open}
-        className="w-full justify-between font-normal"
+        className="w-full justify-between font-normal h-auto min-h-10 py-2"
         onClick={() => setOpen((current) => !current)}
       >
-        <span className="truncate text-left">
+        <span className="text-left whitespace-normal break-words">
           {selected ? (
             <>
               <span className="font-mono text-xs text-muted-foreground mr-2">
@@ -137,7 +137,7 @@ export function ItemSearchSelect({
                     )}
                   />
                   <div className="flex min-w-0 flex-col">
-                    <span className="truncate text-sm">
+                    <span className="text-sm whitespace-normal break-words">
                       <span className="font-mono text-xs text-muted-foreground mr-2">
                         {it.codigo}
                       </span>

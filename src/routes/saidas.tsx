@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef, useMemo, useEffect } from "react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { usePersistedState } from "@/hooks/usePersistedState";
+
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/fetch-all";
@@ -47,13 +47,13 @@ function SaidasPage() {
   const [open, setOpen] = useState(false);
   const [prefill, setPrefill] = useState<any | null>(null);
   const [editing, setEditing] = useState<any | null>(null);
-  const [q, setQ] = usePersistedState<string>("saidas.q", ""); const qd = useDebouncedValue(q, 300);
+  const [q, setQ] = useState<string>(""); const qd = useDebouncedValue(q, 300);
   const [filterItemQ, setFilterItemQ] = useState<string>(""); const filterItemQd = useDebouncedValue(filterItemQ, 300);
   const [filterEvento, setFilterEvento] = useState<string>("__all");
   const [filterEmpresa, setFilterEmpresa] = useState<string>("__all");
   const { sort, toggleSort, applySort } = useSort();
-  const [periodoPreset, setPeriodoPreset] = usePersistedState<PeriodoPreset>("saidas.periodoPreset", "mes");
-  const [periodo, setPeriodo] = usePersistedState<Periodo>("saidas.periodo", periodoFromPreset("mes"));
+  const [periodoPreset, setPeriodoPreset] = useState<PeriodoPreset>("mes");
+  const [periodo, setPeriodo] = useState<Periodo>(() => periodoFromPreset("mes"));
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 100;
 
@@ -180,13 +180,11 @@ function SaidasPage() {
 
   const { data: itens } = useQuery({
     queryKey: ["itens-select-saida"],
-    queryFn: async () => {
-      const all = await fetchAllRows<any>("itens", "id,nome,codigo,codigo_proprio,unidade,quantidade_atual", {
+    queryFn: async () =>
+      await fetchAllRows<any>("itens", "id,nome,codigo,codigo_proprio,unidade,quantidade_atual", {
         orderBy: { column: "nome", ascending: true },
         pageSize: 1000,
-      });
-      return all.filter((i: any) => Number(i.quantidade_atual) > 0);
-    },
+      }),
     staleTime: 0,
   });
   const { data: solicitantes } = useQuery({
@@ -554,7 +552,7 @@ function SaidasPage() {
       />
 
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setPrefill(null); }}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-[min(1500px,98vw)] w-[98vw]">
           <DialogHeader><DialogTitle>{prefill ? "Duplicar saída" : "Nova saída"}</DialogTitle></DialogHeader>
           <SaidaForm
             key={prefill?.id ?? "new"}
@@ -573,7 +571,7 @@ function SaidasPage() {
       </Dialog>
 
       <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-[min(1500px,98vw)] w-[98vw]">
           <DialogHeader>
             <DialogTitle>
               Editar saída{editing?.numero != null ? ` REQ-${String(editing.numero).padStart(4, "0")}` : ""}
