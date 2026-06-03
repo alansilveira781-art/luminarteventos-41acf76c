@@ -278,12 +278,9 @@ function SolicitarPage() {
               />
             </Field>
             <Field label="Valor estimado total (R$)">
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                value={form.valor_total}
-                onChange={(e) => update({ valor_total: e.target.value })}
+              <MoneyInput
+                value={Number(String(form.valor_total).replace(",", ".")) || 0}
+                onChange={(n) => update({ valor_total: n ? String(n) : "" })}
                 placeholder="Opcional"
               />
             </Field>
