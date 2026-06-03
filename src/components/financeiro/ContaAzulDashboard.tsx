@@ -335,12 +335,14 @@ function AnaliseDetalhada() {
           </Select>
         </div>
         <div>
-          <label className="text-xs text-muted-foreground block mb-1">Regime</label>
-          <ToggleGroup type="single" value={regime} onValueChange={(v) => v && setRegime(v as Regime)} size="sm">
-            <ToggleGroupItem value="caixa">Caixa</ToggleGroupItem>
-            <ToggleGroupItem value="competencia">Competência</ToggleGroupItem>
+        <div>
+          <label className="text-xs text-muted-foreground block mb-1">Visão</label>
+          <ToggleGroup type="single" value={visao} onValueChange={(v) => v && setVisao(v as Visao)} size="sm">
+            <ToggleGroupItem value="realizado">Realizado</ToggleGroupItem>
+            <ToggleGroupItem value="projetado">Projetado</ToggleGroupItem>
           </ToggleGroup>
         </div>
+
         <div className="w-32">
           <label className="text-xs text-muted-foreground">Ano</label>
           <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
