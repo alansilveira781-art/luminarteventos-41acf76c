@@ -1,55 +1,75 @@
-## Objetivo
+## Observação importante sobre a fonte de dados
 
-1. Tornar o **DRE detalhado** (todas as linhas + categorias por linha) plenamente visível na aba **Financeiro (Conta Azul) → Painel Financeiro**.
-2. **Excluir transferências bancárias** do demonstrativo — elas são apenas movimentação de capital entre contas, não receita nem despesa.
+Você escolheu **Extrato bancário (ca_extrato)** como fonte de verdade. Conferindo o banco agora: **a tabela `ca_extrato` está vazia** (0 linhas). A Conta Azul só está liberando para a API o que está em `ca_contas_pagar` e `ca_contas_receber`.
 
----
+Proposta equivalente (regime de caixa, que é o que o extrato representaria):
+- Usar `ca_contas_pagar` e `ca_contas_receber` com `status = 'pago'` e `data_pagamento` no período.
+- Excluir transferências bancárias (já implementado em `isTransferencia`).
+- Se quiser ligar a sincronia do extrato depois, o painel passa a usar `ca_extrato` sem reescrever nada (basta trocar a função de leitura).
 
-## 1. DRE detalhado visível no Painel Financeiro
+Se em vez disso você quiser conciliar 100% com o relatório oficial do Conta Azul, me envie um print de uma linha da DRE oficial (ex.: Receita Bruta 2025 com as 6 categorias detalhadas) para eu calibrar exatamente.
 
-Hoje a tabela "Demonstrativo" existe, mas tem dois problemas que fazem o detalhe não aparecer bem:
+## Layout (igual à imagem)
 
-- A área tem `max-h-[520px] overflow-y-auto` e fica em coluna `lg:grid-cols-2` ao lado da lista de movimentos. Com ~25 linhas-pai + 80+ categorias, o usuário não vê o detalhe completo sem rolar.
-- O ano default é `new Date().getFullYear()` (2026, sem dados sincronizados ainda), então abre vazio.
+````text
+┌─────────────────────────────────────────────────────────────────┐
+│ Painel Financeiro                            [Ano ▾] [Mês ▾]    │
+├──────────┬──────────┬──────────┬──────────┬─────────────────────┤
+│ Receita  │ Pot.     │ Despesas │ Custos   │ Lucro               │
+│ Bruta 🐷 │ Vendas 👥│   🏢     │   📈     │   🌱                │
+│ R$ ...   │ R$ ...   │ R$ ...   │ R$ ...   │ R$ ...              │
+│ %Receita │ %PV      │ %Despesa │ %Custos  │ %Lucro              │
+│  vs LY   │ vertical │ vertical │ vertical │ vertical            │
+├──────────┴──────────┴────┬─────┴──────────┴─────────────────────┤
+│ Demonstrativo  Valores % │ Data | Fornec/Cliente | Descr | Vlr  │
+│ (+) Receita Bruta        │ ────────────────────────────────────  │
+│    Cenografia            │ (lista filtra ao clicar numa          │
+│    Corporativos          │  categoria do Demonstrativo)          │
+│    ...                   │                                       │
+│ (-) Deduções da Receita  │ Total: R$ ...                         │
+│    ...                   │                                       │
+└──────────────────────────┴───────────────────────────────────────┘
+````
 
-Ajustes:
+## Mudanças (frontend apenas)
 
-- **Default do ano**: usar o último ano com dados (consulta simples em `ca_contas_receber`/`ca_contas_pagar`) ao invés de `getFullYear()`.
-- **Layout do DRE**: mover o card "Demonstrativo" para **largura total** (acima da lista de movimentos, não ao lado). Remover o `max-h` para mostrar todas as linhas e categorias sem rolagem interna.
-- **Render detalhado**: garantir 3 níveis visuais — linha-pai (RB, DR, AC…), subtotal calculado (RL, RV, RG…) e detalhes de categoria recuados — já existe na `dre.ts` via `kind: "detail"`, só precisa estilização melhor (recuo + cor mais clara).
-- **Linha "Sem classificação"**: continuar exibindo no fim, em destaque, para o usuário poder corrigir o plano de contas.
+**`src/components/financeiro/ContaAzulDashboard.tsx`** — reescrever o componente `PainelFinanceiro`:
 
-## 2. Excluir transferências bancárias
+1. **Filtros no topo direito:** `Ano` (2023…ano atual) e `Mês` (Todos, Janeiro…Dezembro). Default: último ano com dados.
 
-A função `isTransferencia()` em `src/lib/conta-azul/dre.ts` hoje só verifica o **nome do plano de contas**. Mas no banco as transferências aparecem como lançamentos em `ca_contas_pagar`/`ca_contas_receber` **sem categoria** (ou com categoria genérica) e identificadas apenas pela **descrição**, ex.:
+2. **5 cards superiores** com ícones (lucide: `PiggyBank`, `Users`, `Building2`, `BarChart3`, `Sprout`). Cada card mostra o valor grande e um subtexto com %:
+   - **Receita Bruta** = RB. Subtexto: `% Receita LY: (RB_ano − RB_anoAnterior) / RB_anoAnterior` (verde se ≥0, vermelho se <0).
+   - **Pot. de Vendas** = −(AC + DM + DC). Subtexto: `% PV: PV / RB` (vertical).
+   - **Despesas** = −(DS + DA + DT). Subtexto: `% Despesa: Despesas / RB`.
+   - **Custos** = −(CV + CD + CI). Subtexto: `% Custos: Custos / RB`.
+   - **Lucro** = linha `LU` do DRE. Subtexto: `% Lucro: Lucro / RB`.
 
-- "Transferência entre contas"
-- "Transferência entre empresas"
-- "Ajuste de Saldo para conciliação - Santander"
-- "Saldo inicial …"
+3. **Tabela Demonstrativo (esquerda, ~40% da largura):**
+   - 3 colunas: `Demonstrativo | Valores | %` (% vertical em relação a RB).
+   - Linhas de grupo expansíveis com `+/−` (Receita Bruta, Deduções, AC, DM, DC, CV, CD, CI, DS, DA, DT, RF, DF, OE, OS, IN) listando categorias por baixo.
+   - Linhas de subtotal calc (Receita Líquida, Resultado Venda, Operação, Gerencial, Financeiro, Não Operacional, Negócio, Lucro) em negrito, sem expandir.
+   - Sem `max-height` interno na tabela (rolagem natural da página).
 
-Plano:
+4. **Lista lateral (direita, ~60% da largura):**
+   - Colunas: `Data movimento | Nome do fornecedor/cliente | Descrição | Valor Total`.
+   - Mostra todos os lançamentos do período (pagar+receber, `status='pago'`, por `data_pagamento`, excluindo transferências) quando nada está selecionado.
+   - Ao clicar numa **categoria filha** no Demonstrativo, filtra por `categoria_external_id`. Clicar de novo (ou em outra) troca/limpa a seleção. Header visual destacando o filtro ativo + botão `× limpar`.
+   - Linha `Total` fixa no rodapé somando o que está visível.
 
-- Estender `isTransferencia()` para também checar a **descrição** do lançamento (não só o nome do plano), usando padrões precisos para **não pegar falsos positivos** como "Transferência do Caminhão" (que é despesa real de documentação veicular).
-- Padrões a excluir (regex case-insensitive sobre `descricao`):
-  - `^transfer[eê]ncia entre (contas|empresas|bancos)`
-  - `^ajuste de saldo`
-  - `^saldo inicial`
-  - `^aporte` / `^retirada de s[oó]cio.*entre contas` (a confirmar com o usuário se aparecer)
-- Aplicar o filtro tanto em `montarDRE` quanto em `totaisExtrato` (este último já filtra por nome de plano; passa a filtrar por descrição também).
-- Adicionar um pequeno **card auditável** abaixo do DRE listando: "Transferências bancárias ignoradas no período" com quantidade e valor total, para o usuário conferir que está sendo filtrado corretamente (e poder reportar se algo virou falso positivo/negativo).
+5. **Cálculos:** reaproveitar `montarDRE` em modo `realizado`, e ler `totais.RB`, `totais.LU`, etc. Para o card "ano anterior" (Receita LY), chamar `montarDRE` uma segunda vez com `{ ano: ano−1, mes }`.
+
+6. **Queries:** uma `useQuery` por tabela (planos, pagar, receber) — já existe `useContaAzulData`; só preciso garantir que `pagar`/`receber` tragam `fornecedor_nome`/`cliente_nome`, `data_pagamento`, `categoria_external_id` e `descricao` (já estão no tipo).
 
 ## Detalhes técnicos
 
-- `src/lib/conta-azul/dre.ts`:
-  - Expandir `isTransferencia(planoNome, descricao?)` para aceitar descrição opcional.
-  - Atualizar chamadas em `acumula()` (montarDRE) e em `totaisExtrato()` para passar `c.descricao`.
-  - Exportar uma função `transferenciasNoPeriodo(pagar, receber, planos, opts)` que retorna os lançamentos ignorados (para o card auditável).
-- `src/components/financeiro/ContaAzulDashboard.tsx` (`PainelFinanceiro`):
-  - Query rápida `ca_max_ano` para descobrir o ano mais recente com `data_pagamento` ou `data_vencimento` e usar como default.
-  - Reorganizar grid: KPIs → Demonstrativo (full width, sem `max-h`) → Card "Transferências ignoradas" → Card "Movimentos do período" + Conferência vs Extrato.
-  - Detail rows com classe `pl-8 text-muted-foreground text-xs`.
+- **Comparação YoY:** se `RB_anterior = 0`, mostrar `—` em vez de `∞%`.
+- **Cores dos %:** verde `text-emerald-600` para ≥0 no card Receita; vermelho `text-rose-600` para <0. Demais % verticais sempre em cinza neutro.
+- **Ordem do detalhamento por categoria** dentro de cada grupo: ordem alfabética (igual à imagem: Cenografia, Corporativos, Móveis Planejados, …).
+- **Sem alteração no `dre.ts`** — só leitura de `totais` já expostos.
+- Cards de auditoria de "Transferências ignoradas" e "Conferência vs Extrato" continuam abaixo do bloco principal (não afetam a paridade visual com a imagem).
 
-## Fora de escopo agora
+## Fora de escopo neste ciclo
 
-- Reclassificar categorias com prefixo errado (ex.: "Compra", "Reembolso" caindo em SC). Vou só destacá-las melhor; o ajuste fino do plano de contas é uma próxima etapa quando você apontar quais precisam virar overrides em `NOME_OVERRIDE`.
+- Sincronizar `ca_extrato` (precisa de ajuste no `sync.server.ts` da Conta Azul).
+- Aba "Análise Detalhada" e "Fluxo de Caixa" — ficam como estão.
+- Drill-down por grupo (apenas categoria filha filtra a lista lateral).
