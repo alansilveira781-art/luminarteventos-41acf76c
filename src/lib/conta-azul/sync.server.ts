@@ -315,56 +315,110 @@ export async function syncIncrementalD1() {
   return syncTudo(from, today);
 }
 
-/** Carga histórica em blocos mensais (executa em background). */
+/** Enfileira um job de carga histórica. O processamento real acontece
+ *  mês a mês via `processNextHistoricoChunk` (chamado pelo cron), porque
+ *  o runtime Cloudflare Worker mata qualquer promise pendente depois que
+ *  a resposta HTTP termina. */
 export async function runHistoricoBackfill(from: string, to: string): Promise<string> {
+  const meses = monthsBetween(from, to);
   const { data: job, error } = await sb
     .from("ca_sync_jobs")
     .insert({
       tipo: "historico",
+      status: "pendente",
       date_from: from,
       date_to: to,
-      progress: { total_meses: 0, concluidos: 0, mes_atual: null },
+      progress: {
+        total_meses: meses.length,
+        concluidos: 0,
+        mes_atual: null,
+        meses,
+        bootstrap_done: false,
+      },
     })
     .select("id")
     .single();
   if (error) throw error;
+  return job.id as string;
+}
+
+/** Processa um único mês do job histórico mais antigo pendente.
+ *  Chamado a cada minuto pelo cron — e imediatamente após criar o job
+ *  pela UI, para começar sem esperar. */
+export async function processNextHistoricoChunk(): Promise<{ processed: boolean; jobId?: string; mes?: string; remaining?: number }> {
+  const { data: job } = await sb
+    .from("ca_sync_jobs")
+    .select("*")
+    .eq("tipo", "historico")
+    .in("status", ["pendente", "em_andamento"])
+    .order("started_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (!job) return { processed: false };
+
   const jobId = job.id as string;
+  let progress = (job.progress ?? {}) as any;
+  let meses: Array<[string, string]> = Array.isArray(progress.meses) ? progress.meses : [];
+  // Recupera jobs órfãos (criados antes desta correção, com meses vazios).
+  if (meses.length === 0 && job.date_from && job.date_to) {
+    meses = monthsBetween(job.date_from, job.date_to);
+    progress = { ...progress, meses, total_meses: meses.length };
+  }
+  const total = meses.length;
+  const done: number = Number(progress.concluidos ?? 0);
 
-  // background — não bloqueia o response
-  (async () => {
-    try {
-      const meses = monthsBetween(from, to);
+  try {
+    // Bootstrap (plano de contas, centros de custo, extrato) só na 1ª execução.
+    if (!progress.bootstrap_done) {
       await sb.from("ca_sync_jobs").update({
-        progress: { total_meses: meses.length, concluidos: 0, mes_atual: meses[0]?.[0] ?? null },
+        status: "em_andamento",
+        progress: { ...progress, mes_atual: "bootstrap" },
       }).eq("id", jobId);
-
       try { await syncPlanoContas(); } catch {}
       try { await syncCentrosCusto(); } catch {}
-      try { await syncExtrato(from, to); } catch {}
+      try { await syncExtrato(job.date_from, job.date_to); } catch {}
+      progress = { ...progress, bootstrap_done: true };
+      await sb.from("ca_sync_jobs").update({ progress }).eq("id", jobId);
+    }
 
-      for (let i = 0; i < meses.length; i++) {
-        const [mFrom, mTo] = meses[i];
-        try { await syncContasPagar(mFrom, mTo); } catch {}
-        try { await syncContasReceber(mFrom, mTo); } catch {}
-        await sb.from("ca_sync_jobs").update({
-          progress: { total_meses: meses.length, concluidos: i + 1, mes_atual: mFrom },
-        }).eq("id", jobId);
-      }
-      await upsertSyncState(from, to, {});
+    if (done >= total) {
+      await upsertSyncState(job.date_from, job.date_to, {});
       await sb.from("ca_sync_jobs").update({
         status: "ok",
         finished_at: new Date().toISOString(),
+        progress: { ...progress, mes_atual: null },
       }).eq("id", jobId);
-    } catch (e: any) {
-      await sb.from("ca_sync_jobs").update({
-        status: "erro",
-        mensagem: String(e?.message ?? e),
-        finished_at: new Date().toISOString(),
-      }).eq("id", jobId);
+      return { processed: true, jobId, remaining: 0 };
     }
-  })();
 
-  return jobId;
+    const [mFrom, mTo] = meses[done];
+    await sb.from("ca_sync_jobs").update({
+      progress: { ...progress, mes_atual: mFrom },
+    }).eq("id", jobId);
+
+    try { await syncContasPagar(mFrom, mTo); } catch {}
+    try { await syncContasReceber(mFrom, mTo); } catch {}
+
+    const newDone = done + 1;
+    const finished = newDone >= total;
+    if (finished) {
+      await upsertSyncState(job.date_from, job.date_to, {});
+    }
+    await sb.from("ca_sync_jobs").update({
+      status: finished ? "ok" : "em_andamento",
+      finished_at: finished ? new Date().toISOString() : null,
+      progress: { ...progress, concluidos: newDone, mes_atual: finished ? null : mFrom },
+    }).eq("id", jobId);
+
+    return { processed: true, jobId, mes: mFrom, remaining: total - newDone };
+  } catch (e: any) {
+    await sb.from("ca_sync_jobs").update({
+      status: "erro",
+      mensagem: String(e?.message ?? e),
+      finished_at: new Date().toISOString(),
+    }).eq("id", jobId);
+    return { processed: true, jobId };
+  }
 }
 
 function monthsBetween(from: string, to: string): Array<[string, string]> {
