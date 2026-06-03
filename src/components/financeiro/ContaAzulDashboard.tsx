@@ -10,7 +10,7 @@ import {
   ComposedChart, Line, Legend,
 } from "recharts";
 import { PiggyBank as Piggy, TrendingDown, Building2, BarChart3, Sprout } from "lucide-react";
-import { montarDRE, totaisExtrato, type Regime } from "@/lib/conta-azul/dre";
+import { montarDRE, totaisExtrato, type Visao } from "@/lib/conta-azul/dre";
 
 
 const sb = supabase as any;
