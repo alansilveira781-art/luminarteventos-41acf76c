@@ -495,7 +495,9 @@ function CargaHistoricaCard({ canManage, connected }: { canManage: boolean; conn
       const { jobId: newId } = await res.json();
       setJobId(newId);
       setEditing(false);
-      toast.success("Carga histórica iniciada em background");
+      toast.success("Carga histórica iniciada — processando 1 mês por minuto");
+      // Dispara o cron imediatamente para começar o 1º mês sem esperar.
+      fetch("/api/public/contaazul/cron", { method: "POST" }).catch(() => {});
     } catch (e: any) {
       toast.error(`Erro: ${e?.message ?? e}`);
     } finally {
