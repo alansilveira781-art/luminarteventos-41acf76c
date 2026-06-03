@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { formatBRT, toBRTInputDateTime, fromBRTInputDateTime } from "@/lib/datetime";
 import { saidaTipoLabels } from "@/lib/labels";
-import { listEventos } from "@/server/sheets.functions";
+import { listEventos } from "@/lib/sheets.functions";
 import { ItemSearchSelect } from "@/components/ItemSearchSelect";
 import { ItemInfoHover } from "@/components/ItemInfoHover";
 import { EntitySearchSelect } from "@/components/EntitySearchSelect";
