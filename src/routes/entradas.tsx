@@ -52,10 +52,10 @@ function EntradasPage() {
   const [editing, setEditing] = useState<any | null>(null);
   const [importingExcel, setImportingExcel] = useState(false);
   const [importingXml, setImportingXml] = useState(false);
-  const [q, setQ] = useState(""); const qd = useDebouncedValue(q, 300);
+  const [q, setQ] = usePersistedState<string>("entradas.q", ""); const qd = useDebouncedValue(q, 300);
   const [filterItemQ, setFilterItemQ] = useState<string>(""); const filterItemQd = useDebouncedValue(filterItemQ, 300);
-  const [periodoPreset, setPeriodoPreset] = useState<PeriodoPreset>("mes");
-  const [periodo, setPeriodo] = useState<Periodo>(periodoFromPreset("mes"));
+  const [periodoPreset, setPeriodoPreset] = usePersistedState<PeriodoPreset>("entradas.periodoPreset", "mes");
+  const [periodo, setPeriodo] = usePersistedState<Periodo>("entradas.periodo", periodoFromPreset("mes"));
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 100;
   const [filterEvento, setFilterEvento] = useState<string>("__all");
