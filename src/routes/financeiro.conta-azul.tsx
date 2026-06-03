@@ -256,6 +256,12 @@ function ContaAzulPage() {
         </Card>
       </div>
 
+      <SyncAutomaticoCard canManage={canManage} />
+
+      <CargaHistoricaCard canManage={canManage} connected={!!connected} />
+
+      <SyncStateCard />
+
       <Card className="mt-4">
         <CardHeader>
           <CardTitle className="text-base">Histórico de sincronizações</CardTitle>
@@ -313,5 +319,197 @@ function ContaAzulPage() {
         </CardContent>
       </Card>
     </>
+  );
+}
+
+function SyncAutomaticoCard({ canManage }: { canManage: boolean }) {
+  const qc = useQueryClient();
+  const sched = useQuery({
+    queryKey: ["ca-schedule"],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("ca_sync_schedule").select("*").order("ordem");
+      return (data ?? []) as Array<{ id: string; horario: string; ativo: boolean; ordem: number }>;
+    },
+  });
+  const [rows, setRows] = useState<Array<{ horario: string; ativo: boolean }>>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (sched.data) {
+      setRows(sched.data.map((s) => ({ horario: String(s.horario).slice(0, 5), ativo: s.ativo })));
+    }
+  }, [sched.data]);
+
+  async function save() {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/contaazul/schedule", {
+        method: "POST",
+        headers: { ...(await authHeaders()), "Content-Type": "application/json" },
+        body: JSON.stringify({ horarios: rows.filter((r) => r.horario) }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      toast.success("Horários salvos");
+      qc.invalidateQueries({ queryKey: ["ca-schedule"] });
+    } catch (e: any) {
+      toast.error(`Erro: ${e?.message ?? e}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function update(i: number, patch: Partial<{ horario: string; ativo: boolean }>) {
+    setRows((r) => r.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
+  }
+
+  const display = rows.length ? rows : [{ horario: "06:00", ativo: true }, { horario: "12:00", ativo: true }, { horario: "18:00", ativo: true }];
+
+  return (
+    <Card className="mt-4">
+      <CardHeader>
+        <CardTitle className="text-base">Sincronização automática (D-1)</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Os horários abaixo (fuso América/Fortaleza) disparam uma sincronização incremental de D-1 até hoje. Máx. 3 horários.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {display.slice(0, 3).map((r, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Input type="time" value={r.horario} onChange={(e) => update(i, { horario: e.target.value })} className="w-32" />
+              <label className="flex items-center gap-1 text-xs">
+                <input type="checkbox" checked={r.ativo} onChange={(e) => update(i, { ativo: e.target.checked })} />
+                Ativo
+              </label>
+            </div>
+          ))}
+        </div>
+        <Button onClick={save} disabled={!canManage || saving}>
+          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+          Salvar horários
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CargaHistoricaCard({ canManage, connected }: { canManage: boolean; connected: boolean }) {
+  const [from, setFrom] = useState("2023-01-01");
+  const [to, setTo] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() - 1);
+    return d.toISOString().slice(0, 10);
+  });
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const job = useQuery({
+    queryKey: ["ca-job", jobId],
+    enabled: !!jobId,
+    refetchInterval: 3000,
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("ca_sync_jobs").select("*").eq("id", jobId).maybeSingle();
+      return data as any;
+    },
+  });
+
+  async function start() {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/contaazul/historico", {
+        method: "POST",
+        headers: { ...(await authHeaders()), "Content-Type": "application/json" },
+        body: JSON.stringify({ from, to }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const { jobId } = await res.json();
+      setJobId(jobId);
+      toast.success("Carga histórica iniciada em background");
+    } catch (e: any) {
+      toast.error(`Erro: ${e?.message ?? e}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const progress = job.data?.progress ?? {};
+  const status = job.data?.status;
+
+  return (
+    <Card className="mt-4">
+      <CardHeader>
+        <CardTitle className="text-base">Carga histórica</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid grid-cols-2 gap-3 max-w-md">
+          <div className="space-y-1">
+            <Label className="text-xs">De</Label>
+            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Até</Label>
+            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          </div>
+        </div>
+        <Button onClick={start} disabled={!canManage || !connected || busy}>
+          {busy ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+          Rodar carga histórica
+        </Button>
+        {jobId && (
+          <div className="text-xs text-muted-foreground">
+            Status: <span className={status === "ok" ? "text-green-600" : status === "erro" ? "text-red-600" : ""}>{status ?? "em andamento"}</span>
+            {progress.total_meses ? ` — ${progress.concluidos ?? 0}/${progress.total_meses} meses` : null}
+            {progress.mes_atual ? ` (atual: ${progress.mes_atual})` : null}
+            {job.data?.mensagem ? ` · ${job.data.mensagem}` : null}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SyncStateCard() {
+  const state = useQuery({
+    queryKey: ["ca-sync-state"],
+    refetchInterval: 5000,
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("ca_sync_state").select("*").order("recurso");
+      return (data ?? []) as Array<any>;
+    },
+  });
+  return (
+    <Card className="mt-4">
+      <CardHeader>
+        <CardTitle className="text-base">Última janela sincronizada (por recurso)</CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
+              <tr>
+                <th className="text-left p-3">Recurso</th>
+                <th className="text-left p-3">De</th>
+                <th className="text-left p-3">Até</th>
+                <th className="text-right p-3">Última carga</th>
+                <th className="text-left p-3">Rodado em</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(state.data ?? []).length === 0 && (
+                <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">Nenhuma sincronização registrada.</td></tr>
+              )}
+              {(state.data ?? []).map((s) => (
+                <tr key={s.recurso} className="border-t border-border">
+                  <td className="p-3 font-medium">{s.recurso}</td>
+                  <td className="p-3 text-muted-foreground">{s.last_synced_from ?? "—"}</td>
+                  <td className="p-3 text-muted-foreground">{s.last_synced_to ?? "—"}</td>
+                  <td className="p-3 text-right">{s.qtd_total ?? 0}</td>
+                  <td className="p-3 text-muted-foreground">{s.last_run_at ? new Date(s.last_run_at).toLocaleString("pt-BR") : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

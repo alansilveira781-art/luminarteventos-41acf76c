@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { DEMANDA_STATUSES, TIPO_DEMANDA_OPTIONS } from "@/lib/demandas";
 import { UberDashboard } from "@/components/financeiro/UberDashboard";
+import { ContaAzulDashboard } from "@/components/financeiro/ContaAzulDashboard";
 
 const sb = supabase as any;
 const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#06b6d4", "#8b5cf6", "#ec4899", "#84cc16"];
@@ -19,7 +20,12 @@ const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#06b6d4", "#8b5cf6"
 export const Route = createFileRoute("/financeiro/dashboard")({
   component: FinanceiroDashboard,
   validateSearch: (s: Record<string, unknown>) => ({
-    tab: (s.tab as string) === "uber" ? "uber" : "financeiro",
+    tab: ((): "financeiro" | "uber" | "contaazul" => {
+      const v = s.tab as string;
+      if (v === "uber") return "uber";
+      if (v === "contaazul") return "contaazul";
+      return "financeiro";
+    })(),
   }),
 });
 
@@ -115,11 +121,12 @@ function FinanceiroDashboard() {
     <>
       <Tabs
         value={tab}
-        onValueChange={(v) => navigate({ search: { tab: v as "financeiro" | "uber" }, replace: true })}
+        onValueChange={(v) => navigate({ search: { tab: v as "financeiro" | "uber" | "contaazul" }, replace: true })}
         className="w-full"
       >
         <TabsList className="mb-4">
           <TabsTrigger value="financeiro">Despesas</TabsTrigger>
+          <TabsTrigger value="contaazul">Financeiro (Conta Azul)</TabsTrigger>
           <TabsTrigger value="uber">Uber</TabsTrigger>
         </TabsList>
 
@@ -210,6 +217,11 @@ function FinanceiroDashboard() {
           </div>
 
           <UberDashboard from={uberFrom} to={uberTo} />
+        </TabsContent>
+
+        <TabsContent value="contaazul" className="mt-0">
+          <PageHeader title="Financeiro (Conta Azul)" description="Painel, análise por evento e fluxo de caixa" />
+          <ContaAzulDashboard />
         </TabsContent>
       </Tabs>
     </>

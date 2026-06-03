@@ -206,6 +206,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ca_sync_jobs: {
+        Row: {
+          date_from: string | null
+          date_to: string | null
+          finished_at: string | null
+          id: string
+          mensagem: string | null
+          progress: Json
+          started_at: string
+          status: string
+          tipo: string
+        }
+        Insert: {
+          date_from?: string | null
+          date_to?: string | null
+          finished_at?: string | null
+          id?: string
+          mensagem?: string | null
+          progress?: Json
+          started_at?: string
+          status?: string
+          tipo: string
+        }
+        Update: {
+          date_from?: string | null
+          date_to?: string | null
+          finished_at?: string | null
+          id?: string
+          mensagem?: string | null
+          progress?: Json
+          started_at?: string
+          status?: string
+          tipo?: string
+        }
+        Relationships: []
+      }
       ca_sync_log: {
         Row: {
           finished_at: string | null
@@ -233,6 +269,57 @@ export type Database = {
           recurso?: string
           started_at?: string
           status?: string
+        }
+        Relationships: []
+      }
+      ca_sync_schedule: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          horario: string
+          id: string
+          ordem: number
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          horario: string
+          id?: string
+          ordem?: number
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          horario?: string
+          id?: string
+          ordem?: number
+        }
+        Relationships: []
+      }
+      ca_sync_state: {
+        Row: {
+          last_run_at: string | null
+          last_synced_from: string | null
+          last_synced_to: string | null
+          qtd_total: number
+          recurso: string
+          updated_at: string
+        }
+        Insert: {
+          last_run_at?: string | null
+          last_synced_from?: string | null
+          last_synced_to?: string | null
+          qtd_total?: number
+          recurso: string
+          updated_at?: string
+        }
+        Update: {
+          last_run_at?: string | null
+          last_synced_from?: string | null
+          last_synced_to?: string | null
+          qtd_total?: number
+          recurso?: string
+          updated_at?: string
         }
         Relationships: []
       }

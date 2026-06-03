@@ -273,5 +273,112 @@ export async function syncTudo(from: string, to: string) {
       result.errors.push(`${key}: ${e?.message ?? e}`);
     }
   }
+  await upsertSyncState(from, to, result as any);
+  return result;
+}
+
+async function upsertSyncState(
+  from: string,
+  to: string,
+  counts: Record<string, number>,
+) {
+  const now = new Date().toISOString();
+  const recursos = ["plano_contas", "centros_custo", "contas_pagar", "contas_receber", "extrato"] as const;
+  for (const r of recursos) {
+    const { data: existing } = await sb
+      .from("ca_sync_state")
+      .select("last_synced_from")
+      .eq("recurso", r)
+      .maybeSingle();
+    const mergedFrom =
+      existing?.last_synced_from && existing.last_synced_from < from
+        ? existing.last_synced_from
+        : from;
+    await sb.from("ca_sync_state").upsert(
+      {
+        recurso: r,
+        last_synced_from: mergedFrom,
+        last_synced_to: to,
+        last_run_at: now,
+        qtd_total: counts[r] ?? 0,
+        updated_at: now,
+      },
+      { onConflict: "recurso" },
+    );
+  }
+}
+
+/** Sincronização incremental D-1 → hoje. */
+export async function syncIncrementalD1() {
+  const today = new Date().toISOString().slice(0, 10);
+  const from = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return syncTudo(from, today);
+}
+
+/** Carga histórica em blocos mensais (executa em background). */
+export async function runHistoricoBackfill(from: string, to: string): Promise<string> {
+  const { data: job, error } = await sb
+    .from("ca_sync_jobs")
+    .insert({
+      tipo: "historico",
+      date_from: from,
+      date_to: to,
+      progress: { total_meses: 0, concluidos: 0, mes_atual: null },
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  const jobId = job.id as string;
+
+  // background — não bloqueia o response
+  (async () => {
+    try {
+      const meses = monthsBetween(from, to);
+      await sb.from("ca_sync_jobs").update({
+        progress: { total_meses: meses.length, concluidos: 0, mes_atual: meses[0]?.[0] ?? null },
+      }).eq("id", jobId);
+
+      try { await syncPlanoContas(); } catch {}
+      try { await syncCentrosCusto(); } catch {}
+      try { await syncExtrato(from, to); } catch {}
+
+      for (let i = 0; i < meses.length; i++) {
+        const [mFrom, mTo] = meses[i];
+        try { await syncContasPagar(mFrom, mTo); } catch {}
+        try { await syncContasReceber(mFrom, mTo); } catch {}
+        await sb.from("ca_sync_jobs").update({
+          progress: { total_meses: meses.length, concluidos: i + 1, mes_atual: mFrom },
+        }).eq("id", jobId);
+      }
+      await upsertSyncState(from, to, {});
+      await sb.from("ca_sync_jobs").update({
+        status: "ok",
+        finished_at: new Date().toISOString(),
+      }).eq("id", jobId);
+    } catch (e: any) {
+      await sb.from("ca_sync_jobs").update({
+        status: "erro",
+        mensagem: String(e?.message ?? e),
+        finished_at: new Date().toISOString(),
+      }).eq("id", jobId);
+    }
+  })();
+
+  return jobId;
+}
+
+function monthsBetween(from: string, to: string): Array<[string, string]> {
+  const result: Array<[string, string]> = [];
+  const start = new Date(from + "T00:00:00Z");
+  const end = new Date(to + "T00:00:00Z");
+  let cur = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1));
+  while (cur <= end) {
+    const mStart = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth(), 1));
+    const mEnd = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() + 1, 0));
+    const a = mStart < start ? start : mStart;
+    const b = mEnd > end ? end : mEnd;
+    result.push([a.toISOString().slice(0, 10), b.toISOString().slice(0, 10)]);
+    cur = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() + 1, 1));
+  }
   return result;
 }

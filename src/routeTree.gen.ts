@@ -66,6 +66,9 @@ import { Route as ApiPublicSendPushRouteImport } from './routes/api/public/send-
 import { Route as ApiPublicOpcoesPagamentoRouteImport } from './routes/api/public/opcoes-pagamento'
 import { Route as ApiContaazulSyncRouteImport } from './routes/api/contaazul/sync'
 import { Route as ApiContaazulStatusRouteImport } from './routes/api/contaazul/status'
+import { Route as ApiContaazulScheduleRouteImport } from './routes/api/contaazul/schedule'
+import { Route as ApiContaazulHistoricoRouteImport } from './routes/api/contaazul/historico'
+import { Route as ApiPublicContaazulCronRouteImport } from './routes/api/public/contaazul/cron'
 import { Route as ApiContaazulOauthPrepareRouteImport } from './routes/api/contaazul/oauth.prepare'
 import { Route as ApiContaazulOauthCallbackRouteImport } from './routes/api/contaazul/oauth.callback'
 
@@ -355,6 +358,21 @@ const ApiContaazulStatusRoute = ApiContaazulStatusRouteImport.update({
   path: '/api/contaazul/status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiContaazulScheduleRoute = ApiContaazulScheduleRouteImport.update({
+  id: '/api/contaazul/schedule',
+  path: '/api/contaazul/schedule',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiContaazulHistoricoRoute = ApiContaazulHistoricoRouteImport.update({
+  id: '/api/contaazul/historico',
+  path: '/api/contaazul/historico',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicContaazulCronRoute = ApiPublicContaazulCronRouteImport.update({
+  id: '/api/public/contaazul/cron',
+  path: '/api/public/contaazul/cron',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiContaazulOauthPrepareRoute =
   ApiContaazulOauthPrepareRouteImport.update({
     id: '/api/contaazul/oauth/prepare',
@@ -421,6 +439,8 @@ export interface FileRoutesByFullPath {
   '/juridico/': typeof JuridicoIndexRoute
   '/patrimonio/': typeof PatrimonioIndexRoute
   '/rh/': typeof RhIndexRoute
+  '/api/contaazul/historico': typeof ApiContaazulHistoricoRoute
+  '/api/contaazul/schedule': typeof ApiContaazulScheduleRoute
   '/api/contaazul/status': typeof ApiContaazulStatusRoute
   '/api/contaazul/sync': typeof ApiContaazulSyncRoute
   '/api/public/opcoes-pagamento': typeof ApiPublicOpcoesPagamentoRoute
@@ -428,6 +448,7 @@ export interface FileRoutesByFullPath {
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
   '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
+  '/api/public/contaazul/cron': typeof ApiPublicContaazulCronRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -474,6 +495,8 @@ export interface FileRoutesByTo {
   '/juridico': typeof JuridicoIndexRoute
   '/patrimonio': typeof PatrimonioIndexRoute
   '/rh': typeof RhIndexRoute
+  '/api/contaazul/historico': typeof ApiContaazulHistoricoRoute
+  '/api/contaazul/schedule': typeof ApiContaazulScheduleRoute
   '/api/contaazul/status': typeof ApiContaazulStatusRoute
   '/api/contaazul/sync': typeof ApiContaazulSyncRoute
   '/api/public/opcoes-pagamento': typeof ApiPublicOpcoesPagamentoRoute
@@ -481,6 +504,7 @@ export interface FileRoutesByTo {
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
   '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
+  '/api/public/contaazul/cron': typeof ApiPublicContaazulCronRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -536,6 +560,8 @@ export interface FileRoutesById {
   '/juridico/': typeof JuridicoIndexRoute
   '/patrimonio/': typeof PatrimonioIndexRoute
   '/rh/': typeof RhIndexRoute
+  '/api/contaazul/historico': typeof ApiContaazulHistoricoRoute
+  '/api/contaazul/schedule': typeof ApiContaazulScheduleRoute
   '/api/contaazul/status': typeof ApiContaazulStatusRoute
   '/api/contaazul/sync': typeof ApiContaazulSyncRoute
   '/api/public/opcoes-pagamento': typeof ApiPublicOpcoesPagamentoRoute
@@ -543,6 +569,7 @@ export interface FileRoutesById {
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
   '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
+  '/api/public/contaazul/cron': typeof ApiPublicContaazulCronRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -599,6 +626,8 @@ export interface FileRouteTypes {
     | '/juridico/'
     | '/patrimonio/'
     | '/rh/'
+    | '/api/contaazul/historico'
+    | '/api/contaazul/schedule'
     | '/api/contaazul/status'
     | '/api/contaazul/sync'
     | '/api/public/opcoes-pagamento'
@@ -606,6 +635,7 @@ export interface FileRouteTypes {
     | '/api/public/solicitar'
     | '/api/contaazul/oauth/callback'
     | '/api/contaazul/oauth/prepare'
+    | '/api/public/contaazul/cron'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -652,6 +682,8 @@ export interface FileRouteTypes {
     | '/juridico'
     | '/patrimonio'
     | '/rh'
+    | '/api/contaazul/historico'
+    | '/api/contaazul/schedule'
     | '/api/contaazul/status'
     | '/api/contaazul/sync'
     | '/api/public/opcoes-pagamento'
@@ -659,6 +691,7 @@ export interface FileRouteTypes {
     | '/api/public/solicitar'
     | '/api/contaazul/oauth/callback'
     | '/api/contaazul/oauth/prepare'
+    | '/api/public/contaazul/cron'
   id:
     | '__root__'
     | '/'
@@ -713,6 +746,8 @@ export interface FileRouteTypes {
     | '/juridico/'
     | '/patrimonio/'
     | '/rh/'
+    | '/api/contaazul/historico'
+    | '/api/contaazul/schedule'
     | '/api/contaazul/status'
     | '/api/contaazul/sync'
     | '/api/public/opcoes-pagamento'
@@ -720,6 +755,7 @@ export interface FileRouteTypes {
     | '/api/public/solicitar'
     | '/api/contaazul/oauth/callback'
     | '/api/contaazul/oauth/prepare'
+    | '/api/public/contaazul/cron'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -745,6 +781,8 @@ export interface RootRouteChildren {
   EstoqueItemIdRoute: typeof EstoqueItemIdRoute
   EstoqueAReceberRoute: typeof EstoqueAReceberRoute
   EstoqueIndexRoute: typeof EstoqueIndexRoute
+  ApiContaazulHistoricoRoute: typeof ApiContaazulHistoricoRoute
+  ApiContaazulScheduleRoute: typeof ApiContaazulScheduleRoute
   ApiContaazulStatusRoute: typeof ApiContaazulStatusRoute
   ApiContaazulSyncRoute: typeof ApiContaazulSyncRoute
   ApiPublicOpcoesPagamentoRoute: typeof ApiPublicOpcoesPagamentoRoute
@@ -752,6 +790,7 @@ export interface RootRouteChildren {
   ApiPublicSolicitarRoute: typeof ApiPublicSolicitarRoute
   ApiContaazulOauthCallbackRoute: typeof ApiContaazulOauthCallbackRoute
   ApiContaazulOauthPrepareRoute: typeof ApiContaazulOauthPrepareRoute
+  ApiPublicContaazulCronRoute: typeof ApiPublicContaazulCronRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1155,6 +1194,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiContaazulStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/contaazul/schedule': {
+      id: '/api/contaazul/schedule'
+      path: '/api/contaazul/schedule'
+      fullPath: '/api/contaazul/schedule'
+      preLoaderRoute: typeof ApiContaazulScheduleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/contaazul/historico': {
+      id: '/api/contaazul/historico'
+      path: '/api/contaazul/historico'
+      fullPath: '/api/contaazul/historico'
+      preLoaderRoute: typeof ApiContaazulHistoricoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/contaazul/cron': {
+      id: '/api/public/contaazul/cron'
+      path: '/api/public/contaazul/cron'
+      fullPath: '/api/public/contaazul/cron'
+      preLoaderRoute: typeof ApiPublicContaazulCronRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/contaazul/oauth/prepare': {
       id: '/api/contaazul/oauth/prepare'
       path: '/api/contaazul/oauth/prepare'
@@ -1330,6 +1390,8 @@ const rootRouteChildren: RootRouteChildren = {
   EstoqueItemIdRoute: EstoqueItemIdRoute,
   EstoqueAReceberRoute: EstoqueAReceberRoute,
   EstoqueIndexRoute: EstoqueIndexRoute,
+  ApiContaazulHistoricoRoute: ApiContaazulHistoricoRoute,
+  ApiContaazulScheduleRoute: ApiContaazulScheduleRoute,
   ApiContaazulStatusRoute: ApiContaazulStatusRoute,
   ApiContaazulSyncRoute: ApiContaazulSyncRoute,
   ApiPublicOpcoesPagamentoRoute: ApiPublicOpcoesPagamentoRoute,
@@ -1337,6 +1399,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicSolicitarRoute: ApiPublicSolicitarRoute,
   ApiContaazulOauthCallbackRoute: ApiContaazulOauthCallbackRoute,
   ApiContaazulOauthPrepareRoute: ApiContaazulOauthPrepareRoute,
+  ApiPublicContaazulCronRoute: ApiPublicContaazulCronRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
