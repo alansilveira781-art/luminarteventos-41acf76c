@@ -20,7 +20,12 @@ const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#06b6d4", "#8b5cf6"
 export const Route = createFileRoute("/financeiro/dashboard")({
   component: FinanceiroDashboard,
   validateSearch: (s: Record<string, unknown>) => ({
-    tab: (s.tab as string) === "uber" ? "uber" : "financeiro",
+    tab: ((): "financeiro" | "uber" | "contaazul" => {
+      const v = s.tab as string;
+      if (v === "uber") return "uber";
+      if (v === "contaazul") return "contaazul";
+      return "financeiro";
+    })(),
   }),
 });
 
