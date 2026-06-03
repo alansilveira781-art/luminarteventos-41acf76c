@@ -57,18 +57,26 @@ function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => vo
 
 export const getRouter = () => {
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { staleTime: 1000 * 30 } },
+    defaultOptions: {
+      queries: {
+        staleTime: 1000 * 60,
+        gcTime: 1000 * 60 * 10,
+        refetchOnWindowFocus: false,
+      },
+    },
   });
   const router = createRouter({
     routeTree,
     context: { queryClient },
     scrollRestoration: true,
-    defaultPreloadStaleTime: 0,
+    defaultPreload: "intent",
+    defaultPreloadStaleTime: 1000 * 30,
     defaultErrorComponent: DefaultErrorComponent,
   });
 
   return router;
 };
+
 
 declare module "@tanstack/react-router" {
   interface Register {

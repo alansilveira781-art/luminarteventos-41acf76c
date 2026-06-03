@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef, useMemo } from "react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/fetch-all";
@@ -20,7 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { formatBRT, toBRTInputDateTime, fromBRTInputDateTime } from "@/lib/datetime";
 import { saidaTipoLabels } from "@/lib/labels";
-import { listEventos } from "@/server/sheets.functions";
+import { listEventos } from "@/lib/sheets.functions";
 import { ItemSearchSelect } from "@/components/ItemSearchSelect";
 import { ItemInfoHover } from "@/components/ItemInfoHover";
 import { EntitySearchSelect } from "@/components/EntitySearchSelect";
@@ -46,13 +47,13 @@ function SaidasPage() {
   const [open, setOpen] = useState(false);
   const [prefill, setPrefill] = useState<any | null>(null);
   const [editing, setEditing] = useState<any | null>(null);
-  const [q, setQ] = useState(""); const qd = useDebouncedValue(q, 300);
+  const [q, setQ] = usePersistedState<string>("saidas.q", ""); const qd = useDebouncedValue(q, 300);
   const [filterItemQ, setFilterItemQ] = useState<string>(""); const filterItemQd = useDebouncedValue(filterItemQ, 300);
   const [filterEvento, setFilterEvento] = useState<string>("__all");
   const [filterEmpresa, setFilterEmpresa] = useState<string>("__all");
   const { sort, toggleSort, applySort } = useSort();
-  const [periodoPreset, setPeriodoPreset] = useState<PeriodoPreset>("mes");
-  const [periodo, setPeriodo] = useState<Periodo>(periodoFromPreset("mes"));
+  const [periodoPreset, setPeriodoPreset] = usePersistedState<PeriodoPreset>("saidas.periodoPreset", "mes");
+  const [periodo, setPeriodo] = usePersistedState<Periodo>("saidas.periodo", periodoFromPreset("mes"));
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 100;
 

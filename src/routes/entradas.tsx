@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef, useMemo } from "react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/fetch-all";
@@ -51,10 +52,10 @@ function EntradasPage() {
   const [editing, setEditing] = useState<any | null>(null);
   const [importingExcel, setImportingExcel] = useState(false);
   const [importingXml, setImportingXml] = useState(false);
-  const [q, setQ] = useState(""); const qd = useDebouncedValue(q, 300);
+  const [q, setQ] = usePersistedState<string>("entradas.q", ""); const qd = useDebouncedValue(q, 300);
   const [filterItemQ, setFilterItemQ] = useState<string>(""); const filterItemQd = useDebouncedValue(filterItemQ, 300);
-  const [periodoPreset, setPeriodoPreset] = useState<PeriodoPreset>("mes");
-  const [periodo, setPeriodo] = useState<Periodo>(periodoFromPreset("mes"));
+  const [periodoPreset, setPeriodoPreset] = usePersistedState<PeriodoPreset>("entradas.periodoPreset", "mes");
+  const [periodo, setPeriodo] = usePersistedState<Periodo>("entradas.periodo", periodoFromPreset("mes"));
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 100;
   const [filterEvento, setFilterEvento] = useState<string>("__all");
@@ -935,26 +936,26 @@ function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor
                 <Input ref={(el) => { qtyRefs.current[i] = el; }} type="number" min="0" step="any" value={l.quantidade} onChange={(e) => setL(i, "quantidade", e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (l.item_id && Number(l.quantidade) > 0) focusValor(i); } }} className="px-2" />
               </div>
-              <div className="w-[100px]">
+              <div className="w-[110px]">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">Cust. Unit.</label>
                 <MoneyInput value={Number(l.valor_unitario || 0)} onChange={(n) => setL(i, "valor_unitario", n ? String(n) : "")}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (l.item_id && Number(l.quantidade) > 0) goNextItem(i); } }} hidePrefix />
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (l.item_id && Number(l.quantidade) > 0) goNextItem(i); } }} hidePrefix decimals={4} />
               </div>
-              <div className="w-[80px]">
+              <div className="w-[90px]">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">Desconto</label>
-                <Input type="number" min="0" step="any" value={l.desconto} onChange={(e) => setL(i, "desconto", e.target.value)} className="px-2" />
+                <MoneyInput value={Number(l.desconto || 0)} onChange={(n) => setL(i, "desconto", String(n))} hidePrefix />
               </div>
-              <div className="w-[80px]">
+              <div className="w-[90px]">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">Frete</label>
-                <Input type="number" min="0" step="any" value={l.frete} onChange={(e) => setL(i, "frete", e.target.value)} className="px-2" />
+                <MoneyInput value={Number(l.frete || 0)} onChange={(n) => setL(i, "frete", String(n))} hidePrefix />
               </div>
-              <div className="w-[80px]">
+              <div className="w-[90px]">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">IPI</label>
-                <Input type="number" min="0" step="any" value={l.ipi} onChange={(e) => setL(i, "ipi", e.target.value)} className="px-2" />
+                <MoneyInput value={Number(l.ipi || 0)} onChange={(n) => setL(i, "ipi", String(n))} hidePrefix />
               </div>
-              <div className="w-[80px]">
+              <div className="w-[90px]">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">Outros</label>
-                <Input type="number" min="0" step="any" value={l.outros_custos} onChange={(e) => setL(i, "outros_custos", e.target.value)} className="px-2" />
+                <MoneyInput value={Number(l.outros_custos || 0)} onChange={(n) => setL(i, "outros_custos", String(n))} hidePrefix />
               </div>
               <div className="w-[110px]">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">Total linha</label>
@@ -1024,7 +1025,7 @@ function EntradaEditForm({ original, itens, fornecedores, onEditFornecedor, onSu
           <ItemSearchSelect itens={itens} value={form.item_id} onChange={(v) => set("item_id", v)} />
         </FormField>
         <FormField label="Quantidade*"><Input required type="number" min="0.01" step="0.01" value={form.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></FormField>
-        <FormField label="Valor unit. (R$)"><Input type="number" min="0" step="0.01" value={form.valor_unitario} onChange={(e) => set("valor_unitario", e.target.value)} /></FormField>
+        <FormField label="Valor unit. (R$)"><MoneyInput value={Number(form.valor_unitario || 0)} onChange={(n) => set("valor_unitario", n ? String(n) : "")} decimals={4} /></FormField>
         <FormField label="Fornecedor">
           <EntitySearchSelect
             options={fornecedores}

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { cn, normalize } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { listEventos, type EventoSheetRow } from "@/server/sheets.functions";
+import { listEventos, type EventoSheetRow } from "@/lib/sheets.functions";
 
 /**
  * Combobox read-only com eventos lidos diretamente da planilha do Google Sheets.

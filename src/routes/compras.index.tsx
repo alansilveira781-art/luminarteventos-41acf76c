@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
@@ -46,7 +47,7 @@ function ComprasKanban() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [defaultStatus, setDefaultStatus] = useState<CompraStatus>("solicitacao");
-  const [q, setQ] = useState(""); const qd = useDebouncedValue(q, 300);
+  const [q, setQ] = usePersistedState<string>("compras.q", ""); const qd = useDebouncedValue(q, 300);
 
   // Abre o card automaticamente quando a URL tem ?id=...
   useEffect(() => {

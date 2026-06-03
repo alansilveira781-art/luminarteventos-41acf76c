@@ -210,7 +210,7 @@ function SidebarBody({
       )}
 
       <nav className={`flex-1 overflow-y-auto py-4 space-y-5 ${collapsed ? "px-2" : "px-3"}`}>
-        {groups.map((g) => (
+        {groups.filter((g) => items.some((i) => i.group === g)).map((g) => (
           <div key={g}>
             {!collapsed && (
               <div className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/80">
@@ -226,6 +226,7 @@ function SidebarBody({
                     <Link
                       key={item.url}
                       to={item.url}
+                      preload="intent"
                       onClick={onNavigate}
                       title={collapsed ? item.title : undefined}
                       className={`group relative flex items-center gap-3 rounded-md text-sm font-medium transition-all ${
@@ -248,6 +249,7 @@ function SidebarBody({
           </div>
         ))}
       </nav>
+
 
       <div className="border-t border-sidebar-border p-3">
         {collapsed ? (
@@ -305,6 +307,7 @@ function MobileRail({ pathname, onOpenMenu }: { pathname: string; onOpenMenu: ()
             <Link
               key={item.url}
               to={item.url}
+              preload="intent"
               title={item.title}
               aria-label={item.title}
               className={`flex h-10 w-10 items-center justify-center rounded-md transition-colors ${

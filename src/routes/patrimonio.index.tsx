@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { Plus, Pencil, Trash2, Search, Download, Upload, ImagePlus, X } from "lucide-react";
 import { useRef } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -43,7 +44,7 @@ function PatrimonioInventario() {
   const qc = useQueryClient();
   const { isModuleAdmin } = useAuth();
   const isAdmin = isModuleAdmin("patrimonio");
-  const [q, setQ] = useState(""); const qd = useDebouncedValue(q, 300);
+  const [q, setQ] = usePersistedState<string>("patrimonio.q", ""); const qd = useDebouncedValue(q, 300);
   const [filterCat, setFilterCat] = useState<string>("__all");
   const [filterEstado, setFilterEstado] = useState<string>("__all");
   const [filterLoc, setFilterLoc] = useState<string>("__all");
@@ -51,8 +52,8 @@ function PatrimonioInventario() {
   const [open, setOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [bulkPhotosOpen, setBulkPhotosOpen] = useState(false);
-  const [periodoPreset, setPeriodoPreset] = useState<PeriodoPreset>("todos");
-  const [periodo, setPeriodo] = useState<Periodo>(periodoFromPreset("todos"));
+  const [periodoPreset, setPeriodoPreset] = usePersistedState<PeriodoPreset>("patrimonio.periodoPreset", "todos");
+  const [periodo, setPeriodo] = usePersistedState<Periodo>("patrimonio.periodo", periodoFromPreset("todos"));
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 100;
 

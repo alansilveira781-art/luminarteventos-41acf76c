@@ -1,57 +1,74 @@
-## Objetivo
+## 1. Entradas — campos numéricos com vírgula e seleção ao tabular
 
-1. Ajustar o cabeçalho no celular para não ficar "colado" no topo (atrás da barra de status/notch), prejudicando leitura e cliques.
-2. Habilitar **notificações push reais no celular** (chegam mesmo com o app fechado), disparadas quando:
-   - um card/tarefa é **atribuído** a um usuário;
-   - há **alerta de estoque baixo/sem estoque** para quem tem acesso ao módulo Estoque.
+Arquivo: `src/routes/entradas.tsx` (e onde houver formulários de entrada/edição com Desconto, Frete, IPI, Outros custos, Valor unitário).
 
----
+- Trocar os `<Input type="number">` de Desconto, Frete, IPI e Outros custos pelo `MoneyInput` já existente (`src/components/MoneyInput.tsx`), que usa o formato "centavos as you type" com vírgula automática (igual ao Valor unitário). O state armazenará number em vez de string.
+- Valor unitário: continuar com `MoneyInput`, mas adicionar a opção de **4 casas decimais** (novo prop `decimals?: 2 | 4`, default 2). O formatter passará a usar `minimumFractionDigits/maximumFractionDigits = decimals` e o cálculo `centavos = digits / 10^decimals`. Aplicar `decimals={4}` apenas nos campos de custo unitário (entradas, edição de item, etc.).
+- Ao mudar de campo com Tab/seta, o conteúdo já fica selecionado pelo browser. O problema do "digitar não substitui" vem do `MoneyInput` ignorar a tecla quando há seleção. Ajustar o `onKeyDown`: se `selectionStart !== selectionEnd` (ou seleção cobre o input inteiro) e o usuário digita um dígito, **resetar `digits` para o dígito apertado** em vez de concatenar. Mesmo tratamento para Backspace com seleção total → zerar.
 
-## Parte 1 — Cabeçalho no mobile (safe area)
+## 2. Persistir filtros ao recarregar a página (global)
 
-O app usa `apple-mobile-web-app-status-bar-style: black-translucent`, então em celular instalado o conteúdo sobe para trás da barra de status. Hoje o `AppTopBar` (`src/components/AppSidebar.tsx`) e o `<main>` (`src/routes/__root.tsx`) não reservam essa área.
+Hoje todos os filtros (busca, período, ocultar zerados, ordenação, página) ficam em `useState` local e somem no F5.
 
-Mudanças:
-- **`src/components/AppSidebar.tsx`** (componente `AppTopBar`): adicionar respeito à área segura no topo do header `sticky`, aumentando a altura efetiva com `env(safe-area-inset-top)` (padding-top no header), para o conteúdo do cabeçalho descer abaixo da barra de status.
-- **`src/routes/__root.tsx`**: garantir que o `<main>` e o sidebar considerem as áreas seguras laterais/inferior (`safe-area-inset-left/right/bottom`) no mobile.
-- **`src/styles.css`**: adicionar utilitários/variáveis para as áreas seguras (`--safe-top`, etc.) usados acima, mantendo o padrão de tokens.
+Padrão a aplicar: mover esses estados para a **URL via search params do TanStack Router** (`validateSearch` + `zodValidator` + `fallback`), conforme já documentado. Vantagens: sobrevive ao reload, é compartilhável e mantém o histórico.
 
-Resultado: o cabeçalho fica logo abaixo da barra de status, com cliques e leitura corretos no iOS e Android.
+Escopo desta entrega (telas mais usadas):
+- `/estoque` (busca `q`, `hideZero`, `sort`, `periodo`, `page`)
+- `/entradas`, `/saidas`, `/devolucoes`
+- `/compras` (quadro + filtros)
+- `/financeiro` (quadro de demandas)
+- `/comercial` (quadro de vendas, propostas, clientes)
+- `/patrimonio` (inventário, entradas, saídas, devoluções)
+- `/contabil/notas` e `/contabil/recebimentos`
 
----
+Para cada uma:
+1. Definir schema Zod com `fallback(...).default(...)` para cada filtro.
+2. `Route.useSearch()` substitui o `useState`.
+3. Mudanças nos filtros chamam `navigate({ search: prev => ({ ...prev, ... }) })`.
+4. Adicionar `stripSearchParams(defaults)` para não poluir a URL quando o filtro está no valor padrão.
 
-## Parte 2 — Push notifications no celular (Web Push)
+## 3. Reduzir o delay ao trocar de módulo/aba
 
-Como o app é instalável (PWA), notificações com app fechado exigem **Web Push** (Service Worker + chaves VAPID + assinatura por dispositivo). Isso funciona **apenas no app instalado/publicado**, não no preview do editor.
+Investigações já mapeadas:
+- Várias páginas (ex.: `/estoque`) carregam **todas as linhas em loop paginado de 1000** no momento que entram. Vamos:
+  - Manter o React Query com `staleTime` maior (ex.: 60s) e `placeholderData: keepPreviousData` nas listas, para o retorno à tela ser instantâneo.
+  - Habilitar `defaultPreloadStaleTime` no router e `preload="intent"` nos `<Link>` da sidebar, para começar o fetch no hover.
+  - Onde a tabela tem paginação, buscar apenas a página atual via `range()` + `count: 'exact'` em vez de paginar tudo no cliente.
+- Code-split: garantir que rotas pesadas (Comercial, Financeiro, Patrimônio) sejam carregadas sob demanda (já são por arquivo, mas validar que nenhum import "puxa" tudo via barrel).
 
-### 2.1 Banco de dados (migração)
-- Nova tabela `push_subscriptions` (`user_id`, `endpoint`, `p256dh`, `auth`, `user_agent`), com RLS: cada usuário gerencia apenas as próprias assinaturas; `service_role` com acesso total.
-- **Alerta de estoque**: adicionar trigger na tabela `itens` que, ao mudar para `baixo_estoque`/`sem_estoque`, insere notificações em `notificacoes` para os usuários do módulo Estoque (reaproveitando o fluxo existente).
-- **Disparo do push**: trigger `AFTER INSERT` em `notificacoes` que chama (via `pg_net`) um endpoint público para enviar o push ao(s) dispositivo(s) do usuário. Assim, todas as notificações já existentes (atribuição de card via `notify.ts`, menções, status, estoque) passam a gerar push automaticamente.
+Entregável: ajustes nos `queryKey`/opções das listas grandes e no `<Link>` da sidebar; sem mudar comportamento funcional.
 
-### 2.2 Service Worker
-- Criar `public/sw.js` (Service Worker dedicado a push), tratando os eventos `push` (exibir notificação) e `notificationclick` (abrir o `link` da notificação).
-- Registro do SW **com proteção**: nunca registrar em iframe nem em domínio de preview (`id-preview--` / `lovableproject.com`), conforme as regras de PWA do Lovable. Ativo só no app publicado.
+## 4. Sidebar — só mostrar grupos do módulo atual
 
-### 2.3 Front-end
-- Botão/itens em "Notificações" (ou no sino) para **"Ativar notificações neste dispositivo"**: pede permissão, cria a `PushSubscription` com a chave pública VAPID e salva em `push_subscriptions`.
-- Tratar estado de permissão negada com mensagem clara.
+Arquivo: `src/components/AppSidebar.tsx`.
 
-### 2.4 Backend (envio do push)
-- Server route público `src/routes/api/public/send-push.ts` que recebe o `notificacao` (id/usuário), busca as assinaturas do usuário e envia o Web Push assinado com VAPID. Validação de entrada com Zod e autenticação via `apikey` (anon key), padrão de endpoints públicos.
-- Remover automaticamente assinaturas inválidas (410/404).
+Hoje o componente já filtra `items` pelo contexto (módulo da rota atual), mas o `groups.map` na linha 213 **renderiza o título de TODOS os grupos** mesmo quando não há item naquele grupo — então aparecem rótulos como "Compras", "Despesas", "Comercial" etc. no menu lateral, mesmo na Início.
 
-### 2.5 Chaves VAPID (necessário)
-Para assinar os pushes preciso de um par de chaves VAPID:
-- Chave **pública** (vai no código/cliente) e chave **privada** (segredo no backend).
-- Vou **gerar** o par e solicitar o armazenamento da chave privada como segredo (`VAPID_PRIVATE_KEY`) e o e-mail de contato (`VAPID_SUBJECT`).
+Correção:
+- Filtrar `groups` para apenas aqueles que têm pelo menos um item visível em `items`.
+- Resultado: em `/` (Início) só aparece "Visão geral › Início". Dentro de `/estoque`, só aparece o grupo "Estoque" com seus itens. E assim por diante — exatamente o pedido.
 
----
+## Pontos técnicos resumidos
 
-## Detalhes técnicos
-- Lib de envio: `web-push` (compatível com o runtime). Se houver incompatibilidade no Worker, uso assinatura VAPID/JWT via Web Crypto nativo.
-- `notificacoes` já tem realtime para o sino in-app; o push é complementar para quando o app está fechado.
-- Nada de cache-first no Service Worker (somente push), evitando os problemas conhecidos de PWA no preview.
+```text
+MoneyInput
+  ├─ prop decimals (default 2)
+  ├─ trata seleção total: dígito substitui, backspace zera
+  └─ usado em valor_unitario / desconto / frete / ipi / outros_custos
 
-## Observação importante
-As notificações push **só funcionarão no app publicado/instalado** (https://luminarteventos.lovable.app), não dentro do preview do editor. No iPhone, é necessário **instalar o app na tela inicial** (Web Push no iOS exige o app instalado).
+Filtros persistidos
+  └─ validateSearch + zodValidator(fallback().default()) + stripSearchParams
+
+Performance
+  ├─ staleTime: 60_000 + keepPreviousData
+  ├─ defaultPreloadStaleTime no router
+  └─ <Link preload="intent">
+
+Sidebar
+  └─ groups.filter(g => items.some(i => i.group === g))
+```
+
+## Fora de escopo
+
+- Não vou mexer em lógica de negócio (cálculo de custo médio, status de estoque, RLS, etc.).
+- Persistência de filtros nas telas administrativas e em relatórios secundários fica para um próximo ciclo, se quiser.

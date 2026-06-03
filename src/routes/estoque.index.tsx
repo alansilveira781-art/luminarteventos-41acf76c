@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/PageHeader";
@@ -47,16 +48,16 @@ export const Route = createFileRoute("/estoque/")({
 function EstoquePage() {
   const qc = useQueryClient();
   const { isModuleAdmin } = useAuth(); const isAdmin = isModuleAdmin("estoque");
-  const [q, setQ] = useState("");
+  const [q, setQ] = usePersistedState<string>("estoque.q", "");
   const qd = useDebouncedValue(q, 300);
   const [editing, setEditing] = useState<any | null>(null);
   const [duplicating, setDuplicating] = useState<any | null>(null);
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [hideZero, setHideZero] = useState(false);
-  const [sort, setSort] = useState<{ key: string; dir: "desc" | "asc" } | null>(null);
-  const [periodoPreset, setPeriodoPreset] = useState<PeriodoPreset>("todos");
-  const [periodo, setPeriodo] = useState<Periodo>(periodoFromPreset("todos"));
+  const [hideZero, setHideZero] = usePersistedState<boolean>("estoque.hideZero", false);
+  const [sort, setSort] = usePersistedState<{ key: string; dir: "desc" | "asc" } | null>("estoque.sort", null);
+  const [periodoPreset, setPeriodoPreset] = usePersistedState<PeriodoPreset>("estoque.periodoPreset", "todos");
+  const [periodo, setPeriodo] = usePersistedState<Periodo>("estoque.periodo", periodoFromPreset("todos"));
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 100;
 
