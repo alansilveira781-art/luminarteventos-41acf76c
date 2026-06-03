@@ -296,30 +296,47 @@ function PainelFinanceiro() {
 
 
 function AnaliseDetalhada() {
-  const { centros, pagar, receber } = useContaAzulData();
+  const { centros, pagar, receber, planos } = useContaAzulData();
   const [ano, setAno] = useState(new Date().getFullYear());
+  const [mes, setMes] = useState(0);
+  const [regime, setRegime] = useState<Regime>("caixa");
   const [centroId, setCentroId] = useState<string>("");
 
   const ccs = centros.data ?? [];
   useMemoSetDefault(centroId, setCentroId, ccs);
 
-  const filtered = useMemo(() => {
-    const r = (receber.data ?? []).filter((c) => c.centro_custo_external_id === centroId && inPeriodo(c.data_vencimento, ano, 0));
-    const p = (pagar.data ?? []).filter((c) => c.centro_custo_external_id === centroId && inPeriodo(c.data_vencimento, ano, 0));
-    const totalR = r.reduce((s, c) => s + Number(c.valor || 0), 0);
-    const totalP = p.reduce((s, c) => s + Number(c.valor || 0), 0);
-    return { r, p, totalR, totalP, lucro: totalR - totalP };
-  }, [pagar.data, receber.data, centroId, ano]);
+  const planosArr = planos.data ?? [];
+
+  const { linhas, totais } = useMemo(
+    () =>
+      montarDRE(pagar.data ?? [], receber.data ?? [], planosArr, {
+        ano, mes, regime, centroCustoId: centroId || undefined,
+      }),
+    [pagar.data, receber.data, planosArr, ano, mes, regime, centroId],
+  );
+
+  const rb = totais.RB ?? 0;
+  const rl = totais.RL ?? 0;
+  const ro = totais.RO ?? 0;
+  const rg = totais.RG ?? 0;
+  const lu = totais.LU ?? 0;
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-3 justify-end">
+      <div className="flex flex-wrap gap-3 items-end justify-end">
         <div className="min-w-[280px]">
           <label className="text-xs text-muted-foreground">Evento/Projeto</label>
           <Select value={centroId} onValueChange={setCentroId}>
             <SelectTrigger><SelectValue placeholder="Selecione um projeto" /></SelectTrigger>
             <SelectContent>{ccs.map((c) => <SelectItem key={c.external_id} value={c.external_id}>{c.nome}</SelectItem>)}</SelectContent>
           </Select>
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground block mb-1">Regime</label>
+          <ToggleGroup type="single" value={regime} onValueChange={(v) => v && setRegime(v as Regime)} size="sm">
+            <ToggleGroupItem value="caixa">Caixa</ToggleGroupItem>
+            <ToggleGroupItem value="competencia">Competência</ToggleGroupItem>
+          </ToggleGroup>
         </div>
         <div className="w-32">
           <label className="text-xs text-muted-foreground">Ano</label>
@@ -328,41 +345,46 @@ function AnaliseDetalhada() {
             <SelectContent>{YEARS.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
           </Select>
         </div>
+        <div className="w-40">
+          <label className="text-xs text-muted-foreground">Mês</label>
+          <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{MESES.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <KpiCard icon={Piggy} label="Receita Bruta" value={fmtMoney(filtered.totalR)} />
-        <KpiCard icon={TrendingDown} label="Pot. de Vendas" value="—" />
-        <KpiCard icon={Building2} label="Despesas" value="—" />
-        <KpiCard icon={BarChart3} label="Custos" value={fmtMoney(-filtered.totalP)} subLabel="% Custos" subValue={fmtPct(filtered.totalR ? -filtered.totalP / filtered.totalR : 0)} subColor="text-red-600" />
-        <KpiCard icon={Sprout} label="Lucro" value={fmtMoney(filtered.lucro)} subLabel="% Lucro" subValue={fmtPct(filtered.totalR ? filtered.lucro / filtered.totalR : 0)} subColor={filtered.lucro >= 0 ? "text-green-600" : "text-red-600"} />
+        <KpiCard icon={Piggy} label="Receita Bruta" value={fmtMoney(rb)} />
+        <KpiCard icon={TrendingDown} label="Receita Líquida" value={fmtMoney(rl)} subLabel="% RB" subValue={fmtPct(rb ? rl / rb : 0)} />
+        <KpiCard icon={Building2} label="Result. Operação" value={fmtMoney(ro)} subColor={ro >= 0 ? "text-green-600" : "text-red-600"} />
+        <KpiCard icon={BarChart3} label="Result. Gerencial" value={fmtMoney(rg)} subColor={rg >= 0 ? "text-green-600" : "text-red-600"} />
+        <KpiCard icon={Sprout} label="Lucro" value={fmtMoney(lu)} subLabel="% Lucro" subValue={fmtPct(rb ? lu / rb : 0)} subColor={lu >= 0 ? "text-green-600" : "text-red-600"} />
       </div>
 
       <Card className="p-0 overflow-hidden">
-        <div className="grid grid-cols-[110px,1fr,1fr,160px] text-xs uppercase text-muted-foreground bg-muted/50 px-3 py-2 font-semibold">
-          <div>Data</div><div>Fornecedor/Cliente</div><div>Descrição</div><div className="text-right">Resultados</div>
+        <div className="grid grid-cols-[1fr,160px,80px] text-xs uppercase text-muted-foreground bg-muted/50 px-3 py-2 font-semibold">
+          <div>Demonstrativo</div><div className="text-right">Valores</div><div className="text-right">%</div>
         </div>
-        <div className="max-h-[480px] overflow-y-auto">
-          {[
-            ...filtered.r.map((c) => ({ data: c.data_vencimento, nome: c.cliente_nome, descricao: c.descricao, valor: Number(c.valor || 0) })),
-            ...filtered.p.map((c) => ({ data: c.data_vencimento, nome: c.fornecedor_nome, descricao: c.descricao, valor: -Number(c.valor || 0) })),
-          ].sort((a, b) => (a.data ?? "").localeCompare(b.data ?? "")).map((m, i) => (
-            <div key={i} className="grid grid-cols-[110px,1fr,1fr,160px] px-3 py-1.5 text-sm border-t border-border">
-              <div className="text-muted-foreground">{m.data?.slice(0, 10) ?? "—"}</div>
-              <div className="truncate font-medium">{m.nome ?? "—"}</div>
-              <div className="truncate text-muted-foreground">{m.descricao ?? "—"}</div>
-              <div className={`text-right tabular-nums ${m.valor < 0 ? "text-red-600" : "text-green-700"}`}>{fmtMoney(m.valor)}</div>
+        <div className="max-h-[560px] overflow-y-auto">
+          {linhas.map((row) => (
+            <div
+              key={row.id}
+              className={`grid grid-cols-[1fr,160px,80px] px-3 py-1.5 text-sm border-t border-border ${
+                row.kind === "calc" ? "font-semibold bg-muted/40" : row.kind === "header" ? "font-semibold" : ""
+              }`}
+            >
+              <div className="truncate" title={row.label}>{row.label}</div>
+              <div className={`text-right tabular-nums ${row.valor < 0 ? "text-red-600" : ""}`}>{fmtMoney(row.valor)}</div>
+              <div className="text-right tabular-nums text-muted-foreground">{fmtPct(row.pct)}</div>
             </div>
           ))}
-        </div>
-        <div className="grid grid-cols-[1fr,160px] px-3 py-2 text-sm font-semibold bg-muted/40 border-t">
-          <div>Total</div>
-          <div className={`text-right tabular-nums ${filtered.lucro < 0 ? "text-red-600" : "text-green-700"}`}>{fmtMoney(filtered.lucro)}</div>
         </div>
       </Card>
     </div>
   );
 }
+
 
 function useMemoSetDefault(current: string, setter: (v: string) => void, items: CentroCusto[]) {
   useMemo(() => {
