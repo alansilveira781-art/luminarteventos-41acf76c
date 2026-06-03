@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { Plus, Pencil, Trash2, Search, Download, Upload, ImagePlus, X } from "lucide-react";
@@ -104,7 +104,7 @@ function PatrimonioInventario() {
     () => filterByPeriodo(filtered, periodo, (i: Pat) => i.created_at ?? null),
     [filtered, periodo],
   );
-  useMemo(() => { setPage(1); }, [q, filterCat, filterEstado, filterLoc, periodo, sort]);
+  useEffect(() => { setPage(1); }, [q, filterCat, filterEstado, filterLoc, periodo, sort]);
   const pageCount = Math.max(1, Math.ceil(filteredPeriodo.length / PAGE_SIZE));
   const pageItems = useMemo(
     () => filteredPeriodo.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),

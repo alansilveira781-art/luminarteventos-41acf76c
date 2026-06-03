@@ -168,7 +168,7 @@ function DevolucoesPage() {
     () => filterByPeriodo(filtered, periodo, (m: any) => m.data_movimento),
     [filtered, periodo],
   );
-  useMemo(() => { setPage(1); }, [sBusca, sort, periodo]);
+  useEffect(() => { setPage(1); }, [sBusca, sort, periodo]);
   const pageCount = Math.max(1, Math.ceil(filteredPeriodo.length / PAGE_SIZE));
   const pageItems = useMemo(
     () => filteredPeriodo.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { ChevronRight, ChevronDown } from "lucide-react";
@@ -318,7 +318,7 @@ function SaidasPage() {
     () => filterByPeriodo(grupos, periodo, (g: any) => g.data_movimento),
     [grupos, periodo],
   );
-  useMemo(() => { setPage(1); }, [q, filterItemQ, filterEvento, filterEmpresa, periodo, sort]);
+  useEffect(() => { setPage(1); }, [q, filterItemQ, filterEvento, filterEmpresa, periodo, sort]);
   const pageCount = Math.max(1, Math.ceil(gruposPeriodo.length / PAGE_SIZE));
   const pageGrupos = useMemo(
     () => gruposPeriodo.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
