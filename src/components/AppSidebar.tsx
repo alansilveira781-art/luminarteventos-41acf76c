@@ -226,7 +226,7 @@ function SidebarBody({
                     <Link
                       key={item.url}
                       to={item.url}
-                      preload="intent"
+
                       onClick={onNavigate}
                       title={collapsed ? item.title : undefined}
                       className={`group relative flex items-center gap-3 rounded-md text-sm font-medium transition-all ${
@@ -307,7 +307,7 @@ function MobileRail({ pathname, onOpenMenu }: { pathname: string; onOpenMenu: ()
             <Link
               key={item.url}
               to={item.url}
-              preload="intent"
+
               title={item.title}
               aria-label={item.title}
               className={`flex h-10 w-10 items-center justify-center rounded-md transition-colors ${
