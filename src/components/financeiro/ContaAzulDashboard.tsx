@@ -4,11 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   ComposedChart, Line, Legend,
 } from "recharts";
 import { PiggyBank as Piggy, TrendingDown, Building2, BarChart3, Sprout } from "lucide-react";
+import { montarDRE, totaisExtrato, type Regime } from "@/lib/conta-azul/dre";
+
 
 const sb = supabase as any;
 
@@ -94,12 +97,13 @@ function useContaAzulData() {
   const extrato = useQuery({
     queryKey: ["ca-extrato"],
     queryFn: async () => {
-      const { data } = await sb.from("ca_extrato").select("external_id,conta_bancaria,valor");
-      return (data ?? []) as Extrato[];
+      const { data } = await sb.from("ca_extrato").select("external_id,conta_bancaria,valor,data,descricao,categoria_external_id");
+      return (data ?? []) as (Extrato & { data: string | null; descricao: string | null; categoria_external_id: string | null })[];
     },
   });
   return { planos, centros, pagar, receber, extrato };
 }
+
 
 function KpiCard({
   icon: Icon, label, value, subLabel, subValue, subColor,
@@ -121,87 +125,73 @@ function KpiCard({
 }
 
 function PainelFinanceiro() {
-  const { planos, pagar, receber } = useContaAzulData();
+  const { planos, pagar, receber, extrato } = useContaAzulData();
   const [ano, setAno] = useState(new Date().getFullYear());
   const [mes, setMes] = useState(0);
+  const [regime, setRegime] = useState<Regime>("caixa");
 
-  const planoMap = useMemo(() => {
-    const m = new Map<string, PlanoConta>();
-    (planos.data ?? []).forEach((p) => m.set(p.external_id, p));
-    return m;
-  }, [planos.data]);
+  const planosArr = planos.data ?? [];
 
-  const { receitas, despesas, custos, deducoes, lucro, dre, movimentos, totalRec } = useMemo(() => {
-    const r = (receber.data ?? []).filter((c) => inPeriodo(c.data_vencimento, ano, mes));
-    const p = (pagar.data ?? []).filter((c) => inPeriodo(c.data_vencimento, ano, mes));
+  const { linhas, totais } = useMemo(
+    () => montarDRE(pagar.data ?? [], receber.data ?? [], planosArr, { ano, mes, regime }),
+    [pagar.data, receber.data, planosArr, ano, mes, regime],
+  );
 
-    const sumByCat = (rows: any[]) => {
-      const map = new Map<string, number>();
-      rows.forEach((c) => {
-        const k = c.categoria_external_id || "_sem_categoria";
-        map.set(k, (map.get(k) ?? 0) + Number(c.valor || 0));
-      });
-      return map;
-    };
-    const recByCat = sumByCat(r);
-    const payByCat = sumByCat(p);
+  const rb = totais.RB ?? 0;
+  const rl = totais.RL ?? 0;
+  const ro = totais.RO ?? 0;
+  const rg = totais.RG ?? 0;
+  const lu = totais.LU ?? 0;
 
-    const totalRec = r.reduce((s, c) => s + Number(c.valor || 0), 0);
-    const totalPay = p.reduce((s, c) => s + Number(c.valor || 0), 0);
+  // Reconciliação com extrato (sempre caixa)
+  const extratoTot = useMemo(
+    () => totaisExtrato(extrato.data ?? [], planosArr, ano, mes),
+    [extrato.data, planosArr, ano, mes],
+  );
+  const dreCaixa = useMemo(() => {
+    if (regime === "caixa") return { receitas: rb, despesas: rb - lu };
+    const t = montarDRE(pagar.data ?? [], receber.data ?? [], planosArr, { ano, mes, regime: "caixa" }).totais;
+    const r = t.RB ?? 0;
+    const l = t.LU ?? 0;
+    return { receitas: r, despesas: r - l };
+  }, [regime, rb, lu, pagar.data, receber.data, planosArr, ano, mes]);
 
-    // Simplificação: trata todas as contas a pagar como despesas/custos
-    const despesas = totalPay * 0.2;
-    const custos = totalPay * 0.8;
-    const deducoes = totalRec * 0.1;
-    const lucro = totalRec - deducoes - despesas - custos;
+  const diffRec = dreCaixa.receitas - extratoTot.receitas;
+  const diffDes = dreCaixa.despesas - extratoTot.despesas;
+  const pctRec = extratoTot.receitas ? Math.abs(diffRec) / extratoTot.receitas : 0;
+  const pctDes = extratoTot.despesas ? Math.abs(diffDes) / extratoTot.despesas : 0;
+  const corDiff = (p: number) => (p <= 0.01 ? "text-green-600" : p <= 0.05 ? "text-yellow-600" : "text-red-600");
 
-    // DRE: agrupa por categoria
-    type DRERow = { label: string; valor: number; pct: number; bold?: boolean };
-    const dre: DRERow[] = [];
-    dre.push({ label: "(+) Receita Bruta", valor: totalRec, pct: 1, bold: true });
-    Array.from(recByCat.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .forEach(([k, v]) => {
-        const nome = planoMap.get(k)?.nome ?? "Sem categoria";
-        dre.push({ label: `   ${nome}`, valor: v, pct: totalRec ? v / totalRec : 0 });
-      });
-    dre.push({ label: "(-) Deduções", valor: -deducoes, pct: totalRec ? -deducoes / totalRec : 0, bold: true });
-    dre.push({ label: "(=) Receita Líquida", valor: totalRec - deducoes, pct: totalRec ? (totalRec - deducoes) / totalRec : 0, bold: true });
-    dre.push({ label: "(-) Custos", valor: -custos, pct: totalRec ? -custos / totalRec : 0, bold: true });
-    Array.from(payByCat.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .forEach(([k, v]) => {
-        const nome = planoMap.get(k)?.nome ?? "Sem categoria";
-        dre.push({ label: `   ${nome}`, valor: -v * 0.8, pct: totalRec ? -(v * 0.8) / totalRec : 0 });
-      });
-    dre.push({ label: "(-) Despesas", valor: -despesas, pct: totalRec ? -despesas / totalRec : 0, bold: true });
-    dre.push({ label: "(=) Lucro", valor: lucro, pct: totalRec ? lucro / totalRec : 0, bold: true });
-
-    // Movimentos: combinação
-    const movimentos = [
-      ...r.map((c) => ({ data: c.data_vencimento, nome: c.cliente_nome, descricao: c.descricao, valor: Number(c.valor || 0) })),
-      ...p.map((c) => ({ data: c.data_vencimento, nome: c.fornecedor_nome, descricao: c.descricao, valor: -Number(c.valor || 0) })),
+  // Movimentos do período (mesmo regime do DRE)
+  const movimentos = useMemo(() => {
+    const passa = (c: any) =>
+      regime === "caixa"
+        ? c.status === "pago" && inPeriodo(c.data_pagamento, ano, mes)
+        : inPeriodo(c.data_vencimento, ano, mes);
+    return [
+      ...(receber.data ?? []).filter(passa).map((c: any) => ({
+        data: regime === "caixa" ? c.data_pagamento : c.data_vencimento,
+        nome: c.cliente_nome, descricao: c.descricao, valor: Number(c.valor || 0),
+      })),
+      ...(pagar.data ?? []).filter(passa).map((c: any) => ({
+        data: regime === "caixa" ? c.data_pagamento : c.data_vencimento,
+        nome: c.fornecedor_nome, descricao: c.descricao, valor: -Number(c.valor || 0),
+      })),
     ].sort((a, b) => (a.data ?? "").localeCompare(b.data ?? ""));
-
-    return {
-      receitas: totalRec,
-      despesas,
-      custos,
-      deducoes,
-      lucro,
-      dre,
-      movimentos,
-      totalRec,
-    };
-  }, [pagar.data, receber.data, planoMap, ano, mes]);
+  }, [pagar.data, receber.data, regime, ano, mes]);
 
   const totalMov = movimentos.reduce((s, m) => s + m.valor, 0);
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-3 justify-end">
+      <div className="flex flex-wrap gap-3 items-end justify-end">
+        <div>
+          <label className="text-xs text-muted-foreground block mb-1">Regime</label>
+          <ToggleGroup type="single" value={regime} onValueChange={(v) => v && setRegime(v as Regime)} size="sm">
+            <ToggleGroupItem value="caixa">Caixa</ToggleGroupItem>
+            <ToggleGroupItem value="competencia">Competência</ToggleGroupItem>
+          </ToggleGroup>
+        </div>
         <div className="w-32">
           <label className="text-xs text-muted-foreground">Ano</label>
           <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
@@ -219,21 +209,57 @@ function PainelFinanceiro() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <KpiCard icon={Piggy} label="Receita Bruta" value={fmtMoney(receitas)} subLabel="% Receita" subValue={fmtPct(1)} subColor="text-green-600" />
-        <KpiCard icon={TrendingDown} label="Pot. de Vendas" value={fmtMoney(0)} subLabel="% PV" subValue="—" />
-        <KpiCard icon={Building2} label="Despesas" value={fmtMoney(-despesas)} subLabel="% Despesa" subValue={fmtPct(receitas ? -despesas / receitas : 0)} subColor="text-red-600" />
-        <KpiCard icon={BarChart3} label="Custos" value={fmtMoney(-custos)} subLabel="% Custos" subValue={fmtPct(receitas ? -custos / receitas : 0)} subColor="text-red-600" />
-        <KpiCard icon={Sprout} label="Lucro" value={fmtMoney(lucro)} subLabel="% Lucro" subValue={fmtPct(receitas ? lucro / receitas : 0)} subColor={lucro >= 0 ? "text-green-600" : "text-red-600"} />
+        <KpiCard icon={Piggy} label="Receita Bruta" value={fmtMoney(rb)} subLabel="% RB" subValue={fmtPct(1)} subColor="text-green-600" />
+        <KpiCard icon={TrendingDown} label="Receita Líquida" value={fmtMoney(rl)} subLabel="% RB" subValue={fmtPct(rb ? rl / rb : 0)} />
+        <KpiCard icon={Building2} label="Result. Operação" value={fmtMoney(ro)} subLabel="% RB" subValue={fmtPct(rb ? ro / rb : 0)} subColor={ro >= 0 ? "text-green-600" : "text-red-600"} />
+        <KpiCard icon={BarChart3} label="Result. Gerencial" value={fmtMoney(rg)} subLabel="% RB" subValue={fmtPct(rb ? rg / rb : 0)} subColor={rg >= 0 ? "text-green-600" : "text-red-600"} />
+        <KpiCard icon={Sprout} label="Lucro" value={fmtMoney(lu)} subLabel="% RB" subValue={fmtPct(rb ? lu / rb : 0)} subColor={lu >= 0 ? "text-green-600" : "text-red-600"} />
       </div>
+
+      <Card className="p-4">
+        <div className="text-sm font-semibold mb-3">Conferência vs Extrato (caixa)</div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+          <div className="border rounded-md p-3">
+            <div className="text-xs uppercase text-muted-foreground">Receitas</div>
+            <div className="mt-1 grid grid-cols-2 gap-x-2 tabular-nums">
+              <div className="text-muted-foreground">DRE</div><div className="text-right">{fmtMoney(dreCaixa.receitas)}</div>
+              <div className="text-muted-foreground">Extrato</div><div className="text-right">{fmtMoney(extratoTot.receitas)}</div>
+              <div className="font-semibold">Diferença</div>
+              <div className={`text-right font-semibold ${corDiff(pctRec)}`}>{fmtMoney(diffRec)} ({fmtPct(pctRec)})</div>
+            </div>
+          </div>
+          <div className="border rounded-md p-3">
+            <div className="text-xs uppercase text-muted-foreground">Despesas + Custos</div>
+            <div className="mt-1 grid grid-cols-2 gap-x-2 tabular-nums">
+              <div className="text-muted-foreground">DRE</div><div className="text-right">{fmtMoney(dreCaixa.despesas)}</div>
+              <div className="text-muted-foreground">Extrato</div><div className="text-right">{fmtMoney(extratoTot.despesas)}</div>
+              <div className="font-semibold">Diferença</div>
+              <div className={`text-right font-semibold ${corDiff(pctDes)}`}>{fmtMoney(diffDes)} ({fmtPct(pctDes)})</div>
+            </div>
+          </div>
+          <div className="border rounded-md p-3 text-xs text-muted-foreground">
+            <div className="font-semibold text-foreground mb-1">Como ler</div>
+            Verde ≤ 1%, amarelo ≤ 5%, vermelho acima. Diferenças grandes indicam meses sem sincronização — abra a aba <span className="font-semibold">Conta Azul → Meses com falha</span> e reprocesse.
+            {extratoTot.receitas === 0 && extratoTot.despesas === 0 && (
+              <div className="mt-2 text-red-600">Extrato vazio no período. Confira se a sincronização do recurso <em>extrato</em> rodou.</div>
+            )}
+          </div>
+        </div>
+      </Card>
 
       <div className="grid lg:grid-cols-2 gap-4">
         <Card className="p-0 overflow-hidden">
           <div className="grid grid-cols-[1fr,140px,80px] text-xs uppercase text-muted-foreground bg-muted/50 px-3 py-2 font-semibold">
             <div>Demonstrativo</div><div className="text-right">Valores</div><div className="text-right">%</div>
           </div>
-          <div className="max-h-[420px] overflow-y-auto">
-            {dre.map((row, i) => (
-              <div key={i} className={`grid grid-cols-[1fr,140px,80px] px-3 py-1.5 text-sm border-t border-border ${row.bold ? "font-semibold bg-muted/30" : ""}`}>
+          <div className="max-h-[520px] overflow-y-auto">
+            {linhas.map((row) => (
+              <div
+                key={row.id}
+                className={`grid grid-cols-[1fr,140px,80px] px-3 py-1.5 text-sm border-t border-border ${
+                  row.kind === "calc" ? "font-semibold bg-muted/40" : row.kind === "header" ? "font-semibold" : ""
+                }`}
+              >
                 <div className="truncate" title={row.label}>{row.label}</div>
                 <div className={`text-right tabular-nums ${row.valor < 0 ? "text-red-600" : ""}`}>{fmtMoney(row.valor)}</div>
                 <div className="text-right tabular-nums text-muted-foreground">{fmtPct(row.pct)}</div>
@@ -246,8 +272,8 @@ function PainelFinanceiro() {
           <div className="grid grid-cols-[110px,1fr,140px] text-xs uppercase text-muted-foreground bg-muted/50 px-3 py-2 font-semibold">
             <div>Data</div><div>Fornecedor/Cliente · Descrição</div><div className="text-right">Valor</div>
           </div>
-          <div className="max-h-[420px] overflow-y-auto">
-            {movimentos.slice(0, 200).map((m, i) => (
+          <div className="max-h-[520px] overflow-y-auto">
+            {movimentos.slice(0, 300).map((m, i) => (
               <div key={i} className="grid grid-cols-[110px,1fr,140px] px-3 py-1.5 text-sm border-t border-border">
                 <div className="text-muted-foreground">{m.data?.slice(0, 10) ?? "—"}</div>
                 <div className="truncate">
@@ -259,7 +285,7 @@ function PainelFinanceiro() {
             ))}
           </div>
           <div className="grid grid-cols-[1fr,140px] px-3 py-2 text-sm font-semibold bg-muted/40 border-t">
-            <div>Total</div>
+            <div>Total ({movimentos.length} lançamentos)</div>
             <div className={`text-right tabular-nums ${totalMov < 0 ? "text-red-600" : "text-green-700"}`}>{fmtMoney(totalMov)}</div>
           </div>
         </Card>
@@ -268,31 +294,49 @@ function PainelFinanceiro() {
   );
 }
 
+
 function AnaliseDetalhada() {
-  const { centros, pagar, receber } = useContaAzulData();
+  const { centros, pagar, receber, planos } = useContaAzulData();
   const [ano, setAno] = useState(new Date().getFullYear());
+  const [mes, setMes] = useState(0);
+  const [regime, setRegime] = useState<Regime>("caixa");
   const [centroId, setCentroId] = useState<string>("");
 
   const ccs = centros.data ?? [];
   useMemoSetDefault(centroId, setCentroId, ccs);
 
-  const filtered = useMemo(() => {
-    const r = (receber.data ?? []).filter((c) => c.centro_custo_external_id === centroId && inPeriodo(c.data_vencimento, ano, 0));
-    const p = (pagar.data ?? []).filter((c) => c.centro_custo_external_id === centroId && inPeriodo(c.data_vencimento, ano, 0));
-    const totalR = r.reduce((s, c) => s + Number(c.valor || 0), 0);
-    const totalP = p.reduce((s, c) => s + Number(c.valor || 0), 0);
-    return { r, p, totalR, totalP, lucro: totalR - totalP };
-  }, [pagar.data, receber.data, centroId, ano]);
+  const planosArr = planos.data ?? [];
+
+  const { linhas, totais } = useMemo(
+    () =>
+      montarDRE(pagar.data ?? [], receber.data ?? [], planosArr, {
+        ano, mes, regime, centroCustoId: centroId || undefined,
+      }),
+    [pagar.data, receber.data, planosArr, ano, mes, regime, centroId],
+  );
+
+  const rb = totais.RB ?? 0;
+  const rl = totais.RL ?? 0;
+  const ro = totais.RO ?? 0;
+  const rg = totais.RG ?? 0;
+  const lu = totais.LU ?? 0;
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-3 justify-end">
+      <div className="flex flex-wrap gap-3 items-end justify-end">
         <div className="min-w-[280px]">
           <label className="text-xs text-muted-foreground">Evento/Projeto</label>
           <Select value={centroId} onValueChange={setCentroId}>
             <SelectTrigger><SelectValue placeholder="Selecione um projeto" /></SelectTrigger>
             <SelectContent>{ccs.map((c) => <SelectItem key={c.external_id} value={c.external_id}>{c.nome}</SelectItem>)}</SelectContent>
           </Select>
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground block mb-1">Regime</label>
+          <ToggleGroup type="single" value={regime} onValueChange={(v) => v && setRegime(v as Regime)} size="sm">
+            <ToggleGroupItem value="caixa">Caixa</ToggleGroupItem>
+            <ToggleGroupItem value="competencia">Competência</ToggleGroupItem>
+          </ToggleGroup>
         </div>
         <div className="w-32">
           <label className="text-xs text-muted-foreground">Ano</label>
@@ -301,41 +345,46 @@ function AnaliseDetalhada() {
             <SelectContent>{YEARS.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
           </Select>
         </div>
+        <div className="w-40">
+          <label className="text-xs text-muted-foreground">Mês</label>
+          <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{MESES.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <KpiCard icon={Piggy} label="Receita Bruta" value={fmtMoney(filtered.totalR)} />
-        <KpiCard icon={TrendingDown} label="Pot. de Vendas" value="—" />
-        <KpiCard icon={Building2} label="Despesas" value="—" />
-        <KpiCard icon={BarChart3} label="Custos" value={fmtMoney(-filtered.totalP)} subLabel="% Custos" subValue={fmtPct(filtered.totalR ? -filtered.totalP / filtered.totalR : 0)} subColor="text-red-600" />
-        <KpiCard icon={Sprout} label="Lucro" value={fmtMoney(filtered.lucro)} subLabel="% Lucro" subValue={fmtPct(filtered.totalR ? filtered.lucro / filtered.totalR : 0)} subColor={filtered.lucro >= 0 ? "text-green-600" : "text-red-600"} />
+        <KpiCard icon={Piggy} label="Receita Bruta" value={fmtMoney(rb)} />
+        <KpiCard icon={TrendingDown} label="Receita Líquida" value={fmtMoney(rl)} subLabel="% RB" subValue={fmtPct(rb ? rl / rb : 0)} />
+        <KpiCard icon={Building2} label="Result. Operação" value={fmtMoney(ro)} subColor={ro >= 0 ? "text-green-600" : "text-red-600"} />
+        <KpiCard icon={BarChart3} label="Result. Gerencial" value={fmtMoney(rg)} subColor={rg >= 0 ? "text-green-600" : "text-red-600"} />
+        <KpiCard icon={Sprout} label="Lucro" value={fmtMoney(lu)} subLabel="% Lucro" subValue={fmtPct(rb ? lu / rb : 0)} subColor={lu >= 0 ? "text-green-600" : "text-red-600"} />
       </div>
 
       <Card className="p-0 overflow-hidden">
-        <div className="grid grid-cols-[110px,1fr,1fr,160px] text-xs uppercase text-muted-foreground bg-muted/50 px-3 py-2 font-semibold">
-          <div>Data</div><div>Fornecedor/Cliente</div><div>Descrição</div><div className="text-right">Resultados</div>
+        <div className="grid grid-cols-[1fr,160px,80px] text-xs uppercase text-muted-foreground bg-muted/50 px-3 py-2 font-semibold">
+          <div>Demonstrativo</div><div className="text-right">Valores</div><div className="text-right">%</div>
         </div>
-        <div className="max-h-[480px] overflow-y-auto">
-          {[
-            ...filtered.r.map((c) => ({ data: c.data_vencimento, nome: c.cliente_nome, descricao: c.descricao, valor: Number(c.valor || 0) })),
-            ...filtered.p.map((c) => ({ data: c.data_vencimento, nome: c.fornecedor_nome, descricao: c.descricao, valor: -Number(c.valor || 0) })),
-          ].sort((a, b) => (a.data ?? "").localeCompare(b.data ?? "")).map((m, i) => (
-            <div key={i} className="grid grid-cols-[110px,1fr,1fr,160px] px-3 py-1.5 text-sm border-t border-border">
-              <div className="text-muted-foreground">{m.data?.slice(0, 10) ?? "—"}</div>
-              <div className="truncate font-medium">{m.nome ?? "—"}</div>
-              <div className="truncate text-muted-foreground">{m.descricao ?? "—"}</div>
-              <div className={`text-right tabular-nums ${m.valor < 0 ? "text-red-600" : "text-green-700"}`}>{fmtMoney(m.valor)}</div>
+        <div className="max-h-[560px] overflow-y-auto">
+          {linhas.map((row) => (
+            <div
+              key={row.id}
+              className={`grid grid-cols-[1fr,160px,80px] px-3 py-1.5 text-sm border-t border-border ${
+                row.kind === "calc" ? "font-semibold bg-muted/40" : row.kind === "header" ? "font-semibold" : ""
+              }`}
+            >
+              <div className="truncate" title={row.label}>{row.label}</div>
+              <div className={`text-right tabular-nums ${row.valor < 0 ? "text-red-600" : ""}`}>{fmtMoney(row.valor)}</div>
+              <div className="text-right tabular-nums text-muted-foreground">{fmtPct(row.pct)}</div>
             </div>
           ))}
-        </div>
-        <div className="grid grid-cols-[1fr,160px] px-3 py-2 text-sm font-semibold bg-muted/40 border-t">
-          <div>Total</div>
-          <div className={`text-right tabular-nums ${filtered.lucro < 0 ? "text-red-600" : "text-green-700"}`}>{fmtMoney(filtered.lucro)}</div>
         </div>
       </Card>
     </div>
   );
 }
+
 
 function useMemoSetDefault(current: string, setter: (v: string) => void, items: CentroCusto[]) {
   useMemo(() => {
