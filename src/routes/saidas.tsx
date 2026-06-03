@@ -190,6 +190,8 @@ function SaidasPage() {
   const { data: solicitantes } = useQuery({
     queryKey: ["solicitantes-select"],
     queryFn: async () => (await supabase.from("solicitantes").select("*").eq("status", "ativo").order("nome")).data ?? [],
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const [editingSolicitante, setEditingSolicitante] = useState<any | null>(null);

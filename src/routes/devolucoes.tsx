@@ -60,6 +60,8 @@ function DevolucoesPage() {
     queryKey: ["solicitantes-select"],
     queryFn: async () =>
       (await supabase.from("solicitantes").select("id,nome").eq("status", "ativo").order("nome")).data ?? [],
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   // Saídas em aberto / parcial — vamos agrupar por (data+solicitante+evento)

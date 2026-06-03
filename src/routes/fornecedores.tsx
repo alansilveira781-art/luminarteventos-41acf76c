@@ -227,6 +227,7 @@ function FornecedoresPage() {
             else { inserted++; setKey.add(key); }
           }
           qc.invalidateQueries({ queryKey: ["fornecedores"] });
+          qc.invalidateQueries({ queryKey: ["fornecedores-select"] });
           return { inserted, skipped, errors };
         }}
       />

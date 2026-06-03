@@ -176,6 +176,8 @@ function EntradasPage() {
   const { data: fornecedores } = useQuery({
     queryKey: ["fornecedores-select"],
     queryFn: async () => (await supabase.from("fornecedores").select("*").eq("status", "ativo").order("nome")).data ?? [],
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const [editingFornecedor, setEditingFornecedor] = useState<any | null>(null);
