@@ -58,31 +58,39 @@ function SaidasPage() {
   const PAGE_SIZE = 100;
 
 
+  // Edição de linha única: deletar a antiga e inserir a nova
+  // (triggers do banco fazem a reversão e a reaplicação no estoque).
   const editMut = useMutation({
     mutationFn: async (p: { original: any; patch: any }) => {
       const { original, patch } = p;
       const newItemId = patch.item_id ?? original.item_id;
       const newQtd = Number(patch.quantidade ?? original.quantidade);
-      const oldQtd = Number(original.quantidade);
-      // Saída: estoque diminuiu. Reverter antiga e aplicar nova.
-      if (newItemId === original.item_id) {
-        const delta = oldQtd - newQtd; // se nova menor, devolve estoque
-        if (delta !== 0) {
-          const { data: it } = await supabase.from("itens").select("quantidade_atual").eq("id", original.item_id).single();
-          if (it) await supabase.from("itens").update({ quantidade_atual: Number(it.quantidade_atual) + delta }).eq("id", original.item_id);
+      // Validar estoque (considerando reversão do registro atual)
+      const { data: itAtual } = await supabase
+        .from("itens")
+        .select("nome,unidade,quantidade_atual")
+        .eq("id", newItemId)
+        .single();
+      if (itAtual) {
+        const disponivelApos = newItemId === original.item_id
+          ? Number(itAtual.quantidade_atual) + Number(original.quantidade)
+          : Number(itAtual.quantidade_atual);
+        if (newQtd > disponivelApos) {
+          throw new Error(`Estoque insuficiente para ${itAtual.nome}. Disponível: ${disponivelApos} ${itAtual.unidade}`);
         }
-      } else {
-        const { data: itOld } = await supabase.from("itens").select("quantidade_atual").eq("id", original.item_id).single();
-        if (itOld) await supabase.from("itens").update({ quantidade_atual: Number(itOld.quantidade_atual) + oldQtd }).eq("id", original.item_id);
-        const { data: itNew } = await supabase.from("itens").select("quantidade_atual").eq("id", newItemId).single();
-        if (itNew) await supabase.from("itens").update({ quantidade_atual: Number(itNew.quantidade_atual) - newQtd }).eq("id", newItemId);
       }
-      const { error } = await supabase.from("movimentacoes").update(patch).eq("id", original.id);
+      const { id: _ignore, item: _i, solicitante: _s, created_at: _c, updated_at: _u, ...base } = original;
+      const novo = { ...base, ...patch };
+      const { error: delErr } = await supabase.from("movimentacoes").delete().eq("id", original.id);
+      if (delErr) throw delErr;
+      const { error } = await supabase.from("movimentacoes").insert(novo);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["saidas"] });
       qc.invalidateQueries({ queryKey: ["itens"] });
+      qc.invalidateQueries({ queryKey: ["itens-select"] });
+      qc.invalidateQueries({ queryKey: ["itens-select-saida"] });
       toast.success("Saída atualizada");
       setEditing(null);
     },
@@ -100,8 +108,8 @@ function SaidasPage() {
       // Validar estoque considerando reversão das antigas
       const itemIds = Array.from(new Set([...old.map((o) => o.item_id), ...p.linhas.map((l) => l.item_id)]));
       const { data: itensCur } = await supabase.from("itens").select("id,nome,unidade,quantidade_atual").in("id", itemIds);
-      const stockMap = new Map<string, { nome: string; unidade: string; qtd: number; original: number }>();
-      for (const i of itensCur ?? []) stockMap.set(i.id, { nome: i.nome, unidade: i.unidade, qtd: Number(i.quantidade_atual), original: Number(i.quantidade_atual) });
+      const stockMap = new Map<string, { nome: string; unidade: string; qtd: number }>();
+      for (const i of itensCur ?? []) stockMap.set(i.id, { nome: i.nome, unidade: i.unidade, qtd: Number(i.quantidade_atual) });
       for (const m of old) { const s = stockMap.get(m.item_id); if (s) s.qtd += Number(m.quantidade); }
       for (const l of p.linhas) {
         const s = stockMap.get(l.item_id);
@@ -109,16 +117,11 @@ function SaidasPage() {
         if (l.quantidade > s.qtd) throw new Error(`Estoque insuficiente para ${s.nome}. Disponível: ${s.qtd} ${s.unidade}`);
         s.qtd -= l.quantidade;
       }
-      // Aplicar reversão de estoque das antigas
-      for (const m of old) {
-        const { data: it } = await supabase.from("itens").select("quantidade_atual").eq("id", m.item_id).single();
-        if (it) await supabase.from("itens").update({ quantidade_atual: Number(it.quantidade_atual) + Number(m.quantidade) }).eq("id", m.item_id);
-      }
-      // Apagar antigas
+      // Apagar antigas (triggers devolvem o estoque)
       const oldIds = old.map((o) => o.id);
       const { error: delErr } = await supabase.from("movimentacoes").delete().in("id", oldIds);
       if (delErr) throw delErr;
-      // Inserir novas mantendo o mesmo requisicao_numero
+      // Inserir novas mantendo o mesmo requisicao_numero (triggers descontam estoque)
       const requisicao_numero = p.grupo.numero ?? null;
       const inserts = p.linhas.map((l) => ({
         ...p.meta,
@@ -133,6 +136,7 @@ function SaidasPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["saidas"] });
       qc.invalidateQueries({ queryKey: ["itens"] });
+      qc.invalidateQueries({ queryKey: ["itens-select"] });
       qc.invalidateQueries({ queryKey: ["itens-select-saida"] });
       toast.success("Saída atualizada");
       setEditing(null);
@@ -143,22 +147,20 @@ function SaidasPage() {
   const delMut = useMutation({
     mutationFn: async (grupo: any) => {
       const linhas: any[] = grupo.linhas ?? [grupo];
-      // Reverter estoque de cada linha (saída tirou, então adicionar de volta)
+      // Apagar devoluções vinculadas primeiro (triggers revertem estoque delas)
       for (const m of linhas) {
-        const { data: it } = await supabase.from("itens").select("quantidade_atual").eq("id", m.item_id).single();
-        if (it) {
-          await supabase.from("itens").update({ quantidade_atual: Number(it.quantidade_atual) + Number(m.quantidade) }).eq("id", m.item_id);
-        }
-        // Apagar devoluções vinculadas
         await supabase.from("movimentacoes").delete().eq("saida_origem_id", m.id);
       }
       const ids = linhas.map((l) => l.id);
+      // Apagar saídas (triggers devolvem o estoque)
       const { error } = await supabase.from("movimentacoes").delete().in("id", ids);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["saidas"] });
       qc.invalidateQueries({ queryKey: ["itens"] });
+      qc.invalidateQueries({ queryKey: ["itens-select"] });
+      qc.invalidateQueries({ queryKey: ["itens-select-saida"] });
       toast.success("Saída excluída");
     },
     onError: (e: any) => toast.error(e.message),
