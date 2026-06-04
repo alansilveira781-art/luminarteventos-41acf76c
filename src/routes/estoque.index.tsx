@@ -90,28 +90,8 @@ function EstoquePage() {
     mutationFn: async (payload: any) => {
       if (payload.id) {
         const { id, ...rest } = payload;
-        const novaQtd = Number(rest.quantidade_atual);
-        // não atualizar quantidade_atual diretamente — usar movimentação de ajuste
-        const { quantidade_atual: _ignored, ...updateFields } = rest;
-        const { data: atual, error: errSel } = await supabase
-          .from("itens")
-          .select("quantidade_atual")
-          .eq("id", id)
-          .single();
-        if (errSel) throw errSel;
-        const qtdAtual = Number(atual?.quantidade_atual ?? 0);
-        const { error } = await supabase.from("itens").update(updateFields).eq("id", id);
+        const { error } = await supabase.from("itens").update(rest).eq("id", id);
         if (error) throw error;
-        if (!Number.isNaN(novaQtd) && novaQtd !== qtdAtual) {
-          const delta = novaQtd - qtdAtual;
-          const { error: errMov } = await supabase.from("movimentacoes").insert({
-            item_id: id,
-            tipo: "ajuste",
-            quantidade: delta,
-            observacoes: "Ajuste manual via edição de item",
-          } as any);
-          if (errMov) throw errMov;
-        }
       } else {
         const { error } = await supabase.from("itens").insert(payload);
         if (error) throw error;

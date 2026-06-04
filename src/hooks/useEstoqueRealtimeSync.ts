@@ -30,7 +30,6 @@ export function useEstoqueRealtimeSync() {
       .channel("estoque-sync")
       .on("postgres_changes", { event: "*", schema: "public", table: "itens" }, invalidateAll)
       .on("postgres_changes", { event: "*", schema: "public", table: "movimentacoes" }, invalidateAll)
-      .on("postgres_changes", { event: "*", schema: "public", table: "movimentacao_itens" }, invalidateAll)
       .subscribe();
 
     return () => {
