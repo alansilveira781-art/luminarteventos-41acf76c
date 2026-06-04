@@ -1,75 +1,49 @@
-## Observação importante sobre a fonte de dados
+## Diagnóstico
 
-Você escolheu **Extrato bancário (ca_extrato)** como fonte de verdade. Conferindo o banco agora: **a tabela `ca_extrato` está vazia** (0 linhas). A Conta Azul só está liberando para a API o que está em `ca_contas_pagar` e `ca_contas_receber`.
+A causa raiz é no banco: as **funções** `apply_movement`, `apply_custo_medio_entrada`, `refresh_saida_status`, `apply_movimentacao_item` e `notify_stock_alert` existem, mas **nenhum trigger está conectado** às tabelas `movimentacoes`/`movimentacao_itens`/`itens` (confirmado: `0 rows` em `pg_trigger`).
 
-Proposta equivalente (regime de caixa, que é o que o extrato representaria):
-- Usar `ca_contas_pagar` e `ca_contas_receber` com `status = 'pago'` e `data_pagamento` no período.
-- Excluir transferências bancárias (já implementado em `isTransferencia`).
-- Se quiser ligar a sincronia do extrato depois, o painel passa a usar `ca_extrato` sem reescrever nada (basta trocar a função de leitura).
+Consequência:
+- Ao registrar uma **entrada**, a linha entra em `movimentacoes`, mas `itens.quantidade_atual` **não é incrementado**. Por isso, ao abrir "Nova saída", o item recém-cadastrado/entrado aparece como **zerado**.
+- Ao registrar uma **saída**, o estoque também não é decrementado.
+- O custo médio (entrada) e o status da saída (devolvida/parcial) também deixaram de ser atualizados.
 
-Se em vez disso você quiser conciliar 100% com o relatório oficial do Conta Azul, me envie um print de uma linha da DRE oficial (ex.: Receita Bruta 2025 com as 6 categorias detalhadas) para eu calibrar exatamente.
+Conferência real no banco (entradas recentes):
+- SKU-42: entrada de 200 → `quantidade_atual = 200` (coincidência: foi a primeira)
+- SKU-94: entrada de 5 → `quantidade_atual = 0` ❌
+- SKU-96/97: entrada de 4 → `quantidade_atual = 0` ❌
+- código 1957: entrada de 30 → `quantidade_atual = 7` ❌
 
-## Layout (igual à imagem)
+Além disso, o código de **edição/exclusão** em `entradas.tsx`, `saidas.tsx` e `devolucoes.tsx` faz `UPDATE itens SET quantidade_atual = ...` **manualmente**. Se religarmos os triggers sem mexer no código, edições/exclusões passariam a **dobrar** o ajuste. Precisa ser tratado junto.
 
-````text
-┌─────────────────────────────────────────────────────────────────┐
-│ Painel Financeiro                            [Ano ▾] [Mês ▾]    │
-├──────────┬──────────┬──────────┬──────────┬─────────────────────┤
-│ Receita  │ Pot.     │ Despesas │ Custos   │ Lucro               │
-│ Bruta 🐷 │ Vendas 👥│   🏢     │   📈     │   🌱                │
-│ R$ ...   │ R$ ...   │ R$ ...   │ R$ ...   │ R$ ...              │
-│ %Receita │ %PV      │ %Despesa │ %Custos  │ %Lucro              │
-│  vs LY   │ vertical │ vertical │ vertical │ vertical            │
-├──────────┴──────────┴────┬─────┴──────────┴─────────────────────┤
-│ Demonstrativo  Valores % │ Data | Fornec/Cliente | Descr | Vlr  │
-│ (+) Receita Bruta        │ ────────────────────────────────────  │
-│    Cenografia            │ (lista filtra ao clicar numa          │
-│    Corporativos          │  categoria do Demonstrativo)          │
-│    ...                   │                                       │
-│ (-) Deduções da Receita  │ Total: R$ ...                         │
-│    ...                   │                                       │
-└──────────────────────────┴───────────────────────────────────────┘
-````
+## Plano
 
-## Mudanças (frontend apenas)
+### 1. Migração: recriar triggers no banco
+Em uma única migração:
+- `BEFORE INSERT ON movimentacoes` → `apply_movement()` (incrementa/decrementa `itens.quantidade_atual` e define `saida_status='aberta'` em saídas novas).
+- `AFTER INSERT ON movimentacoes` → `apply_custo_medio_entrada()` (recalcula custo médio em entradas).
+- `AFTER INSERT ON movimentacoes` → `refresh_saida_status()` (marca saída como devolvida/parcialmente_devolvida em devoluções).
+- `AFTER INSERT/UPDATE/DELETE ON movimentacao_itens` → `apply_movimentacao_item()` (mesma lógica para movimentações multi‑item).
+- `AFTER UPDATE OF status ON itens` → `notify_stock_alert()` (alertas de baixo/sem estoque).
+- **Reconciliação one‑shot** no fim da migração: recalcular `itens.quantidade_atual` a partir do somatório de `movimentacoes` (entradas, saídas, devoluções por condição) + `movimentacao_itens`, para corrigir o drift acumulado desde que os triggers sumiram. Em seguida rodar `refresh_item_status` para todos os itens.
 
-**`src/components/financeiro/ContaAzulDashboard.tsx`** — reescrever o componente `PainelFinanceiro`:
+### 2. Ajustar `entradas.tsx`, `saidas.tsx`, `devolucoes.tsx`
+Remover os blocos manuais que fazem `UPDATE itens SET quantidade_atual = ...` em:
+- `editMut` (linhas 71‑84 entradas, 67‑79 saídas)
+- `editGroupMut` (entradas 101‑104; saídas 112‑116)
+- `delMut` (entradas 134‑140; saídas 145‑154; devoluções ~133)
 
-1. **Filtros no topo direito:** `Ano` (2023…ano atual) e `Mês` (Todos, Janeiro…Dezembro). Default: último ano com dados.
+A lógica passa a ser: validar estoque no client (já existe na saída), em seguida `delete`/`insert`/`update` em `movimentacoes` — os triggers cuidam de `itens.quantidade_atual`. Para **edição** (que hoje é delete+insert no caso de grupos), o novo fluxo continua funcionando: cada delete devolve estoque via trigger e cada insert reaplica.
 
-2. **5 cards superiores** com ícones (lucide: `PiggyBank`, `Users`, `Building2`, `BarChart3`, `Sprout`). Cada card mostra o valor grande e um subtexto com %:
-   - **Receita Bruta** = RB. Subtexto: `% Receita LY: (RB_ano − RB_anoAnterior) / RB_anoAnterior` (verde se ≥0, vermelho se <0).
-   - **Pot. de Vendas** = −(AC + DM + DC). Subtexto: `% PV: PV / RB` (vertical).
-   - **Despesas** = −(DS + DA + DT). Subtexto: `% Despesa: Despesas / RB`.
-   - **Custos** = −(CV + CD + CI). Subtexto: `% Custos: Custos / RB`.
-   - **Lucro** = linha `LU` do DRE. Subtexto: `% Lucro: Lucro / RB`.
+Para a **edição de linha única** (`editMut`), trocar para o mesmo padrão: deletar o registro antigo (trigger reverte) e inserir o novo (trigger reaplica), ao invés do `update` parcial atual.
 
-3. **Tabela Demonstrativo (esquerda, ~40% da largura):**
-   - 3 colunas: `Demonstrativo | Valores | %` (% vertical em relação a RB).
-   - Linhas de grupo expansíveis com `+/−` (Receita Bruta, Deduções, AC, DM, DC, CV, CD, CI, DS, DA, DT, RF, DF, OE, OS, IN) listando categorias por baixo.
-   - Linhas de subtotal calc (Receita Líquida, Resultado Venda, Operação, Gerencial, Financeiro, Não Operacional, Negócio, Lucro) em negrito, sem expandir.
-   - Sem `max-height` interno na tabela (rolagem natural da página).
+### 3. Validação manual após aplicar
+- Criar um item novo com quantidade inicial 0.
+- Registrar uma entrada de 5 unidades → `itens.quantidade_atual` deve ir para 5.
+- Abrir "Nova saída", selecionar o item → deve mostrar 5 disponíveis.
+- Registrar saída de 2 → estoque deve ir para 3.
+- Editar a saída para 1 → estoque vai para 4.
+- Excluir a saída → estoque volta a 5.
 
-4. **Lista lateral (direita, ~60% da largura):**
-   - Colunas: `Data movimento | Nome do fornecedor/cliente | Descrição | Valor Total`.
-   - Mostra todos os lançamentos do período (pagar+receber, `status='pago'`, por `data_pagamento`, excluindo transferências) quando nada está selecionado.
-   - Ao clicar numa **categoria filha** no Demonstrativo, filtra por `categoria_external_id`. Clicar de novo (ou em outra) troca/limpa a seleção. Header visual destacando o filtro ativo + botão `× limpar`.
-   - Linha `Total` fixa no rodapé somando o que está visível.
-
-5. **Cálculos:** reaproveitar `montarDRE` em modo `realizado`, e ler `totais.RB`, `totais.LU`, etc. Para o card "ano anterior" (Receita LY), chamar `montarDRE` uma segunda vez com `{ ano: ano−1, mes }`.
-
-6. **Queries:** uma `useQuery` por tabela (planos, pagar, receber) — já existe `useContaAzulData`; só preciso garantir que `pagar`/`receber` tragam `fornecedor_nome`/`cliente_nome`, `data_pagamento`, `categoria_external_id` e `descricao` (já estão no tipo).
-
-## Detalhes técnicos
-
-- **Comparação YoY:** se `RB_anterior = 0`, mostrar `—` em vez de `∞%`.
-- **Cores dos %:** verde `text-emerald-600` para ≥0 no card Receita; vermelho `text-rose-600` para <0. Demais % verticais sempre em cinza neutro.
-- **Ordem do detalhamento por categoria** dentro de cada grupo: ordem alfabética (igual à imagem: Cenografia, Corporativos, Móveis Planejados, …).
-- **Sem alteração no `dre.ts`** — só leitura de `totais` já expostos.
-- Cards de auditoria de "Transferências ignoradas" e "Conferência vs Extrato" continuam abaixo do bloco principal (não afetam a paridade visual com a imagem).
-
-## Fora de escopo neste ciclo
-
-- Sincronizar `ca_extrato` (precisa de ajuste no `sync.server.ts` da Conta Azul).
-- Aba "Análise Detalhada" e "Fluxo de Caixa" — ficam como estão.
-- Drill-down por grupo (apenas categoria filha filtra a lista lateral).
+### Fora de escopo
+- Mudanças no Dashboard, Painel Financeiro ou Conta Azul (continuam como estão).
+- Mudanças nos formulários de fornecedor/solicitante (o cadastro já invalida as queries; se ainda houver problema específico após o fix do estoque, tratamos em seguida com um caso reproduzível).

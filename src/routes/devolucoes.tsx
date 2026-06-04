@@ -125,15 +125,7 @@ function DevolucoesPage() {
   // Excluir devolução (revertendo estoque)
   const delMut = useMutation({
     mutationFn: async (rows: any[]) => {
-      for (const r of rows) {
-        // se a devolução agregou estoque, devolver: subtrair
-        if (r.condicao !== "perdido" && r.item_id) {
-          const { data: it } = await supabase.from("itens").select("quantidade_atual").eq("id", r.item_id).single();
-          if (it) {
-            await supabase.from("itens").update({ quantidade_atual: Number(it.quantidade_atual) - Number(r.quantidade) }).eq("id", r.item_id);
-          }
-        }
-      }
+      // Triggers revertem o estoque automaticamente ao apagar a movimentação.
       const ids = rows.map((r) => r.id);
       const { error } = await supabase.from("movimentacoes").delete().in("id", ids);
       if (error) throw error;

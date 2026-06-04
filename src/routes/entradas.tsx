@@ -61,33 +61,23 @@ function EntradasPage() {
   const [filterEvento, setFilterEvento] = useState<string>("__all");
   const { sort, toggleSort, applySort } = useSort();
 
+  // Edição de linha única: deletar a antiga e inserir a nova
+  // (triggers do banco fazem a reversão e a reaplicação no estoque).
   const editMut = useMutation({
     mutationFn: async (p: { original: any; patch: any }) => {
       const { original, patch } = p;
-      const newItemId = patch.item_id ?? original.item_id;
-      const newQtd = Number(patch.quantidade ?? original.quantidade);
-      const oldQtd = Number(original.quantidade);
-      // Ajustar estoque: reverter antiga e aplicar nova
-      if (newItemId === original.item_id) {
-        const delta = newQtd - oldQtd;
-        if (delta !== 0) {
-          const { data: it } = await supabase.from("itens").select("quantidade_atual").eq("id", original.item_id).single();
-          if (it) await supabase.from("itens").update({ quantidade_atual: Number(it.quantidade_atual) + delta }).eq("id", original.item_id);
-        }
-      } else {
-        // reverter no antigo
-        const { data: itOld } = await supabase.from("itens").select("quantidade_atual").eq("id", original.item_id).single();
-        if (itOld) await supabase.from("itens").update({ quantidade_atual: Number(itOld.quantidade_atual) - oldQtd }).eq("id", original.item_id);
-        // aplicar no novo
-        const { data: itNew } = await supabase.from("itens").select("quantidade_atual").eq("id", newItemId).single();
-        if (itNew) await supabase.from("itens").update({ quantidade_atual: Number(itNew.quantidade_atual) + newQtd }).eq("id", newItemId);
-      }
-      const { error } = await supabase.from("movimentacoes").update(patch).eq("id", original.id);
+      const { id: _ignore, item: _i, fornecedor: _f, created_at: _c, updated_at: _u, ...base } = original;
+      const novo = { ...base, ...patch };
+      const { error: delErr } = await supabase.from("movimentacoes").delete().eq("id", original.id);
+      if (delErr) throw delErr;
+      const { error } = await supabase.from("movimentacoes").insert(novo);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["entradas"] });
       qc.invalidateQueries({ queryKey: ["itens"] });
+      qc.invalidateQueries({ queryKey: ["itens-select"] });
+      qc.invalidateQueries({ queryKey: ["itens-select-saida"] });
       toast.success("Entrada atualizada");
       setEditing(null);
     },
@@ -97,16 +87,11 @@ function EntradasPage() {
   const editGroupMut = useMutation({
     mutationFn: async (p: { grupo: any; meta: any; linhas: Array<{ item_id: string; quantidade: number; valor_unitario: number | null }> }) => {
       const old: any[] = p.grupo.linhas ?? [];
-      // Reverter estoque das antigas (entrada adicionou, então subtrair)
-      for (const m of old) {
-        const { data: it } = await supabase.from("itens").select("quantidade_atual").eq("id", m.item_id).single();
-        if (it) await supabase.from("itens").update({ quantidade_atual: Number(it.quantidade_atual) - Number(m.quantidade) }).eq("id", m.item_id);
-      }
-      // Apagar antigas
+      // Apagar antigas (triggers revertem o estoque)
       const oldIds = old.map((o) => o.id);
       const { error: delErr } = await supabase.from("movimentacoes").delete().in("id", oldIds);
       if (delErr) throw delErr;
-      // Inserir novas mantendo o mesmo requisicao_numero
+      // Inserir novas mantendo o mesmo requisicao_numero (triggers aplicam o estoque)
       const requisicao_numero = p.grupo.numero ?? null;
       const inserts = p.linhas.map((l) => ({
         ...p.meta,
@@ -122,6 +107,8 @@ function EntradasPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["entradas"] });
       qc.invalidateQueries({ queryKey: ["itens"] });
+      qc.invalidateQueries({ queryKey: ["itens-select"] });
+      qc.invalidateQueries({ queryKey: ["itens-select-saida"] });
       toast.success("Entrada atualizada");
       setEditing(null);
     },
@@ -131,20 +118,16 @@ function EntradasPage() {
   const delMut = useMutation({
     mutationFn: async (grupo: any) => {
       const linhas: any[] = grupo.linhas ?? [grupo];
-      // Reverter estoque (entrada adicionou, então subtrair)
-      for (const m of linhas) {
-        const { data: it } = await supabase.from("itens").select("quantidade_atual").eq("id", m.item_id).single();
-        if (it) {
-          await supabase.from("itens").update({ quantidade_atual: Number(it.quantidade_atual) - Number(m.quantidade) }).eq("id", m.item_id);
-        }
-      }
       const ids = linhas.map((l) => l.id);
+      // Triggers revertem o estoque automaticamente
       const { error } = await supabase.from("movimentacoes").delete().in("id", ids);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["entradas"] });
       qc.invalidateQueries({ queryKey: ["itens"] });
+      qc.invalidateQueries({ queryKey: ["itens-select"] });
+      qc.invalidateQueries({ queryKey: ["itens-select-saida"] });
       toast.success("Entrada excluída");
     },
     onError: (e: any) => toast.error(e.message),
