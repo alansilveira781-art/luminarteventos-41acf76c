@@ -22,6 +22,7 @@ type ReportId =
   | "entradas"
   | "devolucoes"
   | "estoque"
+  | "estoque_negativo"
   | "solicitantes"
   | "fornecedores"
   | "gastos_mes"
@@ -33,12 +34,14 @@ const REPORTS: { id: ReportId; label: string; description: string; needsPeriod: 
   { id: "entradas", label: "Entradas", description: "Lista de itens recebidos com fornecedor, NF e valor.", needsPeriod: true },
   { id: "devolucoes", label: "Devoluções", description: "Itens devolvidos vinculados às saídas originais.", needsPeriod: true },
   { id: "estoque", label: "Posição de estoque", description: "Quantidade atual de cada item, valor total e status.", needsPeriod: false },
+  { id: "estoque_negativo", label: "Itens com estoque negativo", description: "Itens cujo saldo atual está abaixo de zero — precisam de ajuste/contagem.", needsPeriod: false },
   { id: "solicitantes", label: "Solicitantes", description: "Cadastro completo dos solicitantes ativos.", needsPeriod: false },
   { id: "fornecedores", label: "Fornecedores", description: "Cadastro completo dos fornecedores.", needsPeriod: false },
   { id: "gastos_mes", label: "Gastos por mês", description: "Total comprado por mês no período selecionado.", needsPeriod: true },
   { id: "gastos_categoria", label: "Gastos por categoria", description: "Total comprado por categoria de item.", needsPeriod: true },
   { id: "saidas_evento", label: "Saídas por evento", description: "Quantidade e valor das saídas agrupadas por evento/projeto.", needsPeriod: true },
 ];
+
 
 function RelatoriosPage() {
   const hoje = new Date();
