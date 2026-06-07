@@ -52,6 +52,29 @@ function inPeriodo(date: string | null, ano: number, mes: number) {
   return true;
 }
 
+function normTxt(s: string | null | undefined): string {
+  return (s ?? "")
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+/** Remove prefixo de data tipo "2026.03.03 - " ou "2026-03-03 - " do nome do centro. */
+function centroNeedle(nome: string | null | undefined): string {
+  const stripped = (nome ?? "").replace(/^\s*\d{2,4}[.\-/]\d{2}[.\-/]\d{2}\s*[-–—]\s*/, "");
+  return normTxt(stripped);
+}
+
+function rowMatchesText(c: any, needle: string): boolean {
+  if (!needle) return true;
+  const hay = normTxt(
+    [c.descricao, c.observacoes, c.fornecedor_nome, c.cliente_nome].filter(Boolean).join(" | "),
+  );
+  return hay.includes(needle);
+}
+
 export function ContaAzulDashboard() {
   return (
     <Tabs defaultValue="painel" className="w-full">
