@@ -10,8 +10,9 @@ import {
   ComposedChart, Line, Legend,
 } from "recharts";
 import { PiggyBank as Piggy, TrendingDown, Building2, BarChart3, Sprout, Users, X, ChevronRight, ChevronDown } from "lucide-react";
-import { DRE_STRUCTURE, grupoDoPlanoNome, isTransferencia, type DreGroupId } from "@/lib/conta-azul/dre";
+import { DRE_STRUCTURE, grupoDoPlanoNome, isTransferencia, type DreGroupId, type DreLine } from "@/lib/conta-azul/dre";
 import { montarDRE, type Visao } from "@/lib/conta-azul/dre";
+import { useDreEstrutura } from "@/hooks/useDreEstrutura";
 
 
 const sb = supabase as any;
