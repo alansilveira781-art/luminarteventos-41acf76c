@@ -13,6 +13,8 @@ import {
 import { DEMANDA_STATUSES, TIPO_DEMANDA_OPTIONS } from "@/lib/demandas";
 import { UberDashboard } from "@/components/financeiro/UberDashboard";
 import { ContaAzulDashboard } from "@/components/financeiro/ContaAzulDashboard";
+import { grupoDoPlanoNome, buildPrefixIndex, DRE_STRUCTURE, type DreGroupId } from "@/lib/conta-azul/dre";
+import { useDreEstrutura } from "@/hooks/useDreEstrutura";
 
 const sb = supabase as any;
 const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#06b6d4", "#8b5cf6", "#ec4899", "#84cc16"];
@@ -54,7 +56,7 @@ function FinanceiroDashboard() {
     queryFn: async () => {
       const { data } = await sb
         .from("demandas")
-        .select("id,status,fornecedor,tipo_demanda,condicao_pagamento,valor_total,data_compra,data_solicitacao,created_at");
+        .select("id,status,fornecedor,tipo_demanda,condicao_pagamento,valor_total,data_compra,data_solicitacao,created_at,categoria_external_id");
       return ((data ?? []) as any[]).filter((c) => {
         const ref = (c.data_compra || c.data_solicitacao || c.created_at)?.slice(0, 10);
         return ref >= from && ref <= to;
@@ -62,6 +64,17 @@ function FinanceiroDashboard() {
     },
     enabled: tab === "financeiro",
   });
+
+  const { data: planoContas = [] } = useQuery({
+    queryKey: ["plano-contas-dash"],
+    queryFn: async () => {
+      const { data } = await sb.from("ca_plano_contas").select("external_id,nome");
+      return (data ?? []) as { external_id: string; nome: string }[];
+    },
+    enabled: tab === "financeiro",
+  });
+
+  const { data: dreEstrutura = DRE_STRUCTURE } = useDreEstrutura();
 
   const stats = useMemo(() => {
     const total = demandas.reduce((s, c) => s + Number(c.valor_total || 0), 0);
@@ -114,6 +127,40 @@ function FinanceiroDashboard() {
     demandas.forEach((c) => map.set(c.status, (map.get(c.status) ?? 0) + 1));
     return Array.from(map.entries()).map(([k, v]) => ({ nome: labels[k] ?? k, valor: v }));
   }, [demandas]);
+
+  // DRE: classifica cada demanda pelo prefixo da categoria do plano de contas.
+  const dreAgg = useMemo(() => {
+    const planoMap = new Map(planoContas.map((p) => [p.external_id, p]));
+    const prefixIndex = buildPrefixIndex(dreEstrutura);
+    const totalPorGrupo = new Map<DreGroupId, number>();
+    const detPorGrupo = new Map<DreGroupId, Map<string, number>>();
+    let semCategoria = 0;
+    demandas.forEach((c: any) => {
+      const v = Number(c.valor_total || 0);
+      if (!v) return;
+      const plano = c.categoria_external_id ? planoMap.get(c.categoria_external_id) : undefined;
+      const grupo = grupoDoPlanoNome(plano?.nome, prefixIndex);
+      if (!grupo) { semCategoria += v; return; }
+      totalPorGrupo.set(grupo, (totalPorGrupo.get(grupo) ?? 0) + v);
+      const det = detPorGrupo.get(grupo) ?? new Map<string, number>();
+      const k = c.categoria_external_id ?? "_";
+      det.set(k, (det.get(k) ?? 0) + v);
+      detPorGrupo.set(grupo, det);
+    });
+    const linhas = dreEstrutura
+      .filter((l) => l.kind === "sum" && (l.sign === -1))
+      .map((l) => ({
+        id: l.id,
+        label: l.label,
+        valor: totalPorGrupo.get(l.id) ?? 0,
+        detalhes: Array.from((detPorGrupo.get(l.id) ?? new Map()).entries())
+          .map(([catId, val]) => ({ nome: planoMap.get(catId)?.nome ?? "Sem categoria", valor: val as number }))
+          .sort((a, b) => b.valor - a.valor),
+      }))
+      .filter((l) => l.valor > 0);
+    const totalClassificado = linhas.reduce((s, l) => s + l.valor, 0);
+    return { linhas, semCategoria, totalClassificado };
+  }, [demandas, planoContas, dreEstrutura]);
 
   const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -200,6 +247,40 @@ function FinanceiroDashboard() {
               </ResponsiveContainer>
             </ChartCard>
           </div>
+
+          <Card className="p-4 mt-4">
+            <div className="flex items-baseline justify-between mb-3">
+              <div className="text-sm font-semibold">Demonstrativo de Despesas (DRE)</div>
+              <div className="text-xs text-muted-foreground">
+                Classificado: <span className="font-medium text-foreground">{fmt(dreAgg.totalClassificado)}</span>
+                {dreAgg.semCategoria > 0 && (
+                  <> · Sem categoria: <span className="font-medium text-foreground">{fmt(dreAgg.semCategoria)}</span></>
+                )}
+              </div>
+            </div>
+            {dreAgg.linhas.length === 0 ? (
+              <div className="text-sm text-muted-foreground py-6 text-center">
+                Nenhuma demanda com categoria do plano de contas no período.
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {dreAgg.linhas.map((l) => (
+                  <div key={l.id}>
+                    <div className="flex items-center justify-between py-1.5 border-b border-border/50">
+                      <div className="text-sm font-medium">{l.label}</div>
+                      <div className="text-sm font-semibold tabular-nums">{fmt(l.valor)}</div>
+                    </div>
+                    {l.detalhes.map((d, i) => (
+                      <div key={i} className="flex items-center justify-between py-1 pl-6 text-xs text-muted-foreground">
+                        <div className="truncate pr-3">{d.nome}</div>
+                        <div className="tabular-nums">{fmt(d.valor)}</div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
         </TabsContent>
 
         <TabsContent value="uber" className="mt-0">

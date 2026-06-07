@@ -41,6 +41,7 @@ export type Demanda = {
   valor_total?: number | null;
   observacoes?: string | null;
   motivo_negacao?: string | null;
+  categoria_external_id?: string | null;
 };
 
 export function DemandaDialog({
@@ -72,6 +73,14 @@ export function DemandaDialog({
     queryFn: async () => {
       const { data } = await sb.from("compras_solicitantes").select("id,nome").eq("status", "ativo").order("nome");
       return (data ?? []) as { id: string; nome: string }[];
+    },
+  });
+
+  const { data: planoContas = [] } = useQuery({
+    queryKey: ["plano-contas-prefix"],
+    queryFn: async () => {
+      const { data } = await sb.from("ca_plano_contas").select("external_id,nome").order("nome");
+      return ((data ?? []) as { external_id: string; nome: string }[]).filter((p) => /^[A-Z]{2,3}\s*-/.test(p.nome ?? ""));
     },
   });
 
@@ -168,6 +177,19 @@ export function DemandaDialog({
                   <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
                   <SelectContent>
                     {TIPO_DEMANDA_OPTIONS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <FormField label="Categoria (DRE)">
+                <Select
+                  value={form.categoria_external_id ?? ""}
+                  onValueChange={(v) => setForm({ ...form, categoria_external_id: v || null })}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecione a categoria do plano de contas…" /></SelectTrigger>
+                  <SelectContent className="max-h-80">
+                    {planoContas.map((p) => (
+                      <SelectItem key={p.external_id} value={p.external_id}>{p.nome}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </FormField>

@@ -1199,6 +1199,7 @@ export type Database = {
       }
       demandas: {
         Row: {
+          categoria_external_id: string | null
           comprador: string | null
           condicao_pagamento: string | null
           created_at: string
@@ -1226,6 +1227,7 @@ export type Database = {
           valor_total: number | null
         }
         Insert: {
+          categoria_external_id?: string | null
           comprador?: string | null
           condicao_pagamento?: string | null
           created_at?: string
@@ -1253,6 +1255,7 @@ export type Database = {
           valor_total?: number | null
         }
         Update: {
+          categoria_external_id?: string | null
           comprador?: string | null
           condicao_pagamento?: string | null
           created_at?: string
