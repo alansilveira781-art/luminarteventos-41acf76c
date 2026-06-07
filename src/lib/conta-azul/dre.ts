@@ -166,6 +166,7 @@ export function montarDRE(
 ): { linhas: DreRowOut[]; totais: Partial<Record<DreGroupId, number>> } {
   const planoMap = new Map<string, PlanoMin>();
   planos.forEach((p) => planoMap.set(p.external_id, p));
+  const prefixIndex = buildPrefixIndex(estrutura);
 
   // soma por (grupo, categoria_external_id)
   const detPorGrupo = new Map<DreGroupId, Map<string, number>>();
@@ -177,7 +178,8 @@ export function montarDRE(
       if (!passaVisao(c, opts.visao, opts.ano, opts.mes)) return;
       const plano = c.categoria_external_id ? planoMap.get(c.categoria_external_id) : undefined;
       if (isTransferencia(plano?.nome, c.descricao)) return;
-      const grupo = grupoDoPlanoNome(plano?.nome);
+      const grupo = grupoDoPlanoNome(plano?.nome, prefixIndex);
+      if (!grupo) return;
       const v = Math.abs(Number(c.valor || 0));
       const det = detPorGrupo.get(grupo) ?? new Map<string, number>();
       const k = c.categoria_external_id ?? "_";
@@ -239,19 +241,6 @@ export function montarDRE(
       }
     }
   });
-
-  // linha de "Sem classificação" no fim, se houver
-  const sc = detPorGrupo.get("SC");
-  if (sc && sc.size > 0) {
-    const total = Array.from(sc.values()).reduce((s, v) => s + v, 0);
-    linhas.push({ id: "SC", label: "(?) Sem classificação", valor: total, pct: pct(total), kind: "header" });
-    Array.from(sc.entries())
-      .sort((a, b) => b[1] - a[1])
-      .forEach(([catId, valor]) => {
-        const nome = planoMap.get(catId)?.nome ?? "Sem categoria";
-        linhas.push({ id: `SC:${catId}`, label: `    ${nome}`, valor, pct: pct(valor), kind: "detail", indent: 1 });
-      });
-  }
 
   const totais: Partial<Record<DreGroupId, number>> = {};
   valorLinha.forEach((v, k) => (totais[k] = v));
