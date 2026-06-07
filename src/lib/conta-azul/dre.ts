@@ -78,7 +78,7 @@ export function grupoDoPlanoNome(
   prefixIndex: Record<string, DreGroupId> = PREFIX_INDEX,
 ): DreGroupId | null {
   if (!nome) return null;
-  const match = nome.trim().match(/^([A-Za-z]{2,3})\s*-/);
+  const match = nome.trim().match(/^([A-Za-z]{2,4})\s*[-–—]\s*/u);
   if (!match) return null;
   return prefixIndex[match[1].toUpperCase()] ?? null;
 }
