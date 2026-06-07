@@ -648,7 +648,7 @@ function AnaliseDetalhada() {
   // 3. Monta linhas sintéticas (1 por fatia): herdam descrição/datas/status do pai
   //    e usam valor + categoria da fatia. Quantidade de rateios por lancamento_external_id
   //    determina o badge "Rateado".
-  const { pagarRows, receberRows, rateadoCount } = useMemo(() => {
+  const { pagarRows, receberRows } = useMemo(() => {
     const pPar = new Map<string, any>();
     (pagarParents.data ?? []).forEach((p: any) => pPar.set(p.external_id, p));
     const rPar = new Map<string, any>();
