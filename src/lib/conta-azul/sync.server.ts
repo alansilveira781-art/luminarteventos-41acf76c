@@ -154,13 +154,39 @@ function mapEvento(it: any, syncedAt: string, pessoaKey: "fornecedor_nome" | "cl
   };
 }
 
+async function diagLogFirstPago(items: any[], basePath: string, tag: string) {
+  try {
+    const pago = items.find(
+      (it: any) => normalizeStatus(it.status_traduzido ?? it.status) === "pago",
+    );
+    if (!pago) {
+      console.log(`[CA-DIAG-${tag}] nenhum item com status=pago nesta janela`);
+      return;
+    }
+    console.log(`[CA-DIAG-LIST-${tag}] item cru da listagem (todas as chaves):`);
+    console.log(JSON.stringify(pago, null, 2));
+    const id = pago.id ?? pago.uuid;
+    if (!id) {
+      console.log(`[CA-DIAG-DETAIL-${tag}] item sem id, pulando detalhe`);
+      return;
+    }
+    const detail = await caFetch(`${basePath}/${id}`);
+    console.log(`[CA-DIAG-DETAIL-${tag}] item cru do detalhe (todas as chaves):`);
+    console.log(JSON.stringify(detail, null, 2));
+  } catch (e: any) {
+    console.log(`[CA-DIAG-${tag}] erro no diagnóstico:`, String(e?.message ?? e));
+  }
+}
+
 export async function syncContasPagar(from: string, to: string) {
   const logId = await logStart("contas_pagar", from, to);
   try {
-    const items = await fetchPaged(
-      "/financeiro/eventos-financeiros/contas-a-pagar/buscar",
-      { data_vencimento_de: from, data_vencimento_ate: to },
-    );
+    const basePath = "/financeiro/eventos-financeiros/contas-a-pagar/buscar";
+    const items = await fetchPaged(basePath, {
+      data_vencimento_de: from,
+      data_vencimento_ate: to,
+    });
+    await diagLogFirstPago(items, basePath, "PAGAR");
     if (items.length > 0) {
       const syncedAt = new Date().toISOString();
       const rows = items.map((it: any) => mapEvento(it, syncedAt, "fornecedor_nome"));
@@ -177,10 +203,12 @@ export async function syncContasPagar(from: string, to: string) {
 export async function syncContasReceber(from: string, to: string) {
   const logId = await logStart("contas_receber", from, to);
   try {
-    const items = await fetchPaged(
-      "/financeiro/eventos-financeiros/contas-a-receber/buscar",
-      { data_vencimento_de: from, data_vencimento_ate: to },
-    );
+    const basePath = "/financeiro/eventos-financeiros/contas-a-receber/buscar";
+    const items = await fetchPaged(basePath, {
+      data_vencimento_de: from,
+      data_vencimento_ate: to,
+    });
+    await diagLogFirstPago(items, basePath, "RECEBER");
     if (items.length > 0) {
       const syncedAt = new Date().toISOString();
       const rows = items.map((it: any) => mapEvento(it, syncedAt, "cliente_nome"));

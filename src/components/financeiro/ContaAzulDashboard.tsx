@@ -214,12 +214,15 @@ function PainelFinanceiro() {
     const push = (rows: any[], isReceber: boolean) => {
       rows.forEach((c) => {
         if (c.status !== "pago") return;
-        if (!inPeriodo(c.data_pagamento, anoEfetivo, mes)) return;
+        // TEMP: regime de caixa exige data_pagamento; fallback p/ data_vencimento
+        // enquanto o sync do Conta Azul não popula data_pagamento.
+        const dataRef = c.data_pagamento ?? c.data_vencimento;
+        if (!inPeriodo(dataRef, anoEfetivo, mes)) return;
         const plano = c.categoria_external_id ? planoMap.get(c.categoria_external_id) : undefined;
         if (isTransferencia(plano?.nome, c.descricao)) return;
         const v = Number(c.valor || 0);
         list.push({
-          data: c.data_pagamento,
+          data: dataRef,
           nome: isReceber ? c.cliente_nome : c.fornecedor_nome,
           descricao: c.descricao,
           valor: isReceber ? v : -v,
