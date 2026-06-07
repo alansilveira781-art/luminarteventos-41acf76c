@@ -48,13 +48,13 @@ export const DRE_STRUCTURE: DreLine[] = [
   { id: "DF", label: "(-) Despesas Financeiras", kind: "sum", sign: -1, prefixes: ["DF"] },
   { id: "RF_TOT", label: "(=) Resultado Financeiro", kind: "calc", sign: 1, formula: ["RF_REC", "DF"] },
 
-  { id: "OE", label: "(+) Outras Entradas", kind: "sum", sign: 1, prefixes: ["OE", "OR"] },
+  { id: "OE", label: "(+) Outras Entradas", kind: "sum", sign: 1, prefixes: ["OE"] },
   { id: "OS", label: "(-) Outras Saídas", kind: "sum", sign: -1, prefixes: ["OS"] },
   { id: "RNO", label: "(=) Resultado Não Operacional", kind: "calc", sign: 1, formula: ["OE", "OS"] },
 
   { id: "RN", label: "(=) Resultado do Negócio", kind: "calc", sign: 1, formula: ["RG", "RF_TOT", "RNO"] },
 
-  { id: "IN", label: "(-) Investimentos", kind: "sum", sign: -1, prefixes: ["IN"] },
+  { id: "IN", label: "(-) Investimentos", kind: "sum", sign: -1, prefixes: ["IV"] },
   { id: "LU", label: "(=) Lucro", kind: "calc", sign: 1, formula: ["RN", "IN"] },
 ];
 

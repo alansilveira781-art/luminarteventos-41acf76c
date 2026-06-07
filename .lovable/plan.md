@@ -1,37 +1,22 @@
 ## Objetivo
-
-Fazer o DRE/Resumo Gerencial classificar cada lançamento **estritamente pelo prefixo do nome da categoria** do plano de contas (formato `XX - Nome` ou `XXX - Nome`), usando os prefixos cadastrados na tabela `ca_dre_estrutura`. Lançamentos cujo nome de categoria **não tem prefixo reconhecido** são ignorados (não entram em nenhuma linha e não aparecem como "Sem classificação").
-
-## Comportamento
-
-- Para cada conta a pagar/receber:
-  1. Lê o `categoria_external_id` → busca o nome no plano de contas.
-  2. Extrai o prefixo via regex `^([A-Z]{2,3})\s*-\s*`.
-  3. Cruza com os prefixos da estrutura DRE no banco (coluna `prefixos`, por linha).
-  4. Se casar, soma na linha; se não casar (ou não houver prefixo), **ignora**.
-- Transferências bancárias continuam ignoradas (já são).
+Alinhar os prefixos cadastrados na estrutura do DRE ao plano de contas real, conforme a lista do usuário: RB, DR, AC, DM, DC, CV, CD, CI, DS, DA, DT, RF, DF, OE, OS, IV. A lógica de classificação por prefixo, soma por grupo, cascata de subtotais e sinais (receber +, pagar −) já está implementada.
 
 ## Mudanças
 
-### `src/lib/conta-azul/dre.ts`
-- `grupoDoPlanoNome` passa a aceitar um índice de prefixos opcional (vindo da estrutura do banco). Sem índice, mantém o atual como fallback.
-- Remover os `NOME_OVERRIDE` (IRRF, ISS, juros pagos, etc.) — usuário pediu para depender só do prefixo. Quem precisar dessas contas em uma linha, ajusta o nome no plano de contas para ter o prefixo correto.
-- Função utilitária `buildPrefixIndex(estrutura)` → `Record<string, DreGroupId>`.
-- Trocar retorno `"SC"` por `null` quando não há match; `montarDRE` ignora `null` (não soma, não cria linha de "Sem classificação").
-- Remover a renderização final do bloco "(?) Sem classificação".
+### Migration em `ca_dre_estrutura`
+- Linha código `IN` (Investimentos): `prefixos` `{IN}` → `{IV}`.
+- Linha código `OE` (Outras Entradas): `prefixos` `{OE,OR}` → `{OE}`.
 
-### `src/components/financeiro/ContaAzulDashboard.tsx`
-- `calcularDRECaixa` recebe o mesmo índice de prefixos derivado da estrutura do banco e ignora lançamentos sem prefixo reconhecido.
-- Remover o bloco que renderiza "Sem classificação" no Painel Financeiro.
-- `GROUP_LABEL.SC` deixa de ser usado (pode ficar, mas sem efeito).
+### `src/lib/conta-azul/dre.ts` (fallback `DRE_STRUCTURE`)
+- `OE`: `prefixes: ["OE","OR"]` → `["OE"]`.
+- `IN`: `prefixes: ["IN"]` → `["IV"]` (id interno continua `"IN"`, só o prefixo do plano de contas muda).
 
-### Sem mudanças
-- Tabela `ca_dre_estrutura` já tem os prefixos corretos.
-- Layout, percentuais, filtros e detalhamento por categoria continuam iguais.
-- Transferências bancárias seguem filtradas pela regra atual (nome contém "transferência", etc.).
+## Sem mudanças
+- Extração de prefixo (`grupoDoPlanoNome`) e índice de prefixos (`buildPrefixIndex`).
+- Cálculo em cascata dos subtotais (= ) via `formula` de cada linha.
+- Sinal: contas a receber positivo, contas a pagar negativo.
+- Cards do topo (Receita Bruta, Despesas, Custos, Lucro) — já leem `totais` agrupados.
+- Filtro de transferências bancárias e lançamentos sem prefixo reconhecido (ignorados).
 
 ## Efeito esperado
-
-- A linha "(?) Sem classificação" some.
-- Os totais de cada grupo (RB, DR, AC, …) ficam menores ou iguais (lançamentos sem prefixo simplesmente desaparecem do DRE).
-- Subtotais calculados (RL, RV, RO, RG, RF, RNO, RN, LU) refletem essa filtragem automaticamente.
+Contas `IV - …` passam a somar em Investimentos; contas `OR - …` deixam de cair em Outras Entradas. Demais grupos seguem iguais.
