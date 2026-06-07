@@ -85,15 +85,35 @@ function useContaAzulData() {
   const pagar = useQuery({
     queryKey: ["ca-pagar"],
     queryFn: async () => {
-      const { data } = await sb.from("ca_contas_pagar").select("*");
-      return (data ?? []) as ContaPagar[];
+      const all: ContaPagar[] = [];
+      const pageSize = 1000;
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await sb
+          .from("ca_contas_pagar")
+          .select("*")
+          .range(from, from + pageSize - 1);
+        if (error || !data || data.length === 0) break;
+        all.push(...(data as ContaPagar[]));
+        if (data.length < pageSize) break;
+      }
+      return all;
     },
   });
   const receber = useQuery({
     queryKey: ["ca-receber"],
     queryFn: async () => {
-      const { data } = await sb.from("ca_contas_receber").select("*");
-      return (data ?? []) as ContaReceber[];
+      const all: ContaReceber[] = [];
+      const pageSize = 1000;
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await sb
+          .from("ca_contas_receber")
+          .select("*")
+          .range(from, from + pageSize - 1);
+        if (error || !data || data.length === 0) break;
+        all.push(...(data as ContaReceber[]));
+        if (data.length < pageSize) break;
+      }
+      return all;
     },
   });
   const extrato = useQuery({
