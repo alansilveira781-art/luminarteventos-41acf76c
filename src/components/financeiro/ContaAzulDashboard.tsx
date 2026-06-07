@@ -503,12 +503,13 @@ function calcularDRECaixa(
   const grupos = new Map<DreGroupId, Map<string, number>>();
   const totalSum = new Map<DreGroupId, number>();
   const prefixIndex = buildPrefixIndex(estrutura);
-  void matchText;
+  const needle = matchText ? normTxt(matchText) : "";
   const acumula = (rows: any[]) => {
     rows.forEach((c) => {
       if (c.status !== "pago") return;
       if (!inPeriodo(c.data_pagamento ?? c.data_vencimento, ano, mes)) return;
-      if (centroCustoId && c.centro_custo_external_id !== centroCustoId) return;
+      if (centroCustoId && c.centro_custo_external_id && c.centro_custo_external_id !== centroCustoId) return;
+      if (needle && !rowMatchesText(c, needle)) return;
       const plano = c.categoria_external_id ? planoMap.get(c.categoria_external_id) : undefined;
       if (isTransferencia(plano?.nome, c.descricao)) return;
       const g = grupoDoPlanoNome(plano?.nome, prefixIndex);
@@ -559,13 +560,16 @@ function AnaliseDetalhada() {
 
   const dreEstrutura = useDreEstrutura().data ?? DRE_STRUCTURE;
 
-  // Sem filtro de ano/mês → ano=0 ignora período. Filtro apenas por centro_custo_external_id.
+  const centroNomeSel = centroId ? ccs.find((c) => c.external_id === centroId)?.nome ?? "" : "";
+  const matchText = centroNomeSel ? centroNeedle(centroNomeSel) : "";
+
+  // Sem filtro de ano/mês → ano=0 ignora período. Filtro por texto (nome do evento).
   const { totais, grupos } = useMemo(
     () => calcularDRECaixa(
       pagar.data ?? [], receber.data ?? [], planoMap, 0, 0, dreEstrutura,
-      centroId || undefined, undefined,
+      undefined, matchText || undefined,
     ),
-    [pagar.data, receber.data, planoMap, dreEstrutura, centroId],
+    [pagar.data, receber.data, planoMap, dreEstrutura, matchText],
   );
 
   const rb = totais.RB ?? 0;
@@ -576,10 +580,11 @@ function AnaliseDetalhada() {
 
   const lancamentos = useMemo<LancRow[]>(() => {
     const list: LancRow[] = [];
+    const needle = matchText ? normTxt(matchText) : "";
     const push = (rows: any[], isReceber: boolean) => {
       rows.forEach((c) => {
         if (c.status !== "pago") return;
-        if (centroId && c.centro_custo_external_id !== centroId) return;
+        if (needle && !rowMatchesText(c, needle)) return;
         const dataRef = c.data_pagamento ?? c.data_vencimento;
         const plano = c.categoria_external_id ? planoMap.get(c.categoria_external_id) : undefined;
         if (isTransferencia(plano?.nome, c.descricao)) return;
@@ -596,7 +601,7 @@ function AnaliseDetalhada() {
     push(receber.data ?? [], true);
     push(pagar.data ?? [], false);
     return list.sort((a, b) => (a.data ?? "").localeCompare(b.data ?? ""));
-  }, [pagar.data, receber.data, planoMap, centroId]);
+  }, [pagar.data, receber.data, planoMap, matchText]);
 
   const lancFiltrados = useMemo(
     () => (categoriaSel ? lancamentos.filter((l) => l.categoria_external_id === categoriaSel) : lancamentos),
