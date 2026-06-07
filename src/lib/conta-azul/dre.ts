@@ -178,6 +178,7 @@ export function montarDRE(
   receber: ContaRow[],
   planos: PlanoMin[],
   opts: MontarDreOpts,
+  estrutura: DreLine[] = DRE_STRUCTURE,
 ): { linhas: DreRowOut[]; totais: Partial<Record<DreGroupId, number>> } {
   const planoMap = new Map<string, PlanoMin>();
   planos.forEach((p) => planoMap.set(p.external_id, p));
