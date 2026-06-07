@@ -243,7 +243,7 @@ function PainelFinanceiro() {
   const linhasDre = useMemo(() => {
     const out: { kind: "header" | "calc" | "detail"; id: string; label: string; valor: number; pct: number; catId?: string; groupId?: DreGroupId }[] = [];
     const pct = (v: number) => (rb > 0 ? v / rb : 0);
-    for (const line of DRE_STRUCTURE) {
+    for (const line of dreEstrutura) {
       const v = totais[line.id] ?? 0;
       if (line.kind === "sum") {
         out.push({ kind: "header", id: line.id, label: GROUP_LABEL[line.id] ?? line.label, valor: v, pct: pct(v), groupId: line.id });
@@ -283,7 +283,7 @@ function PainelFinanceiro() {
       }
     }
     return out;
-  }, [totais, grupos, collapsed, planoMap, rb]);
+  }, [totais, grupos, collapsed, planoMap, rb, dreEstrutura]);
 
   const toggleGroup = (id: string) => setCollapsed((c) => ({ ...c, [id]: !c[id] }));
   const onClickCategoria = (catId: string) =>
