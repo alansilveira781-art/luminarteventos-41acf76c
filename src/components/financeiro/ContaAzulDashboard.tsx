@@ -10,8 +10,9 @@ import {
   ComposedChart, Line, Legend,
 } from "recharts";
 import { PiggyBank as Piggy, TrendingDown, Building2, BarChart3, Sprout, Users, X, ChevronRight, ChevronDown } from "lucide-react";
-import { DRE_STRUCTURE, grupoDoPlanoNome, isTransferencia, type DreGroupId } from "@/lib/conta-azul/dre";
+import { DRE_STRUCTURE, grupoDoPlanoNome, isTransferencia, type DreGroupId, type DreLine } from "@/lib/conta-azul/dre";
 import { montarDRE, type Visao } from "@/lib/conta-azul/dre";
+import { useDreEstrutura } from "@/hooks/useDreEstrutura";
 
 
 const sb = supabase as any;
@@ -186,15 +187,17 @@ function PainelFinanceiro() {
     return m;
   }, [planosArr]);
 
+  const dreEstrutura = useDreEstrutura().data ?? DRE_STRUCTURE;
+
   // DRE ano corrente (caixa = realizado)
   const { totais, grupos } = useMemo(
-    () => calcularDRECaixa(pagar.data ?? [], receber.data ?? [], planoMap, anoEfetivo, mes),
-    [pagar.data, receber.data, planoMap, anoEfetivo, mes],
+    () => calcularDRECaixa(pagar.data ?? [], receber.data ?? [], planoMap, anoEfetivo, mes, dreEstrutura),
+    [pagar.data, receber.data, planoMap, anoEfetivo, mes, dreEstrutura],
   );
   // DRE ano anterior (mesmo mês) para comparativo de Receita LY
   const totaisAnt = useMemo(
-    () => calcularDRECaixa(pagar.data ?? [], receber.data ?? [], planoMap, anoEfetivo - 1, mes).totais,
-    [pagar.data, receber.data, planoMap, anoEfetivo, mes],
+    () => calcularDRECaixa(pagar.data ?? [], receber.data ?? [], planoMap, anoEfetivo - 1, mes, dreEstrutura).totais,
+    [pagar.data, receber.data, planoMap, anoEfetivo, mes, dreEstrutura],
   );
 
   const rb = totais.RB ?? 0;
@@ -240,7 +243,7 @@ function PainelFinanceiro() {
   const linhasDre = useMemo(() => {
     const out: { kind: "header" | "calc" | "detail"; id: string; label: string; valor: number; pct: number; catId?: string; groupId?: DreGroupId }[] = [];
     const pct = (v: number) => (rb > 0 ? v / rb : 0);
-    for (const line of DRE_STRUCTURE) {
+    for (const line of dreEstrutura) {
       const v = totais[line.id] ?? 0;
       if (line.kind === "sum") {
         out.push({ kind: "header", id: line.id, label: GROUP_LABEL[line.id] ?? line.label, valor: v, pct: pct(v), groupId: line.id });
@@ -280,7 +283,7 @@ function PainelFinanceiro() {
       }
     }
     return out;
-  }, [totais, grupos, collapsed, planoMap, rb]);
+  }, [totais, grupos, collapsed, planoMap, rb, dreEstrutura]);
 
   const toggleGroup = (id: string) => setCollapsed((c) => ({ ...c, [id]: !c[id] }));
   const onClickCategoria = (catId: string) =>
@@ -438,6 +441,7 @@ function calcularDRECaixa(
   planoMap: Map<string, { nome: string }>,
   ano: number,
   mes: number,
+  estrutura: DreLine[] = DRE_STRUCTURE,
 ): { totais: Partial<Record<DreGroupId, number>>; grupos: Map<DreGroupId, Map<string, number>> } {
   const grupos = new Map<DreGroupId, Map<string, number>>();
   const totalSum = new Map<DreGroupId, number>();
@@ -462,14 +466,15 @@ function calcularDRECaixa(
   const totais: Partial<Record<DreGroupId, number>> = {};
   const getVal = (id: DreGroupId): number => {
     if (totais[id] !== undefined) return totais[id]!;
-    const line = DRE_STRUCTURE.find((l) => l.id === id)!;
+    const line = estrutura.find((l) => l.id === id);
+    if (!line) { totais[id] = 0; return 0; }
     let v = 0;
     if (line.kind === "sum") v = (totalSum.get(id) ?? 0) * line.sign;
     else if (line.formula) v = line.formula.reduce((s, f) => s + getVal(f), 0);
     totais[id] = v;
     return v;
   };
-  DRE_STRUCTURE.forEach((l) => getVal(l.id));
+  estrutura.forEach((l) => getVal(l.id));
   return { totais, grupos };
 }
 
@@ -487,12 +492,13 @@ function AnaliseDetalhada() {
 
   const planosArr = planos.data ?? [];
 
+  const dreEstrutura = useDreEstrutura().data ?? DRE_STRUCTURE;
   const { linhas, totais } = useMemo(
     () =>
       montarDRE(pagar.data ?? [], receber.data ?? [], planosArr, {
         ano, mes, visao, centroCustoId: centroId || undefined,
-      }),
-    [pagar.data, receber.data, planosArr, ano, mes, visao, centroId],
+      }, dreEstrutura),
+    [pagar.data, receber.data, planosArr, ano, mes, visao, centroId, dreEstrutura],
   );
 
 

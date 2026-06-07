@@ -178,6 +178,7 @@ export function montarDRE(
   receber: ContaRow[],
   planos: PlanoMin[],
   opts: MontarDreOpts,
+  estrutura: DreLine[] = DRE_STRUCTURE,
 ): { linhas: DreRowOut[]; totais: Partial<Record<DreGroupId, number>> } {
   const planoMap = new Map<string, PlanoMin>();
   planos.forEach((p) => planoMap.set(p.external_id, p));
@@ -208,7 +209,8 @@ export function montarDRE(
   const valorLinha = new Map<DreGroupId, number>();
   const getVal = (id: DreGroupId): number => {
     if (valorLinha.has(id)) return valorLinha.get(id)!;
-    const line = DRE_STRUCTURE.find((l) => l.id === id)!;
+    const line = estrutura.find((l) => l.id === id);
+    if (!line) { valorLinha.set(id, 0); return 0; }
     let v = 0;
     if (line.kind === "sum") {
       v = (totalPorGrupo.get(id) ?? 0) * line.sign;
@@ -218,13 +220,13 @@ export function montarDRE(
     valorLinha.set(id, v);
     return v;
   };
-  DRE_STRUCTURE.forEach((l) => getVal(l.id));
+  estrutura.forEach((l) => getVal(l.id));
 
   const rb = valorLinha.get("RB") ?? 0;
   const pct = (v: number) => (rb > 0 ? v / rb : 0);
 
   const linhas: DreRowOut[] = [];
-  DRE_STRUCTURE.forEach((line) => {
+  estrutura.forEach((line) => {
     const v = valorLinha.get(line.id) ?? 0;
     linhas.push({
       id: line.id,

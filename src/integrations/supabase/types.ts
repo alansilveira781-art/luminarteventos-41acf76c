@@ -134,6 +134,48 @@ export type Database = {
         }
         Relationships: []
       }
+      ca_dre_estrutura: {
+        Row: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          formula: string[]
+          id: string
+          label: string
+          ordem: number
+          prefixos: string[]
+          sinal: number
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          codigo: string
+          created_at?: string
+          formula?: string[]
+          id?: string
+          label: string
+          ordem: number
+          prefixos?: string[]
+          sinal?: number
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          formula?: string[]
+          id?: string
+          label?: string
+          ordem?: number
+          prefixos?: string[]
+          sinal?: number
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ca_extrato: {
         Row: {
           categoria_external_id: string | null
