@@ -460,6 +460,7 @@ function calcularDRECaixa(
   ano: number,
   mes: number,
   estrutura: DreLine[] = DRE_STRUCTURE,
+  centroCustoId?: string,
 ): { totais: Partial<Record<DreGroupId, number>>; grupos: Map<DreGroupId, Map<string, number>> } {
   const grupos = new Map<DreGroupId, Map<string, number>>();
   const totalSum = new Map<DreGroupId, number>();
@@ -468,6 +469,7 @@ function calcularDRECaixa(
     rows.forEach((c) => {
       if (c.status !== "pago") return;
       if (!inPeriodo(c.data_pagamento ?? c.data_vencimento, ano, mes)) return;
+      if (centroCustoId && c.centro_custo_external_id !== centroCustoId) return;
       const plano = c.categoria_external_id ? planoMap.get(c.categoria_external_id) : undefined;
       if (isTransferencia(plano?.nome, c.descricao)) return;
       const g = grupoDoPlanoNome(plano?.nome, prefixIndex);
