@@ -503,13 +503,12 @@ function calcularDRECaixa(
   const grupos = new Map<DreGroupId, Map<string, number>>();
   const totalSum = new Map<DreGroupId, number>();
   const prefixIndex = buildPrefixIndex(estrutura);
-  const needle = matchText ? normTxt(matchText) : "";
+  void matchText;
   const acumula = (rows: any[]) => {
     rows.forEach((c) => {
       if (c.status !== "pago") return;
       if (!inPeriodo(c.data_pagamento ?? c.data_vencimento, ano, mes)) return;
-      if (centroCustoId && c.centro_custo_external_id && c.centro_custo_external_id !== centroCustoId) return;
-      if (needle && !rowMatchesText(c, needle)) return;
+      if (centroCustoId && c.centro_custo_external_id !== centroCustoId) return;
       const plano = c.categoria_external_id ? planoMap.get(c.categoria_external_id) : undefined;
       if (isTransferencia(plano?.nome, c.descricao)) return;
       const g = grupoDoPlanoNome(plano?.nome, prefixIndex);
@@ -560,16 +559,13 @@ function AnaliseDetalhada() {
 
   const dreEstrutura = useDreEstrutura().data ?? DRE_STRUCTURE;
 
-  const centroNomeSel = centroId ? ccs.find((c) => c.external_id === centroId)?.nome ?? "" : "";
-  const matchText = centroNomeSel ? centroNeedle(centroNomeSel) : "";
-
-  // Sem filtro de ano/mês → ano=0 ignora período
+  // Sem filtro de ano/mês → ano=0 ignora período. Filtro apenas por centro_custo_external_id.
   const { totais, grupos } = useMemo(
     () => calcularDRECaixa(
       pagar.data ?? [], receber.data ?? [], planoMap, 0, 0, dreEstrutura,
-      centroId || undefined, matchText || undefined,
+      centroId || undefined, undefined,
     ),
-    [pagar.data, receber.data, planoMap, dreEstrutura, centroId, matchText],
+    [pagar.data, receber.data, planoMap, dreEstrutura, centroId],
   );
 
   const rb = totais.RB ?? 0;
@@ -583,8 +579,7 @@ function AnaliseDetalhada() {
     const push = (rows: any[], isReceber: boolean) => {
       rows.forEach((c) => {
         if (c.status !== "pago") return;
-        if (centroId && c.centro_custo_external_id && c.centro_custo_external_id !== centroId) return;
-        if (matchText && !rowMatchesText(c, matchText)) return;
+        if (centroId && c.centro_custo_external_id !== centroId) return;
         const dataRef = c.data_pagamento ?? c.data_vencimento;
         const plano = c.categoria_external_id ? planoMap.get(c.categoria_external_id) : undefined;
         if (isTransferencia(plano?.nome, c.descricao)) return;
@@ -601,7 +596,7 @@ function AnaliseDetalhada() {
     push(receber.data ?? [], true);
     push(pagar.data ?? [], false);
     return list.sort((a, b) => (a.data ?? "").localeCompare(b.data ?? ""));
-  }, [pagar.data, receber.data, planoMap, centroId, matchText]);
+  }, [pagar.data, receber.data, planoMap, centroId]);
 
   const lancFiltrados = useMemo(
     () => (categoriaSel ? lancamentos.filter((l) => l.categoria_external_id === categoriaSel) : lancamentos),
@@ -646,7 +641,7 @@ function AnaliseDetalhada() {
   const onClickCategoria = (catId: string) =>
     setCategoriaSel((cur) => (cur === catId ? null : catId));
 
-  const centroSelNome = centroNomeSel;
+  const centroSelNome = centroId ? ccs.find((c) => c.external_id === centroId)?.nome ?? "" : "";
   const ccsFiltrados = useMemo(() => {
     const q = centroSearch.trim().toLowerCase();
     if (!q) return ccs;
