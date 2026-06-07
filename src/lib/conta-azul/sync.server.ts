@@ -187,11 +187,21 @@ export async function syncContasPagar(from: string, to: string) {
       data_vencimento_ate: to,
     });
     await diagLogFirstPago(items, basePath, "PAGAR");
+    // TEMP DEBUG: encontrar primeiro item com qualquer campo relacionado a centro de custo
+    {
+      const ccItem = (items as any[]).find((it) => {
+        const keys = Object.keys(it || {});
+        return keys.some((k) => /centro|rateio|classific/i.test(k) && it[k] != null && (Array.isArray(it[k]) ? it[k].length > 0 : true));
+      }) ?? items?.[0];
+      console.log("PAYLOAD_CC_DEBUG_PAGAR:", JSON.stringify(ccItem, null, 2));
+      console.log("PAYLOAD_CC_DEBUG_PAGAR_KEYS:", Object.keys(ccItem || {}).join(","));
+    }
     if (items.length > 0) {
       const syncedAt = new Date().toISOString();
       const rows = items.map((it: any) => mapEvento(it, syncedAt, "fornecedor_nome"));
       await upsertBatched("ca_contas_pagar", rows, "external_id");
     }
+
     await logFinish(logId, "ok", items.length);
     return items.length;
   } catch (e: any) {
