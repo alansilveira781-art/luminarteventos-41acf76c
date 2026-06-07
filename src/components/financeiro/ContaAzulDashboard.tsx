@@ -208,10 +208,6 @@ function PainelFinanceiro() {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const planosArr = planos.data ?? [];
-  const [categoriaSel, setCategoriaSel] = useState<string | null>(null);
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-
-  const planosArr = planos.data ?? [];
   const planoMap = useMemo(() => {
     const m = new Map<string, { nome: string }>();
     planosArr.forEach((p) => m.set(p.external_id, { nome: p.nome }));
