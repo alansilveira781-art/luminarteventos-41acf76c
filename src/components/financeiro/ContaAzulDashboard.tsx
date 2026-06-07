@@ -680,7 +680,7 @@ function AnaliseDetalhada() {
       if (r.tipo === "pagar") pagarRows.push(row);
       else receberRows.push(row);
     });
-    return { pagarRows, receberRows, rateadoCount: counts };
+    return { pagarRows, receberRows };
   }, [rateiosData, pagarParents.data, receberParents.data, centroId]);
 
   // Servidor já fatiou pelo centro de custo — sem filtro client-side adicional.
