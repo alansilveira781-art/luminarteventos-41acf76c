@@ -60,14 +60,14 @@ export const DRE_STRUCTURE: DreLine[] = [
 
 const PREFIX_INDEX: Record<string, DreGroupId> = (() => {
   const m: Record<string, DreGroupId> = {};
-  DRE_STRUCTURE.forEach((l) => l.prefixes?.forEach((p) => (m[p] = l.id)));
+  DRE_STRUCTURE.forEach((l) => l.prefixes?.forEach((p) => (m[p.toUpperCase()] = l.id)));
   return m;
 })();
 
 /** Constrói um índice prefixo → grupo a partir de uma estrutura DRE arbitrária (ex.: vinda do banco). */
 export function buildPrefixIndex(estrutura: DreLine[]): Record<string, DreGroupId> {
   const m: Record<string, DreGroupId> = {};
-  estrutura.forEach((l) => l.prefixes?.forEach((p) => (m[p] = l.id)));
+  estrutura.forEach((l) => l.prefixes?.forEach((p) => (m[p.toUpperCase()] = l.id)));
   return m;
 }
 
@@ -78,9 +78,9 @@ export function grupoDoPlanoNome(
   prefixIndex: Record<string, DreGroupId> = PREFIX_INDEX,
 ): DreGroupId | null {
   if (!nome) return null;
-  const match = nome.trim().match(/^([A-Z]{2,3})\s*-/);
+  const match = nome.trim().match(/^([A-Za-z]{2,3})\s*-/);
   if (!match) return null;
-  return prefixIndex[match[1]] ?? null;
+  return prefixIndex[match[1].toUpperCase()] ?? null;
 }
 
 
