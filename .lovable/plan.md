@@ -1,45 +1,41 @@
-## Objetivo
+## Diagnóstico confirmado
 
-Destravar visualização do painel (medida temporária) e coletar evidência empírica de onde a data de baixa aparece no payload do Conta Azul, sem alterar o sync ainda.
+O payload real do Conta Azul já apareceu nos logs e o campo correto é:
 
-## Passo 1 — Fallback temporário no painel (regime de caixa)
+```text
+centros_de_custo: [
+  { id: "...", nome: "..." }
+]
+```
 
-Em `src/components/ContaAzulDashboard.tsx`, aplicar `data_pagamento ?? data_vencimento` no filtro de período e no campo `data` da lista, com comentário `// TEMP: regime de caixa exige data_pagamento; fallback enquanto sync não popula a coluna`.
+Hoje o sync grava `centro_custo_external_id` a partir de `it.centros_custo?.[0]?.id`, mas o payload usa `centros_de_custo`. Por isso a coluna ficou 100% vazia e a Análise Detalhada zera quando filtra por centro de custo.
 
-Escopo: APENAS o filtro do list-view. Não tocar no DRE nem nos cards (já usam `data_vencimento` por outra razão).
+## Plano de implementação
 
-## Passo 2 — Logs de diagnóstico no sync (sem alterar lógica)
+1. **Corrigir o mapeamento do sync**
+   - Em `src/lib/conta-azul/sync.server.ts`, alterar `mapEvento` para preencher `centro_custo_external_id` usando `it.centros_de_custo?.[0]?.id`.
+   - Manter fallback para `it.centros_custo?.[0]?.id`, caso alguma resposta antiga use esse formato.
+   - Aplicar a correção tanto para contas a pagar quanto para contas a receber, pois ambas usam `mapEvento`.
 
-Em `src/lib/conta-azul/sync.server.ts`, dentro do loop de páginas de `ca_contas_pagar` e `ca_contas_receber`:
+2. **Remover logs temporários**
+   - Remover o bloco `PAYLOAD_CC_DEBUG_PAGAR`.
+   - Remover/limpar o diagnóstico temporário que tenta buscar detalhe e gera 404.
+   - Deixar o sync sem logs ruidosos depois que o campo real foi identificado.
 
-- (a) Ao encontrar o **primeiro item com `status === 'pago'`** de cada tabela em cada execução, `console.log` do objeto cru completo retornado por `/buscar` (sem `JSON.stringify` filtrado — todas as chaves, marcado com prefixo `[CA-DIAG-LIST]`).
-- (b) Para esse mesmo item, fazer **uma chamada extra** a `GET /financeiro/contas-{a-pagar|a-receber}/buscar/{id}` e logar o objeto cru completo com prefixo `[CA-DIAG-DETAIL]`.
-- Guard: usar uma flag local (`let loggedPagar = false; let loggedReceber = false`) para garantir exatamente 1 par de logs por tabela por execução — não estourar rate limit.
+3. **Manter a Análise Detalhada filtrando no banco**
+   - Preservar a lógica atual da aba: selecionar o nome do centro de custo, resolver todos os IDs com o mesmo nome e buscar apenas lançamentos com `centro_custo_external_id in (...)`.
+   - Não voltar ao filtro por texto de descrição.
+   - Não alterar Painel Financeiro nem Fluxo de Caixa.
 
-Não alterar mapeamento nem persistência. Apenas logar.
+4. **Reprocessar dados para popular a coluna**
+   - Depois do código corrigido, rodar um sync curto de março/2026 para `contas_pagar` e `contas_receber` para popular o evento MANDARA rapidamente.
+   - Confirmar no banco que `centro_custo_external_id` deixou de estar vazio para os lançamentos desse período.
+   - Em seguida, se necessário, rodar o sync por períodos maiores para backfill histórico completo.
 
-## Passo 3 — Executar sync de 1 mês
+5. **Validar o evento MANDARA**
+   - Verificar no banco quantos lançamentos de pagar/receber passaram a existir para os IDs de centro de custo cujo nome contém `MANDARA`.
+   - Validar que a Análise Detalhada exibe entradas e saídas do evento, e que DRE/lista somam apenas lançamentos pagos, preservando `isTransferencia`, sinais e cascata do DRE.
 
-Disparar sync via UI ou server function existente para o mês atual (junho/2026), aguardar conclusão e coletar os 4 logs:
-- `[CA-DIAG-LIST]` contas a pagar
-- `[CA-DIAG-DETAIL]` contas a pagar
-- `[CA-DIAG-LIST]` contas a receber
-- `[CA-DIAG-DETAIL]` contas a receber
+## Resultado esperado
 
-Usar `stack_modern--server-function-logs` (ou `supabase--edge_function_logs` se o sync rodar como edge function) com filtro `CA-DIAG`.
-
-## Passo 4 — Reporte ao usuário
-
-Apresentar os 4 payloads brutos lado a lado e destacar:
-- Quais chaves de data existem na listagem (`data_quitacao`, `data_baixa`, `data_pagamento`, `data_recebimento`, etc.)
-- Se a listagem **já tem** a data de baixa → estratégia A (só mapear, sem detalhar 42k registros)
-- Se **só o detalhe** tem → estratégia B (precisa decidir entre detalhar tudo com rate-limit, ou só novos/atualizados via incremental)
-
-**Não decidir nem implementar a estratégia do sync nesta rodada.** Aguardar instrução do usuário após ver os payloads.
-
-## Arquivos afetados
-
-- `src/components/ContaAzulDashboard.tsx` — fallback temporário (1 edit pequeno)
-- `src/lib/conta-azul/sync.server.ts` — logs de diagnóstico (2 blocos, um por tabela)
-
-Nenhuma migração, nenhuma mudança de schema, nenhuma alteração de mapeamento.
+Após a correção e o sync de março/2026, selecionar o evento MANDARA deve trazer os lançamentos vinculados pelo centro de custo real, sem depender da descrição, e carregar em poucos segundos.

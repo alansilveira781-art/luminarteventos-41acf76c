@@ -143,7 +143,10 @@ function mapEvento(it: any, syncedAt: string, pessoaKey: "fornecedor_nome" | "cl
     descricao: it.descricao ?? null,
     [pessoaKey]: pessoaNome,
     categoria_external_id: it.categorias?.[0]?.id ? String(it.categorias[0].id) : null,
-    centro_custo_external_id: it.centros_custo?.[0]?.id ? String(it.centros_custo[0].id) : null,
+    centro_custo_external_id:
+      it.centros_de_custo?.[0]?.id ? String(it.centros_de_custo[0].id)
+      : it.centros_custo?.[0]?.id ? String(it.centros_custo[0].id)
+      : null,
     valor: Number(it.total ?? 0),
     data_vencimento: it.data_vencimento ?? null,
     data_pagamento: it.data_pagamento ?? null,
@@ -154,30 +157,6 @@ function mapEvento(it: any, syncedAt: string, pessoaKey: "fornecedor_nome" | "cl
   };
 }
 
-async function diagLogFirstPago(items: any[], basePath: string, tag: string) {
-  try {
-    const pago = items.find(
-      (it: any) => normalizeStatus(it.status_traduzido ?? it.status) === "pago",
-    );
-    if (!pago) {
-      console.log(`[CA-DIAG-${tag}] nenhum item com status=pago nesta janela`);
-      return;
-    }
-    console.log(`[CA-DIAG-LIST-${tag}] item cru da listagem (todas as chaves):`);
-    console.log(JSON.stringify(pago, null, 2));
-    const id = pago.id ?? pago.uuid;
-    if (!id) {
-      console.log(`[CA-DIAG-DETAIL-${tag}] item sem id, pulando detalhe`);
-      return;
-    }
-    const detail = await caFetch(`${basePath}/${id}`);
-    console.log(`[CA-DIAG-DETAIL-${tag}] item cru do detalhe (todas as chaves):`);
-    console.log(JSON.stringify(detail, null, 2));
-  } catch (e: any) {
-    console.log(`[CA-DIAG-${tag}] erro no diagnóstico:`, String(e?.message ?? e));
-  }
-}
-
 export async function syncContasPagar(from: string, to: string) {
   const logId = await logStart("contas_pagar", from, to);
   try {
@@ -186,16 +165,6 @@ export async function syncContasPagar(from: string, to: string) {
       data_vencimento_de: from,
       data_vencimento_ate: to,
     });
-    await diagLogFirstPago(items, basePath, "PAGAR");
-    // TEMP DEBUG: encontrar primeiro item com qualquer campo relacionado a centro de custo
-    {
-      const ccItem = (items as any[]).find((it) => {
-        const keys = Object.keys(it || {});
-        return keys.some((k) => /centro|rateio|classific/i.test(k) && it[k] != null && (Array.isArray(it[k]) ? it[k].length > 0 : true));
-      }) ?? items?.[0];
-      console.log("PAYLOAD_CC_DEBUG_PAGAR:", JSON.stringify(ccItem, null, 2));
-      console.log("PAYLOAD_CC_DEBUG_PAGAR_KEYS:", Object.keys(ccItem || {}).join(","));
-    }
     if (items.length > 0) {
       const syncedAt = new Date().toISOString();
       const rows = items.map((it: any) => mapEvento(it, syncedAt, "fornecedor_nome"));
@@ -218,7 +187,7 @@ export async function syncContasReceber(from: string, to: string) {
       data_vencimento_de: from,
       data_vencimento_ate: to,
     });
-    await diagLogFirstPago(items, basePath, "RECEBER");
+    
     if (items.length > 0) {
       const syncedAt = new Date().toISOString();
       const rows = items.map((it: any) => mapEvento(it, syncedAt, "cliente_nome"));
