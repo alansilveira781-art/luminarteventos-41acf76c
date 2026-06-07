@@ -157,6 +157,151 @@ function mapEvento(it: any, syncedAt: string, pessoaKey: "fornecedor_nome" | "cl
   };
 }
 
+/** Extrai linhas de rateio para `ca_lancamento_rateios`.
+ *  Estratégia defensiva — o payload do Conta Azul v2 pode trazer:
+ *    a) it.rateios = [{ centro_custo:{id}, categoria:{id}, valor, percentual }, ...]
+ *    b) it.centros_de_custo = [{id, nome, valor?, percentual?}] + it.categorias = [{id, ...}]
+ *    c) só it.centros_de_custo e it.categorias com 1 item cada (caso simples).
+ *  Em todos os casos a soma dos `valor` das fatias bate com it.total. */
+function buildRateios(
+  it: any,
+  tipo: "pagar" | "receber",
+  syncedAt: string,
+) {
+  const lancId = String(it.id);
+  const total = Number(it.total ?? 0);
+
+  const pairedRaw: any[] | null = Array.isArray(it.rateios)
+    ? it.rateios
+    : Array.isArray(it.alocacoes)
+      ? it.alocacoes
+      : null;
+  let pairs: Array<{ ordem: number; cc: string | null; cat: string | null; valorRaw: number | null; pct: number | null }>;
+  if (pairedRaw && pairedRaw.length > 0) {
+    pairs = pairedRaw.map((r: any, idx: number) => {
+      const ccId = r.centro_custo?.id ?? r.centro_de_custo?.id ?? r.centro_custo_id ?? r.cc?.id ?? null;
+      const catId = r.categoria?.id ?? r.categoria_id ?? r.cat?.id ?? null;
+      return {
+        ordem: idx,
+        cc: ccId ? String(ccId) : null,
+        cat: catId ? String(catId) : null,
+        valorRaw: r.valor != null ? Number(r.valor) : null,
+        pct: r.percentual != null ? Number(r.percentual) : null,
+      };
+    });
+  } else {
+    const ccs: any[] = Array.isArray(it.centros_de_custo)
+      ? it.centros_de_custo
+      : Array.isArray(it.centros_custo)
+        ? it.centros_custo
+        : [];
+    const cats: any[] = Array.isArray(it.categorias) ? it.categorias : [];
+    const n = Math.max(ccs.length, cats.length, 1);
+    pairs = Array.from({ length: n }, (_, idx) => {
+      const c = ccs[idx] ?? ccs[ccs.length - 1] ?? null;
+      const k = cats[idx] ?? cats[cats.length - 1] ?? null;
+      return {
+        ordem: idx,
+        cc: c?.id ? String(c.id) : null,
+        cat: k?.id ? String(k.id) : null,
+        valorRaw: c?.valor != null ? Number(c.valor)
+                : k?.valor != null ? Number(k.valor)
+                : null,
+        pct: c?.percentual != null ? Number(c.percentual)
+           : k?.percentual != null ? Number(k.percentual)
+           : null,
+      };
+    });
+  }
+
+  const valores = distribuirValores(pairs, total);
+  return valores.map((p) => ({
+    lancamento_external_id: lancId,
+    tipo,
+    centro_custo_external_id: p.cc,
+    categoria_external_id: p.cat,
+    valor: p.valor,
+    percentual: p.pct,
+    ordem: p.ordem,
+    synced_at: syncedAt,
+  }));
+}
+
+function distribuirValores(
+  pairs: Array<{ ordem: number; cc: string | null; cat: string | null; valorRaw: number | null; pct: number | null }>,
+  total: number,
+) {
+  const n = pairs.length;
+  if (n === 0) return [];
+  const hasValor = pairs.some((p) => p.valorRaw != null && Number.isFinite(p.valorRaw));
+  const hasPct = pairs.some((p) => p.pct != null && Number.isFinite(p.pct));
+  let valores: number[];
+  if (hasValor) {
+    valores = pairs.map((p) => (p.valorRaw != null && Number.isFinite(p.valorRaw) ? p.valorRaw! : 0));
+    const soma = valores.reduce((s, v) => s + v, 0);
+    if (Math.abs(soma - total) > 0.01 && hasPct) {
+      const somaPct = pairs.reduce((s, p) => s + (p.pct ?? 0), 0) || 100;
+      valores = pairs.map((p) => total * ((p.pct ?? 0) / somaPct));
+    }
+  } else if (hasPct) {
+    const somaPct = pairs.reduce((s, p) => s + (p.pct ?? 0), 0) || 100;
+    valores = pairs.map((p) => total * ((p.pct ?? 0) / somaPct));
+  } else {
+    const fatia = total / n;
+    valores = pairs.map(() => fatia);
+  }
+  return pairs.map((p, i) => ({
+    ordem: p.ordem,
+    cc: p.cc,
+    cat: p.cat,
+    valor: Math.round(valores[i] * 100) / 100,
+    pct: p.pct,
+  }));
+}
+
+let _ratioProbeLogged = false;
+async function logRatioProbe(items: any[], tipo: "pagar" | "receber") {
+  if (_ratioProbeLogged) return;
+  const sample = items.find(
+    (it: any) =>
+      (Array.isArray(it.centros_de_custo) && it.centros_de_custo.length >= 2) ||
+      (Array.isArray(it.categorias) && it.categorias.length >= 2) ||
+      Array.isArray(it.rateios) ||
+      Array.isArray(it.alocacoes),
+  );
+  if (!sample) return;
+  _ratioProbeLogged = true;
+  try {
+    await sb.from("ca_sync_log").insert({
+      recurso: `probe_rateio_${tipo}`,
+      status: "ok",
+      started_at: new Date().toISOString(),
+      finished_at: new Date().toISOString(),
+      qtd_registros: 0,
+      mensagem: JSON.stringify(sample).slice(0, 8000),
+    });
+  } catch {}
+}
+
+async function persistRateios(items: any[], tipo: "pagar" | "receber", syncedAt: string) {
+  await logRatioProbe(items, tipo);
+  const allRateios: any[] = [];
+  const lancIds: string[] = [];
+  for (const it of items) {
+    const rs = buildRateios(it, tipo, syncedAt);
+    if (rs.length > 0) {
+      allRateios.push(...rs);
+      lancIds.push(String(it.id));
+    }
+  }
+  if (lancIds.length === 0) return;
+  for (let i = 0; i < lancIds.length; i += 500) {
+    const chunk = lancIds.slice(i, i + 500);
+    await sb.from("ca_lancamento_rateios").delete().eq("tipo", tipo).in("lancamento_external_id", chunk);
+  }
+  await upsertBatched("ca_lancamento_rateios", allRateios, "lancamento_external_id,tipo,ordem");
+}
+
 export async function syncContasPagar(from: string, to: string) {
   const logId = await logStart("contas_pagar", from, to);
   try {
@@ -169,6 +314,7 @@ export async function syncContasPagar(from: string, to: string) {
       const syncedAt = new Date().toISOString();
       const rows = items.map((it: any) => mapEvento(it, syncedAt, "fornecedor_nome"));
       await upsertBatched("ca_contas_pagar", rows, "external_id");
+      await persistRateios(items, "pagar", syncedAt);
     }
 
     await logFinish(logId, "ok", items.length);
@@ -187,11 +333,12 @@ export async function syncContasReceber(from: string, to: string) {
       data_vencimento_de: from,
       data_vencimento_ate: to,
     });
-    
+
     if (items.length > 0) {
       const syncedAt = new Date().toISOString();
       const rows = items.map((it: any) => mapEvento(it, syncedAt, "cliente_nome"));
       await upsertBatched("ca_contas_receber", rows, "external_id");
+      await persistRateios(items, "receber", syncedAt);
     }
     await logFinish(logId, "ok", items.length);
     return items.length;
