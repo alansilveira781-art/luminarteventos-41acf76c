@@ -500,9 +500,9 @@ function calcularDRECaixa(
 
 
 function AnaliseDetalhada() {
-  const { centros, pagar, receber, planos } = useContaAzulData();
   const [ano, setAno] = useState(new Date().getFullYear());
   const [mes, setMes] = useState(0);
+  const { centros, pagar, receber, planos } = useContaAzulData(ano, mes);
   const [visao, setVisao] = useState<Visao>("realizado");
   const [centroId, setCentroId] = useState<string>("");
 
