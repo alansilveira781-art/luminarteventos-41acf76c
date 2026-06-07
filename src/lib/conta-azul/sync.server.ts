@@ -187,7 +187,7 @@ export async function syncContasReceber(from: string, to: string) {
       data_vencimento_de: from,
       data_vencimento_ate: to,
     });
-    await diagLogFirstPago(items, basePath, "RECEBER");
+    
     if (items.length > 0) {
       const syncedAt = new Date().toISOString();
       const rows = items.map((it: any) => mapEvento(it, syncedAt, "cliente_nome"));
