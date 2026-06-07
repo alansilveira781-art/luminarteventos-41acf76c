@@ -181,6 +181,7 @@ function useContaAzulData(ano?: number, mes?: number) {
 }
 
 
+
 function KpiCard({
   icon: Icon, label, value, subLabel, subValue, subColor,
 }: { icon: any; label: string; value: string; subLabel?: string; subValue?: string; subColor?: string }) {
@@ -543,12 +544,27 @@ function calcularDRECaixa(
 
 
 function AnaliseDetalhada() {
-  const { centros, pagar, receber, planos } = useContaAzulData();
   const [centroId, setCentroId] = useState<string>("");
   const [centroSearch, setCentroSearch] = useState("");
   const [centroOpen, setCentroOpen] = useState(false);
   const [categoriaSel, setCategoriaSel] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+  // Planos e centros são pequenos — carrega sempre.
+  const planos = useQuery({
+    queryKey: ["ca-plano"],
+    queryFn: async () => {
+      const { data } = await sb.from("ca_plano_contas").select("external_id,nome,tipo,codigo,pai_external_id");
+      return (data ?? []) as PlanoConta[];
+    },
+  });
+  const centros = useQuery({
+    queryKey: ["ca-centros"],
+    queryFn: async () => {
+      const { data } = await sb.from("ca_centros_custo").select("external_id,nome").eq("ativo", true);
+      return (data ?? []) as CentroCusto[];
+    },
+  });
 
   const ccs = centros.data ?? [];
   const planosArr = planos.data ?? [];
@@ -560,28 +576,47 @@ function AnaliseDetalhada() {
 
   const dreEstrutura = useDreEstrutura().data ?? DRE_STRUCTURE;
 
-  const nomePorCentroId = useMemo(() => {
-    const m = new Map<string, string>();
-    ccs.forEach((c) => m.set(c.external_id, normTxt(c.nome)));
-    return m;
-  }, [ccs]);
+  const nomeCentroSel = centroId ? normTxt(ccs.find((c) => c.external_id === centroId)?.nome ?? "") : "";
 
-  const nomeCentroSel = centroId ? (nomePorCentroId.get(centroId) ?? "") : "";
-
-  const idsDoEvento = useMemo(() => {
-    if (!nomeCentroSel) return undefined;
-    return new Set(
-      ccs.filter((c) => normTxt(c.nome) === nomeCentroSel).map((c) => c.external_id),
-    );
+  // Resolve nome → todos os IDs com o mesmo nome (mesmo evento pode ter vários centros).
+  const centroIds = useMemo(() => {
+    if (!nomeCentroSel) return [] as string[];
+    return ccs.filter((c) => normTxt(c.nome) === nomeCentroSel).map((c) => c.external_id);
   }, [ccs, nomeCentroSel]);
 
-  // Sem filtro de ano/mês → ano=0 ignora período. Filtro pelo nome do centro de custo (todos os IDs com o mesmo nome).
+  const idsKey = useMemo(() => [...centroIds].sort().join(","), [centroIds]);
+  const enabled = centroIds.length > 0;
+
+  const pagarCols = "external_id,descricao,fornecedor_nome,categoria_external_id,centro_custo_external_id,valor,data_vencimento,data_pagamento,status,observacoes";
+  const receberCols = "external_id,descricao,cliente_nome,categoria_external_id,centro_custo_external_id,valor,data_vencimento,data_pagamento,status,observacoes";
+
+  const pagar = useQuery({
+    queryKey: ["ca-pagar-cc", idsKey],
+    enabled,
+    queryFn: () =>
+      fetchPaged<ContaPagar>((from, to) =>
+        sb.from("ca_contas_pagar").select(pagarCols)
+          .in("centro_custo_external_id", centroIds)
+          .range(from, to),
+      ),
+  });
+  const receber = useQuery({
+    queryKey: ["ca-receber-cc", idsKey],
+    enabled,
+    queryFn: () =>
+      fetchPaged<ContaReceber>((from, to) =>
+        sb.from("ca_contas_receber").select(receberCols)
+          .in("centro_custo_external_id", centroIds)
+          .range(from, to),
+      ),
+  });
+
+  // Servidor já filtrou pelo centro de custo — sem filtro client-side por nome/ID.
   const { totais, grupos } = useMemo(
     () => calcularDRECaixa(
       pagar.data ?? [], receber.data ?? [], planoMap, 0, 0, dreEstrutura,
-      undefined, idsDoEvento,
     ),
-    [pagar.data, receber.data, planoMap, dreEstrutura, idsDoEvento],
+    [pagar.data, receber.data, planoMap, dreEstrutura],
   );
 
   const rb = totais.RB ?? 0;
@@ -590,17 +625,13 @@ function AnaliseDetalhada() {
   const custos = (totais.CV ?? 0) + (totais.CD ?? 0) + (totais.CI ?? 0);
   const lucro = totais.LU ?? 0;
 
+  const isLoadingLanc = enabled && (pagar.isLoading || receber.isLoading);
+
   const lancamentos = useMemo<LancRow[]>(() => {
     const list: LancRow[] = [];
     const push = (rows: any[], isReceber: boolean) => {
       rows.forEach((c) => {
         if (c.status !== "pago") return;
-        if (nomeCentroSel) {
-          const nomeCC = c.centro_custo_external_id
-            ? nomePorCentroId.get(c.centro_custo_external_id)
-            : undefined;
-          if (nomeCC !== nomeCentroSel) return;
-        }
         const dataRef = c.data_pagamento ?? c.data_vencimento;
         const plano = c.categoria_external_id ? planoMap.get(c.categoria_external_id) : undefined;
         if (isTransferencia(plano?.nome, c.descricao)) return;
@@ -617,7 +648,9 @@ function AnaliseDetalhada() {
     push(receber.data ?? [], true);
     push(pagar.data ?? [], false);
     return list.sort((a, b) => (a.data ?? "").localeCompare(b.data ?? ""));
-  }, [pagar.data, receber.data, planoMap, nomeCentroSel, nomePorCentroId]);
+  }, [pagar.data, receber.data, planoMap]);
+
+
 
 
   const lancFiltrados = useMemo(
@@ -814,7 +847,9 @@ function AnaliseDetalhada() {
             <div className="text-right">Valor Total</div>
           </div>
           <div className="max-h-[600px] overflow-y-auto">
-            {lancFiltrados.length === 0 && (
+            {isLoadingLanc ? (
+              <div className="px-3 py-6 text-center text-sm text-muted-foreground">Carregando lançamentos…</div>
+            ) : lancFiltrados.length === 0 && (
               <div className="px-3 py-6 text-center text-sm text-muted-foreground">
                 {centroId ? "Nenhum lançamento neste projeto." : "Selecione um evento/projeto para ver os lançamentos."}
               </div>
