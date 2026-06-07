@@ -215,6 +215,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ca_lancamento_rateios: {
+        Row: {
+          categoria_external_id: string | null
+          centro_custo_external_id: string | null
+          id: string
+          lancamento_external_id: string
+          ordem: number
+          percentual: number | null
+          synced_at: string
+          tipo: string
+          valor: number
+        }
+        Insert: {
+          categoria_external_id?: string | null
+          centro_custo_external_id?: string | null
+          id?: string
+          lancamento_external_id: string
+          ordem: number
+          percentual?: number | null
+          synced_at?: string
+          tipo: string
+          valor: number
+        }
+        Update: {
+          categoria_external_id?: string | null
+          centro_custo_external_id?: string | null
+          id?: string
+          lancamento_external_id?: string
+          ordem?: number
+          percentual?: number | null
+          synced_at?: string
+          tipo?: string
+          valor?: number
+        }
+        Relationships: []
+      }
       ca_plano_contas: {
         Row: {
           ativo: boolean
