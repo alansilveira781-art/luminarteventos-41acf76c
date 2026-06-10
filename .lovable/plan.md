@@ -1,42 +1,43 @@
-## 1) Estoque → Conferência (Egestor): cabeçalho transparente
+## Refatorar filtros por aba e adicionar seção Propostas
 
-Em `src/components/estoque/ConferenciaEgestorDialog.tsx` o `<thead>` usa `bg-muted/40 sticky top-0`, então ao rolar o conteúdo aparece atrás. Trocar por um fundo opaco (`bg-background` + `border-b` + `z-10`) para o cabeçalho ficar sólido ao rolar.
+### 1) FiltrosBar configurável
+Adicionar prop `fields?: Array<"empresa"|"ano"|"mes"|"trimestre"|"consultor"|"classificacao">` em `src/components/comercial/dashboard/FiltrosBar.tsx`. Default mantém todos os campos (compatível). Renderização condicional por campo.
 
-## 2) Comercial → Dashboard: "Something went wrong"
+### 2) Layout do dashboard (`comercial.dashboard.tsx`)
+Remover o `<FiltrosBar>` global do layout — cada aba renderiza o seu próprio. Adicionar a aba **Propostas** ao array `TABS`. Manter o contexto `useDashboard()` intacto.
 
-Causa: `useDashboard()` lança erro quando a sub-rota (Painel/Relatórios/Vendedores/Indicadores) renderiza fora do `DashboardCtx.Provider` (acontece nos estados de loading/erro do fetch da planilha, ou quando o fetch falha no browser por CORS do Dropbox).
+### 3) Filtros por aba
+- **Painel** (`/painel`): `["empresa","ano","mes"]`
+- **Relatórios** (`/relatorios`): `["empresa","ano","mes"]`
+- **Vendedores** (`/vendedores`): `["empresa","ano","mes"]` — blocos por consultor derivados de `applyFilters(rows, { ...filtros, consultor: "Todos" })`, mostrando apenas consultores presentes no recorte.
+- **Indicadores** (`/indicadores`): `["empresa","trimestre","consultor","classificacao"]` — remove Ano/Mês.
 
-Correções:
-- Tornar `useDashboard()` tolerante: retornar um valor default vazio (rows/filtered/previous = []) em vez de `throw`, para a sub-rota só mostrar "Sem dados" ao invés de quebrar o boundary.
-- Garantir que `listVendasDropbox` rode como server function real (`createServerFn`) — confirmar que o arquivo é `vendas.functions.ts` e está sendo invocado via RPC; reforçar tratamento de erro retornando `{ rows: [], error }` sem lançar.
-- Cada sub-rota (`painel/relatorios/vendedores/indicadores`) renderiza estado vazio quando `rows.length === 0`.
+Cada rota adiciona `<Card><FiltrosBar fields={...} rows={rows} filtros={filtros} onChange={setFiltros} /></Card>` no topo da página.
 
-## 3) Estoque (abas Estoque, Saídas, Entradas, Devoluções)
+### 4) Nova aba Propostas
+Criar `src/routes/comercial.dashboard.propostas.tsx` e `src/lib/comercial/propostas-metrics.ts`.
 
-### 3a) Busca por combinação de termos
-Hoje o filtro usa `normalize(haystack).includes(normalize(query))` — busca a frase inteira. Mudar para tokenização: dividir a query por espaços e exigir que **todos** os tokens estejam presentes no haystack (qualquer ordem).
+Fonte: `useComercial().propostas` (store local, sem migração).
 
-Implementar utilitário em `src/lib/utils.ts`:
-```ts
-export function matchTokens(haystack: string, query: string): boolean {
-  const h = normalize(haystack);
-  return normalize(query).split(/\s+/).filter(Boolean).every(t => h.includes(t));
-}
-```
-Aplicar em:
-- `src/routes/estoque.index.tsx` (filtro principal)
-- `src/routes/saidas.tsx` (busca geral e filtro de item)
-- `src/routes/entradas.tsx` (busca geral e filtro de item)
-- `src/routes/devolucoes.tsx` (já usa split em um trecho — padronizar usando `matchTokens`)
+Filtros: `["empresa","ano","mes"]` — filtragem por `p.evento.dataInicio` (Ano/Mês) e `p.empresa` quando existir no objeto.
 
-Resultado: digitar `6MM` traz "BROCA ESPECIAL 6MM"; digitar `BROCA 6MM` também traz.
+Métricas em `propostas-metrics.ts`:
+- `aplicarFiltrosPropostas(propostas, filtros)`
+- `kpisPropostas`: total criadas, enviadas, em negociação, fechadas, perdidas
+- Taxa de conversão (fechadas / criadas) e ticket médio (soma valor fechadas / qtd fechadas)
+- `evolucaoMensalPropostas`: série criadas vs fechadas por mês
+- `rankingConsultorPropostas`: qtd e valor de propostas fechadas por consultor
 
-### 3b) Paginação 100 → 50
-Trocar `const PAGE_SIZE = 100` por `50` em:
-- `src/routes/estoque.index.tsx`
-- `src/routes/saidas.tsx`
-- `src/routes/entradas.tsx`
-- `src/routes/devolucoes.tsx`
+UI:
+- 5 `KpiCard` (criadas/enviadas/em negociação/fechadas/perdidas)
+- 2 KpiCard adicionais: taxa de conversão (%) e ticket médio (R$)
+- `LineChart` evolução mensal (criadas vs fechadas)
+- `BarChart` ranking por consultor (valor fechado)
+- Tabela com top propostas fechadas
 
-## Escopo
-Apenas o que foi pedido. Sem mudanças visuais adicionais.
+### 5) Arquivos
+**Criar:** `src/routes/comercial.dashboard.propostas.tsx`, `src/lib/comercial/propostas-metrics.ts`
+**Editar:** `src/components/comercial/dashboard/FiltrosBar.tsx`, `src/routes/comercial.dashboard.tsx`, `src/routes/comercial.dashboard.painel.tsx`, `src/routes/comercial.dashboard.relatorios.tsx`, `src/routes/comercial.dashboard.vendedores.tsx`, `src/routes/comercial.dashboard.indicadores.tsx`
+
+### Fora de escopo
+Nenhuma migração de banco, nenhuma alteração no parser do Dropbox, nenhuma mudança de layout/cores.
