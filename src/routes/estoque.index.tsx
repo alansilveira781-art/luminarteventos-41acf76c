@@ -18,7 +18,7 @@ import { ImportDialog } from "@/components/ImportDialog";
 import { ConferenciaEgestorDialog } from "@/components/estoque/ConferenciaEgestorDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ChevronDown, FileCheck2 } from "lucide-react";
-import { normalize } from "@/lib/utils";
+import { normalize, matchTokens } from "@/lib/utils";
 import { ITEM_TEMPLATE } from "@/lib/import-utils";
 import { useBulkSelection } from "@/hooks/useBulkSelection";
 import { BulkActionsBar } from "@/components/BulkActionsBar";
@@ -63,7 +63,7 @@ function EstoquePage() {
   const [periodoPreset, setPeriodoPreset] = useState<PeriodoPreset>("todos");
   const [periodo, setPeriodo] = useState<Periodo>(() => periodoFromPreset("todos"));
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 100;
+  const PAGE_SIZE = 50;
 
   const { data: itens, isLoading } = useQuery({
     queryKey: ["itens"],
@@ -133,10 +133,9 @@ function EstoquePage() {
   const filtered = useMemo(() => {
     if (!itens) return [];
     let arr = itens as any[];
-    const s = normalize(qd);
-    if (s) {
+    if (qd.trim()) {
       arr = arr.filter((i) =>
-        normalize([i.nome, i.codigo, i.categoria, i.localizacao, i.status].join(" ")).includes(s),
+        matchTokens([i.nome, i.codigo, i.categoria, i.localizacao, i.status].join(" "), qd),
       );
     }
     if (hideZero) arr = arr.filter((i) => Number(i.quantidade_atual) > 0);

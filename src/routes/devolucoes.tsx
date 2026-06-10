@@ -15,7 +15,7 @@ import { Plus, Search, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { normalize } from "@/lib/utils";
+import { normalize, matchTokens } from "@/lib/utils";
 import { format } from "date-fns";
 import { SortableTh, useSort } from "@/components/SortableTh";
 import { useBulkSelection } from "@/hooks/useBulkSelection";
@@ -40,7 +40,7 @@ function DevolucoesPage() {
   const [periodoPreset, setPeriodoPreset] = useState<PeriodoPreset>("mes");
   const [periodo, setPeriodo] = useState<Periodo>(() => periodoFromPreset("mes"));
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 100;
+  const PAGE_SIZE = 50;
 
   const { data: devolucoes } = useQuery({
     queryKey: ["devolucoes"],
@@ -139,15 +139,14 @@ function DevolucoesPage() {
   });
 
   // Filtro
-  const sBusca = normalize(qd);
   const filtered = useMemo(() => {
     const list = (devolucoes ?? []).filter((m: any) => {
-      if (!sBusca) return true;
-      return normalize([
+      if (!qd.trim()) return true;
+      return matchTokens([
         m.item?.nome, m.item?.codigo, m.solicitante?.nome,
         m.responsavel_recebimento, m.responsavel_lancamento,
         m.observacoes, m.condicao,
-      ].join(" ")).includes(sBusca);
+      ].join(" "), qd);
     });
     return applySort(list, (m: any, k: string) => {
       if (k === "item") return m.item?.nome;
@@ -156,13 +155,13 @@ function DevolucoesPage() {
       if (k === "quantidade") return Number(m.quantidade);
       return m[k];
     });
-  }, [devolucoes, sBusca, sort]);
+  }, [devolucoes, qd, sort]);
 
   const filteredPeriodo = useMemo(
     () => filterByPeriodo(filtered, periodo, (m: any) => m.data_movimento),
     [filtered, periodo],
   );
-  useEffect(() => { setPage(1); }, [sBusca, sort, periodo]);
+  useEffect(() => { setPage(1); }, [qd, sort, periodo]);
   const pageCount = Math.max(1, Math.ceil(filteredPeriodo.length / PAGE_SIZE));
   const pageItems = useMemo(
     () => filteredPeriodo.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),

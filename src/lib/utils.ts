@@ -20,3 +20,11 @@ export function matchesNormalized(haystack: unknown, needle: string): boolean {
   if (!n) return true;
   return normalize(haystack).includes(n);
 }
+
+/** Busca por tokens: divide a query por espaços e exige que TODOS os tokens estejam no haystack (qualquer ordem). */
+export function matchTokens(haystack: unknown, query: string): boolean {
+  const tokens = normalize(query).split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return true;
+  const h = normalize(haystack);
+  return tokens.every((t) => h.includes(t));
+}
