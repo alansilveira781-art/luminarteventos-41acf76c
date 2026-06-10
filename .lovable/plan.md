@@ -1,63 +1,58 @@
-## 1) Estoque → Conferência com Egestor
+## Objetivo
 
-**Onde:** `src/routes/estoque.index.tsx`, no botão **"Nova importação"**.
+Na tela **Estoque → Conferir estoque (Egestor)**, permitir ajustar o saldo do sistema para igualar ao saldo do Egestor com **um clique por linha** (ou em lote). Cada ajuste gera uma **movimentação de ajuste** registrada no histórico do item, mantendo a rastreabilidade.
 
-**Mudança de UX:** transformar o botão atual em um menu (dropdown) com duas opções:
-- **Importar itens** (fluxo atual, sem alteração)
-- **Conferir estoque (Egestor)** (novo)
+## Comportamento
 
-**Novo diálogo "Conferir estoque (Egestor)":**
-- Upload de planilha `.xlsx` (mesmo componente de upload do `ImportDialog`).
-- Parser específico para o arquivo Egestor: o cabeçalho real está na **linha 3** (`Código, Produto, Estoque, Custo, Total, Categoria, Estoque mínimo`); as linhas 1 e 2 são título/data e serão ignoradas.
-- **Chave de assimilação:** nome (`Produto` do Egestor ↔ `nome` do item no sistema), comparação normalizada (sem acento, case-insensitive, espaços colapsados). Como fallback, se houver `Código` igual ao `codigo` do sistema, casa por código.
-- **Cálculo:** `diferenca = saldo_sistema − saldo_egestor`.
+Para cada linha com `status = "divergente"`:
 
-**Resultado em tabela com filtros (chips):**
-- Todos
-- Divergentes (diferença ≠ 0)
-- Apenas no Egestor (item não existe no sistema)
-- Apenas no sistema (item ativo, não veio na planilha)
+- `diferenca = saldo_sistema − saldo_egestor`
+- Se `diferenca > 0` → estoque do sistema está **acima** do Egestor → lançar **ajuste negativo** (saída de correção) de `|diferenca|`.
+- Se `diferenca < 0` → estoque do sistema está **abaixo** do Egestor → lançar **ajuste positivo** (entrada de correção) de `|diferenca|`.
 
-**Colunas da tabela:** Nome · Código sistema · Saldo sistema · Saldo Egestor · Diferença (com cor: verde = 0, vermelho = ≠ 0) · Status.
+Como a tabela `movimentacoes` já tem `tipo = 'ajuste'` e o trigger `apply_movement` aplica `delta := NEW.quantidade` para ajustes, vou usar **quantidade assinada** (positiva ou negativa) no próprio campo `quantidade`, com `tipo = 'ajuste'`. Isso já é o padrão usado pelas funções `reconciliar_estoque`/`apply_movement` do projeto.
 
-**Ações:** botão "Exportar divergências (.xlsx)" gerando uma planilha com as linhas filtradas (reaproveitando `xlsx` já presente em `src/lib/import-utils.ts`).
+Linhas com status `so_egestor` (item não existe no sistema) e `so_sistema` (não veio na planilha) **não** terão botão de ajuste — só divergências reais.
 
-**Observações importantes:**
-- A conferência é **apenas leitura** — nenhum saldo é alterado automaticamente. É só comparação.
-- Itens inativos no sistema são marcados, mas não contam como divergência por padrão.
+## Mudanças na UI (`ConferenciaEgestorDialog.tsx`)
 
-**Arquivos:**
-- `src/routes/estoque.index.tsx` — trocar o botão por `DropdownMenu` e adicionar estado `conferindo`.
-- `src/components/estoque/ConferenciaEgestorDialog.tsx` (novo) — todo o diálogo, parser, comparação e exportação.
+1. **Nova coluna "Ação"** na tabela de resultado, só para divergentes:
+   - Botão `Ajustar` por linha, que abre confirmação inline mostrando: "Vai gerar ajuste de {±N} no item {nome}".
+2. **Seleção em lote**:
+   - Checkbox por linha (apenas divergentes) + checkbox no header.
+   - Botão **"Ajustar selecionados (N)"** no topo da tabela quando há seleção.
+3. **Estado de processamento** por linha: spinner enquanto grava; ao concluir, a linha vira `ok` (verde, diferença 0) e some do filtro "Divergentes".
+4. **Toast de resumo** ao final: "X ajustes lançados, Y falhas".
+5. **Texto explicativo** no topo do diálogo atualizado: deixa claro que ajustar **sim** altera saldo, mas só nas linhas escolhidas e sempre via lançamento de ajuste rastreável.
 
----
+## Lançamento no banco
 
-## 2) Patrimônio → Devoluções → "Responsável recebimento"
-
-**Problema atual:** `src/components/patrimonio/Devolucoes.tsx` (linha 416) usa um `<Input>` livre, sem ligação com a lista de responsáveis.
-
-**Mudança:** substituir esse `<Input>` por um `ComboboxCreatable` alimentado pela mesma fonte usada no formulário de **Saída** (`src/components/patrimonio/Movimentacoes.tsx`, linhas 474-482):
+Insert em `movimentacoes` por linha ajustada:
 
 ```ts
-const { data: solicitantes } = useQuery({
-  queryKey: ["solicitantes-select"],
-  queryFn: async () => (await supabase.from("solicitantes")
-    .select("nome").eq("status", "ativo").order("nome")).data ?? [],
-});
-const responsavelOptions = useMemo(
-  () => Array.from(new Set((solicitantes ?? []).map((s) => s.nome).filter(Boolean))),
-  [solicitantes],
-);
+{
+  tipo: 'ajuste',
+  item_id: <id do item>,
+  quantidade: saldo_egestor - saldo_sistema, // assinado
+  data: <hoje>,
+  observacoes: 'Ajuste por conferência Egestor (saldo anterior: X, novo: Y)',
+  // demais campos opcionais ficam null
+}
 ```
 
-Comportamento: igual ao campo "Responsável" da Saída — permite escolher um solicitante existente ou digitar um nome novo (creatable). Placeholder mantido como "Quem recebeu de volta".
+O trigger `apply_movement` já cuida de:
+- atualizar `itens.quantidade_atual` com o delta,
+- chamar `refresh_item_status`.
 
-**Arquivo:** apenas `src/components/patrimonio/Devolucoes.tsx`.
+E o hook `useEstoqueRealtimeSync` já invalida as queries de estoque/movimentações automaticamente — o saldo na tela atrás aparece atualizado sem reload.
 
----
+## Não vou mexer
 
-## Fora de escopo
+- Schema do banco (nenhuma migration necessária).
+- Parser do Egestor, filtros, busca e exportação (já funcionam).
+- Outros módulos (patrimônio, compras, financeiro).
+- Itens "só no Egestor" não criam item automaticamente — fora de escopo desta tarefa; o usuário cadastra manualmente.
 
-- Não altero saldos a partir da conferência (sem ajustes automáticos).
-- Não mexo em outras telas de importação, no módulo de compras, financeiro ou fluxo de saída de patrimônio.
-- Não crio migrations — nenhuma mudança de banco é necessária.
+## Arquivo
+
+- `src/components/estoque/ConferenciaEgestorDialog.tsx` — único arquivo editado.
