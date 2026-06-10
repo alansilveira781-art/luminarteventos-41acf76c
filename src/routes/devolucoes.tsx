@@ -40,7 +40,7 @@ function DevolucoesPage() {
   const [periodoPreset, setPeriodoPreset] = useState<PeriodoPreset>("mes");
   const [periodo, setPeriodo] = useState<Periodo>(() => periodoFromPreset("mes"));
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 100;
+  const PAGE_SIZE = 50;
 
   const { data: devolucoes } = useQuery({
     queryKey: ["devolucoes"],
@@ -139,15 +139,14 @@ function DevolucoesPage() {
   });
 
   // Filtro
-  const sBusca = normalize(qd);
   const filtered = useMemo(() => {
     const list = (devolucoes ?? []).filter((m: any) => {
-      if (!sBusca) return true;
-      return normalize([
+      if (!qd.trim()) return true;
+      return matchTokens([
         m.item?.nome, m.item?.codigo, m.solicitante?.nome,
         m.responsavel_recebimento, m.responsavel_lancamento,
         m.observacoes, m.condicao,
-      ].join(" ")).includes(sBusca);
+      ].join(" "), qd);
     });
     return applySort(list, (m: any, k: string) => {
       if (k === "item") return m.item?.nome;

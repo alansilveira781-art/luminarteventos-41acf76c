@@ -489,7 +489,7 @@ export function ConferenciaEgestorDialog({
 
               <div className="overflow-auto max-h-[55vh] rounded border">
                 <table className="w-full text-xs">
-                  <thead className="bg-muted/40 text-muted-foreground sticky top-0">
+                  <thead className="bg-background text-muted-foreground sticky top-0 z-10 shadow-[inset_0_-1px_0_hsl(var(--border))]">
                     <tr>
                       <th className="px-2 py-2 w-8">
                         <Checkbox

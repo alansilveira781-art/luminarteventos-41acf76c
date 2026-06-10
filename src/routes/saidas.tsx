@@ -55,7 +55,7 @@ function SaidasPage() {
   const [periodoPreset, setPeriodoPreset] = useState<PeriodoPreset>("mes");
   const [periodo, setPeriodo] = useState<Periodo>(() => periodoFromPreset("mes"));
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 100;
+  const PAGE_SIZE = 50;
 
 
   // Edição de linha única: deletar a antiga e inserir a nova
@@ -257,21 +257,20 @@ function SaidasPage() {
   });
 
   // Filtros + agrupamento por requisicao_numero
-  const sBusca = normalize(qd);
   const filteredBaseList = (saidas ?? []).filter((m: any) => {
     if (filterItemQd.trim()) {
-      const itemHay = normalize(`${m.item?.codigo ?? ""} ${m.item?.nome ?? ""}`);
-      if (!itemHay.includes(normalize(filterItemQd))) return false;
+      const itemHay = `${m.item?.codigo ?? ""} ${m.item?.nome ?? ""}`;
+      if (!matchTokens(itemHay, filterItemQd)) return false;
     }
     if (filterEvento !== "__all" && (m.evento_projeto ?? "") !== filterEvento) return false;
     if (filterEmpresa !== "__all" && (m.empresa ?? "") !== filterEmpresa) return false;
-    if (!sBusca) return true;
-    const hay = normalize([
+    if (!qd.trim()) return true;
+    const hay = [
       m.item?.nome, m.item?.codigo, m.evento_projeto, m.solicitante?.nome,
       m.saida_tipo, m.finalidade, m.observacoes, m.saida_status,
       m.requisicao_numero ? `req-${String(m.requisicao_numero).padStart(4, "0")}` : "",
-    ].join(" "));
-    return hay.includes(sBusca);
+    ].join(" ");
+    return matchTokens(hay, qd);
   });
   const eventosDisponiveis = useMemo(() => {
     const s = new Set<string>();

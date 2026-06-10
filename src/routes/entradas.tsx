@@ -57,7 +57,7 @@ function EntradasPage() {
   const [periodoPreset, setPeriodoPreset] = useState<PeriodoPreset>("mes");
   const [periodo, setPeriodo] = useState<Periodo>(() => periodoFromPreset("mes"));
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 100;
+  const PAGE_SIZE = 50;
   const [filterEvento, setFilterEvento] = useState<string>("__all");
   const { sort, toggleSort, applySort } = useSort();
 
@@ -215,22 +215,19 @@ function EntradasPage() {
   });
 
   // Filtros + agrupamento por requisicao_numero
-  const sBusca = normalize(qd);
   const filteredBaseList = (entradas ?? []).filter((m: any) => {
     if (filterItemQd.trim()) {
-      const itemHay = normalize(`${m.item?.codigo ?? ""} ${m.item?.nome ?? ""}`);
-      if (!itemHay.includes(normalize(filterItemQd))) return false;
+      const itemHay = `${m.item?.codigo ?? ""} ${m.item?.nome ?? ""}`;
+      if (!matchTokens(itemHay, filterItemQd)) return false;
     }
     if (filterEvento !== "__all" && (m.evento_projeto ?? "") !== filterEvento) return false;
-    if (!sBusca) return true;
-    const hay = normalize(
-      [
-        m.item?.nome, m.item?.codigo, m.fornecedor?.nome, m.fornecedor?.documento,
-        m.entrada_tipo, m.nota_fiscal, m.responsavel_lancamento, m.observacoes,
-        m.requisicao_numero ? `req-${String(m.requisicao_numero).padStart(4, "0")}` : "",
-      ].join(" "),
-    );
-    return hay.includes(sBusca);
+    if (!qd.trim()) return true;
+    const hay = [
+      m.item?.nome, m.item?.codigo, m.fornecedor?.nome, m.fornecedor?.documento,
+      m.entrada_tipo, m.nota_fiscal, m.responsavel_lancamento, m.observacoes,
+      m.requisicao_numero ? `req-${String(m.requisicao_numero).padStart(4, "0")}` : "",
+    ].join(" ");
+    return matchTokens(hay, qd);
   });
   // Lista distinct de eventos para o filtro
   const eventosDisponiveis = useMemo(() => {
