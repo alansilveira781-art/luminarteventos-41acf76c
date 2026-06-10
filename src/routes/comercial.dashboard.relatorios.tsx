@@ -9,6 +9,7 @@ import {
 import { DollarSign, BarChart2, Tag, Target, Download } from "lucide-react";
 import { KpiCard } from "@/components/comercial/dashboard/KpiCard";
 import { GaugeRealVsMeta } from "@/components/comercial/dashboard/GaugeRealVsMeta";
+import { FiltrosBar } from "@/components/comercial/dashboard/FiltrosBar";
 import { useDashboard } from "./comercial.dashboard";
 import {
   comissoesPorVendedor,
@@ -27,7 +28,7 @@ const brlShort = (v: number) =>
   v >= 1_000_000 ? `R$ ${(v / 1_000_000).toFixed(2)} Mi` : v >= 1_000 ? `R$ ${(v / 1_000).toFixed(0)} Mil` : `R$ ${v.toFixed(0)}`;
 
 function RelatoriosVendas() {
-  const { filtered, previous } = useDashboard();
+  const { rows, filtered, previous, filtros, setFiltros } = useDashboard();
   const [busca, setBusca] = useState("");
 
   const k = useMemo(() => kpis(filtered, previous), [filtered, previous]);
@@ -68,6 +69,9 @@ function RelatoriosVendas() {
 
   return (
     <div className="space-y-4">
+      <Card className="p-4">
+        <FiltrosBar rows={rows} filtros={filtros} onChange={setFiltros} fields={["empresa", "ano", "mes"]} />
+      </Card>
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard titulo="Vendas Totais" valor={k.vendasTotais} Icon={DollarSign} anterior={k.vendasAnterior} pct={k.pctVendas} />
         <KpiCard titulo="Quantidade de Vendas" valor={k.quantidade} Icon={BarChart2} isMoney={false} anterior={k.quantidadeAnterior} pct={k.pctQuantidade} />
