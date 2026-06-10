@@ -36,6 +36,7 @@ import {
   UserPlus,
   Boxes,
   FileSignature,
+  DollarSign,
 
 } from "lucide-react";
 import logo from "@/assets/luminart-logo-white.png";
@@ -65,6 +66,7 @@ const allItems: NavItem[] = [
   { title: "Conta Azul", url: "/financeiro/conta-azul", icon: Link2, group: "Despesas", module: "financeiro" },
   { title: "Dashboard", url: "/comercial/dashboard", icon: BarChart3, group: "Comercial", module: "comercial" },
   { title: "Quadro de Vendas", url: "/comercial", icon: KanbanSquare, group: "Comercial", module: "comercial" },
+  { title: "Vendas", url: "/comercial/vendas", icon: DollarSign, group: "Comercial", module: "comercial", moduleAdminOnly: "comercial" },
   { title: "Propostas", url: "/comercial/propostas", icon: FileText, group: "Comercial", module: "comercial" },
   { title: "Validações", url: "/comercial/validacoes", icon: ClipboardCheck, group: "Comercial", module: "comercial", moduleAdminOnly: "comercial" },
   { title: "Clientes", url: "/comercial/clientes", icon: Users2, group: "Comercial", module: "comercial" },
