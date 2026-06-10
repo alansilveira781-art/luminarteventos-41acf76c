@@ -1,43 +1,32 @@
-## Refatorar filtros por aba e adicionar seção Propostas
+## Garantir preenchimento do Dashboard com a planilha do Dropbox
 
-### 1) FiltrosBar configurável
-Adicionar prop `fields?: Array<"empresa"|"ano"|"mes"|"trimestre"|"consultor"|"classificacao">` em `src/components/comercial/dashboard/FiltrosBar.tsx`. Default mantém todos os campos (compatível). Renderização condicional por campo.
+O server function `listVendasDropbox` já baixa o arquivo `CONTROLE-DE-VENDAS-NOVO.xlsx` do link enviado e parseia a aba **Base de Dados** (1.002 linhas, R$ 33,3 Mi confirmados no teste local). O problema é que vários gráficos/filtros dependem de `anoEvento`, `mesEvento` e `trimestreEvento`, e hoje:
 
-### 2) Layout do dashboard (`comercial.dashboard.tsx`)
-Remover o `<FiltrosBar>` global do layout — cada aba renderiza o seu próprio. Adicionar a aba **Propostas** ao array `TABS`. Manter o contexto `useDashboard()` intacto.
+- A planilha **não tem** as colunas "Mês Evento" / "Ano Evento" → `mesEvento` e `anoEvento` ficam **null**.
+- `trimestreEvento` só é calculado quando `dataEvento` existe.
+- Resultado: filtro de mês não casa e a "Evolução por Trimestre" fica vazia em vários casos.
 
-### 3) Filtros por aba
-- **Painel** (`/painel`): `["empresa","ano","mes"]`
-- **Relatórios** (`/relatorios`): `["empresa","ano","mes"]`
-- **Vendedores** (`/vendedores`): `["empresa","ano","mes"]` — blocos por consultor derivados de `applyFilters(rows, { ...filtros, consultor: "Todos" })`, mostrando apenas consultores presentes no recorte.
-- **Indicadores** (`/indicadores`): `["empresa","trimestre","consultor","classificacao"]` — remove Ano/Mês.
+### Ajustes no parser (`src/lib/comercial/vendas.functions.ts`)
 
-Cada rota adiciona `<Card><FiltrosBar fields={...} rows={rows} filtros={filtros} onChange={setFiltros} /></Card>` no topo da página.
+Derivar campos do `dataEvento` (com fallback para `dataRegistro`):
 
-### 4) Nova aba Propostas
-Criar `src/routes/comercial.dashboard.propostas.tsx` e `src/lib/comercial/propostas-metrics.ts`.
+- `anoEvento` ← ano de `dataEvento` (ou `dataRegistro`, ou coluna "Ano")
+- `mesEvento` ← nome do mês em PT-BR de `dataEvento` (ou `dataRegistro`)
+- `trimestreEvento` ← derivado da mesma data usada acima
+- Normalizar `mes` da planilha para Title Case ("JANEIRO" → "Janeiro") para casar com o select dos filtros
 
-Fonte: `useComercial().propostas` (store local, sem migração).
+### Ajuste no filtro (`src/lib/comercial/vendas-metrics.ts`)
 
-Filtros: `["empresa","ano","mes"]` — filtragem por `p.evento.dataInicio` (Ano/Mês) e `p.empresa` quando existir no objeto.
+Comparar mês de forma case-insensitive em ambos os lados (`mes` e `mesEvento`) — evita o caso atual em que "JANEIRO" da planilha não bate com "Janeiro" do filtro.
 
-Métricas em `propostas-metrics.ts`:
-- `aplicarFiltrosPropostas(propostas, filtros)`
-- `kpisPropostas`: total criadas, enviadas, em negociação, fechadas, perdidas
-- Taxa de conversão (fechadas / criadas) e ticket médio (soma valor fechadas / qtd fechadas)
-- `evolucaoMensalPropostas`: série criadas vs fechadas por mês
-- `rankingConsultorPropostas`: qtd e valor de propostas fechadas por consultor
+### Filtro inicial
 
-UI:
-- 5 `KpiCard` (criadas/enviadas/em negociação/fechadas/perdidas)
-- 2 KpiCard adicionais: taxa de conversão (%) e ticket médio (R$)
-- `LineChart` evolução mensal (criadas vs fechadas)
-- `BarChart` ranking por consultor (valor fechado)
-- Tabela com top propostas fechadas
+Hoje o default é `ano: 2026` (ano corrente). Como 2026 ainda tem só 74 registros, o painel parece "vazio". Trocar o default para o **último ano com dados** (calculado a partir das linhas carregadas) ou para `"Todos"` para que o usuário veja conteúdo logo de cara.
 
-### 5) Arquivos
-**Criar:** `src/routes/comercial.dashboard.propostas.tsx`, `src/lib/comercial/propostas-metrics.ts`
-**Editar:** `src/components/comercial/dashboard/FiltrosBar.tsx`, `src/routes/comercial.dashboard.tsx`, `src/routes/comercial.dashboard.painel.tsx`, `src/routes/comercial.dashboard.relatorios.tsx`, `src/routes/comercial.dashboard.vendedores.tsx`, `src/routes/comercial.dashboard.indicadores.tsx`
+### Out of scope
 
-### Fora de escopo
-Nenhuma migração de banco, nenhuma alteração no parser do Dropbox, nenhuma mudança de layout/cores.
+Sem mudanças de layout, KPIs, charts, autenticação ou abas. Apenas garantir que os dados do Dropbox aparecem corretamente em todas as abas do dashboard.
+
+### Pergunta
+
+Filtro inicial deve abrir em **"Último ano com dados" (ex. 2025)** ou em **"Todos"**?

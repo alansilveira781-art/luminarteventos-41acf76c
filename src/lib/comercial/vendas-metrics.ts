@@ -21,10 +21,15 @@ export const filtrosIniciais: Filtros = {
 const norm = (s: string | null) => (s ?? "").toString().trim();
 
 export function applyFilters(rows: VendaRow[], f: Filtros): VendaRow[] {
+  const mesAlvo = f.mes === "Todos" ? null : String(f.mes).toLowerCase();
   return rows.filter((r) => {
     if (f.empresa !== "Todos" && norm(r.empresa) !== f.empresa) return false;
     if (f.ano !== "Todos" && r.anoEvento !== f.ano && r.ano !== f.ano) return false;
-    if (f.mes !== "Todos" && norm(r.mes) !== f.mes && norm(r.mesEvento).toLowerCase() !== f.mes.toLowerCase()) return false;
+    if (mesAlvo) {
+      const mes1 = norm(r.mes).toLowerCase();
+      const mes2 = norm(r.mesEvento).toLowerCase();
+      if (mes1 !== mesAlvo && mes2 !== mesAlvo) return false;
+    }
     if (f.trimestre !== "Todos" && r.trimestreEvento !== f.trimestre) return false;
     if (f.consultor !== "Todos" && norm(r.consultor) !== f.consultor) return false;
     if (f.classificacao !== "Todos" && norm(r.classificacao) !== f.classificacao) return false;
