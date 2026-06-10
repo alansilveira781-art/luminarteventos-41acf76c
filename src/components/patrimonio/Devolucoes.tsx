@@ -310,6 +310,16 @@ function DevolucaoForm({ saidas, devolvidoPorOrigem, itemMap, onSubmit, submitti
 
   const setM = (k: string, v: any) => setMeta((p) => ({ ...p, [k]: v }));
 
+  // Mesma fonte de "Responsável" do formulário de Saída
+  const { data: solicitantes = [] } = useQuery({
+    queryKey: ["solicitantes-select"],
+    queryFn: async () => (await supabase.from("solicitantes").select("nome").eq("status", "ativo").order("nome")).data ?? [],
+  });
+  const responsavelOptions = useMemo(
+    () => Array.from(new Set((solicitantes as any[]).map((s) => s.nome).filter(Boolean))),
+    [solicitantes],
+  );
+
   return (
     <form
       onSubmit={(e) => {
