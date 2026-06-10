@@ -55,12 +55,18 @@ import { Route as ComprasDashboardRouteImport } from './routes/compras.dashboard
 import { Route as ComprasConfiguracoesRouteImport } from './routes/compras.configuracoes'
 import { Route as ComercialValidacoesRouteImport } from './routes/comercial.validacoes'
 import { Route as ComercialPropostasRouteImport } from './routes/comercial.propostas'
+import { Route as ComercialDashboardRouteImport } from './routes/comercial.dashboard'
 import { Route as ComercialConfiguracoesRouteImport } from './routes/comercial.configuracoes'
 import { Route as ComercialClientesRouteImport } from './routes/comercial.clientes'
 import { Route as ComercialCatalogoRouteImport } from './routes/comercial.catalogo'
 import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 import { Route as AdminModulosRouteImport } from './routes/admin.modulos'
 import { Route as AdminDadosRouteImport } from './routes/admin.dados'
+import { Route as ComercialDashboardIndexRouteImport } from './routes/comercial.dashboard.index'
+import { Route as ComercialDashboardVendedoresRouteImport } from './routes/comercial.dashboard.vendedores'
+import { Route as ComercialDashboardRelatoriosRouteImport } from './routes/comercial.dashboard.relatorios'
+import { Route as ComercialDashboardPainelRouteImport } from './routes/comercial.dashboard.painel'
+import { Route as ComercialDashboardIndicadoresRouteImport } from './routes/comercial.dashboard.indicadores'
 import { Route as ApiPublicSolicitarRouteImport } from './routes/api/public/solicitar'
 import { Route as ApiPublicSendPushRouteImport } from './routes/api/public/send-push'
 import { Route as ApiPublicOpcoesPagamentoRouteImport } from './routes/api/public/opcoes-pagamento'
@@ -303,6 +309,11 @@ const ComercialPropostasRoute = ComercialPropostasRouteImport.update({
   path: '/propostas',
   getParentRoute: () => ComercialRoute,
 } as any)
+const ComercialDashboardRoute = ComercialDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => ComercialRoute,
+} as any)
 const ComercialConfiguracoesRoute = ComercialConfiguracoesRouteImport.update({
   id: '/configuracoes',
   path: '/configuracoes',
@@ -333,6 +344,35 @@ const AdminDadosRoute = AdminDadosRouteImport.update({
   path: '/dados',
   getParentRoute: () => AdminRoute,
 } as any)
+const ComercialDashboardIndexRoute = ComercialDashboardIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ComercialDashboardRoute,
+} as any)
+const ComercialDashboardVendedoresRoute =
+  ComercialDashboardVendedoresRouteImport.update({
+    id: '/vendedores',
+    path: '/vendedores',
+    getParentRoute: () => ComercialDashboardRoute,
+  } as any)
+const ComercialDashboardRelatoriosRoute =
+  ComercialDashboardRelatoriosRouteImport.update({
+    id: '/relatorios',
+    path: '/relatorios',
+    getParentRoute: () => ComercialDashboardRoute,
+  } as any)
+const ComercialDashboardPainelRoute =
+  ComercialDashboardPainelRouteImport.update({
+    id: '/painel',
+    path: '/painel',
+    getParentRoute: () => ComercialDashboardRoute,
+  } as any)
+const ComercialDashboardIndicadoresRoute =
+  ComercialDashboardIndicadoresRouteImport.update({
+    id: '/indicadores',
+    path: '/indicadores',
+    getParentRoute: () => ComercialDashboardRoute,
+  } as any)
 const ApiPublicSolicitarRoute = ApiPublicSolicitarRouteImport.update({
   id: '/api/public/solicitar',
   path: '/api/public/solicitar',
@@ -419,6 +459,7 @@ export interface FileRoutesByFullPath {
   '/comercial/catalogo': typeof ComercialCatalogoRoute
   '/comercial/clientes': typeof ComercialClientesRoute
   '/comercial/configuracoes': typeof ComercialConfiguracoesRoute
+  '/comercial/dashboard': typeof ComercialDashboardRouteWithChildren
   '/comercial/propostas': typeof ComercialPropostasRoute
   '/comercial/validacoes': typeof ComercialValidacoesRoute
   '/compras/configuracoes': typeof ComprasConfiguracoesRoute
@@ -454,6 +495,11 @@ export interface FileRoutesByFullPath {
   '/api/public/opcoes-pagamento': typeof ApiPublicOpcoesPagamentoRoute
   '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
+  '/comercial/dashboard/indicadores': typeof ComercialDashboardIndicadoresRoute
+  '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
+  '/comercial/dashboard/relatorios': typeof ComercialDashboardRelatoriosRoute
+  '/comercial/dashboard/vendedores': typeof ComercialDashboardVendedoresRoute
+  '/comercial/dashboard/': typeof ComercialDashboardIndexRoute
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
   '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
   '/api/public/contaazul/cron': typeof ApiPublicContaazulCronRoute
@@ -511,6 +557,11 @@ export interface FileRoutesByTo {
   '/api/public/opcoes-pagamento': typeof ApiPublicOpcoesPagamentoRoute
   '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
+  '/comercial/dashboard/indicadores': typeof ComercialDashboardIndicadoresRoute
+  '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
+  '/comercial/dashboard/relatorios': typeof ComercialDashboardRelatoriosRoute
+  '/comercial/dashboard/vendedores': typeof ComercialDashboardVendedoresRoute
+  '/comercial/dashboard': typeof ComercialDashboardIndexRoute
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
   '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
   '/api/public/contaazul/cron': typeof ApiPublicContaazulCronRoute
@@ -542,6 +593,7 @@ export interface FileRoutesById {
   '/comercial/catalogo': typeof ComercialCatalogoRoute
   '/comercial/clientes': typeof ComercialClientesRoute
   '/comercial/configuracoes': typeof ComercialConfiguracoesRoute
+  '/comercial/dashboard': typeof ComercialDashboardRouteWithChildren
   '/comercial/propostas': typeof ComercialPropostasRoute
   '/comercial/validacoes': typeof ComercialValidacoesRoute
   '/compras/configuracoes': typeof ComprasConfiguracoesRoute
@@ -577,6 +629,11 @@ export interface FileRoutesById {
   '/api/public/opcoes-pagamento': typeof ApiPublicOpcoesPagamentoRoute
   '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
+  '/comercial/dashboard/indicadores': typeof ComercialDashboardIndicadoresRoute
+  '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
+  '/comercial/dashboard/relatorios': typeof ComercialDashboardRelatoriosRoute
+  '/comercial/dashboard/vendedores': typeof ComercialDashboardVendedoresRoute
+  '/comercial/dashboard/': typeof ComercialDashboardIndexRoute
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
   '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
   '/api/public/contaazul/cron': typeof ApiPublicContaazulCronRoute
@@ -609,6 +666,7 @@ export interface FileRouteTypes {
     | '/comercial/catalogo'
     | '/comercial/clientes'
     | '/comercial/configuracoes'
+    | '/comercial/dashboard'
     | '/comercial/propostas'
     | '/comercial/validacoes'
     | '/compras/configuracoes'
@@ -644,6 +702,11 @@ export interface FileRouteTypes {
     | '/api/public/opcoes-pagamento'
     | '/api/public/send-push'
     | '/api/public/solicitar'
+    | '/comercial/dashboard/indicadores'
+    | '/comercial/dashboard/painel'
+    | '/comercial/dashboard/relatorios'
+    | '/comercial/dashboard/vendedores'
+    | '/comercial/dashboard/'
     | '/api/contaazul/oauth/callback'
     | '/api/contaazul/oauth/prepare'
     | '/api/public/contaazul/cron'
@@ -701,6 +764,11 @@ export interface FileRouteTypes {
     | '/api/public/opcoes-pagamento'
     | '/api/public/send-push'
     | '/api/public/solicitar'
+    | '/comercial/dashboard/indicadores'
+    | '/comercial/dashboard/painel'
+    | '/comercial/dashboard/relatorios'
+    | '/comercial/dashboard/vendedores'
+    | '/comercial/dashboard'
     | '/api/contaazul/oauth/callback'
     | '/api/contaazul/oauth/prepare'
     | '/api/public/contaazul/cron'
@@ -731,6 +799,7 @@ export interface FileRouteTypes {
     | '/comercial/catalogo'
     | '/comercial/clientes'
     | '/comercial/configuracoes'
+    | '/comercial/dashboard'
     | '/comercial/propostas'
     | '/comercial/validacoes'
     | '/compras/configuracoes'
@@ -766,6 +835,11 @@ export interface FileRouteTypes {
     | '/api/public/opcoes-pagamento'
     | '/api/public/send-push'
     | '/api/public/solicitar'
+    | '/comercial/dashboard/indicadores'
+    | '/comercial/dashboard/painel'
+    | '/comercial/dashboard/relatorios'
+    | '/comercial/dashboard/vendedores'
+    | '/comercial/dashboard/'
     | '/api/contaazul/oauth/callback'
     | '/api/contaazul/oauth/prepare'
     | '/api/public/contaazul/cron'
@@ -1131,6 +1205,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ComercialPropostasRouteImport
       parentRoute: typeof ComercialRoute
     }
+    '/comercial/dashboard': {
+      id: '/comercial/dashboard'
+      path: '/dashboard'
+      fullPath: '/comercial/dashboard'
+      preLoaderRoute: typeof ComercialDashboardRouteImport
+      parentRoute: typeof ComercialRoute
+    }
     '/comercial/configuracoes': {
       id: '/comercial/configuracoes'
       path: '/configuracoes'
@@ -1172,6 +1253,41 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/dados'
       preLoaderRoute: typeof AdminDadosRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/comercial/dashboard/': {
+      id: '/comercial/dashboard/'
+      path: '/'
+      fullPath: '/comercial/dashboard/'
+      preLoaderRoute: typeof ComercialDashboardIndexRouteImport
+      parentRoute: typeof ComercialDashboardRoute
+    }
+    '/comercial/dashboard/vendedores': {
+      id: '/comercial/dashboard/vendedores'
+      path: '/vendedores'
+      fullPath: '/comercial/dashboard/vendedores'
+      preLoaderRoute: typeof ComercialDashboardVendedoresRouteImport
+      parentRoute: typeof ComercialDashboardRoute
+    }
+    '/comercial/dashboard/relatorios': {
+      id: '/comercial/dashboard/relatorios'
+      path: '/relatorios'
+      fullPath: '/comercial/dashboard/relatorios'
+      preLoaderRoute: typeof ComercialDashboardRelatoriosRouteImport
+      parentRoute: typeof ComercialDashboardRoute
+    }
+    '/comercial/dashboard/painel': {
+      id: '/comercial/dashboard/painel'
+      path: '/painel'
+      fullPath: '/comercial/dashboard/painel'
+      preLoaderRoute: typeof ComercialDashboardPainelRouteImport
+      parentRoute: typeof ComercialDashboardRoute
+    }
+    '/comercial/dashboard/indicadores': {
+      id: '/comercial/dashboard/indicadores'
+      path: '/indicadores'
+      fullPath: '/comercial/dashboard/indicadores'
+      preLoaderRoute: typeof ComercialDashboardIndicadoresRouteImport
+      parentRoute: typeof ComercialDashboardRoute
     }
     '/api/public/solicitar': {
       id: '/api/public/solicitar'
@@ -1269,10 +1385,30 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface ComercialDashboardRouteChildren {
+  ComercialDashboardIndicadoresRoute: typeof ComercialDashboardIndicadoresRoute
+  ComercialDashboardPainelRoute: typeof ComercialDashboardPainelRoute
+  ComercialDashboardRelatoriosRoute: typeof ComercialDashboardRelatoriosRoute
+  ComercialDashboardVendedoresRoute: typeof ComercialDashboardVendedoresRoute
+  ComercialDashboardIndexRoute: typeof ComercialDashboardIndexRoute
+}
+
+const ComercialDashboardRouteChildren: ComercialDashboardRouteChildren = {
+  ComercialDashboardIndicadoresRoute: ComercialDashboardIndicadoresRoute,
+  ComercialDashboardPainelRoute: ComercialDashboardPainelRoute,
+  ComercialDashboardRelatoriosRoute: ComercialDashboardRelatoriosRoute,
+  ComercialDashboardVendedoresRoute: ComercialDashboardVendedoresRoute,
+  ComercialDashboardIndexRoute: ComercialDashboardIndexRoute,
+}
+
+const ComercialDashboardRouteWithChildren =
+  ComercialDashboardRoute._addFileChildren(ComercialDashboardRouteChildren)
+
 interface ComercialRouteChildren {
   ComercialCatalogoRoute: typeof ComercialCatalogoRoute
   ComercialClientesRoute: typeof ComercialClientesRoute
   ComercialConfiguracoesRoute: typeof ComercialConfiguracoesRoute
+  ComercialDashboardRoute: typeof ComercialDashboardRouteWithChildren
   ComercialPropostasRoute: typeof ComercialPropostasRoute
   ComercialValidacoesRoute: typeof ComercialValidacoesRoute
   ComercialIndexRoute: typeof ComercialIndexRoute
@@ -1282,6 +1418,7 @@ const ComercialRouteChildren: ComercialRouteChildren = {
   ComercialCatalogoRoute: ComercialCatalogoRoute,
   ComercialClientesRoute: ComercialClientesRoute,
   ComercialConfiguracoesRoute: ComercialConfiguracoesRoute,
+  ComercialDashboardRoute: ComercialDashboardRouteWithChildren,
   ComercialPropostasRoute: ComercialPropostasRoute,
   ComercialValidacoesRoute: ComercialValidacoesRoute,
   ComercialIndexRoute: ComercialIndexRoute,
