@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "DRE estrutura: leitura autenticada" ON public.ca_dre_estrutura;
