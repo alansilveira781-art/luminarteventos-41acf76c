@@ -110,7 +110,16 @@ async function upsertRows(rows: VendaRow[], source: "dropbox" | "upload"): Promi
       }
     }
 
-    const dbRows = rows.map((r) => vendaRowToDb(r, source));
+    const rawDbRows = rows.map((r) => vendaRowToDb(r, source));
+
+    // Dedupe by upsert key (PG ON CONFLICT cannot affect the same row twice
+    // in a single VALUES list). Keep the LAST occurrence.
+    const byKey = new Map<string, ReturnType<typeof vendaRowToDb>>();
+    for (const r of rawDbRows) {
+      const k = `${(r.nome_evento ?? "").toLowerCase()}|${r.data_evento ?? "1900-01-01"}|${r.data_registro ?? "1900-01-01"}`;
+      byKey.set(k, r);
+    }
+    const dbRows = Array.from(byKey.values());
 
     // Count inserts vs updates
     for (const r of dbRows) {
@@ -120,7 +129,7 @@ async function upsertRows(rows: VendaRow[], source: "dropbox" | "upload"): Promi
     }
 
     // Upsert in chunks
-    const CHUNK = 500;
+    const CHUNK = 200;
     for (let i = 0; i < dbRows.length; i += CHUNK) {
       const chunk = dbRows.slice(i, i + CHUNK);
       const { error } = await supabaseAdmin
