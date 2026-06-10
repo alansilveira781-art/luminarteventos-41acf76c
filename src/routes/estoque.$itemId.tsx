@@ -97,7 +97,25 @@ function ItemHistorico() {
       <div className="grid md:grid-cols-3 gap-4 mb-6">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-xs uppercase text-muted-foreground">Quantidade atual</CardTitle></CardHeader>
-          <CardContent className="text-3xl font-semibold tabular-nums">{Number(item.quantidade_atual)} {item.unidade}</CardContent>
+          <CardContent className="text-3xl font-semibold tabular-nums flex items-center justify-between gap-2">
+            <span>{Number(item.quantidade_atual)} {item.unidade}</span>
+            {isAdmin && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                title="Recalcular o saldo a partir do histórico de movimentações"
+                onClick={() => {
+                  if (confirm("Recalcular o saldo deste item a partir de todo o histórico de movimentações? O valor atual será substituído.")) {
+                    reconciliar.mutate();
+                  }
+                }}
+                disabled={reconciliar.isPending}
+              >
+                <RefreshCw className={`h-4 w-4 ${reconciliar.isPending ? "animate-spin" : ""}`} />
+              </Button>
+            )}
+          </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-xs uppercase text-muted-foreground">Mínima</CardTitle></CardHeader>
