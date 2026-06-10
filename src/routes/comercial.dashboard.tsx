@@ -25,10 +25,17 @@ type Ctx = {
 };
 
 const DashboardCtx = createContext<Ctx | null>(null);
-export function useDashboard() {
+export function useDashboard(): Ctx {
   const c = useContext(DashboardCtx);
-  if (!c) throw new Error("useDashboard fora do provider");
-  return c;
+  if (c) return c;
+  return {
+    rows: [],
+    filtered: [],
+    previous: [],
+    filtros: filtrosIniciais,
+    setFiltros: () => {},
+    fetchedAt: "",
+  };
 }
 
 const TABS = [
