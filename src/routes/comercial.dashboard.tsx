@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 // FiltrosBar agora é renderizada por cada aba (filtros específicos por contexto).
@@ -59,6 +59,23 @@ function DashboardLayout() {
   });
 
   const rows = data?.rows ?? [];
+
+  // Se o ano atualmente selecionado não tem registros, cair no último ano com dados.
+  useEffect(() => {
+    if (!rows.length) return;
+    if (filtros.ano === "Todos") return;
+    const anosComDados = new Set<number>();
+    for (const r of rows) {
+      const a = r.anoEvento ?? r.ano;
+      if (a) anosComDados.add(a);
+    }
+    if (!anosComDados.has(filtros.ano as number)) {
+      const ultimo = Math.max(...anosComDados);
+      if (Number.isFinite(ultimo)) setFiltros({ ...filtros, ano: ultimo });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows.length]);
+
   const filtered = useMemo(() => applyFilters(rows, filtros), [rows, filtros]);
   const previous = useMemo(() => previousPeriod(rows, filtros), [rows, filtros]);
 
