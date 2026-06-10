@@ -62,6 +62,7 @@ import { Route as ComercialCatalogoRouteImport } from './routes/comercial.catalo
 import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 import { Route as AdminModulosRouteImport } from './routes/admin.modulos'
 import { Route as AdminDadosRouteImport } from './routes/admin.dados'
+import { Route as ComercialDashboardRelatoriosRouteImport } from './routes/comercial.dashboard.relatorios'
 import { Route as ComercialDashboardPainelRouteImport } from './routes/comercial.dashboard.painel'
 import { Route as ApiPublicSolicitarRouteImport } from './routes/api/public/solicitar'
 import { Route as ApiPublicSendPushRouteImport } from './routes/api/public/send-push'
@@ -340,6 +341,12 @@ const AdminDadosRoute = AdminDadosRouteImport.update({
   path: '/dados',
   getParentRoute: () => AdminRoute,
 } as any)
+const ComercialDashboardRelatoriosRoute =
+  ComercialDashboardRelatoriosRouteImport.update({
+    id: '/relatorios',
+    path: '/relatorios',
+    getParentRoute: () => ComercialDashboardRoute,
+  } as any)
 const ComercialDashboardPainelRoute =
   ComercialDashboardPainelRouteImport.update({
     id: '/painel',
@@ -469,6 +476,7 @@ export interface FileRoutesByFullPath {
   '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
   '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
+  '/comercial/dashboard/relatorios': typeof ComercialDashboardRelatoriosRoute
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
   '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
   '/api/public/contaazul/cron': typeof ApiPublicContaazulCronRoute
@@ -528,6 +536,7 @@ export interface FileRoutesByTo {
   '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
   '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
+  '/comercial/dashboard/relatorios': typeof ComercialDashboardRelatoriosRoute
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
   '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
   '/api/public/contaazul/cron': typeof ApiPublicContaazulCronRoute
@@ -596,6 +605,7 @@ export interface FileRoutesById {
   '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
   '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
+  '/comercial/dashboard/relatorios': typeof ComercialDashboardRelatoriosRoute
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
   '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
   '/api/public/contaazul/cron': typeof ApiPublicContaazulCronRoute
@@ -665,6 +675,7 @@ export interface FileRouteTypes {
     | '/api/public/send-push'
     | '/api/public/solicitar'
     | '/comercial/dashboard/painel'
+    | '/comercial/dashboard/relatorios'
     | '/api/contaazul/oauth/callback'
     | '/api/contaazul/oauth/prepare'
     | '/api/public/contaazul/cron'
@@ -724,6 +735,7 @@ export interface FileRouteTypes {
     | '/api/public/send-push'
     | '/api/public/solicitar'
     | '/comercial/dashboard/painel'
+    | '/comercial/dashboard/relatorios'
     | '/api/contaazul/oauth/callback'
     | '/api/contaazul/oauth/prepare'
     | '/api/public/contaazul/cron'
@@ -791,6 +803,7 @@ export interface FileRouteTypes {
     | '/api/public/send-push'
     | '/api/public/solicitar'
     | '/comercial/dashboard/painel'
+    | '/comercial/dashboard/relatorios'
     | '/api/contaazul/oauth/callback'
     | '/api/contaazul/oauth/prepare'
     | '/api/public/contaazul/cron'
@@ -1205,6 +1218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDadosRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/comercial/dashboard/relatorios': {
+      id: '/comercial/dashboard/relatorios'
+      path: '/relatorios'
+      fullPath: '/comercial/dashboard/relatorios'
+      preLoaderRoute: typeof ComercialDashboardRelatoriosRouteImport
+      parentRoute: typeof ComercialDashboardRoute
+    }
     '/comercial/dashboard/painel': {
       id: '/comercial/dashboard/painel'
       path: '/painel'
@@ -1310,10 +1330,12 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface ComercialDashboardRouteChildren {
   ComercialDashboardPainelRoute: typeof ComercialDashboardPainelRoute
+  ComercialDashboardRelatoriosRoute: typeof ComercialDashboardRelatoriosRoute
 }
 
 const ComercialDashboardRouteChildren: ComercialDashboardRouteChildren = {
   ComercialDashboardPainelRoute: ComercialDashboardPainelRoute,
+  ComercialDashboardRelatoriosRoute: ComercialDashboardRelatoriosRoute,
 }
 
 const ComercialDashboardRouteWithChildren =
