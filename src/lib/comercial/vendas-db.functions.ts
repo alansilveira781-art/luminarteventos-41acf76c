@@ -147,14 +147,18 @@ async function upsertRows(rows: VendaRow[], source: "dropbox" | "upload"): Promi
 
     return { ok: true, rows_total: rows.length, rows_inserted: inserted, rows_updated: updated };
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Falha ao sincronizar";
+    let msg = "Falha ao sincronizar";
+    if (e instanceof Error) msg = e.message;
+    else if (e && typeof e === "object") {
+      try { msg = JSON.stringify(e); } catch { msg = String(e); }
+    } else if (e) msg = String(e);
     if (logId) {
       await supabaseAdmin
         .from("comercial_vendas_sync")
         .update({
           finished_at: new Date().toISOString(),
           status: "error",
-          error: msg,
+          error: msg.slice(0, 1000),
         })
         .eq("id", logId);
     }
