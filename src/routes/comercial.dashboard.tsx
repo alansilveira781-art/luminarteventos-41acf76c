@@ -2,9 +2,10 @@ import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-r
 import { createContext, useContext, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
+// FiltrosBar agora é renderizada por cada aba (filtros específicos por contexto).
 import { PageHeader } from "@/components/PageHeader";
 import { listVendasDropbox, type VendaRow } from "@/lib/comercial/vendas.functions";
-import { FiltrosBar } from "@/components/comercial/dashboard/FiltrosBar";
+
 import { applyFilters, filtrosIniciais, previousPeriod, type Filtros } from "@/lib/comercial/vendas-metrics";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
@@ -43,6 +44,7 @@ const TABS = [
   { to: "/comercial/dashboard/relatorios", label: "Relatórios de Vendas" },
   { to: "/comercial/dashboard/vendedores", label: "Vendedores" },
   { to: "/comercial/dashboard/indicadores", label: "Indicadores" },
+  { to: "/comercial/dashboard/propostas", label: "Propostas" },
 ] as const;
 
 function DashboardLayout() {
@@ -59,8 +61,6 @@ function DashboardLayout() {
   const rows = data?.rows ?? [];
   const filtered = useMemo(() => applyFilters(rows, filtros), [rows, filtros]);
   const previous = useMemo(() => previousPeriod(rows, filtros), [rows, filtros]);
-
-  const showTrimestre = pathname.includes("/indicadores");
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
@@ -99,10 +99,6 @@ function DashboardLayout() {
           );
         })}
       </div>
-
-      <Card className="p-4">
-        <FiltrosBar rows={rows} filtros={filtros} onChange={setFiltros} showTrimestre={showTrimestre} />
-      </Card>
 
       {isLoading && (
         <Card className="p-8 flex items-center justify-center text-muted-foreground gap-2">
