@@ -59,18 +59,19 @@ function DashboardLayout() {
     <div className="p-4 sm:p-6 space-y-4">
       <PageHeader
         title="Dashboard Comercial"
-        subtitle="Dados carregados do CONTROLE DE VENDAS (Dropbox)"
-      >
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => qc.invalidateQueries({ queryKey: ["comercial-vendas-dropbox"] })}
-          disabled={isLoading}
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-          Atualizar
-        </Button>
-      </PageHeader>
+        description="Dados carregados do CONTROLE DE VENDAS (Dropbox)"
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => qc.invalidateQueries({ queryKey: ["comercial-vendas-dropbox"] })}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+            Atualizar
+          </Button>
+        }
+      />
 
       {/* Abas */}
       <div className="flex flex-wrap gap-1 border-b border-border">
