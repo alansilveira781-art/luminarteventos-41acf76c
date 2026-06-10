@@ -76,11 +76,11 @@ function pct(curr: number, prev: number): number {
 
 export function kpis(curr: VendaRow[], prev: VendaRow[]): Kpis {
   const v = sumValor(curr);
-  const q = sumQtde(curr);
+  const q = curr.length;
   const d = sumDesc(curr);
   const t = q ? v / q : 0;
   const vp = sumValor(prev);
-  const qp = sumQtde(prev);
+  const qp = prev.length;
   const dp = sumDesc(prev);
   const tp = qp ? vp / qp : 0;
   return {
