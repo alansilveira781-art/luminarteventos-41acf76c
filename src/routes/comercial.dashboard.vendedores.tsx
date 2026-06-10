@@ -7,8 +7,10 @@ import {
 } from "recharts";
 import { DollarSign, BarChart2, Target } from "lucide-react";
 import { KpiCard } from "@/components/comercial/dashboard/KpiCard";
+import { FiltrosBar } from "@/components/comercial/dashboard/FiltrosBar";
 import { useDashboard } from "./comercial.dashboard";
 import {
+  applyFilters,
   evolucaoTrimestre,
   kpis,
   rankingCerimonial,
@@ -32,13 +34,17 @@ function Vendedores() {
   const cerimonial = useMemo(() => rankingCerimonial(filtered).slice(0, 8), [filtered]);
   const decorador = useMemo(() => rankingDecorador(filtered).slice(0, 8), [filtered]);
 
-  const consultoresList = useMemo(
-    () => (uniqueValues(rows, (r) => r.consultor) as string[]).filter(Boolean).sort(),
-    [rows],
-  );
+  // Consultores disponíveis no recorte atual (ignorando o filtro de consultor)
+  const consultoresList = useMemo(() => {
+    const semConsultor = applyFilters(rows, { ...filtros, consultor: "Todos" });
+    return (uniqueValues(semConsultor, (r) => r.consultor) as string[]).filter(Boolean).sort();
+  }, [rows, filtros]);
 
   return (
     <div className="space-y-4">
+      <Card className="p-4">
+        <FiltrosBar rows={rows} filtros={filtros} onChange={setFiltros} fields={["empresa", "ano", "mes"]} />
+      </Card>
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-3 lg:grid-cols-4">
         <KpiCard titulo="Vendas Totais" valor={k.vendasTotais} Icon={DollarSign} anterior={k.vendasAnterior} pct={k.pctVendas} />
         <KpiCard titulo="Quantidade de Vendas" valor={k.quantidade} Icon={BarChart2} isMoney={false} anterior={k.quantidadeAnterior} pct={k.pctQuantidade} />

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import {
   CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
+import { FiltrosBar } from "@/components/comercial/dashboard/FiltrosBar";
 import { useDashboard } from "./comercial.dashboard";
 import { compararAnos } from "@/lib/comercial/vendas-metrics";
 
@@ -20,7 +21,7 @@ const brlShort = (v: number) =>
 const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
 
 function Indicadores() {
-  const { rows, filtros } = useDashboard();
+  const { rows, filtros, setFiltros } = useDashboard();
   const yearNow = new Date().getFullYear();
   const [anoA, setAnoA] = useState<number>(yearNow);
   const [anoB, setAnoB] = useState<number>(yearNow - 1);
@@ -38,6 +39,9 @@ function Indicadores() {
 
   return (
     <div className="space-y-4">
+      <Card className="p-4">
+        <FiltrosBar rows={rows} filtros={filtros} onChange={setFiltros} fields={["empresa", "trimestre", "consultor", "classificacao"]} />
+      </Card>
       <Card className="p-4 flex flex-wrap items-end gap-4">
         <div className="text-sm font-medium mr-4">Digite nos quadrantes ao lado:</div>
         <div className="space-y-1">
