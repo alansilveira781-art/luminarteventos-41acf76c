@@ -509,6 +509,159 @@ export type Database = {
         }
         Relationships: []
       }
+      comercial_vendas: {
+        Row: {
+          ano: number | null
+          ano_evento: number | null
+          cerimonial: string | null
+          cidade: string | null
+          classificacao: string | null
+          comissao_consultor: number | null
+          comissao_gestor: number | null
+          consultor: string | null
+          created_at: string
+          data_evento: string | null
+          data_registro: string | null
+          decorador: string | null
+          desconto: number | null
+          empresa: string | null
+          estado: string | null
+          gestor: string | null
+          id: string
+          local: string | null
+          mes: string | null
+          mes_evento: string | null
+          nome_evento: string | null
+          percentual: number | null
+          quantidade: number | null
+          row_hash: string | null
+          salao: string | null
+          semana: number | null
+          source: string
+          tipo: string | null
+          tipo_comissao: string | null
+          tipo_evento: string | null
+          trimestre_evento: number | null
+          updated_at: string
+          valor_bv: number | null
+          valor_final: number | null
+          valor_proposta: number | null
+        }
+        Insert: {
+          ano?: number | null
+          ano_evento?: number | null
+          cerimonial?: string | null
+          cidade?: string | null
+          classificacao?: string | null
+          comissao_consultor?: number | null
+          comissao_gestor?: number | null
+          consultor?: string | null
+          created_at?: string
+          data_evento?: string | null
+          data_registro?: string | null
+          decorador?: string | null
+          desconto?: number | null
+          empresa?: string | null
+          estado?: string | null
+          gestor?: string | null
+          id?: string
+          local?: string | null
+          mes?: string | null
+          mes_evento?: string | null
+          nome_evento?: string | null
+          percentual?: number | null
+          quantidade?: number | null
+          row_hash?: string | null
+          salao?: string | null
+          semana?: number | null
+          source?: string
+          tipo?: string | null
+          tipo_comissao?: string | null
+          tipo_evento?: string | null
+          trimestre_evento?: number | null
+          updated_at?: string
+          valor_bv?: number | null
+          valor_final?: number | null
+          valor_proposta?: number | null
+        }
+        Update: {
+          ano?: number | null
+          ano_evento?: number | null
+          cerimonial?: string | null
+          cidade?: string | null
+          classificacao?: string | null
+          comissao_consultor?: number | null
+          comissao_gestor?: number | null
+          consultor?: string | null
+          created_at?: string
+          data_evento?: string | null
+          data_registro?: string | null
+          decorador?: string | null
+          desconto?: number | null
+          empresa?: string | null
+          estado?: string | null
+          gestor?: string | null
+          id?: string
+          local?: string | null
+          mes?: string | null
+          mes_evento?: string | null
+          nome_evento?: string | null
+          percentual?: number | null
+          quantidade?: number | null
+          row_hash?: string | null
+          salao?: string | null
+          semana?: number | null
+          source?: string
+          tipo?: string | null
+          tipo_comissao?: string | null
+          tipo_evento?: string | null
+          trimestre_evento?: number | null
+          updated_at?: string
+          valor_bv?: number | null
+          valor_final?: number | null
+          valor_proposta?: number | null
+        }
+        Relationships: []
+      }
+      comercial_vendas_sync: {
+        Row: {
+          created_by: string | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          rows_inserted: number | null
+          rows_total: number | null
+          rows_updated: number | null
+          source: string
+          started_at: string
+          status: string
+        }
+        Insert: {
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          rows_inserted?: number | null
+          rows_total?: number | null
+          rows_updated?: number | null
+          source: string
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          rows_inserted?: number | null
+          rows_total?: number | null
+          rows_updated?: number | null
+          source?: string
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       compra_anexos: {
         Row: {
           compra_id: string
