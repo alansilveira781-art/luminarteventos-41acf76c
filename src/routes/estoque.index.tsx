@@ -18,7 +18,7 @@ import { ImportDialog } from "@/components/ImportDialog";
 import { ConferenciaEgestorDialog } from "@/components/estoque/ConferenciaEgestorDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ChevronDown, FileCheck2 } from "lucide-react";
-import { normalize } from "@/lib/utils";
+import { normalize, matchTokens } from "@/lib/utils";
 import { ITEM_TEMPLATE } from "@/lib/import-utils";
 import { useBulkSelection } from "@/hooks/useBulkSelection";
 import { BulkActionsBar } from "@/components/BulkActionsBar";

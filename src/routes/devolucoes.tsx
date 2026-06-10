@@ -15,7 +15,7 @@ import { Plus, Search, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { normalize } from "@/lib/utils";
+import { normalize, matchTokens } from "@/lib/utils";
 import { format } from "date-fns";
 import { SortableTh, useSort } from "@/components/SortableTh";
 import { useBulkSelection } from "@/hooks/useBulkSelection";
@@ -155,13 +155,13 @@ function DevolucoesPage() {
       if (k === "quantidade") return Number(m.quantidade);
       return m[k];
     });
-  }, [devolucoes, sBusca, sort]);
+  }, [devolucoes, qd, sort]);
 
   const filteredPeriodo = useMemo(
     () => filterByPeriodo(filtered, periodo, (m: any) => m.data_movimento),
     [filtered, periodo],
   );
-  useEffect(() => { setPage(1); }, [sBusca, sort, periodo]);
+  useEffect(() => { setPage(1); }, [qd, sort, periodo]);
   const pageCount = Math.max(1, Math.ceil(filteredPeriodo.length / PAGE_SIZE));
   const pageItems = useMemo(
     () => filteredPeriodo.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
