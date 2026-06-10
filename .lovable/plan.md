@@ -1,29 +1,46 @@
-## Problema
+## Contexto
 
-Na aba **Painel de Vendas**, os cards estão calculados diferente do que a imagem de referência (Aba 1) especifica:
+A base de dados e o pipeline já estão prontos do trabalho anterior:
 
-| Card | Imagem (correto) | Hoje no código |
-|---|---|---|
-| Vendas Totais | Σ `valor_final` | ✅ ok |
-| **Qtde de Vendas** | **contagem de vendas** (nº de linhas) | ❌ soma da coluna `quantidade` da planilha (nº de convidados/itens) |
-| Desconto | Σ `desconto` | ✅ ok |
-| **Ticket Médio** | **total ÷ qtde de vendas (contagem)** | ❌ total ÷ soma de `quantidade` |
+- Tabela `comercial_vendas` com 35 colunas mapeando a aba **"Base de Dados"** da planilha (Data de Registro, Ano, Mês, Tipo, Quantidade, Nome do Evento, Local, Estado, Cidade, Salão, Tipo de Evento, Classificação, Data do Evento, Consultor, Gestor, Cerimonial, Decorador, Empresa, Valor da Proposta, Desconto, Valor Final, Valor BV, Comissão Gestor/Consultor, etc.). Já tem 972 linhas (mesma planilha que veio agora).
+- Tabela auxiliar `comercial_vendas_sync` com histórico de cargas.
+- Server functions: `listVendasDb`, `syncVendasFromDropbox` (botão), `syncVendasFromUpload` (upload .xlsx), `getLastSync`.
+- Cron diário 03:00 chamando o endpoint público de sync.
 
-A mesma fórmula errada está sendo aplicada ao "Período Anterior" e ao "% LY", então os comparativos também ficam incorretos.
+**Não precisa recriar tabela nem reimportar.** Só falta a tela e o item de menu.
 
-## Mudança
+## O que será feito
 
-Ajustar `src/lib/comercial/vendas-metrics.ts`:
+### 1. Item de menu "Vendas" (admin-only) na sidebar do Comercial
+Em `src/components/AppSidebar.tsx`, adicionar entrada:
+```
+{ title: "Vendas", url: "/comercial/vendas", icon: DollarSign,
+  group: "Comercial", module: "comercial", moduleAdminOnly: "comercial" }
+```
+A flag `moduleAdminOnly: "comercial"` faz o item aparecer só para admin global ou admin do módulo Comercial (mesma regra já usada em "Validações" e "Configurações").
 
-- `quantidade` no `kpis()` passa a ser `rows.length` (contagem de vendas), em vez de `sumQtde(rows)`.
-- `ticketMedio` passa a ser `vendasTotais / rows.length`.
-- Aplicar a mesma mudança ao período anterior (`quantidadeAnterior`, `ticketAnterior`).
-- Manter `sumQtde` disponível caso outras telas usem (Relatórios/Vendedores), sem alterar essas abas neste passo.
+### 2. Rota `/comercial/vendas` — nova tela de listagem
+Arquivo `src/routes/comercial.vendas.tsx`:
 
-Nenhuma mudança de schema, UI ou demais abas. Só recálculo dos KPIs do topo (que também são reusados na Aba 2).
+- **Cabeçalho** com título "Vendas" + indicador de última sincronização (`getLastSync`).
+- **Ações** (mesmas do dashboard, reaproveitando as server fns existentes):
+  - Botão **Sincronizar agora** (Dropbox)
+  - Botão **Importar .xlsx** (upload manual)
+  - Botão **Atualizar**
+- **Filtros**: Empresa · Ano · Mês · Consultor · Classificação (selects derivados dos próprios dados).
+- **Busca** por nome do evento / local / cidade.
+- **Tabela paginada** (50/página) com colunas:
+  Data Evento · Nome do Evento · Empresa · Local/Cidade · Consultor · Cerimonial · Decorador · Classificação · Qtde · Valor Final · Desconto.
+- **Rodapé**: total de registros filtrados + soma de Valor Final + soma de Desconto.
+- **Exportar CSV** dos registros filtrados (client-side).
+- Loading/erro/empty states consistentes com o Dashboard.
 
-## Validação
+A tela só lê de `comercial_vendas` via `listVendasDb` (já paginada server-side). Não há edição manual de linhas — a fonte da verdade é a planilha do Dropbox / upload.
 
-Após o ajuste, conferir no preview:
-- "Qtde de Vendas" mostra um número inteiro próximo do total de eventos no período (não milhares de convidados).
-- "Ticket Médio" = Vendas Totais ÷ Qtde de Vendas exibida no card ao lado.
+### 3. Permissão na rota (defesa em profundidade)
+Além de esconder no menu, o componente da rota verifica `useAuth()` e renderiza um aviso "Acesso restrito a administradores" caso `!isAdmin && !modulos.find(m => m.slug==='comercial' && m.is_admin)`. RLS da tabela continua como está (já restrito a usuários autenticados).
+
+## Fora do escopo (mantido como está)
+- Schema da tabela `comercial_vendas` — sem alterações.
+- Reimportação dos dados — os 972 registros já estão lá; um clique em **Sincronizar agora** atualiza.
+- Dashboard Comercial — segue funcionando lendo da mesma tabela.
