@@ -64,7 +64,13 @@ export async function parseVendasXlsx(buf: ArrayBuffer): Promise<VendaRow[]> {
   const wb = XLSX.read(new Uint8Array(buf), { type: "array", cellDates: true });
   const sheet = wb.Sheets["Base de Dados"];
   if (!sheet) throw new Error("Aba 'Base de Dados' não encontrada na planilha");
-  const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: null });
+  const jsonRaw = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: null });
+  // Normalize keys: some headers contain leading/trailing whitespace in the source file
+  const json = jsonRaw.map((row) => {
+    const out: Record<string, unknown> = {};
+    for (const k of Object.keys(row)) out[k.trim()] = row[k];
+    return out;
+  });
   const rows: VendaRow[] = [];
   for (const r of json) {
     const dataRegistro = toIsoDate(r["Data de Registro"]);
