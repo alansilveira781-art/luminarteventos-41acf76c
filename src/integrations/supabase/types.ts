@@ -519,6 +519,8 @@ export type Database = {
           comissao_consultor: number | null
           comissao_gestor: number | null
           consultor: string | null
+          cont_cerimonial: number | null
+          cont_decorador: number | null
           created_at: string
           data_evento: string | null
           data_registro: string | null
@@ -538,6 +540,7 @@ export type Database = {
           salao: string | null
           semana: number | null
           source: string
+          status_bv_rt: string | null
           tipo: string | null
           tipo_comissao: string | null
           tipo_evento: string | null
@@ -556,6 +559,8 @@ export type Database = {
           comissao_consultor?: number | null
           comissao_gestor?: number | null
           consultor?: string | null
+          cont_cerimonial?: number | null
+          cont_decorador?: number | null
           created_at?: string
           data_evento?: string | null
           data_registro?: string | null
@@ -575,6 +580,7 @@ export type Database = {
           salao?: string | null
           semana?: number | null
           source?: string
+          status_bv_rt?: string | null
           tipo?: string | null
           tipo_comissao?: string | null
           tipo_evento?: string | null
@@ -593,6 +599,8 @@ export type Database = {
           comissao_consultor?: number | null
           comissao_gestor?: number | null
           consultor?: string | null
+          cont_cerimonial?: number | null
+          cont_decorador?: number | null
           created_at?: string
           data_evento?: string | null
           data_registro?: string | null
@@ -612,6 +620,7 @@ export type Database = {
           salao?: string | null
           semana?: number | null
           source?: string
+          status_bv_rt?: string | null
           tipo?: string | null
           tipo_comissao?: string | null
           tipo_evento?: string | null
