@@ -62,6 +62,7 @@ import { Route as ComercialCatalogoRouteImport } from './routes/comercial.catalo
 import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 import { Route as AdminModulosRouteImport } from './routes/admin.modulos'
 import { Route as AdminDadosRouteImport } from './routes/admin.dados'
+import { Route as ComercialDashboardVendedoresRouteImport } from './routes/comercial.dashboard.vendedores'
 import { Route as ComercialDashboardRelatoriosRouteImport } from './routes/comercial.dashboard.relatorios'
 import { Route as ComercialDashboardPainelRouteImport } from './routes/comercial.dashboard.painel'
 import { Route as ApiPublicSolicitarRouteImport } from './routes/api/public/solicitar'
@@ -341,6 +342,12 @@ const AdminDadosRoute = AdminDadosRouteImport.update({
   path: '/dados',
   getParentRoute: () => AdminRoute,
 } as any)
+const ComercialDashboardVendedoresRoute =
+  ComercialDashboardVendedoresRouteImport.update({
+    id: '/vendedores',
+    path: '/vendedores',
+    getParentRoute: () => ComercialDashboardRoute,
+  } as any)
 const ComercialDashboardRelatoriosRoute =
   ComercialDashboardRelatoriosRouteImport.update({
     id: '/relatorios',
@@ -477,6 +484,7 @@ export interface FileRoutesByFullPath {
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
   '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
   '/comercial/dashboard/relatorios': typeof ComercialDashboardRelatoriosRoute
+  '/comercial/dashboard/vendedores': typeof ComercialDashboardVendedoresRoute
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
   '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
   '/api/public/contaazul/cron': typeof ApiPublicContaazulCronRoute
@@ -537,6 +545,7 @@ export interface FileRoutesByTo {
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
   '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
   '/comercial/dashboard/relatorios': typeof ComercialDashboardRelatoriosRoute
+  '/comercial/dashboard/vendedores': typeof ComercialDashboardVendedoresRoute
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
   '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
   '/api/public/contaazul/cron': typeof ApiPublicContaazulCronRoute
@@ -606,6 +615,7 @@ export interface FileRoutesById {
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
   '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
   '/comercial/dashboard/relatorios': typeof ComercialDashboardRelatoriosRoute
+  '/comercial/dashboard/vendedores': typeof ComercialDashboardVendedoresRoute
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
   '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
   '/api/public/contaazul/cron': typeof ApiPublicContaazulCronRoute
@@ -676,6 +686,7 @@ export interface FileRouteTypes {
     | '/api/public/solicitar'
     | '/comercial/dashboard/painel'
     | '/comercial/dashboard/relatorios'
+    | '/comercial/dashboard/vendedores'
     | '/api/contaazul/oauth/callback'
     | '/api/contaazul/oauth/prepare'
     | '/api/public/contaazul/cron'
@@ -736,6 +747,7 @@ export interface FileRouteTypes {
     | '/api/public/solicitar'
     | '/comercial/dashboard/painel'
     | '/comercial/dashboard/relatorios'
+    | '/comercial/dashboard/vendedores'
     | '/api/contaazul/oauth/callback'
     | '/api/contaazul/oauth/prepare'
     | '/api/public/contaazul/cron'
@@ -804,6 +816,7 @@ export interface FileRouteTypes {
     | '/api/public/solicitar'
     | '/comercial/dashboard/painel'
     | '/comercial/dashboard/relatorios'
+    | '/comercial/dashboard/vendedores'
     | '/api/contaazul/oauth/callback'
     | '/api/contaazul/oauth/prepare'
     | '/api/public/contaazul/cron'
@@ -1218,6 +1231,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDadosRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/comercial/dashboard/vendedores': {
+      id: '/comercial/dashboard/vendedores'
+      path: '/vendedores'
+      fullPath: '/comercial/dashboard/vendedores'
+      preLoaderRoute: typeof ComercialDashboardVendedoresRouteImport
+      parentRoute: typeof ComercialDashboardRoute
+    }
     '/comercial/dashboard/relatorios': {
       id: '/comercial/dashboard/relatorios'
       path: '/relatorios'
@@ -1331,11 +1351,13 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 interface ComercialDashboardRouteChildren {
   ComercialDashboardPainelRoute: typeof ComercialDashboardPainelRoute
   ComercialDashboardRelatoriosRoute: typeof ComercialDashboardRelatoriosRoute
+  ComercialDashboardVendedoresRoute: typeof ComercialDashboardVendedoresRoute
 }
 
 const ComercialDashboardRouteChildren: ComercialDashboardRouteChildren = {
   ComercialDashboardPainelRoute: ComercialDashboardPainelRoute,
   ComercialDashboardRelatoriosRoute: ComercialDashboardRelatoriosRoute,
+  ComercialDashboardVendedoresRoute: ComercialDashboardVendedoresRoute,
 }
 
 const ComercialDashboardRouteWithChildren =
