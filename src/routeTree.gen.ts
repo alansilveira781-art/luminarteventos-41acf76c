@@ -65,6 +65,7 @@ import { Route as AdminDadosRouteImport } from './routes/admin.dados'
 import { Route as ComercialDashboardIndexRouteImport } from './routes/comercial.dashboard.index'
 import { Route as ComercialDashboardVendedoresRouteImport } from './routes/comercial.dashboard.vendedores'
 import { Route as ComercialDashboardRelatoriosRouteImport } from './routes/comercial.dashboard.relatorios'
+import { Route as ComercialDashboardPropostasRouteImport } from './routes/comercial.dashboard.propostas'
 import { Route as ComercialDashboardPainelRouteImport } from './routes/comercial.dashboard.painel'
 import { Route as ComercialDashboardIndicadoresRouteImport } from './routes/comercial.dashboard.indicadores'
 import { Route as ApiPublicSolicitarRouteImport } from './routes/api/public/solicitar'
@@ -361,6 +362,12 @@ const ComercialDashboardRelatoriosRoute =
     path: '/relatorios',
     getParentRoute: () => ComercialDashboardRoute,
   } as any)
+const ComercialDashboardPropostasRoute =
+  ComercialDashboardPropostasRouteImport.update({
+    id: '/propostas',
+    path: '/propostas',
+    getParentRoute: () => ComercialDashboardRoute,
+  } as any)
 const ComercialDashboardPainelRoute =
   ComercialDashboardPainelRouteImport.update({
     id: '/painel',
@@ -497,6 +504,7 @@ export interface FileRoutesByFullPath {
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
   '/comercial/dashboard/indicadores': typeof ComercialDashboardIndicadoresRoute
   '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
+  '/comercial/dashboard/propostas': typeof ComercialDashboardPropostasRoute
   '/comercial/dashboard/relatorios': typeof ComercialDashboardRelatoriosRoute
   '/comercial/dashboard/vendedores': typeof ComercialDashboardVendedoresRoute
   '/comercial/dashboard/': typeof ComercialDashboardIndexRoute
@@ -559,6 +567,7 @@ export interface FileRoutesByTo {
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
   '/comercial/dashboard/indicadores': typeof ComercialDashboardIndicadoresRoute
   '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
+  '/comercial/dashboard/propostas': typeof ComercialDashboardPropostasRoute
   '/comercial/dashboard/relatorios': typeof ComercialDashboardRelatoriosRoute
   '/comercial/dashboard/vendedores': typeof ComercialDashboardVendedoresRoute
   '/comercial/dashboard': typeof ComercialDashboardIndexRoute
@@ -631,6 +640,7 @@ export interface FileRoutesById {
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
   '/comercial/dashboard/indicadores': typeof ComercialDashboardIndicadoresRoute
   '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
+  '/comercial/dashboard/propostas': typeof ComercialDashboardPropostasRoute
   '/comercial/dashboard/relatorios': typeof ComercialDashboardRelatoriosRoute
   '/comercial/dashboard/vendedores': typeof ComercialDashboardVendedoresRoute
   '/comercial/dashboard/': typeof ComercialDashboardIndexRoute
@@ -704,6 +714,7 @@ export interface FileRouteTypes {
     | '/api/public/solicitar'
     | '/comercial/dashboard/indicadores'
     | '/comercial/dashboard/painel'
+    | '/comercial/dashboard/propostas'
     | '/comercial/dashboard/relatorios'
     | '/comercial/dashboard/vendedores'
     | '/comercial/dashboard/'
@@ -766,6 +777,7 @@ export interface FileRouteTypes {
     | '/api/public/solicitar'
     | '/comercial/dashboard/indicadores'
     | '/comercial/dashboard/painel'
+    | '/comercial/dashboard/propostas'
     | '/comercial/dashboard/relatorios'
     | '/comercial/dashboard/vendedores'
     | '/comercial/dashboard'
@@ -837,6 +849,7 @@ export interface FileRouteTypes {
     | '/api/public/solicitar'
     | '/comercial/dashboard/indicadores'
     | '/comercial/dashboard/painel'
+    | '/comercial/dashboard/propostas'
     | '/comercial/dashboard/relatorios'
     | '/comercial/dashboard/vendedores'
     | '/comercial/dashboard/'
@@ -1275,6 +1288,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ComercialDashboardRelatoriosRouteImport
       parentRoute: typeof ComercialDashboardRoute
     }
+    '/comercial/dashboard/propostas': {
+      id: '/comercial/dashboard/propostas'
+      path: '/propostas'
+      fullPath: '/comercial/dashboard/propostas'
+      preLoaderRoute: typeof ComercialDashboardPropostasRouteImport
+      parentRoute: typeof ComercialDashboardRoute
+    }
     '/comercial/dashboard/painel': {
       id: '/comercial/dashboard/painel'
       path: '/painel'
@@ -1388,6 +1408,7 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 interface ComercialDashboardRouteChildren {
   ComercialDashboardIndicadoresRoute: typeof ComercialDashboardIndicadoresRoute
   ComercialDashboardPainelRoute: typeof ComercialDashboardPainelRoute
+  ComercialDashboardPropostasRoute: typeof ComercialDashboardPropostasRoute
   ComercialDashboardRelatoriosRoute: typeof ComercialDashboardRelatoriosRoute
   ComercialDashboardVendedoresRoute: typeof ComercialDashboardVendedoresRoute
   ComercialDashboardIndexRoute: typeof ComercialDashboardIndexRoute
@@ -1396,6 +1417,7 @@ interface ComercialDashboardRouteChildren {
 const ComercialDashboardRouteChildren: ComercialDashboardRouteChildren = {
   ComercialDashboardIndicadoresRoute: ComercialDashboardIndicadoresRoute,
   ComercialDashboardPainelRoute: ComercialDashboardPainelRoute,
+  ComercialDashboardPropostasRoute: ComercialDashboardPropostasRoute,
   ComercialDashboardRelatoriosRoute: ComercialDashboardRelatoriosRoute,
   ComercialDashboardVendedoresRoute: ComercialDashboardVendedoresRoute,
   ComercialDashboardIndexRoute: ComercialDashboardIndexRoute,
