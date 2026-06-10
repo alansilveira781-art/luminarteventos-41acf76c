@@ -82,6 +82,28 @@ function trimestreFrom(iso: string | null): 1 | 2 | 3 | 4 | null {
   return 4;
 }
 
+const MESES_PT = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+function mesNomeFrom(iso: string | null): string | null {
+  if (!iso) return null;
+  const m = Number(iso.slice(5, 7));
+  if (!m) return null;
+  return MESES_PT[m - 1] ?? null;
+}
+function anoFrom(iso: string | null): number | null {
+  if (!iso) return null;
+  const y = Number(iso.slice(0, 4));
+  return Number.isFinite(y) ? y : null;
+}
+function titleCaseMes(s: string | null): string | null {
+  if (!s) return null;
+  const lower = s.toLowerCase().trim();
+  const idx = MESES_PT.findIndex((m) => m.toLowerCase() === lower);
+  return idx >= 0 ? MESES_PT[idx] : s;
+}
+
 export const listVendasDropbox = createServerFn({ method: "GET" }).handler(
   async (): Promise<ListVendasResult> => {
     const now = Date.now();
@@ -105,11 +127,15 @@ export const listVendasDropbox = createServerFn({ method: "GET" }).handler(
       const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: null });
       const rows: VendaRow[] = [];
       for (const r of json) {
+        const dataRegistro = toIsoDate(r["Data de Registro"]);
         const dataEvento = toIsoDate(r["Data do Evento"]);
+        const baseDate = dataEvento ?? dataRegistro;
+        const mesRaw = toStr(r["Mês"]);
+        const anoColuna = toNum(r["Ano"]) || null;
         const row: VendaRow = {
-          dataRegistro: toIsoDate(r["Data de Registro"]),
-          ano: toNum(r["Ano"]) || null,
-          mes: toStr(r["Mês"]),
+          dataRegistro,
+          ano: anoColuna,
+          mes: titleCaseMes(mesRaw),
           semana: toNum(r["Semana"]) || null,
           tipo: toStr(r["Tipo"]),
           quantidade: toNum(r["Quantidade"]),
@@ -134,9 +160,9 @@ export const listVendasDropbox = createServerFn({ method: "GET" }).handler(
           comissaoGestor: toNum(r["Comissão Gestor"]),
           tipoComissao: toStr(r["Tipo de comissão"]),
           comissaoConsultor: toNum(r["Comissão Consultor"]),
-          mesEvento: toStr(r["Mês Evento"]),
-          anoEvento: toNum(r["Ano Evento"]) || null,
-          trimestreEvento: trimestreFrom(dataEvento),
+          mesEvento: mesNomeFrom(baseDate) ?? titleCaseMes(mesRaw),
+          anoEvento: anoFrom(baseDate) ?? anoColuna,
+          trimestreEvento: trimestreFrom(baseDate),
         };
         // skip fully empty rows
         if (!row.nomeEvento && !row.valorFinal && !row.dataRegistro) continue;
