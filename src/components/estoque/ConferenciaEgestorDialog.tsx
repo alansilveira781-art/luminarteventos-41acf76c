@@ -245,7 +245,7 @@ export function ConferenciaEgestorDialog({
       };
     }
 
-    const { error } = await supabase.from("movimentacoes").insert(payload);
+    const { error } = await supabase.from("movimentacoes").insert(payload as any);
     if (error) {
       toast.error(`${l.nome}: ${error.message}`);
       return false;
