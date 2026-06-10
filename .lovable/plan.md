@@ -1,33 +1,43 @@
-## Problema
+# Corrigir percepção de "estoque zerado" após entrada
 
-O endpoint de **listagem** do Conta Azul (`/contas-a-pagar/buscar` e `/contas-a-receber/buscar`) retorna apenas `id` e `nome` em `centros_de_custo[]` e `categorias[]` — **sem o `valor` ou `percentual` de cada fatia**. Por isso a sincronização atual cai no fallback de divisão igual.
+## Diagnóstico
 
-O usuário confirmou que, na origem, cada rateio tem valor próprio (não é divisão igual). Para capturar isso, precisamos consultar o **endpoint de detalhe** de cada lançamento que tem rateio (>=2 centros ou >=2 categorias). Esse endpoint (`GET /financeiro/eventos-financeiros/contas-a-pagar/{id}` e equivalente para receber) retorna o objeto completo com os valores por fatia.
+Validei o caso citado (PAPEL HIGIENICO FOLHA SIMPLES, entrada de 64 em 09/06):
+- O banco gravou: `itens.quantidade_atual = 44` (entrada +64 e depois saída −20 do mesmo dia).
+- A trigger `apply_movement` está somando entradas corretamente.
+- Existem 6 saídas antigas (maio) que **não deduziram** o saldo na época — foram inseridas antes da trigger estar ativa para esse item (ou via importação que bypassou triggers). Isso é histórico, não afeta entradas novas.
 
-## O que será feito
+Conclusão: a entrada **está** atualizando `itens.quantidade_atual`. O que está errado é onde/como a tela mostra o saldo (cache desatualizado, query que ignora `quantidade_atual` ou soma manualmente as movimentações).
 
-### 1. Sync — buscar detalhe quando há rateio (`src/lib/conta-azul/sync.server.ts`)
+## Escopo (somente módulo Estoque)
 
-- Após carregar a página de listagem, identificar itens **rateados** (≥2 centros OU ≥2 categorias).
-- Para cada item rateado, chamar `GET /financeiro/eventos-financeiros/contas-a-{pagar|receber}/{id}` com **concorrência limitada** (5 em paralelo) para não saturar o rate limit.
-- Mesclar o payload de detalhe sobre o item original (preservando campos da listagem) antes de gerar os rateios.
-- Em caso de falha individual (404, timeout, 429), registrar em `ca_sync_log` e cair no fallback de divisão igual **apenas** para esse item.
-- Adicionar um `probe_rateio_detalhe_{tipo}` (primeira amostra) para confirmar o formato real do payload e ajustar parsers se necessário.
+1. **Auditar as telas de leitura do saldo** e garantir que todas leiam `itens.quantidade_atual` direto (fonte da verdade), e não recalculem somando `movimentacoes`:
+   - `src/routes/estoque.index.tsx` (lista)
+   - `src/routes/estoque.$itemId.tsx` (detalhe)
+   - `src/routes/saidas.tsx` (campo "estoque disponível" no form de saída)
+   - `src/routes/entradas.tsx` (mesma checagem)
+   - `src/components/ItemInfoHover.tsx` e `src/components/compras/AlertaEstoqueCard.tsx`
 
-### 2. `buildRateios` — usar os valores reais
+2. **Forçar invalidação imediata** após inserir movimentação:
+   - Confirmar que `useEstoqueRealtimeSync` está montado em `__root.tsx` / layout, para que a tela de Estoque receba o `UPDATE` em `itens` em tempo real.
+   - Revisar as `onSuccess` das mutations de entrada/saída para invalidar também `["itens"]`, `["item", id]` e `["dashboard-itens"]` (entrada já invalida; conferir saída e devolução).
+   - Garantir `staleTime: 0` nas queries críticas de saldo (form de saída).
 
-- A função já tenta `it.rateios[]`, `it.alocacoes[]` e `centros_de_custo[].valor`. Vamos confirmar via probe qual chave o detalhe traz e ajustar a leitura para priorizar **valor absoluto** (R$) sobre percentual sobre divisão igual.
-- Validação: somar `valor` de todas as fatias e comparar com `total`. Se divergir >R$ 0,01, registrar warning em `ca_sync_log` mas persistir os valores reais (a divergência costuma ser arredondamento da própria Conta Azul).
+3. **Reconciliar itens com histórico inconsistente** (one-off, opt-in):
+   - Migration de um script `reconciliar_estoque(p_item_id uuid)` que recomputa `quantidade_atual` a partir do agregado de `movimentacoes` + `movimentacao_itens` aplicando as regras da trigger `apply_movement`.
+   - Botão "Recalcular saldo" no detalhe do item (visível só para admin do módulo `estoque`) que chama a função.
+   - **Não** rodar em massa automaticamente — usuário decide por item, para não sobrescrever ajustes manuais.
 
-### 3. Backfill
+4. **Limpeza** (já aprovada):
+   - Migration removendo a trigger duplicada `trg_itens_updated` em `public.itens` (mantém apenas `trg_itens_set_updated_at`, idêntica).
 
-- Após o ajuste, enfileirar reprocessamento completo `2023-01-01 → hoje`. Estimativa: ~45k lançamentos no total, dos quais provavelmente <10% são rateados — o detalhe extra será para algumas milhares de chamadas (executado em background pelo job system existente, sem bloquear a UI).
+## Fora do escopo
 
-### 4. Validação
+- Mudar regra de devolução, compras, financeiro, ou qualquer outro módulo.
+- Backfill automático em massa de saldos (histórico ficaria como está, exceto onde o usuário clicar em "Recalcular saldo").
 
-- Confirmar via SQL que o lançamento "Diarias" (id `93d7d295…`) — visto no probe com 3 centros, valor total R$ 700 — agora tem 3 linhas em `ca_lancamento_rateios` com os valores reais retornados pela API (e não 3× R$ 233,33).
-- Reabrir o filtro **2026.03.03 - ATIVAÇÃO MANDARA BY YOO** no dashboard e conferir se os valores batem com o que o usuário vê dentro do Conta Azul.
+## Validação após implementar
 
-## Fora de escopo
-
-Painel Financeiro, Fluxo de Caixa, DRE, Sync UI, transferências, sinais de cascata — nada disso muda. Só a etapa de coleta de rateios e o backfill.
+- Cadastrar uma entrada nova de teste e conferir que o card do item, o detalhe e o "estoque disponível" no form de saída sobem **sem precisar atualizar a página**.
+- Clicar "Recalcular saldo" no PAPEL HIGIENICO e confirmar que o saldo passa a refletir o histórico (ou continuar 44, caso o usuário confirme que as 6 saídas antigas não devem deduzir).
+- `SELECT * FROM pg_trigger WHERE tgrelid='public.itens'::regclass` mostra apenas uma trigger de `updated_at`.
