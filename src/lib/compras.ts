@@ -32,3 +32,19 @@ export const STATUS_LABEL: Record<CompraStatus, string> = COMPRA_STATUSES.reduce
   (acc, s) => ({ ...acc, [s.key]: s.label }),
   {} as Record<CompraStatus, string>,
 );
+
+export function canMoveCompra(
+  compra: { responsavel_id?: string | null },
+  userId: string | undefined | null,
+  isAdmin: boolean,
+): boolean {
+  if (isAdmin) return true;
+  if (!compra.responsavel_id) return true;
+  return !!userId && compra.responsavel_id === userId;
+}
+
+export function moveBlockedMessage(compra: { responsavel_nome?: string | null }): string {
+  return compra.responsavel_nome
+    ? `Apenas ${compra.responsavel_nome} pode mover este card.`
+    : "Você não tem permissão para mover este card.";
+}
