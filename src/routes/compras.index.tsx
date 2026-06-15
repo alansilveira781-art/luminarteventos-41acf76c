@@ -41,6 +41,8 @@ type Compra = {
   data_solicitacao: string | null;
   data_compra: string | null;
   valor_total: number | null;
+  responsavel_id: string | null;
+  responsavel_nome: string | null;
 };
 
 function ComprasKanban() {
