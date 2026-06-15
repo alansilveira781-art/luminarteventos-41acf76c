@@ -263,9 +263,18 @@ function ComprasKanban() {
         <div className="flex gap-3 overflow-x-auto overflow-y-hidden pb-4 items-stretch h-[calc(100dvh-200px)] min-h-[420px]">
           {COMPRA_STATUSES.map((s) => (
             <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={byStatus[s.key]?.length ?? 0}>
-              {(byStatus[s.key] ?? []).map((c) => (
-                <Card key={c.id} compra={c} onOpen={() => { setEditId(c.id); setOpen(true); }} />
-              ))}
+              {(byStatus[s.key] ?? []).map((c) => {
+                const next = nextStatus(c.status);
+                return (
+                  <Card
+                    key={c.id}
+                    compra={c}
+                    onOpen={() => { setEditId(c.id); setOpen(true); }}
+                    nextStatusLabel={next ? (COMPRA_STATUSES.find((x) => x.key === next)?.label ?? null) : null}
+                    onAdvance={next ? () => advanceToStatus(c, next) : undefined}
+                  />
+                );
+              })}
               <button
                 type="button"
                 onClick={() => { setEditId(null); setDefaultStatus(s.key); setOpen(true); }}
@@ -279,7 +288,21 @@ function ComprasKanban() {
       </DndContext>
       )}
 
-      <CompraDialog open={open} onOpenChange={setOpen} compraId={editId} defaultStatus={defaultStatus} />
+      <CompraDialog
+        open={open}
+        onOpenChange={setOpen}
+        compraId={editId}
+        defaultStatus={defaultStatus}
+        onAdvance={async (compraData, opts) => {
+          const target = opts?.approve ? "aprovada" : nextStatus(compraData.status);
+          if (!target) return;
+          await advanceToStatus(compraData, target, {
+            force: !!opts?.approve,
+            toastMsg: opts?.approve ? "Compra aprovada." : undefined,
+          });
+          setOpen(false);
+        }}
+      />
 
       <AvancarCardDialog
         open={!!pendingMove}
@@ -327,7 +350,14 @@ function Column({
   );
 }
 
-function Card({ compra, onOpen }: { compra: Compra; onOpen: () => void }) {
+function Card({
+  compra, onOpen, onAdvance, nextStatusLabel,
+}: {
+  compra: Compra;
+  onOpen: () => void;
+  onAdvance?: () => void;
+  nextStatusLabel?: string | null;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: compra.id });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
   return (
@@ -369,6 +399,17 @@ function Card({ compra, onOpen }: { compra: Compra; onOpen: () => void }) {
             )}
           </div>
         </button>
+        {onAdvance && nextStatusLabel && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onAdvance(); }}
+            className="shrink-0 text-muted-foreground hover:text-primary transition-colors p-0.5"
+            title={`Avançar para "${nextStatusLabel}"`}
+            aria-label={`Avançar para ${nextStatusLabel}`}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        )}
       </div>
     </div>
   );
