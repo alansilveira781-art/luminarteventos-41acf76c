@@ -274,6 +274,7 @@ function ComprasKanban() {
             <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={byStatus[s.key]?.length ?? 0}>
               {(byStatus[s.key] ?? []).map((c) => {
                 const next = nextStatus(c.status);
+                const canMove = canMoveCompra(c, user?.id, isAdmin);
                 return (
                   <Card
                     key={c.id}
@@ -281,6 +282,8 @@ function ComprasKanban() {
                     onOpen={() => { setEditId(c.id); setOpen(true); }}
                     nextStatusLabel={next ? (COMPRA_STATUSES.find((x) => x.key === next)?.label ?? null) : null}
                     onAdvance={next ? () => advanceToStatus(c, next) : undefined}
+                    canMove={canMove}
+                    blockedMsg={canMove ? null : moveBlockedMessage(c)}
                   />
                 );
               })}
