@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, ChevronRight } from "lucide-react";
 import { CompraDialog } from "@/components/CompraDialog";
-import { COMPRA_STATUSES, type CompraStatus } from "@/lib/compras";
+import { COMPRA_STATUSES, canMoveCompra, moveBlockedMessage, type CompraStatus } from "@/lib/compras";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   DndContext,
   PointerSensor,
