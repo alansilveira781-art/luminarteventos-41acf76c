@@ -296,7 +296,7 @@ function ComprasKanban() {
         onAdvance={async (compraData, opts) => {
           const target = opts?.approve ? "aprovada" : nextStatus(compraData.status);
           if (!target) return;
-          await advanceToStatus(compraData, target, {
+          await advanceToStatus(compraData as unknown as Compra, target, {
             force: !!opts?.approve,
             toastMsg: opts?.approve ? "Compra aprovada." : undefined,
           });
