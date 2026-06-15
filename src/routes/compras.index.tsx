@@ -363,15 +363,18 @@ function Column({
 }
 
 function Card({
-  compra, onOpen, onAdvance, nextStatusLabel,
+  compra, onOpen, onAdvance, nextStatusLabel, canMove = true, blockedMsg = null,
 }: {
   compra: Compra;
   onOpen: () => void;
   onAdvance?: () => void;
   nextStatusLabel?: string | null;
+  canMove?: boolean;
+  blockedMsg?: string | null;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: compra.id });
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: compra.id, disabled: !canMove });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
+  const advanceDisabled = !canMove;
   return (
     <div
       ref={setNodeRef}
@@ -383,7 +386,9 @@ function Card({
           type="button"
           {...listeners}
           {...attributes}
-          className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground select-none"
+          disabled={!canMove}
+          title={canMove ? undefined : blockedMsg ?? undefined}
+          className={`text-muted-foreground select-none ${canMove ? "cursor-grab active:cursor-grabbing hover:text-foreground" : "cursor-not-allowed opacity-40"}`}
           aria-label="Mover"
         >⋮⋮</button>
         <button type="button" onClick={onOpen} className="flex-1 text-left min-w-0">
@@ -403,6 +408,7 @@ function Card({
           <div className="mt-1.5 space-y-0.5 text-[11px] text-muted-foreground">
             {compra.solicitante && <div>Solic.: {compra.solicitante}</div>}
             {compra.comprador && <div>Comprador: {compra.comprador}</div>}
+            {compra.responsavel_nome && <div>Resp.: {compra.responsavel_nome}</div>}
             <div>{compra.data_compra ? `Comprada: ${formatDate(compra.data_compra)}` : "Não comprado"}</div>
             {compra.valor_total != null && (
               <div className="font-medium text-foreground">
@@ -414,9 +420,10 @@ function Card({
         {onAdvance && nextStatusLabel && (
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onAdvance(); }}
-            className="shrink-0 text-muted-foreground hover:text-primary transition-colors p-0.5"
-            title={`Avançar para "${nextStatusLabel}"`}
+            onClick={(e) => { e.stopPropagation(); if (!advanceDisabled) onAdvance(); }}
+            disabled={advanceDisabled}
+            className={`shrink-0 p-0.5 transition-colors ${advanceDisabled ? "text-muted-foreground/40 cursor-not-allowed" : "text-muted-foreground hover:text-primary"}`}
+            title={advanceDisabled ? blockedMsg ?? undefined : `Avançar para "${nextStatusLabel}"`}
             aria-label={`Avançar para ${nextStatusLabel}`}
           >
             <ChevronRight className="h-4 w-4" />
