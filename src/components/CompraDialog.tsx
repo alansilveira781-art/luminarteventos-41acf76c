@@ -14,7 +14,7 @@ import { MentionInput, renderCommentText } from "@/components/MentionInput";
 import { Plus, Trash2, Upload, Download, FileIcon, ChevronRight, CheckCircle2 } from "lucide-react";
 import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
-import { COMPRA_STATUSES, TIPO_COMPRA_OPTIONS, type CompraStatus } from "@/lib/compras";
+import { COMPRA_STATUSES, TIPO_COMPRA_OPTIONS, canMoveCompra, moveBlockedMessage, type CompraStatus } from "@/lib/compras";
 import { useAuth } from "@/contexts/AuthContext";
 import { notifyResponsiblesForStatus, notifyMentions } from "@/lib/notify";
 import { listEventos } from "@/lib/sheets.functions";
@@ -448,16 +448,22 @@ export function CompraDialog({
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            {compraId && onAdvance && form.status === "pendente_aprovacao" &&
-              (isModuleAdmin("compras") || (form.responsavel_id && user?.id === form.responsavel_id)) && (
-              <Button
-                onClick={() => onAdvance({ ...form, id: compraId }, { approve: true })}
-                className="bg-success text-success-foreground hover:bg-success/90"
-              >
-                <CheckCircle2 className="h-4 w-4 mr-1" /> Aprovar compra
-              </Button>
-            )}
-            {compraId && onAdvance && form.status !== "pendente_aprovacao" && (() => {
+            {(() => {
+              if (!compraId || !onAdvance) return null;
+              const canMove = canMoveCompra(form, user?.id, isModuleAdmin("compras"));
+              const blocked = canMove ? null : moveBlockedMessage(form);
+              if (form.status === "pendente_aprovacao") {
+                return (
+                  <Button
+                    onClick={() => canMove && onAdvance({ ...form, id: compraId }, { approve: true })}
+                    disabled={!canMove}
+                    title={blocked ?? undefined}
+                    className="bg-success text-success-foreground hover:bg-success/90"
+                  >
+                    <CheckCircle2 className="h-4 w-4 mr-1" /> Aprovar compra
+                  </Button>
+                );
+              }
               const idx = COMPRA_STATUSES.findIndex((s) => s.key === form.status);
               let nextLabel: string | null = null;
               for (let i = idx + 1; i < COMPRA_STATUSES.length; i++) {
@@ -467,7 +473,12 @@ export function CompraDialog({
               }
               if (!nextLabel) return null;
               return (
-                <Button variant="secondary" onClick={() => onAdvance({ ...form, id: compraId })}>
+                <Button
+                  variant="secondary"
+                  onClick={() => canMove && onAdvance({ ...form, id: compraId })}
+                  disabled={!canMove}
+                  title={blocked ?? undefined}
+                >
                   Avançar para "{nextLabel}" <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               );
