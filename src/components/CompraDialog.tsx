@@ -14,7 +14,7 @@ import { MentionInput, renderCommentText } from "@/components/MentionInput";
 import { Plus, Trash2, Upload, Download, FileIcon, ChevronRight, CheckCircle2 } from "lucide-react";
 import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
-import { COMPRA_STATUSES, TIPO_COMPRA_OPTIONS, type CompraStatus } from "@/lib/compras";
+import { COMPRA_STATUSES, TIPO_COMPRA_OPTIONS, canMoveCompra, moveBlockedMessage, type CompraStatus } from "@/lib/compras";
 import { useAuth } from "@/contexts/AuthContext";
 import { notifyResponsiblesForStatus, notifyMentions } from "@/lib/notify";
 import { listEventos } from "@/lib/sheets.functions";
