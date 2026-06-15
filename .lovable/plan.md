@@ -1,46 +1,48 @@
-## Contexto
+## Diagnóstico
 
-A base de dados e o pipeline já estão prontos do trabalho anterior:
+Encontrei dois problemas distintos:
 
-- Tabela `comercial_vendas` com 35 colunas mapeando a aba **"Base de Dados"** da planilha (Data de Registro, Ano, Mês, Tipo, Quantidade, Nome do Evento, Local, Estado, Cidade, Salão, Tipo de Evento, Classificação, Data do Evento, Consultor, Gestor, Cerimonial, Decorador, Empresa, Valor da Proposta, Desconto, Valor Final, Valor BV, Comissão Gestor/Consultor, etc.). Já tem 972 linhas (mesma planilha que veio agora).
-- Tabela auxiliar `comercial_vendas_sync` com histórico de cargas.
-- Server functions: `listVendasDb`, `syncVendasFromDropbox` (botão), `syncVendasFromUpload` (upload .xlsx), `getLastSync`.
-- Cron diário 03:00 chamando o endpoint público de sync.
+**1. Maicon recebe alertas de estoque**
+O trigger `notify_stock_alert` no banco notifica TODOS os usuários que têm o módulo `estoque` no perfil. O Maicon tem acesso ao Estoque (para visualizar), então entra no broadcast.
 
-**Não precisa recriar tabela nem reimportar.** Só falta a tela e o item de menu.
-
-## O que será feito
-
-### 1. Item de menu "Vendas" (admin-only) na sidebar do Comercial
-Em `src/components/AppSidebar.tsx`, adicionar entrada:
+**2. Maicon não recebe a notificação de "Pendente Aprovação"**
+A função `notifyResponsiblesForStatus` em `src/lib/notify.ts` está com a regra antiga para o status `pendente_aprovacao`:
 ```
-{ title: "Vendas", url: "/comercial/vendas", icon: DollarSign,
-  group: "Comercial", module: "comercial", moduleAdminOnly: "comercial" }
+pendente_aprovacao: { modules: [], admin: true }
 ```
-A flag `moduleAdminOnly: "comercial"` faz o item aparecer só para admin global ou admin do módulo Comercial (mesma regra já usada em "Validações" e "Configurações").
+Ou seja, hoje só notifica usuários com role `admin` global. O Maicon não é admin global — ele é o **responsável da coluna** configurado em `compras_status_defaults` (status=`pendente_aprovacao` → Maicon Viana). A função simplesmente ignora essa tabela de responsáveis por coluna.
 
-### 2. Rota `/comercial/vendas` — nova tela de listagem
-Arquivo `src/routes/comercial.vendas.tsx`:
+## Correções
 
-- **Cabeçalho** com título "Vendas" + indicador de última sincronização (`getLastSync`).
-- **Ações** (mesmas do dashboard, reaproveitando as server fns existentes):
-  - Botão **Sincronizar agora** (Dropbox)
-  - Botão **Importar .xlsx** (upload manual)
-  - Botão **Atualizar**
-- **Filtros**: Empresa · Ano · Mês · Consultor · Classificação (selects derivados dos próprios dados).
-- **Busca** por nome do evento / local / cidade.
-- **Tabela paginada** (50/página) com colunas:
-  Data Evento · Nome do Evento · Empresa · Local/Cidade · Consultor · Cerimonial · Decorador · Classificação · Qtde · Valor Final · Desconto.
-- **Rodapé**: total de registros filtrados + soma de Valor Final + soma de Desconto.
-- **Exportar CSV** dos registros filtrados (client-side).
-- Loading/erro/empty states consistentes com o Dashboard.
+### 1. Tabela de "silenciamento" de notificações por módulo
+Nova tabela `notification_mutes (user_id, modulo_slug)`. Quando um par existir, esse usuário é excluído dos broadcasts daquele módulo.
 
-A tela só lê de `comercial_vendas` via `listVendasDb` (já paginada server-side). Não há edição manual de linhas — a fonte da verdade é a planilha do Dropbox / upload.
+- Migration cria a tabela com GRANTs + RLS (cada usuário vê/edita o próprio; admin gerencia todos).
+- Inserir registro `(Maicon, 'estoque')` para silenciar imediatamente.
 
-### 3. Permissão na rota (defesa em profundidade)
-Além de esconder no menu, o componente da rota verifica `useAuth()` e renderiza um aviso "Acesso restrito a administradores" caso `!isAdmin && !modulos.find(m => m.slug==='comercial' && m.is_admin)`. RLS da tabela continua como está (já restrito a usuários autenticados).
+### 2. Trigger `notify_stock_alert` respeita os mutes
+Atualizar a função para excluir usuários presentes em `notification_mutes` com `modulo_slug='estoque'`:
+```sql
+... FROM user_modulos um
+WHERE um.modulo_id = v_modulo_id
+  AND NOT EXISTS (
+    SELECT 1 FROM notification_mutes nm
+    WHERE nm.user_id = um.user_id AND nm.modulo_slug = 'estoque'
+  );
+```
 
-## Fora do escopo (mantido como está)
-- Schema da tabela `comercial_vendas` — sem alterações.
-- Reimportação dos dados — os 972 registros já estão lá; um clique em **Sincronizar agora** atualiza.
-- Dashboard Comercial — segue funcionando lendo da mesma tabela.
+### 3. `notifyResponsiblesForStatus` passa a considerar o responsável da coluna
+Em `src/lib/notify.ts`:
+- Para todo status, ler `compras_status_defaults` e incluir o `responsavel_id` configurado.
+- Manter a lógica atual de notificar por módulo/admin como fallback.
+- Resultado: ao mover um card para `pendente_aprovacao`, Maicon (responsável da coluna) é notificado, mesmo sem ser admin global.
+
+Também aplicar o mute aqui: ao notificar por módulo, filtrar os user_ids que silenciaram aquele módulo (para o caso `a_receber`/`finalizado` que envolvem `estoque`).
+
+### Detalhes técnicos
+- Arquivos: nova migration; edição em `src/lib/notify.ts`.
+- Sem mudanças de UI nesta etapa (silenciamento gerenciável por SQL/admin). Se quiser, depois adiciono uma tela em Admin → Usuários para alternar mutes por módulo.
+
+## Fora do escopo (perguntar depois se necessário)
+- Tela de gerenciamento dos mutes (por enquanto fica via banco/admin).
+- Aplicar a mesma lógica de "responsável da coluna" para demandas/comercial (hoje a pergunta foi sobre compras).
