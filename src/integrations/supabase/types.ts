@@ -2124,6 +2124,27 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_mutes: {
+        Row: {
+          created_at: string
+          id: string
+          modulo_slug: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          modulo_slug: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          modulo_slug?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       parcelamentos: {
         Row: {
           created_at: string

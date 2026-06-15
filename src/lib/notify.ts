@@ -30,14 +30,34 @@ async function getAdmins(): Promise<string[]> {
   return (data ?? []).map((x: any) => x.user_id as string);
 }
 
+async function getMutedUsers(slug: string): Promise<Set<string>> {
+  const { data } = await sb.from("notification_mutes").select("user_id").eq("modulo_slug", slug);
+  return new Set((data ?? []).map((x: any) => x.user_id as string));
+}
+
+async function getStatusResponsavel(status: CompraStatus): Promise<string | null> {
+  const { data } = await sb
+    .from("compras_status_defaults")
+    .select("responsavel_id")
+    .eq("status", status)
+    .maybeSingle();
+  return (data?.responsavel_id as string) ?? null;
+}
+
 export async function notifyResponsiblesForStatus(status: CompraStatus, compraId: string, titulo: string) {
   const cfg = STATUS_RESPONSIBLES[status];
   if (!cfg) return;
-  const sets = await Promise.all([
-    ...cfg.modules.map((m) => getUsersByModule(m)),
-    cfg.admin ? getAdmins() : Promise.resolve([] as string[]),
+  const [sets, responsavelId, mutedEstoque] = await Promise.all([
+    Promise.all([
+      ...cfg.modules.map((m) => getUsersByModule(m)),
+      cfg.admin ? getAdmins() : Promise.resolve([] as string[]),
+    ]),
+    getStatusResponsavel(status),
+    cfg.modules.includes("estoque") ? getMutedUsers("estoque") : Promise.resolve(new Set<string>()),
   ]);
-  const ids = Array.from(new Set(sets.flat()));
+  const flat = sets.flat().filter((id) => !mutedEstoque.has(id));
+  if (responsavelId) flat.push(responsavelId);
+  const ids = Array.from(new Set(flat));
   if (ids.length === 0) return;
   const rows = ids.map((user_id) => ({
     user_id,
@@ -48,6 +68,7 @@ export async function notifyResponsiblesForStatus(status: CompraStatus, compraId
   }));
   await sb.from("notificacoes").insert(rows);
 }
+
 
 export async function notifyMentions(userIds: string[], compraId: string, texto: string) {
   if (!userIds.length) return;
