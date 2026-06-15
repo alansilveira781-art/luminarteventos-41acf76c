@@ -47,6 +47,8 @@ type Compra = {
 
 function ComprasKanban() {
   const qc = useQueryClient();
+  const { user, isModuleAdmin } = useAuth();
+  const isAdmin = isModuleAdmin("compras");
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [defaultStatus, setDefaultStatus] = useState<CompraStatus>("solicitacao");
