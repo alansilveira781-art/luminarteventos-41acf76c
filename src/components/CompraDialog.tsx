@@ -74,7 +74,7 @@ export function CompraDialog({
   onAdvance?: (compra: Compra & { id: string }, opts?: AdvanceOpts) => void | Promise<void>;
 }) {
   const qc = useQueryClient();
-  const { user } = useAuth();
+  const { user, isModuleAdmin } = useAuth();
   const [form, setForm] = useState<Compra>({ status: defaultStatus });
   const [itens, setItens] = useState<CompraItem[]>([]);
   const [statusInicial, setStatusInicial] = useState<CompraStatus>(defaultStatus);
@@ -447,7 +447,31 @@ export function CompraDialog({
               </Button>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {compraId && onAdvance && form.status === "pendente_aprovacao" &&
+              (isModuleAdmin("compras") || (form.responsavel_id && user?.id === form.responsavel_id)) && (
+              <Button
+                onClick={() => onAdvance({ ...form, id: compraId }, { approve: true })}
+                className="bg-success text-success-foreground hover:bg-success/90"
+              >
+                <CheckCircle2 className="h-4 w-4 mr-1" /> Aprovar compra
+              </Button>
+            )}
+            {compraId && onAdvance && form.status !== "pendente_aprovacao" && (() => {
+              const idx = COMPRA_STATUSES.findIndex((s) => s.key === form.status);
+              let nextLabel: string | null = null;
+              for (let i = idx + 1; i < COMPRA_STATUSES.length; i++) {
+                if (COMPRA_STATUSES[i].key === "negada") continue;
+                nextLabel = COMPRA_STATUSES[i].label;
+                break;
+              }
+              if (!nextLabel) return null;
+              return (
+                <Button variant="secondary" onClick={() => onAdvance({ ...form, id: compraId })}>
+                  Avançar para "{nextLabel}" <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              );
+            })()}
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button onClick={() => save.mutate()} disabled={save.isPending}>
               {save.isPending ? "Salvando…" : "Salvar"}
