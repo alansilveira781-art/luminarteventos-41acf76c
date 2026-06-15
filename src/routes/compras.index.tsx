@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, ChevronRight } from "lucide-react";
 import { CompraDialog } from "@/components/CompraDialog";
 import { COMPRA_STATUSES, type CompraStatus } from "@/lib/compras";
 import {
@@ -133,17 +133,20 @@ function ComprasKanban() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-  async function onDragEnd(e: DragEndEvent) {
-    const id = String(e.active.id);
-    const overId = e.over?.id ? String(e.over.id) : null;
-    if (!overId) return;
-    const status = overId as CompraStatus;
-    const compra = compras.find((c) => c.id === id);
-    if (!compra || compra.status === status) return;
+  async function advanceToStatus(
+    compra: Compra,
+    status: CompraStatus,
+    opts?: { force?: boolean; toastMsg?: string },
+  ) {
+    if (compra.status === status) return;
     const oldIdx = COMPRA_STATUSES.findIndex((s) => s.key === compra.status);
     const newIdx = COMPRA_STATUSES.findIndex((s) => s.key === status);
-    // Avanço: se existe responsável padrão para esse status, aplica direto.
-    if (newIdx > oldIdx) {
+    const isAdvance = newIdx > oldIdx;
+    const id = compra.id;
+    const statusLabel = COMPRA_STATUSES.find((s) => s.key === status)?.label || status;
+    const titulo = compra.titulo || compra.fornecedor || `Compra ${compra.numero ?? ""}`;
+
+    if (isAdvance) {
       const def = statusDefaults.find((d) => d.status === status && d.responsavel_id);
       if (def?.responsavel_id) {
         moveStatus.mutate({
@@ -152,8 +155,6 @@ function ComprasKanban() {
           responsavelId: def.responsavel_id,
           responsavelNome: def.responsavel_nome ?? undefined,
         });
-        const statusLabel = COMPRA_STATUSES.find((s) => s.key === status)?.label || status;
-        const titulo = compra.titulo || compra.fornecedor || `Compra ${compra.numero ?? ""}`;
         await notifyResponsavel({
           userId: def.responsavel_id,
           titulo: `Compra: ${statusLabel}`,
@@ -161,14 +162,42 @@ function ComprasKanban() {
           link: `/compras?id=${id}`,
           tipo: "compra_responsavel",
         });
-        toast.success(`Card movido. ${def.responsavel_nome ?? "Responsável"} foi notificado.`);
+        toast.success(opts?.toastMsg ?? `Card movido. ${def.responsavel_nome ?? "Responsável"} foi notificado.`);
         return;
       }
-      setPendingMove({ id, status, titulo: compra.titulo || compra.fornecedor || `Compra ${compra.numero ?? ""}` });
+      if (opts?.force) {
+        moveStatus.mutate({ id, status });
+        toast.success(opts.toastMsg ?? "Card movido.");
+        return;
+      }
+      setPendingMove({ id, status, titulo });
     } else {
       moveStatus.mutate({ id, status });
     }
   }
+
+  async function onDragEnd(e: DragEndEvent) {
+    const id = String(e.active.id);
+    const overId = e.over?.id ? String(e.over.id) : null;
+    if (!overId) return;
+    const status = overId as CompraStatus;
+    const compra = compras.find((c) => c.id === id);
+    if (!compra) return;
+    await advanceToStatus(compra, status);
+  }
+
+  function nextStatus(s: CompraStatus): CompraStatus | null {
+    const idx = COMPRA_STATUSES.findIndex((x) => x.key === s);
+    if (idx < 0) return null;
+    // Pula "negada" no avanço sequencial; finalizado é terminal.
+    for (let i = idx + 1; i < COMPRA_STATUSES.length; i++) {
+      const k = COMPRA_STATUSES[i].key;
+      if (k === "negada") continue;
+      return k;
+    }
+    return null;
+  }
+
 
 
   return (
@@ -234,9 +263,18 @@ function ComprasKanban() {
         <div className="flex gap-3 overflow-x-auto overflow-y-hidden pb-4 items-stretch h-[calc(100dvh-200px)] min-h-[420px]">
           {COMPRA_STATUSES.map((s) => (
             <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={byStatus[s.key]?.length ?? 0}>
-              {(byStatus[s.key] ?? []).map((c) => (
-                <Card key={c.id} compra={c} onOpen={() => { setEditId(c.id); setOpen(true); }} />
-              ))}
+              {(byStatus[s.key] ?? []).map((c) => {
+                const next = nextStatus(c.status);
+                return (
+                  <Card
+                    key={c.id}
+                    compra={c}
+                    onOpen={() => { setEditId(c.id); setOpen(true); }}
+                    nextStatusLabel={next ? (COMPRA_STATUSES.find((x) => x.key === next)?.label ?? null) : null}
+                    onAdvance={next ? () => advanceToStatus(c, next) : undefined}
+                  />
+                );
+              })}
               <button
                 type="button"
                 onClick={() => { setEditId(null); setDefaultStatus(s.key); setOpen(true); }}
@@ -250,7 +288,21 @@ function ComprasKanban() {
       </DndContext>
       )}
 
-      <CompraDialog open={open} onOpenChange={setOpen} compraId={editId} defaultStatus={defaultStatus} />
+      <CompraDialog
+        open={open}
+        onOpenChange={setOpen}
+        compraId={editId}
+        defaultStatus={defaultStatus}
+        onAdvance={async (compraData, opts) => {
+          const target = opts?.approve ? "aprovada" : nextStatus(compraData.status);
+          if (!target) return;
+          await advanceToStatus(compraData as unknown as Compra, target, {
+            force: !!opts?.approve,
+            toastMsg: opts?.approve ? "Compra aprovada." : undefined,
+          });
+          setOpen(false);
+        }}
+      />
 
       <AvancarCardDialog
         open={!!pendingMove}
@@ -298,7 +350,14 @@ function Column({
   );
 }
 
-function Card({ compra, onOpen }: { compra: Compra; onOpen: () => void }) {
+function Card({
+  compra, onOpen, onAdvance, nextStatusLabel,
+}: {
+  compra: Compra;
+  onOpen: () => void;
+  onAdvance?: () => void;
+  nextStatusLabel?: string | null;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: compra.id });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
   return (
@@ -340,6 +399,17 @@ function Card({ compra, onOpen }: { compra: Compra; onOpen: () => void }) {
             )}
           </div>
         </button>
+        {onAdvance && nextStatusLabel && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onAdvance(); }}
+            className="shrink-0 text-muted-foreground hover:text-primary transition-colors p-0.5"
+            title={`Avançar para "${nextStatusLabel}"`}
+            aria-label={`Avançar para ${nextStatusLabel}`}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        )}
       </div>
     </div>
   );

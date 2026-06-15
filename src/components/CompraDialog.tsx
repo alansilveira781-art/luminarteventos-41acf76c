@@ -11,7 +11,7 @@ import { FormField, FormSection } from "@/components/FormSection";
 import { ItemSearchSelect } from "@/components/ItemSearchSelect";
 import { SelectCreatable } from "@/components/SelectCreatable";
 import { MentionInput, renderCommentText } from "@/components/MentionInput";
-import { Plus, Trash2, Upload, Download, FileIcon } from "lucide-react";
+import { Plus, Trash2, Upload, Download, FileIcon, ChevronRight, CheckCircle2 } from "lucide-react";
 import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
 import { COMPRA_STATUSES, TIPO_COMPRA_OPTIONS, type CompraStatus } from "@/lib/compras";
@@ -37,6 +37,7 @@ export type CompraItem = {
 
 export type Compra = {
   id?: string;
+  numero?: number | null;
   status: CompraStatus;
   titulo?: string | null;
   solicitante?: string | null;
@@ -53,21 +54,27 @@ export type Compra = {
   observacoes?: string | null;
   motivo_negacao?: string | null;
   tipo_compra?: string | null;
+  responsavel_id?: string | null;
+  responsavel_nome?: string | null;
 };
+
+export type AdvanceOpts = { approve?: boolean };
 
 export function CompraDialog({
   open,
   onOpenChange,
   compraId,
   defaultStatus = "solicitacao",
+  onAdvance,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   compraId?: string | null;
   defaultStatus?: CompraStatus;
+  onAdvance?: (compra: Compra & { id: string }, opts?: AdvanceOpts) => void | Promise<void>;
 }) {
   const qc = useQueryClient();
-  const { user } = useAuth();
+  const { user, isModuleAdmin } = useAuth();
   const [form, setForm] = useState<Compra>({ status: defaultStatus });
   const [itens, setItens] = useState<CompraItem[]>([]);
   const [statusInicial, setStatusInicial] = useState<CompraStatus>(defaultStatus);
@@ -440,7 +447,31 @@ export function CompraDialog({
               </Button>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {compraId && onAdvance && form.status === "pendente_aprovacao" &&
+              (isModuleAdmin("compras") || (form.responsavel_id && user?.id === form.responsavel_id)) && (
+              <Button
+                onClick={() => onAdvance({ ...form, id: compraId }, { approve: true })}
+                className="bg-success text-success-foreground hover:bg-success/90"
+              >
+                <CheckCircle2 className="h-4 w-4 mr-1" /> Aprovar compra
+              </Button>
+            )}
+            {compraId && onAdvance && form.status !== "pendente_aprovacao" && (() => {
+              const idx = COMPRA_STATUSES.findIndex((s) => s.key === form.status);
+              let nextLabel: string | null = null;
+              for (let i = idx + 1; i < COMPRA_STATUSES.length; i++) {
+                if (COMPRA_STATUSES[i].key === "negada") continue;
+                nextLabel = COMPRA_STATUSES[i].label;
+                break;
+              }
+              if (!nextLabel) return null;
+              return (
+                <Button variant="secondary" onClick={() => onAdvance({ ...form, id: compraId })}>
+                  Avançar para "{nextLabel}" <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              );
+            })()}
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button onClick={() => save.mutate()} disabled={save.isPending}>
               {save.isPending ? "Salvando…" : "Salvar"}
