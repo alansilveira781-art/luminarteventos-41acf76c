@@ -1,48 +1,50 @@
-## Diagnóstico
+## Objetivo
 
-Encontrei dois problemas distintos:
+Adicionar fluxo de "avançar status" no quadro de compras e tratar especificamente a aprovação no status **Pendente Aprovação**.
 
-**1. Maicon recebe alertas de estoque**
-O trigger `notify_stock_alert` no banco notifica TODOS os usuários que têm o módulo `estoque` no perfil. O Maicon tem acesso ao Estoque (para visualizar), então entra no broadcast.
+## 1. Botão "Avançar" no card do kanban
 
-**2. Maicon não recebe a notificação de "Pendente Aprovação"**
-A função `notifyResponsiblesForStatus` em `src/lib/notify.ts` está com a regra antiga para o status `pendente_aprovacao`:
-```
-pendente_aprovacao: { modules: [], admin: true }
-```
-Ou seja, hoje só notifica usuários com role `admin` global. O Maicon não é admin global — ele é o **responsável da coluna** configurado em `compras_status_defaults` (status=`pendente_aprovacao` → Maicon Viana). A função simplesmente ignora essa tabela de responsáveis por coluna.
+Em `src/routes/compras.index.tsx`, no componente `Card`:
+- Adicionar um pequeno botão (ícone `ChevronRight`) ao lado do código `COMPRA-xx`.
+- Só aparece se existir um próximo status (não aparece em `finalizado` nem `negada`).
+- Ao clicar, dispara a mesma rotina do `onDragEnd` movendo para o próximo status (`COMPRA_STATUSES[idx+1]`), reaproveitando `statusDefaults` + `setPendingMove` + `notifyResponsavel`.
 
-## Correções
+## 2. Botão "Avançar para X" no `CompraDialog`
 
-### 1. Tabela de "silenciamento" de notificações por módulo
-Nova tabela `notification_mutes (user_id, modulo_slug)`. Quando um par existir, esse usuário é excluído dos broadcasts daquele módulo.
+Em `src/components/CompraDialog.tsx`:
+- No rodapé do dialog, adicionar botão `Avançar para "{próximo status}"` (esquerda dos botões existentes).
+- Se status atual = `pendente_aprovacao`, esse botão é substituído por **"Aprovar compra"** (verde) — ver item 3.
+- Não aparece nos status terminais.
+- Mesmo handler do item 1: respeita responsável padrão, senão abre `AvancarCardDialog`.
 
-- Migration cria a tabela com GRANTs + RLS (cada usuário vê/edita o próprio; admin gerencia todos).
-- Inserir registro `(Maicon, 'estoque')` para silenciar imediatamente.
+## 3. Aprovação em "Pendente Aprovação"
 
-### 2. Trigger `notify_stock_alert` respeita os mutes
-Atualizar a função para excluir usuários presentes em `notification_mutes` com `modulo_slug='estoque'`:
-```sql
-... FROM user_modulos um
-WHERE um.modulo_id = v_modulo_id
-  AND NOT EXISTS (
-    SELECT 1 FROM notification_mutes nm
-    WHERE nm.user_id = um.user_id AND nm.modulo_slug = 'estoque'
-  );
-```
+Regras:
+- O botão **"Aprovar compra"** aparece dentro do `CompraDialog` quando `status === 'pendente_aprovacao'`.
+- Só é visível se o usuário logado for:
+  - O `responsavel_id` atual do card, **ou**
+  - Admin do módulo compras (`is_module_admin('compras')` / `useAuth().isAdmin`).
+- Ao clicar:
+  - Atualiza `status` para `aprovada`.
+  - Se houver `compras_status_defaults` para `aprovada`, aplica esse responsável e o notifica.
+  - Senão, aplica o usuário logado como responsável (sem abrir dialog adicional, pois "aprovou" é ação explícita).
+  - Toast: "Compra aprovada. {Próximo responsável} foi notificado."
 
-### 3. `notifyResponsiblesForStatus` passa a considerar o responsável da coluna
-Em `src/lib/notify.ts`:
-- Para todo status, ler `compras_status_defaults` e incluir o `responsavel_id` configurado.
-- Manter a lógica atual de notificar por módulo/admin como fallback.
-- Resultado: ao mover um card para `pendente_aprovacao`, Maicon (responsável da coluna) é notificado, mesmo sem ser admin global.
+Como o Maicon é o `responsavel_id` em `pendente_aprovacao` (via `compras_status_defaults`), ele verá o botão e poderá aprovar com 1 clique.
 
-Também aplicar o mute aqui: ao notificar por módulo, filtrar os user_ids que silenciaram aquele módulo (para o caso `a_receber`/`finalizado` que envolvem `estoque`).
+## 4. Refatoração leve
 
-### Detalhes técnicos
-- Arquivos: nova migration; edição em `src/lib/notify.ts`.
-- Sem mudanças de UI nesta etapa (silenciamento gerenciável por SQL/admin). Se quiser, depois adiciono uma tela em Admin → Usuários para alternar mutes por módulo.
+Extrair a lógica de "avançar status" hoje dentro de `onDragEnd` para uma função `advanceToStatus(compra, targetStatus)` no mesmo arquivo, reutilizada por:
+- `onDragEnd`
+- Botão de avançar no card
+- Botão de avançar no dialog
+- Botão "Aprovar compra" (chama `advanceToStatus(compra, 'aprovada')` com bypass do dialog)
 
-## Fora do escopo (perguntar depois se necessário)
-- Tela de gerenciamento dos mutes (por enquanto fica via banco/admin).
-- Aplicar a mesma lógica de "responsável da coluna" para demandas/comercial (hoje a pergunta foi sobre compras).
+## Fora de escopo
+- Não altera lógica de notificações já existente.
+- Não cria papel/permissão nova: usa o `responsavel_id` do card + admin do módulo.
+- Não muda demais módulos (demandas, comercial).
+
+## Arquivos afetados
+- `src/routes/compras.index.tsx` — botão no card + função `advanceToStatus`.
+- `src/components/CompraDialog.tsx` — botões "Avançar" e "Aprovar compra" no rodapé.
