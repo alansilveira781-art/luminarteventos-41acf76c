@@ -1,50 +1,56 @@
 ## Objetivo
 
-Adicionar fluxo de "avançar status" no quadro de compras e tratar especificamente a aprovação no status **Pendente Aprovação**.
+Restringir movimentação de cards no quadro de Compras ao **responsável atual do card**, com exceções para admins e cards sem responsável.
 
-## 1. Botão "Avançar" no card do kanban
+## Regra de permissão (`canMoveCard`)
 
-Em `src/routes/compras.index.tsx`, no componente `Card`:
-- Adicionar um pequeno botão (ícone `ChevronRight`) ao lado do código `COMPRA-xx`.
-- Só aparece se existir um próximo status (não aparece em `finalizado` nem `negada`).
-- Ao clicar, dispara a mesma rotina do `onDragEnd` movendo para o próximo status (`COMPRA_STATUSES[idx+1]`), reaproveitando `statusDefaults` + `setPendingMove` + `notifyResponsavel`.
+Usuário pode mover/avançar/aprovar um card se **qualquer uma** for verdadeira:
+1. `compra.responsavel_id === user.id`
+2. `compra.responsavel_id` é nulo/vazio (card sem responsável → liberado para qualquer um com acesso ao módulo compras)
+3. `isModuleAdmin('compras')` (admin global ou admin do módulo)
 
-## 2. Botão "Avançar para X" no `CompraDialog`
+Helper único em `src/lib/compras.ts` (ou no topo de `compras.index.tsx`):
+```ts
+canMoveCard(compra, userId, isAdmin): boolean
+```
 
-Em `src/components/CompraDialog.tsx`:
-- No rodapé do dialog, adicionar botão `Avançar para "{próximo status}"` (esquerda dos botões existentes).
-- Se status atual = `pendente_aprovacao`, esse botão é substituído por **"Aprovar compra"** (verde) — ver item 3.
-- Não aparece nos status terminais.
-- Mesmo handler do item 1: respeita responsável padrão, senão abre `AvancarCardDialog`.
+## 1. `src/routes/compras.index.tsx`
 
-## 3. Aprovação em "Pendente Aprovação"
+- Buscar `responsavel_id` no SELECT da query `compras` (hoje só pega responsavel_nome implicitamente — confirmar e adicionar).
+- Importar `useAuth` para obter `user.id` e `isModuleAdmin('compras')`.
+- Aplicar `canMoveCard` em três pontos:
 
-Regras:
-- O botão **"Aprovar compra"** aparece dentro do `CompraDialog` quando `status === 'pendente_aprovacao'`.
-- Só é visível se o usuário logado for:
-  - O `responsavel_id` atual do card, **ou**
-  - Admin do módulo compras (`is_module_admin('compras')` / `useAuth().isAdmin`).
-- Ao clicar:
-  - Atualiza `status` para `aprovada`.
-  - Se houver `compras_status_defaults` para `aprovada`, aplica esse responsável e o notifica.
-  - Senão, aplica o usuário logado como responsável (sem abrir dialog adicional, pois "aprovou" é ação explícita).
-  - Toast: "Compra aprovada. {Próximo responsável} foi notificado."
+### a) Drag and drop
+- No `Card`, passar `disabled` para `useDraggable({ id, disabled: !canMove })`.
+- Sem isso, o usuário ainda consegue arrastar — bloquear no `useDraggable` é a forma correta.
+- Em `onDragEnd`, redundância: rejeitar com `toast.error("Apenas o responsável pode mover este card.")` se `!canMove`.
 
-Como o Maicon é o `responsavel_id` em `pendente_aprovacao` (via `compras_status_defaults`), ele verá o botão e poderá aprovar com 1 clique.
+### b) Botão ChevronRight no card
+- Renderizar sempre, mas com `disabled` + `title` quando `!canMove`: "Apenas {responsavel_nome} pode avançar este card".
+- Visual: opacity reduzida e cursor not-allowed.
 
-## 4. Refatoração leve
+### c) Diálogo `AvancarCardDialog`
+- Não muda — só abre se o avanço foi iniciado por quem pode.
 
-Extrair a lógica de "avançar status" hoje dentro de `onDragEnd` para uma função `advanceToStatus(compra, targetStatus)` no mesmo arquivo, reutilizada por:
-- `onDragEnd`
-- Botão de avançar no card
-- Botão de avançar no dialog
-- Botão "Aprovar compra" (chama `advanceToStatus(compra, 'aprovada')` com bypass do dialog)
+## 2. `src/components/CompraDialog.tsx`
+
+- Receber `responsavel_id` e `responsavel_nome` no `form` (já estão no type).
+- Calcular `canMove` localmente com `useAuth`.
+- Botão **"Avançar para X"**: sempre renderizado, `disabled` quando `!canMove`, com `title` explicando.
+- Botão **"Aprovar compra"**: mesma regra (substitui a condição atual de "responsavel OR admin" pela `canMove` unificada — efeito é equivalente, mas consistente).
+- Adicionar pequeno texto/badge no header do dialog quando há responsável: "Responsável: {nome}".
+
+## 3. Mensagem do tooltip
+
+Helper `moveBlockedMessage(compra)`:
+- Com responsável: `Apenas ${responsavel_nome} pode mover este card.`
+- Sem responsável + sem acesso compras: `Você não tem permissão para mover este card.` (caso raro, módulo não habilitado).
 
 ## Fora de escopo
-- Não altera lógica de notificações já existente.
-- Não cria papel/permissão nova: usa o `responsavel_id` do card + admin do módulo.
-- Não muda demais módulos (demandas, comercial).
+- Não muda RLS no banco (a validação é de UX/UI; o backend já permite update via RLS atual, e não há requisito de "ninguém consegue burlar via SQL").
+- Não muda módulos demandas/comercial.
+- Não cria papel novo "responsável por status" — segue usando `compras_status_defaults` + `responsavel_id` do card.
 
 ## Arquivos afetados
-- `src/routes/compras.index.tsx` — botão no card + função `advanceToStatus`.
-- `src/components/CompraDialog.tsx` — botões "Avançar" e "Aprovar compra" no rodapé.
+- `src/routes/compras.index.tsx` — query (`responsavel_id`), `canMoveCard`, `useDraggable({ disabled })`, botão do card, guarda em `onDragEnd`.
+- `src/components/CompraDialog.tsx` — `canMove` no rodapé, badge de responsável no header.
