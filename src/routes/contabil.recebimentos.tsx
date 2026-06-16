@@ -282,7 +282,6 @@ function RecebimentoForm({
     onSubmit({
       empresa,
       nota_id: notaId === "__none" ? null : notaId,
-      numero_nf: numeroNf.trim() || null,
       data_recebimento: data,
       valor_recebido: Number(valor),
       banco: banco.trim() || null,
@@ -329,9 +328,6 @@ function RecebimentoForm({
         </div>
       )}
       <FormSection>
-        <FormField label="Nº NF (manual)">
-          <Input value={numeroNf} onChange={(e) => setNumeroNf(e.target.value)} placeholder="Ex.: 40" />
-        </FormField>
         <FormField label="Data do recebimento">
           <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
         </FormField>
