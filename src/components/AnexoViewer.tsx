@@ -4,6 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Download, FileIcon, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Document, Page, pdfjs } from "react-pdf";
+import "react-pdf/dist/Page/TextLayer.css";
+import "react-pdf/dist/Page/AnnotationLayer.css";
+
+const workerUrl = new URL(
+  "pdfjs-dist/build/pdf.worker.min.mjs",
+  import.meta.url
+).toString();
+if (typeof window !== "undefined") {
+  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+}
 
 export type AnexoViewerProps = {
   bucket: string;
@@ -56,10 +67,12 @@ export async function baixarAnexo(bucket: string, path: string, nome: string) {
 export function AnexoViewer({ bucket, anexo, open, onOpenChange }: AnexoViewerProps) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [numPages, setNumPages] = useState<number>(0);
 
   useEffect(() => {
     if (!open || !anexo) {
       setObjectUrl(null);
+      setNumPages(0);
       return;
     }
     let cancelled = false;
@@ -108,20 +121,41 @@ export function AnexoViewer({ bucket, anexo, open, onOpenChange }: AnexoViewerPr
               className="max-h-[70vh] max-w-full object-contain"
             />
           ) : kind === "pdf" ? (
-            <object
-              data={objectUrl}
-              type="application/pdf"
-              className="w-full"
-              style={{ height: "70vh" }}
-            >
-              <div className="flex flex-col items-center gap-2 p-8 text-center">
-                <FileIcon className="h-10 w-10 text-muted-foreground" />
-                <p className="text-sm">Não foi possível exibir a prévia do PDF neste navegador.</p>
-                <Button type="button" size="sm" onClick={() => baixarAnexo(bucket, anexo.path, anexo.nome)}>
-                  <Download className="h-4 w-4 mr-1" /> Baixar para visualizar
-                </Button>
-              </div>
-            </object>
+            <div className="w-full overflow-y-auto" style={{ maxHeight: "70vh" }}>
+              <Document
+                file={objectUrl}
+                onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+                loading={
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                }
+                error={
+                  <div className="flex flex-col items-center gap-2 p-8 text-center">
+                    <FileIcon className="h-10 w-10 text-muted-foreground" />
+                    <p className="text-sm">Não foi possível exibir a prévia do PDF.</p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => baixarAnexo(bucket, anexo.path, anexo.nome)}
+                    >
+                      <Download className="h-4 w-4 mr-1" /> Baixar para visualizar
+                    </Button>
+                  </div>
+                }
+              >
+                {Array.from({ length: numPages }, (_, i) => (
+                  <Page
+                    key={i}
+                    pageNumber={i + 1}
+                    width={760}
+                    renderTextLayer={false}
+                    renderAnnotationLayer={false}
+                    className="mb-3 shadow-sm mx-auto"
+                  />
+                ))}
+              </Document>
+            </div>
           ) : (
             <div className="flex flex-col items-center gap-2 p-8 text-center">
               <FileIcon className="h-10 w-10 text-muted-foreground" />
