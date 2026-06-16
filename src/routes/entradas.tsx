@@ -1114,7 +1114,7 @@ function EntradaEditForm({ original, itens, fornecedores, onEditFornecedor, onSu
         <FormField label="Item*" wide>
           <ItemSearchSelect itens={itens} value={form.item_id} onChange={(v) => set("item_id", v)} />
         </FormField>
-        <FormField label="Quantidade*"><Input required type="number" min="0.01" step="0.01" value={form.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></FormField>
+        <FormField label="Quantidade*"><QuantidadeInput value={Number(form.quantidade) || 0} onChange={(n) => set("quantidade", String(n))} /></FormField>
         <FormField label="Valor unit. (R$)"><MoneyInput value={Number(form.valor_unitario || 0)} onChange={(n) => set("valor_unitario", n ? String(n) : "")} decimals={4} /></FormField>
         <FormField label="Fornecedor">
           <EntitySearchSelect
