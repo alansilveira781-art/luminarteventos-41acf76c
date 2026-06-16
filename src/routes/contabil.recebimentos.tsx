@@ -258,7 +258,6 @@ function RecebimentoForm({
     setNotaId(v);
     if (v !== "__none") {
       const n = notas.find((x) => x.id === v);
-      if (n?.numero) setNumeroNf(n.numero);
       if (n) {
         const ja = recebidoPorNota.get(n.id) ?? 0;
         const rest = +(Number(n.valor_bruto) - ja).toFixed(2);
