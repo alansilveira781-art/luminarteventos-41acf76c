@@ -433,6 +433,8 @@ function Historico({ demandaId }: { demandaId: string }) {
 function Anexos({ demandaId, userId }: { demandaId: string; userId?: string }) {
   const qc = useQueryClient();
   const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState<any | null>(null);
+
 
   const { data: anexos = [] } = useQuery({
     queryKey: ["demanda-anexos", demandaId],
