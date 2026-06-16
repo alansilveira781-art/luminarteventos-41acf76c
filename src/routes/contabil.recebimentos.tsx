@@ -230,7 +230,6 @@ function RecebimentoForm({
 }) {
   const [empresa, setEmpresa] = useState<string>(initial?.empresa ?? EMPRESAS[0]);
   const [notaId, setNotaId] = useState<string>(initial?.nota_id ?? "__none");
-  const [numeroNf, setNumeroNf] = useState<string>(initial?.numero_nf ?? "");
   const [data, setData] = useState<string>(initial?.data_recebimento ?? new Date().toISOString().slice(0, 10));
   const [valor, setValor] = useState<string>(String(initial?.valor_recebido ?? ""));
   const [banco, setBanco] = useState<string>(initial?.banco ?? "");
@@ -259,7 +258,6 @@ function RecebimentoForm({
     setNotaId(v);
     if (v !== "__none") {
       const n = notas.find((x) => x.id === v);
-      if (n?.numero) setNumeroNf(n.numero);
       if (n) {
         const ja = recebidoPorNota.get(n.id) ?? 0;
         const rest = +(Number(n.valor_bruto) - ja).toFixed(2);
@@ -284,7 +282,6 @@ function RecebimentoForm({
     onSubmit({
       empresa,
       nota_id: notaId === "__none" ? null : notaId,
-      numero_nf: numeroNf.trim() || null,
       data_recebimento: data,
       valor_recebido: Number(valor),
       banco: banco.trim() || null,
@@ -331,9 +328,6 @@ function RecebimentoForm({
         </div>
       )}
       <FormSection>
-        <FormField label="Nº NF (manual)">
-          <Input value={numeroNf} onChange={(e) => setNumeroNf(e.target.value)} placeholder="Ex.: 40" />
-        </FormField>
         <FormField label="Data do recebimento">
           <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
         </FormField>
