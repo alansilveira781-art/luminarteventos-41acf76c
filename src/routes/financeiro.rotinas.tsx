@@ -483,8 +483,22 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
             <FormField label="Data de início*">
               <Input required type="date" value={form.data_inicio} onChange={(e) => set("data_inicio", e.target.value)} />
             </FormField>
-            <FormField label="Data de fim (opcional)">
+            <FormField label="Repetir até (data de término)">
               <Input type="date" value={form.data_fim} onChange={(e) => set("data_fim", e.target.value)} />
+            </FormField>
+            <FormField label="Nº máximo de ocorrências">
+              <Input
+                type="number"
+                min={1}
+                value={form.max_ocorrencias}
+                onChange={(e) => set("max_ocorrencias", e.target.value)}
+                placeholder="Sem limite"
+              />
+            </FormField>
+            <FormField label="" wide>
+              <p className="text-xs text-muted-foreground">
+                A rotina encerra quando atingir a data de término OU o nº de ocorrências, o que vier primeiro. Deixe ambos em branco para recorrência sem fim.
+              </p>
             </FormField>
             <FormField label="Responsável">
               <Input value={form.responsavel_nome} onChange={(e) => set("responsavel_nome", e.target.value)} placeholder="Nome do responsável" />
