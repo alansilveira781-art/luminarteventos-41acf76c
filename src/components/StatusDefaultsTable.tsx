@@ -19,7 +19,7 @@ export function StatusDefaultsTable({
   moduleSlug,
   statuses,
 }: {
-  tableName: "compras_status_defaults" | "comercial_status_defaults";
+  tableName: "compras_status_defaults" | "comercial_status_defaults" | "financeiro_status_defaults";
   moduleSlug: string;
   statuses: StatusOption[];
 }) {
