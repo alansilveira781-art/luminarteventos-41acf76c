@@ -230,7 +230,6 @@ function RecebimentoForm({
 }) {
   const [empresa, setEmpresa] = useState<string>(initial?.empresa ?? EMPRESAS[0]);
   const [notaId, setNotaId] = useState<string>(initial?.nota_id ?? "__none");
-  const [numeroNf, setNumeroNf] = useState<string>(initial?.numero_nf ?? "");
   const [data, setData] = useState<string>(initial?.data_recebimento ?? new Date().toISOString().slice(0, 10));
   const [valor, setValor] = useState<string>(String(initial?.valor_recebido ?? ""));
   const [banco, setBanco] = useState<string>(initial?.banco ?? "");
