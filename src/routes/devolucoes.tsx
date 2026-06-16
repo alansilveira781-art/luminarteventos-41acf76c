@@ -559,9 +559,9 @@ function DevolucaoForm({ saidas, devolvidoPorOrigem, solicitantes, onSubmit, sub
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground whitespace-nowrap">{jaDev}</td>
                         <td className="px-3 py-2 text-right tabular-nums font-medium whitespace-nowrap">{saldo}</td>
                         <td className="px-3 py-2">
-                          <Input type="number" min="0" max={saldo} step="0.01"
+                          <QuantidadeInput max={saldo}
                             value={sem ? "" : (qtds[s.id] ?? "")}
-                            onChange={(e) => setQtds((q) => ({ ...q, [s.id]: e.target.value }))}
+                            onChange={(v) => setQtds((q) => ({ ...q, [s.id]: v }))}
                             placeholder="0" disabled={saldo <= 0 || sem} className="h-8 text-right" />
                         </td>
                         <td className="px-3 py-2 text-center">
