@@ -27,13 +27,17 @@ type Rotina = {
   descricao: string | null;
   frequencia: "diaria" | "semanal" | "quinzenal" | "mensal" | "custom";
   dias_semana: number[] | null;
-  hora: string;
+  hora: string | null;
   data_inicio: string;
   data_fim: string | null;
   responsavel_id: string | null;
   responsavel_nome: string | null;
   status: "ativa" | "pausada";
   exige_validacao: boolean;
+  max_ocorrencias: number | null;
+  ocorrencias_realizadas: number | null;
+  proxima_data: string | null;
+  encerrada: boolean;
 };
 
 const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
