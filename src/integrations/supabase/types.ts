@@ -1658,10 +1658,14 @@ export type Database = {
           data_inicio: string
           descricao: string | null
           dias_semana: number[] | null
+          encerrada: boolean
           exige_validacao: boolean
           frequencia: string
           hora: string
           id: string
+          max_ocorrencias: number | null
+          ocorrencias_realizadas: number
+          proxima_data: string | null
           responsavel_id: string | null
           responsavel_nome: string | null
           status: string
@@ -1675,10 +1679,14 @@ export type Database = {
           data_inicio?: string
           descricao?: string | null
           dias_semana?: number[] | null
+          encerrada?: boolean
           exige_validacao?: boolean
           frequencia: string
           hora?: string
           id?: string
+          max_ocorrencias?: number | null
+          ocorrencias_realizadas?: number
+          proxima_data?: string | null
           responsavel_id?: string | null
           responsavel_nome?: string | null
           status?: string
@@ -1692,10 +1700,14 @@ export type Database = {
           data_inicio?: string
           descricao?: string | null
           dias_semana?: number[] | null
+          encerrada?: boolean
           exige_validacao?: boolean
           frequencia?: string
           hora?: string
           id?: string
+          max_ocorrencias?: number | null
+          ocorrencias_realizadas?: number
+          proxima_data?: string | null
           responsavel_id?: string | null
           responsavel_nome?: string | null
           status?: string
@@ -2666,6 +2678,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calcular_proxima_data_rotina: {
+        Args: {
+          p_data_base: string
+          p_dias_semana: number[]
+          p_frequencia: string
+        }
+        Returns: string
+      }
       get_profile_names: {
         Args: { _ids: string[] }
         Returns: {
@@ -2691,6 +2711,14 @@ export type Database = {
       }
       next_pat_requisicao_numero: { Args: never; Returns: number }
       next_requisicao_numero: { Args: never; Returns: number }
+      primeira_data_rotina: {
+        Args: {
+          p_data_inicio: string
+          p_dias_semana: number[]
+          p_frequencia: string
+        }
+        Returns: string
+      }
       reconciliar_estoque: { Args: { p_item_id: string }; Returns: number }
       refresh_item_status: { Args: { p_item_id: string }; Returns: undefined }
       show_limit: { Args: never; Returns: number }
