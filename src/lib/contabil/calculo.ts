@@ -83,7 +83,8 @@ export function calcularImpostosPresumido(
     let adicional = 0;
     if (nome === "IRPJ" && aliqAdic > 0) {
       const limite = extrairLimiteAdicional(cfg.observacoes);
-      const excedente = Math.max(0, +(valor - limite).toFixed(2));
+      // Adicional incide sobre a BASE presumida que excede o limite mensal, não sobre o IRPJ apurado
+      const excedente = Math.max(0, +(base - limite).toFixed(2));
       adicional = +(excedente * (aliqAdic / 100)).toFixed(2);
       irpjDetalhe = {
         irpjNormal: valor,
