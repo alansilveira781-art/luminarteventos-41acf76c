@@ -2,17 +2,19 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FormField, FormSection, FormActions } from "@/components/FormSection";
-import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Pause, Play, Clock } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Pause, Play, Clock, CheckCircle2, Paperclip, ShieldCheck, X } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/financeiro/rotinas")({
@@ -31,6 +33,7 @@ type Rotina = {
   responsavel_id: string | null;
   responsavel_nome: string | null;
   status: "ativa" | "pausada";
+  exige_validacao: boolean;
 };
 
 const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -43,6 +46,8 @@ const FREQ_LABELS: Record<Rotina["frequencia"], string> = {
 };
 
 function RotinasPage() {
+  const { isAdmin, modulos } = useAuth();
+  const isFinAdmin = isAdmin || modulos.some((m) => m.slug === "financeiro" && m.is_admin);
   const [editing, setEditing] = useState<Partial<Rotina> | null>(null);
 
   const { data: rotinas = [] } = useQuery({
@@ -55,6 +60,18 @@ function RotinasPage() {
       if (error) throw error;
       return (data ?? []) as unknown as Rotina[];
     },
+  });
+
+  const { data: pendentesCount = 0 } = useQuery({
+    queryKey: ["financeiro-rotinas-validacoes-count"],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("financeiro_rotina_execucoes" as any)
+        .select("id", { count: "exact", head: true })
+        .eq("validacao_status", "pendente");
+      return count ?? 0;
+    },
+    enabled: isFinAdmin,
   });
 
   return (
@@ -73,6 +90,12 @@ function RotinasPage() {
         <TabsList>
           <TabsTrigger value="tabela">Tabela</TabsTrigger>
           <TabsTrigger value="calendario">Calendário</TabsTrigger>
+          <TabsTrigger value="execucao">Execução</TabsTrigger>
+          {isFinAdmin && (
+            <TabsTrigger value="validacoes">
+              Validações{pendentesCount > 0 ? ` (${pendentesCount})` : ""}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="tabela">
@@ -82,6 +105,16 @@ function RotinasPage() {
         <TabsContent value="calendario">
           <CalendarioRotinas rotinas={rotinas} onEdit={setEditing} />
         </TabsContent>
+
+        <TabsContent value="execucao">
+          <ExecucaoRotinas rotinas={rotinas.filter((r) => r.status === "ativa")} />
+        </TabsContent>
+
+        {isFinAdmin && (
+          <TabsContent value="validacoes">
+            <ValidacoesPanel />
+          </TabsContent>
+        )}
       </Tabs>
 
       {editing && (
@@ -199,7 +232,14 @@ function TabelaRotinas({
             {filtered.map((r) => (
               <tr key={r.id} className="border-t hover:bg-muted/20">
                 <td className="px-4 py-2">
-                  <div className="font-medium">{r.titulo}</div>
+                  <div className="font-medium flex items-center gap-2">
+                    {r.titulo}
+                    {r.exige_validacao && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        <ShieldCheck className="h-3 w-3 mr-1" /> Requer validação
+                      </Badge>
+                    )}
+                  </div>
                   {r.descricao && <div className="text-xs text-muted-foreground">{r.descricao}</div>}
                 </td>
                 <td className="px-4 py-2">
@@ -329,6 +369,7 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
     data_fim: rotina.data_fim ?? "",
     responsavel_nome: rotina.responsavel_nome ?? "",
     status: (rotina.status ?? "ativa") as Rotina["status"],
+    exige_validacao: rotina.exige_validacao ?? false,
   });
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
@@ -349,6 +390,7 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
         data_fim: form.data_fim || null,
         responsavel_nome: form.responsavel_nome || null,
         status: form.status,
+        exige_validacao: form.exige_validacao,
       };
       if (isEdit) {
         const { error } = await supabase.from("financeiro_rotinas" as any).update(payload).eq("id", rotina.id!);
@@ -437,6 +479,15 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
                 </SelectContent>
               </Select>
             </FormField>
+            <FormField label="Validação" wide>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <Checkbox
+                  checked={form.exige_validacao}
+                  onCheckedChange={(v) => set("exige_validacao", !!v)}
+                />
+                Exige validação do gestor
+              </label>
+            </FormField>
           </FormSection>
           <FormActions>
             <Button type="button" variant="ghost" onClick={onClose}>Cancelar</Button>
@@ -518,3 +569,479 @@ function parseISODate(s: string): Date {
   const [y, m, d] = s.split("-").map(Number);
   return new Date(y, m - 1, d);
 }
+
+// ============================================================================
+// EXECUÇÃO
+// ============================================================================
+
+type Execucao = {
+  id: string;
+  rotina_id: string;
+  data_referencia: string;
+  executada: boolean;
+  executada_em: string;
+  executada_por_nome: string | null;
+  observacoes: string | null;
+  validacao_status: "nao_requer" | "pendente" | "aprovada" | "rejeitada";
+  validado_por_nome: string | null;
+  validado_em: string | null;
+  validacao_observacao: string | null;
+};
+
+function ExecucaoRotinas({ rotinas }: { rotinas: Rotina[] }) {
+  const [registrar, setRegistrar] = useState<Rotina | null>(null);
+
+  const { data: execucoes = [] } = useQuery({
+    queryKey: ["rotina-execucoes"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("financeiro_rotina_execucoes" as any)
+        .select("*")
+        .order("executada_em", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return (data ?? []) as unknown as Execucao[];
+    },
+  });
+
+  const hoje = new Date().toISOString().slice(0, 10);
+  const execByRotina = useMemo(() => {
+    const m: Record<string, Execucao[]> = {};
+    execucoes.forEach((e) => {
+      (m[e.rotina_id] ??= []).push(e);
+    });
+    return m;
+  }, [execucoes]);
+
+  return (
+    <>
+      <Card className="p-0 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
+              <tr>
+                <th className="px-4 py-2 text-left">Rotina</th>
+                <th className="px-4 py-2 text-left">Frequência</th>
+                <th className="px-4 py-2 text-left">Última execução</th>
+                <th className="px-4 py-2 text-left">Status</th>
+                <th className="px-4 py-2 w-40"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rotinas.length === 0 && (
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Nenhuma rotina ativa</td></tr>
+              )}
+              {rotinas.map((r) => {
+                const execs = execByRotina[r.id] ?? [];
+                const ultima = execs[0];
+                const feitaHoje = execs.some((e) => e.data_referencia === hoje);
+                return (
+                  <tr key={r.id} className="border-t hover:bg-muted/20 align-top">
+                    <td className="px-4 py-2">
+                      <div className="font-medium flex items-center gap-2">
+                        {r.titulo}
+                        {r.exige_validacao && (
+                          <Badge variant="secondary" className="text-[10px]">
+                            <ShieldCheck className="h-3 w-3 mr-1" /> Requer validação
+                          </Badge>
+                        )}
+                      </div>
+                      {r.responsavel_nome && (
+                        <div className="text-xs text-muted-foreground">Resp.: {r.responsavel_nome}</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 text-xs">{FREQ_LABELS[r.frequencia]}</td>
+                    <td className="px-4 py-2 text-xs">
+                      {ultima ? (
+                        <>
+                          <div>{fmtDate(ultima.data_referencia)}</div>
+                          <div className="text-muted-foreground">por {ultima.executada_por_nome ?? "—"}</div>
+                        </>
+                      ) : <span className="text-muted-foreground">Nunca executada</span>}
+                    </td>
+                    <td className="px-4 py-2">
+                      {feitaHoje ? (
+                        <Badge variant="default">Feita hoje</Badge>
+                      ) : (
+                        <Badge variant="outline">Pendente</Badge>
+                      )}
+                    </td>
+                    <td className="px-4 py-2">
+                      <Button size="sm" variant="outline" onClick={() => setRegistrar(r)}>
+                        <CheckCircle2 className="h-4 w-4 mr-1" /> Marcar como feita
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <div className="mt-6">
+        <div className="text-sm font-semibold mb-2">Histórico recente</div>
+        <Card className="p-0 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-2 text-left">Rotina</th>
+                  <th className="px-4 py-2 text-left">Data ref.</th>
+                  <th className="px-4 py-2 text-left">Executada por</th>
+                  <th className="px-4 py-2 text-left">Anexos</th>
+                  <th className="px-4 py-2 text-left">Validação</th>
+                  <th className="px-4 py-2 text-left">Observações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {execucoes.length === 0 && (
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Nenhuma execução registrada</td></tr>
+                )}
+                {execucoes.slice(0, 50).map((e) => {
+                  const r = rotinas.find((x) => x.id === e.rotina_id);
+                  return (
+                    <tr key={e.id} className="border-t hover:bg-muted/20 align-top">
+                      <td className="px-4 py-2">{r?.titulo ?? "—"}</td>
+                      <td className="px-4 py-2 text-xs">{fmtDate(e.data_referencia)}</td>
+                      <td className="px-4 py-2 text-xs">{e.executada_por_nome ?? "—"}</td>
+                      <td className="px-4 py-2"><AnexosLinks execucaoId={e.id} /></td>
+                      <td className="px-4 py-2"><ValidacaoBadge status={e.validacao_status} /></td>
+                      <td className="px-4 py-2 text-xs text-muted-foreground">{e.observacoes ?? "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
+
+      {registrar && (
+        <RegistrarExecucaoDialog rotina={registrar} onClose={() => setRegistrar(null)} />
+      )}
+    </>
+  );
+}
+
+function ValidacaoBadge({ status }: { status: Execucao["validacao_status"] }) {
+  if (status === "nao_requer") return <span className="text-xs text-muted-foreground">—</span>;
+  if (status === "pendente") return <Badge variant="outline">Aguardando validação</Badge>;
+  if (status === "aprovada") return <Badge variant="default">Aprovada</Badge>;
+  return <Badge variant="destructive">Rejeitada</Badge>;
+}
+
+function AnexosLinks({ execucaoId }: { execucaoId: string }) {
+  const { data: anexos = [] } = useQuery({
+    queryKey: ["rotina-exec-anexos", execucaoId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("financeiro_rotina_execucao_anexos" as any)
+        .select("*")
+        .eq("execucao_id", execucaoId);
+      return (data ?? []) as any[];
+    },
+  });
+  if (anexos.length === 0) return <span className="text-xs text-muted-foreground">—</span>;
+  async function open(path: string) {
+    const { data } = await supabase.storage.from("rotina-anexos").createSignedUrl(path, 60);
+    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+    else toast.error("Não foi possível abrir");
+  }
+  return (
+    <div className="flex flex-col gap-0.5">
+      {anexos.map((a) => (
+        <button
+          key={a.id}
+          type="button"
+          onClick={() => open(a.path)}
+          className="text-xs text-primary hover:underline flex items-center gap-1 text-left"
+        >
+          <Paperclip className="h-3 w-3" /> {a.nome}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function RegistrarExecucaoDialog({ rotina, onClose }: { rotina: Rotina; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [dataRef, setDataRef] = useState(new Date().toISOString().slice(0, 10));
+  const [obs, setObs] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      let nome: string | null = null;
+      if (user?.id) {
+        const { data: prof } = await supabase.from("profiles").select("display_name,email").eq("id", user.id).maybeSingle();
+        nome = prof?.display_name || prof?.email || user.email || null;
+      }
+      const validacaoStatus = rotina.exige_validacao ? "pendente" : "nao_requer";
+      const { data: exec, error } = await supabase
+        .from("financeiro_rotina_execucoes" as any)
+        .insert({
+          rotina_id: rotina.id,
+          data_referencia: dataRef,
+          executada: true,
+          executada_por: user?.id ?? null,
+          executada_por_nome: nome,
+          observacoes: obs || null,
+          validacao_status: validacaoStatus,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      const execId = (exec as any).id as string;
+
+      for (const file of files) {
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const path = `${execId}/${Date.now()}_${safeName}`;
+        const { error: upErr } = await supabase.storage.from("rotina-anexos").upload(path, file, {
+          contentType: file.type || undefined,
+        });
+        if (upErr) throw upErr;
+        const { error: insErr } = await supabase.from("financeiro_rotina_execucao_anexos" as any).insert({
+          execucao_id: execId,
+          nome: file.name,
+          path,
+          mime_type: file.type || null,
+          tamanho: file.size,
+          uploaded_by: user?.id ?? null,
+        });
+        if (insErr) throw insErr;
+      }
+
+      qc.invalidateQueries({ queryKey: ["rotina-execucoes"] });
+      qc.invalidateQueries({ queryKey: ["financeiro-rotinas-validacoes-count"] });
+      toast.success(rotina.exige_validacao ? "Execução registrada — aguardando validação" : "Execução registrada");
+      onClose();
+    } catch (err: any) {
+      toast.error(err.message ?? "Erro ao registrar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Registrar execução — {rotina.titulo}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSave}>
+          <FormSection>
+            <FormField label="Data de referência*">
+              <Input required type="date" value={dataRef} onChange={(e) => setDataRef(e.target.value)} />
+            </FormField>
+            <FormField label="Observações" wide>
+              <Textarea rows={2} value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Opcional" />
+            </FormField>
+            <FormField label="Anexos (opcional)" wide>
+              <label className="flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-md py-4 cursor-pointer hover:bg-muted/40 transition text-sm">
+                <Paperclip className="h-4 w-4" />
+                <span>{files.length > 0 ? `${files.length} arquivo(s) selecionado(s)` : "Clique para anexar arquivos"}</span>
+                <input
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+                />
+              </label>
+              {files.length > 0 && (
+                <ul className="text-xs text-muted-foreground mt-2 space-y-0.5">
+                  {files.map((f, i) => (
+                    <li key={i} className="flex items-center gap-1">
+                      <span className="flex-1 truncate">{f.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setFiles(files.filter((_, j) => j !== i))}
+                        className="hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </FormField>
+          </FormSection>
+          {rotina.exige_validacao && (
+            <div className="text-xs text-muted-foreground bg-muted/40 rounded p-2 mt-2">
+              <ShieldCheck className="h-3 w-3 inline mr-1" />
+              Esta rotina exige validação do gestor após a execução.
+            </div>
+          )}
+          <FormActions>
+            <Button type="button" variant="ghost" onClick={onClose}>Cancelar</Button>
+            <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Registrar"}</Button>
+          </FormActions>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============================================================================
+// VALIDAÇÕES (painel do gestor)
+// ============================================================================
+
+function ValidacoesPanel() {
+  const qc = useQueryClient();
+  const [acting, setActing] = useState<{ exec: Execucao; action: "aprovar" | "rejeitar" } | null>(null);
+
+  const { data: pendentes = [] } = useQuery({
+    queryKey: ["rotina-execucoes-pendentes"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("financeiro_rotina_execucoes" as any)
+        .select("*")
+        .eq("validacao_status", "pendente")
+        .order("executada_em", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as Execucao[];
+    },
+  });
+
+  const { data: rotinas = [] } = useQuery({
+    queryKey: ["financeiro-rotinas"],
+    queryFn: async () => {
+      const { data } = await supabase.from("financeiro_rotinas" as any).select("id,titulo");
+      return (data ?? []) as unknown as { id: string; titulo: string }[];
+    },
+  });
+
+  return (
+    <>
+      <Card className="p-0 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
+              <tr>
+                <th className="px-4 py-2 text-left">Rotina</th>
+                <th className="px-4 py-2 text-left">Data ref.</th>
+                <th className="px-4 py-2 text-left">Executada por</th>
+                <th className="px-4 py-2 text-left">Anexos</th>
+                <th className="px-4 py-2 text-left">Observações</th>
+                <th className="px-4 py-2 w-48"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendentes.length === 0 && (
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Nenhuma execução aguardando validação</td></tr>
+              )}
+              {pendentes.map((e) => {
+                const r = rotinas.find((x) => x.id === e.rotina_id);
+                return (
+                  <tr key={e.id} className="border-t hover:bg-muted/20 align-top">
+                    <td className="px-4 py-2 font-medium">{r?.titulo ?? "—"}</td>
+                    <td className="px-4 py-2 text-xs">{fmtDate(e.data_referencia)}</td>
+                    <td className="px-4 py-2 text-xs">{e.executada_por_nome ?? "—"}</td>
+                    <td className="px-4 py-2"><AnexosLinks execucaoId={e.id} /></td>
+                    <td className="px-4 py-2 text-xs text-muted-foreground">{e.observacoes ?? "—"}</td>
+                    <td className="px-4 py-2">
+                      <div className="flex gap-1 justify-end">
+                        <Button size="sm" variant="outline" onClick={() => setActing({ exec: e, action: "aprovar" })}>
+                          Aprovar
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => setActing({ exec: e, action: "rejeitar" })}>
+                          Rejeitar
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {acting && (
+        <ValidarDialog
+          exec={acting.exec}
+          action={acting.action}
+          onClose={() => setActing(null)}
+          onDone={() => {
+            qc.invalidateQueries({ queryKey: ["rotina-execucoes-pendentes"] });
+            qc.invalidateQueries({ queryKey: ["rotina-execucoes"] });
+            qc.invalidateQueries({ queryKey: ["financeiro-rotinas-validacoes-count"] });
+            setActing(null);
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+function ValidarDialog({
+  exec, action, onClose, onDone,
+}: {
+  exec: Execucao;
+  action: "aprovar" | "rejeitar";
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [obs, setObs] = useState("");
+  const [saving, setSaving] = useState(false);
+  const isReject = action === "rejeitar";
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (isReject && !obs.trim()) {
+      toast.error("Observação obrigatória ao rejeitar");
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      let nome: string | null = null;
+      if (user?.id) {
+        const { data: prof } = await supabase.from("profiles").select("display_name,email").eq("id", user.id).maybeSingle();
+        nome = prof?.display_name || prof?.email || user.email || null;
+      }
+      const { error } = await supabase.from("financeiro_rotina_execucoes" as any).update({
+        validacao_status: isReject ? "rejeitada" : "aprovada",
+        validado_por: user?.id ?? null,
+        validado_por_nome: nome,
+        validado_em: new Date().toISOString(),
+        validacao_observacao: obs || null,
+      }).eq("id", exec.id);
+      if (error) throw error;
+      toast.success(isReject ? "Execução rejeitada" : "Execução aprovada");
+      onDone();
+    } catch (err: any) {
+      toast.error(err.message ?? "Erro ao validar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{isReject ? "Rejeitar execução" : "Aprovar execução"}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSave}>
+          <FormSection>
+            <FormField label={isReject ? "Motivo*" : "Observação (opcional)"} wide>
+              <Textarea rows={3} value={obs} onChange={(e) => setObs(e.target.value)} required={isReject} />
+            </FormField>
+          </FormSection>
+          <FormActions>
+            <Button type="button" variant="ghost" onClick={onClose}>Cancelar</Button>
+            <Button type="submit" variant={isReject ? "destructive" : "default"} disabled={saving}>
+              {saving ? "Salvando…" : isReject ? "Rejeitar" : "Aprovar"}
+            </Button>
+          </FormActions>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+

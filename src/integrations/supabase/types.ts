@@ -1416,6 +1416,8 @@ export type Database = {
           observacoes: string | null
           ordem: number
           parcelamento: string | null
+          responsavel_id: string | null
+          responsavel_nome: string | null
           solicitante: string | null
           solicitante_id: string | null
           status: Database["public"]["Enums"]["compra_status"]
@@ -1444,6 +1446,8 @@ export type Database = {
           observacoes?: string | null
           ordem?: number
           parcelamento?: string | null
+          responsavel_id?: string | null
+          responsavel_nome?: string | null
           solicitante?: string | null
           solicitante_id?: string | null
           status?: Database["public"]["Enums"]["compra_status"]
@@ -1472,6 +1476,8 @@ export type Database = {
           observacoes?: string | null
           ordem?: number
           parcelamento?: string | null
+          responsavel_id?: string | null
+          responsavel_nome?: string | null
           solicitante?: string | null
           solicitante_id?: string | null
           status?: Database["public"]["Enums"]["compra_status"]
@@ -1544,6 +1550,106 @@ export type Database = {
         }
         Relationships: []
       }
+      financeiro_rotina_execucao_anexos: {
+        Row: {
+          created_at: string
+          execucao_id: string
+          id: string
+          mime_type: string | null
+          nome: string
+          path: string
+          tamanho: number | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          execucao_id: string
+          id?: string
+          mime_type?: string | null
+          nome: string
+          path: string
+          tamanho?: number | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          execucao_id?: string
+          id?: string
+          mime_type?: string | null
+          nome?: string
+          path?: string
+          tamanho?: number | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_rotina_execucao_anexos_execucao_id_fkey"
+            columns: ["execucao_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_rotina_execucoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_rotina_execucoes: {
+        Row: {
+          created_at: string
+          data_referencia: string
+          executada: boolean
+          executada_em: string
+          executada_por: string | null
+          executada_por_nome: string | null
+          id: string
+          observacoes: string | null
+          rotina_id: string
+          validacao_observacao: string | null
+          validacao_status: string
+          validado_em: string | null
+          validado_por: string | null
+          validado_por_nome: string | null
+        }
+        Insert: {
+          created_at?: string
+          data_referencia: string
+          executada?: boolean
+          executada_em?: string
+          executada_por?: string | null
+          executada_por_nome?: string | null
+          id?: string
+          observacoes?: string | null
+          rotina_id: string
+          validacao_observacao?: string | null
+          validacao_status?: string
+          validado_em?: string | null
+          validado_por?: string | null
+          validado_por_nome?: string | null
+        }
+        Update: {
+          created_at?: string
+          data_referencia?: string
+          executada?: boolean
+          executada_em?: string
+          executada_por?: string | null
+          executada_por_nome?: string | null
+          id?: string
+          observacoes?: string | null
+          rotina_id?: string
+          validacao_observacao?: string | null
+          validacao_status?: string
+          validado_em?: string | null
+          validado_por?: string | null
+          validado_por_nome?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_rotina_execucoes_rotina_id_fkey"
+            columns: ["rotina_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_rotinas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financeiro_rotinas: {
         Row: {
           created_at: string
@@ -1552,6 +1658,7 @@ export type Database = {
           data_inicio: string
           descricao: string | null
           dias_semana: number[] | null
+          exige_validacao: boolean
           frequencia: string
           hora: string
           id: string
@@ -1568,6 +1675,7 @@ export type Database = {
           data_inicio?: string
           descricao?: string | null
           dias_semana?: number[] | null
+          exige_validacao?: boolean
           frequencia: string
           hora?: string
           id?: string
@@ -1584,6 +1692,7 @@ export type Database = {
           data_inicio?: string
           descricao?: string | null
           dias_semana?: number[] | null
+          exige_validacao?: boolean
           frequencia?: string
           hora?: string
           id?: string
@@ -1592,6 +1701,33 @@ export type Database = {
           status?: string
           titulo?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      financeiro_status_defaults: {
+        Row: {
+          created_at: string
+          responsavel_id: string | null
+          responsavel_nome: string | null
+          status: Database["public"]["Enums"]["compra_status"]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          responsavel_id?: string | null
+          responsavel_nome?: string | null
+          status: Database["public"]["Enums"]["compra_status"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          responsavel_id?: string | null
+          responsavel_nome?: string | null
+          status?: Database["public"]["Enums"]["compra_status"]
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
