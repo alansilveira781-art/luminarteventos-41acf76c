@@ -874,7 +874,7 @@ function SaidaEditForm({ original, itens, solicitantes, onEditSolicitante, event
         <FormField label="Item*" wide>
           <ItemSearchSelect itens={itens} value={form.item_id} onChange={(v) => set("item_id", v)} showStock />
         </FormField>
-        <FormField label="Quantidade*"><Input required type="number" min="0.01" step="0.01" value={form.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></FormField>
+        <FormField label="Quantidade*"><QuantidadeInput value={Number(form.quantidade) || 0} onChange={(n) => set("quantidade", String(n))} /></FormField>
         {isEvento && (
           <FormField label="Evento / Projeto*" wide>
             <EventoSheetCombobox
