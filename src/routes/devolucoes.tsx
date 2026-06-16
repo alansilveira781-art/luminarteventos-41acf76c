@@ -455,7 +455,7 @@ function DevolucaoForm({ saidas, devolvidoPorOrigem, solicitantes, onSubmit, sub
     responsavel_lancamento: "",
     observacoes: "",
   });
-  const [qtds, setQtds] = useState<Record<string, string>>({});
+  const [qtds, setQtds] = useState<Record<string, number>>({});
   const [semDevolucao, setSemDevolucao] = useState<Record<string, boolean>>({});
 
   const grupo = grupos.find((g) => g.key === grupoKey);
