@@ -362,6 +362,7 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
     data_fim: rotina.data_fim ?? "",
     responsavel_nome: rotina.responsavel_nome ?? "",
     status: (rotina.status ?? "ativa") as Rotina["status"],
+    exige_validacao: rotina.exige_validacao ?? false,
   });
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
@@ -382,6 +383,7 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
         data_fim: form.data_fim || null,
         responsavel_nome: form.responsavel_nome || null,
         status: form.status,
+        exige_validacao: form.exige_validacao,
       };
       if (isEdit) {
         const { error } = await supabase.from("financeiro_rotinas" as any).update(payload).eq("id", rotina.id!);
