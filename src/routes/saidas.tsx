@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { FormActions, FormField, FormSection } from "@/components/FormSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { QuantidadeInput } from "@/components/QuantidadeInput";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -798,13 +799,10 @@ function SaidaForm({ prefill, isEditing, itens, solicitantes, onEditSolicitante,
                 </div>
                 <div className="col-span-3">
                   <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">Quantidade</label>
-                  <Input
+                  <QuantidadeInput
                     ref={(el) => { qtyRefs.current[i] = el; }}
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    value={l.quantidade}
-                    onChange={(e) => setL(i, "quantidade", e.target.value)}
+                    value={Number(l.quantidade) || 0}
+                    onChange={(n) => setL(i, "quantidade", String(n))}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -876,7 +874,7 @@ function SaidaEditForm({ original, itens, solicitantes, onEditSolicitante, event
         <FormField label="Item*" wide>
           <ItemSearchSelect itens={itens} value={form.item_id} onChange={(v) => set("item_id", v)} showStock />
         </FormField>
-        <FormField label="Quantidade*"><Input required type="number" min="0.01" step="0.01" value={form.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></FormField>
+        <FormField label="Quantidade*"><QuantidadeInput value={Number(form.quantidade) || 0} onChange={(n) => set("quantidade", String(n))} /></FormField>
         {isEvento && (
           <FormField label="Evento / Projeto*" wide>
             <EventoSheetCombobox

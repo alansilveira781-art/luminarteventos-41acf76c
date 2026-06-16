@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { FormActions, FormField, FormSection } from "@/components/FormSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { QuantidadeInput } from "@/components/QuantidadeInput";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -454,7 +455,7 @@ function DevolucaoForm({ saidas, devolvidoPorOrigem, solicitantes, onSubmit, sub
     responsavel_lancamento: "",
     observacoes: "",
   });
-  const [qtds, setQtds] = useState<Record<string, string>>({});
+  const [qtds, setQtds] = useState<Record<string, number>>({});
   const [semDevolucao, setSemDevolucao] = useState<Record<string, boolean>>({});
 
   const grupo = grupos.find((g) => g.key === grupoKey);
@@ -558,15 +559,17 @@ function DevolucaoForm({ saidas, devolvidoPorOrigem, solicitantes, onSubmit, sub
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground whitespace-nowrap">{jaDev}</td>
                         <td className="px-3 py-2 text-right tabular-nums font-medium whitespace-nowrap">{saldo}</td>
                         <td className="px-3 py-2">
-                          <Input type="number" min="0" max={saldo} step="0.01"
-                            value={sem ? "" : (qtds[s.id] ?? "")}
-                            onChange={(e) => setQtds((q) => ({ ...q, [s.id]: e.target.value }))}
-                            placeholder="0" disabled={saldo <= 0 || sem} className="h-8 text-right" />
+                          <QuantidadeInput
+                            value={sem ? 0 : (qtds[s.id] ?? 0)}
+                            onChange={(n) => setQtds((q) => ({ ...q, [s.id]: n }))}
+                            max={saldo > 0 ? saldo : 0}
+                            disabled={saldo <= 0 || sem}
+                            className="h-8" />
                         </td>
                         <td className="px-3 py-2 text-center">
                           <Checkbox checked={sem} onCheckedChange={(v) => {
                             setSemDevolucao((m) => ({ ...m, [s.id]: !!v }));
-                            if (v) setQtds((q) => ({ ...q, [s.id]: "" }));
+                            if (v) setQtds((q) => ({ ...q, [s.id]: 0 }));
                           }} />
                         </td>
                       </tr>
