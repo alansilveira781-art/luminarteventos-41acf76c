@@ -630,13 +630,9 @@ function Anexos({ compraId, userId }: { compraId: string; userId?: string }) {
   }
 
   async function handleDownload(a: any) {
-    const { data, error } = await sb.storage.from("compra-anexos").createSignedUrl(a.path, 60);
-    if (error || !data?.signedUrl) {
-      toast.error("Não foi possível baixar");
-      return;
-    }
-    window.open(data.signedUrl, "_blank");
+    await baixarAnexo("compra-anexos", a.path, a.nome);
   }
+
 
   async function handleDelete(a: any) {
     if (!confirm(`Remover anexo "${a.nome}"?`)) return;
