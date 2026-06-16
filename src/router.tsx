@@ -5,6 +5,11 @@ import { routeTree } from "./routeTree.gen";
 function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
 
+  if (typeof console !== "undefined") {
+    console.error("Route error:", error);
+  }
+  const shortMsg = (error?.message ?? "").split("\n")[0]?.slice(0, 160) ?? "";
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
