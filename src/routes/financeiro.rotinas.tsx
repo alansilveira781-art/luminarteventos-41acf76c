@@ -371,12 +371,13 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
     descricao: rotina.descricao ?? "",
     frequencia: (rotina.frequencia ?? "diaria") as Rotina["frequencia"],
     dias_semana: rotina.dias_semana ?? [],
-    hora: (rotina.hora ?? "09:00").slice(0, 5),
+    hora: ((rotina.hora ?? "09:00") as string).slice(0, 5),
     data_inicio: rotina.data_inicio ?? new Date().toISOString().slice(0, 10),
     data_fim: rotina.data_fim ?? "",
     responsavel_nome: rotina.responsavel_nome ?? "",
     status: (rotina.status ?? "ativa") as Rotina["status"],
     exige_validacao: rotina.exige_validacao ?? false,
+    max_ocorrencias: rotina.max_ocorrencias != null ? String(rotina.max_ocorrencias) : "",
   });
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
