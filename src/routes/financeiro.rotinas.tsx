@@ -388,7 +388,10 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
 
   const saveMut = useMutation({
     mutationFn: async () => {
-      const payload = {
+      const maxOcorr = form.max_ocorrencias.trim()
+        ? Math.max(1, parseInt(form.max_ocorrencias, 10) || 0) || null
+        : null;
+      const payload: any = {
         titulo: form.titulo,
         descricao: form.descricao || null,
         frequencia: form.frequencia,
@@ -399,13 +402,21 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
         responsavel_nome: form.responsavel_nome || null,
         status: form.status,
         exige_validacao: form.exige_validacao,
+        max_ocorrencias: maxOcorr,
       };
       if (isEdit) {
         const { error } = await supabase.from("financeiro_rotinas" as any).update(payload).eq("id", rotina.id!);
         if (error) throw error;
       } else {
         const { data: { user } } = await supabase.auth.getUser();
-        const { error } = await supabase.from("financeiro_rotinas" as any).insert({ ...payload, created_by: user?.id ?? null });
+        // calcular proxima_data inicial = data_inicio (primeira ocorrência)
+        const { error } = await supabase.from("financeiro_rotinas" as any).insert({
+          ...payload,
+          created_by: user?.id ?? null,
+          proxima_data: form.data_inicio,
+          ocorrencias_realizadas: 0,
+          encerrada: false,
+        });
         if (error) throw error;
       }
     },
