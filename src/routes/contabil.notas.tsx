@@ -241,7 +241,14 @@ function NotaForm({
   submitting,
 }: {
   initial: Nota | null;
-  aliquotas: Array<{ empresa: string; imposto: string; aliquota: number }>;
+  aliquotas: Array<{
+    empresa: string;
+    imposto: string;
+    aliquota: number;
+    base_calculo: number | null;
+    aliquota_adicional: number | null;
+    observacoes: string | null;
+  }>;
   onSubmit: (p: any) => void;
   submitting: boolean;
 }) {
