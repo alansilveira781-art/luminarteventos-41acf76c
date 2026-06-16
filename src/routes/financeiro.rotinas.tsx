@@ -801,7 +801,12 @@ function ExecucaoRotinas({ rotinas }: { rotinas: Rotina[] }) {
                           )}
                         </div>
                         {!o.isFeita && o.date <= hojeISO && (
-                          <Button size="sm" variant="outline" onClick={() => setRegistrar(r)}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={execDatasByRotina[r.id]?.has(o.date) ?? false}
+                            onClick={() => setRegistrar({ rotina: r, date: o.date })}
+                          >
                             <CheckCircle2 className="h-4 w-4 mr-1" /> Marcar feita
                           </Button>
                         )}
