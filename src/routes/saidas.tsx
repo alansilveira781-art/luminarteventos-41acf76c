@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { FormActions, FormField, FormSection } from "@/components/FormSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { QuantidadeInput } from "@/components/QuantidadeInput";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -220,12 +221,16 @@ function SaidasPage() {
 
   const mut = useMutation({
     mutationFn: async (p: { meta: any; linhas: Array<{ item_id: string; quantidade: number }> }) => {
-      // Validar estoque por item
+      // Validar estoque por item, somando linhas do mesmo item no mesmo lançamento
+      const totalPorItem = new Map<string, number>();
       for (const l of p.linhas) {
-        const it = (itens ?? []).find((x: any) => x.id === l.item_id);
+        totalPorItem.set(l.item_id, (totalPorItem.get(l.item_id) ?? 0) + Number(l.quantidade));
+      }
+      for (const [itemId, total] of totalPorItem) {
+        const it = (itens ?? []).find((x: any) => x.id === itemId);
         if (!it) throw new Error("Item inválido");
-        if (l.quantidade > Number(it.quantidade_atual)) {
-          throw new Error(`Estoque insuficiente para ${it.nome}. Disponível: ${it.quantidade_atual} ${it.unidade}`);
+        if (total > Number(it.quantidade_atual)) {
+          throw new Error(`Item ${it.nome}: saída de ${total} excede o disponível (${it.quantidade_atual} ${it.unidade}). Estoque não pode ficar negativo.`);
         }
       }
       const { data: numData, error: numErr } = await supabase.rpc("next_requisicao_numero" as any);
@@ -798,13 +803,10 @@ function SaidaForm({ prefill, isEditing, itens, solicitantes, onEditSolicitante,
                 </div>
                 <div className="col-span-3">
                   <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">Quantidade</label>
-                  <Input
+                  <QuantidadeInput
                     ref={(el) => { qtyRefs.current[i] = el; }}
-                    type="number"
-                    min="0.01"
-                    step="0.01"
                     value={l.quantidade}
-                    onChange={(e) => setL(i, "quantidade", e.target.value)}
+                    onChange={(v) => setL(i, "quantidade", v)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -876,7 +878,7 @@ function SaidaEditForm({ original, itens, solicitantes, onEditSolicitante, event
         <FormField label="Item*" wide>
           <ItemSearchSelect itens={itens} value={form.item_id} onChange={(v) => set("item_id", v)} showStock />
         </FormField>
-        <FormField label="Quantidade*"><Input required type="number" min="0.01" step="0.01" value={form.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></FormField>
+        <FormField label="Quantidade*"><QuantidadeInput required value={form.quantidade} onChange={(v) => set("quantidade", v)} /></FormField>
         {isEvento && (
           <FormField label="Evento / Projeto*" wide>
             <EventoSheetCombobox

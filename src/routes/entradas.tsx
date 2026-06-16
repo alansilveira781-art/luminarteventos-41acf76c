@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { FormActions, FormField, FormSection } from "@/components/FormSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { QuantidadeInput } from "@/components/QuantidadeInput";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Plus, Upload, FileCode2, Trash2, Pencil, Search, Copy, X } from "lucide-react";
@@ -1022,7 +1023,7 @@ function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor
               </div>
               <div className="w-[70px]">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">Qtd</label>
-                <Input ref={(el) => { qtyRefs.current[i] = el; }} type="number" min="0" step="any" value={l.quantidade} onChange={(e) => setL(i, "quantidade", e.target.value)}
+                <QuantidadeInput ref={(el) => { qtyRefs.current[i] = el; }} value={l.quantidade} onChange={(v) => setL(i, "quantidade", v)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (l.item_id && Number(l.quantidade) > 0) focusValor(i); } }} className="px-2" />
               </div>
               <div className="w-[110px]">
@@ -1113,7 +1114,7 @@ function EntradaEditForm({ original, itens, fornecedores, onEditFornecedor, onSu
         <FormField label="Item*" wide>
           <ItemSearchSelect itens={itens} value={form.item_id} onChange={(v) => set("item_id", v)} />
         </FormField>
-        <FormField label="Quantidade*"><Input required type="number" min="0.01" step="0.01" value={form.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></FormField>
+        <FormField label="Quantidade*"><QuantidadeInput required value={form.quantidade} onChange={(v) => set("quantidade", v)} /></FormField>
         <FormField label="Valor unit. (R$)"><MoneyInput value={Number(form.valor_unitario || 0)} onChange={(n) => set("valor_unitario", n ? String(n) : "")} decimals={4} /></FormField>
         <FormField label="Fornecedor">
           <EntitySearchSelect
