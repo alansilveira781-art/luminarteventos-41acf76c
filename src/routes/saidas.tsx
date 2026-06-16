@@ -638,7 +638,7 @@ function SaidaForm({ prefill, isEditing, itens, solicitantes, onEditSolicitante,
   const [linhas, setLinhas] = useState<Linha[]>(() => {
     if (prefill?.linhas?.length) {
       const base = prefill.linhas.map((l: any) => ({ item_id: l.item_id, quantidade: String(l.quantidade) }));
-      return isEditing ? base : [...base, { item_id: "", quantidade: "1" }];
+      return isEditing ? base : [...base, { item_id: "", quantidade: "" }];
     }
     if (prefill) {
       return [{ item_id: prefill.item_id, quantidade: String(prefill.quantidade) }, { item_id: "", quantidade: "1" }];
