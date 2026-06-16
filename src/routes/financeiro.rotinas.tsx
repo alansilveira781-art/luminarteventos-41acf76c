@@ -329,18 +329,21 @@ function CalendarioRotinas({ rotinas, onEdit }: { rotinas: Rotina[]; onEdit: (r:
           >
             <div className="text-[10px] font-medium text-muted-foreground mb-1">{cell.day}</div>
             <div className="space-y-0.5">
-              {cell.events.slice(0, 3).map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => onEdit(r)}
-                  className="w-full text-left text-[10px] rounded px-1 py-0.5 bg-primary/10 hover:bg-primary/20 text-primary truncate flex items-center gap-1"
-                  title={`${r.titulo} às ${r.hora.slice(0, 5)}`}
-                >
-                  <Clock className="h-2.5 w-2.5 shrink-0" />
-                  <span className="tabular-nums">{r.hora.slice(0, 5)}</span>
-                  <span className="truncate">{r.titulo}</span>
-                </button>
-              ))}
+              {cell.events.slice(0, 3).map((r) => {
+                const horaFmt = r.hora?.slice(0, 5) ?? "—";
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() => onEdit(r)}
+                    className="w-full text-left text-[10px] rounded px-1 py-0.5 bg-primary/10 hover:bg-primary/20 text-primary truncate flex items-center gap-1"
+                    title={`${r.titulo} às ${horaFmt}`}
+                  >
+                    <Clock className="h-2.5 w-2.5 shrink-0" />
+                    <span className="tabular-nums">{horaFmt}</span>
+                    <span className="truncate">{r.titulo}</span>
+                  </button>
+                );
+              })}
               {cell.events.length > 3 && (
                 <div className="text-[10px] text-muted-foreground px-1">+{cell.events.length - 3}</div>
               )}
