@@ -629,7 +629,7 @@ type Execucao = {
 type PeriodoKey = "hoje" | "amanha" | "semana" | "mes" | "custom";
 
 function ExecucaoRotinas({ rotinas }: { rotinas: Rotina[] }) {
-  const [registrar, setRegistrar] = useState<Rotina | null>(null);
+  const [registrar, setRegistrar] = useState<{ rotina: Rotina; date: string } | null>(null);
   const [periodo, setPeriodo] = useState<PeriodoKey>("hoje");
   const [customFrom, setCustomFrom] = useState(new Date().toISOString().slice(0, 10));
   const [customTo, setCustomTo] = useState(new Date().toISOString().slice(0, 10));
@@ -801,7 +801,12 @@ function ExecucaoRotinas({ rotinas }: { rotinas: Rotina[] }) {
                           )}
                         </div>
                         {!o.isFeita && o.date <= hojeISO && (
-                          <Button size="sm" variant="outline" onClick={() => setRegistrar(r)}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={execDatasByRotina[r.id]?.has(o.date) ?? false}
+                            onClick={() => setRegistrar({ rotina: r, date: o.date })}
+                          >
                             <CheckCircle2 className="h-4 w-4 mr-1" /> Marcar feita
                           </Button>
                         )}
@@ -855,7 +860,7 @@ function ExecucaoRotinas({ rotinas }: { rotinas: Rotina[] }) {
       </div>
 
       {registrar && (
-        <RegistrarExecucaoDialog rotina={registrar} onClose={() => setRegistrar(null)} />
+        <RegistrarExecucaoDialog rotina={registrar.rotina} dataInicial={registrar.date} onClose={() => setRegistrar(null)} />
       )}
     </>
   );
@@ -901,16 +906,75 @@ function AnexosLinks({ execucaoId }: { execucaoId: string }) {
   );
 }
 
-function RegistrarExecucaoDialog({ rotina, onClose }: { rotina: Rotina; onClose: () => void }) {
+function RegistrarExecucaoDialog({ rotina, dataInicial, onClose }: { rotina: Rotina; dataInicial?: string; onClose: () => void }) {
   const qc = useQueryClient();
-  const [dataRef, setDataRef] = useState(new Date().toISOString().slice(0, 10));
+  const [dataRef, setDataRef] = useState(dataInicial ?? new Date().toISOString().slice(0, 10));
   const [obs, setObs] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
 
+  async function uploadAnexosEmBackground(execId: string, userId: string | null, filesToUpload: File[]) {
+    try {
+      for (const file of filesToUpload) {
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const path = `${execId}/${Date.now()}_${safeName}`;
+        const { error: upErr } = await supabase.storage.from("rotina-anexos").upload(path, file, {
+          contentType: file.type || undefined,
+        });
+        if (upErr) throw upErr;
+        const { error: insErr } = await supabase.from("financeiro_rotina_execucao_anexos" as any).insert({
+          execucao_id: execId,
+          nome: file.name,
+          path,
+          mime_type: file.type || null,
+          tamanho: file.size,
+          uploaded_by: userId,
+        });
+        if (insErr) throw insErr;
+      }
+      qc.invalidateQueries({ queryKey: ["rotina-exec-anexos", execId] });
+    } catch (err: any) {
+      toast.error(`Falha ao enviar anexos: ${err.message ?? err}`);
+    }
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (saving) return;
+
+    // Verificação local de duplicidade
+    const cache = qc.getQueryData<Execucao[]>(["rotina-execucoes"]) ?? [];
+    if (cache.some((x) => x.rotina_id === rotina.id && x.data_referencia === dataRef)) {
+      toast.warning("Esta rotina já foi marcada como feita nesta data.");
+      onClose();
+      return;
+    }
+
     setSaving(true);
+
+    // Optimistic update: insere execução no cache imediatamente
+    const tempId = `temp-${Date.now()}`;
+    const validacaoStatus: Execucao["validacao_status"] = rotina.exige_validacao ? "pendente" : "nao_requer";
+    const optimistic: Execucao = {
+      id: tempId,
+      rotina_id: rotina.id,
+      data_referencia: dataRef,
+      executada: true,
+      executada_em: new Date().toISOString(),
+      executada_por_nome: null,
+      observacoes: obs || null,
+      validacao_status: validacaoStatus,
+      validado_por_nome: null,
+      validado_em: null,
+      validacao_observacao: null,
+    };
+    const prev = cache;
+    qc.setQueryData<Execucao[]>(["rotina-execucoes"], [optimistic, ...prev]);
+
+    // Fecha o dialog imediatamente
+    onClose();
+    toast.success(rotina.exige_validacao ? "Execução registrada — aguardando validação" : "Execução registrada");
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       let nome: string | null = null;
@@ -918,7 +982,6 @@ function RegistrarExecucaoDialog({ rotina, onClose }: { rotina: Rotina; onClose:
         const { data: prof } = await supabase.from("profiles").select("display_name,email").eq("id", user.id).maybeSingle();
         nome = prof?.display_name || prof?.email || user.email || null;
       }
-      const validacaoStatus = rotina.exige_validacao ? "pendente" : "nao_requer";
       const { data: exec, error } = await supabase
         .from("financeiro_rotina_execucoes" as any)
         .insert({
@@ -935,34 +998,29 @@ function RegistrarExecucaoDialog({ rotina, onClose }: { rotina: Rotina; onClose:
       if (error) throw error;
       const execId = (exec as any).id as string;
 
-      for (const file of files) {
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const path = `${execId}/${Date.now()}_${safeName}`;
-        const { error: upErr } = await supabase.storage.from("rotina-anexos").upload(path, file, {
-          contentType: file.type || undefined,
-        });
-        if (upErr) throw upErr;
-        const { error: insErr } = await supabase.from("financeiro_rotina_execucao_anexos" as any).insert({
-          execucao_id: execId,
-          nome: file.name,
-          path,
-          mime_type: file.type || null,
-          tamanho: file.size,
-          uploaded_by: user?.id ?? null,
-        });
-        if (insErr) throw insErr;
-      }
-
+      // Reconcilia
       qc.invalidateQueries({ queryKey: ["rotina-execucoes"] });
+      qc.invalidateQueries({ queryKey: ["financeiro-rotinas"] });
       qc.invalidateQueries({ queryKey: ["financeiro-rotinas-validacoes-count"] });
-      toast.success(rotina.exige_validacao ? "Execução registrada — aguardando validação" : "Execução registrada");
-      onClose();
+
+      // Upload de anexos em background
+      if (files.length > 0) {
+        void uploadAnexosEmBackground(execId, user?.id ?? null, files);
+      }
     } catch (err: any) {
-      toast.error(err.message ?? "Erro ao registrar");
+      // Reverte cache otimista
+      qc.setQueryData<Execucao[]>(["rotina-execucoes"], prev);
+      const msg = String(err?.message ?? "");
+      if (err?.code === "23505" || msg.includes("uq_rotina_execucao_data") || msg.toLowerCase().includes("duplicate")) {
+        toast.error("Esta rotina já foi registrada para esta data.");
+      } else {
+        toast.error(msg || "Erro ao registrar");
+      }
     } finally {
       setSaving(false);
     }
   }
+
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
