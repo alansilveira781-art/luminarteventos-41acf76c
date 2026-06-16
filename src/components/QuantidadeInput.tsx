@@ -20,7 +20,8 @@ function toDigits(value: number | null | undefined): string {
 }
 
 function format(digits: string): string {
-  const padded = (digits || "0").padStart(DECIMAIS + 1, "0");
+  if (digits === "") return "";
+  const padded = digits.padStart(DECIMAIS + 1, "0");
   const intPart = padded.slice(0, padded.length - DECIMAIS).replace(/^0+(?=\d)/, "");
   const decPart = padded.slice(padded.length - DECIMAIS);
   const intBR = Number(intPart).toLocaleString("pt-BR");
