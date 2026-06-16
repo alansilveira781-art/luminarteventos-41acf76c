@@ -232,7 +232,14 @@ function TabelaRotinas({
             {filtered.map((r) => (
               <tr key={r.id} className="border-t hover:bg-muted/20">
                 <td className="px-4 py-2">
-                  <div className="font-medium">{r.titulo}</div>
+                  <div className="font-medium flex items-center gap-2">
+                    {r.titulo}
+                    {r.exige_validacao && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        <ShieldCheck className="h-3 w-3 mr-1" /> Requer validação
+                      </Badge>
+                    )}
+                  </div>
                   {r.descricao && <div className="text-xs text-muted-foreground">{r.descricao}</div>}
                 </td>
                 <td className="px-4 py-2">
