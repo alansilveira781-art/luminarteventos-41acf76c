@@ -264,21 +264,30 @@ function NotaForm({
   const [observacoes, setObservacoes] = useState(initial?.observacoes ?? "");
 
   const regime = EMPRESA_REGIME[empresa as Empresa];
-  const impostosDisponiveis = useMemo(() => {
+  const aliquotasEmpresa: Aliquota[] = useMemo(() => {
     const cfg = aliquotas.filter((a) => a.empresa === empresa);
-    if (cfg.length) return cfg.map((a) => ({ imposto: a.imposto, aliquota: Number(a.aliquota) }));
+    if (cfg.length) {
+      return cfg.map((a) => ({
+        imposto: a.imposto,
+        aliquota: Number(a.aliquota),
+        base_calculo: a.base_calculo,
+        aliquota_adicional: a.aliquota_adicional,
+        observacoes: a.observacoes,
+      }));
+    }
     return IMPOSTOS_POR_REGIME[regime].map((i) => ({ imposto: i, aliquota: 0 }));
   }, [aliquotas, empresa, regime]);
 
   const valorBrutoNum = Number(valorBruto) || 0;
-  const impostosCalc = useMemo(() => {
-    const out: Record<string, number> = {};
-    for (const { imposto, aliquota } of impostosDisponiveis) {
-      out[imposto] = +(valorBrutoNum * (aliquota / 100)).toFixed(2);
-    }
-    return out;
-  }, [impostosDisponiveis, valorBrutoNum]);
-  const totalImpostos = Object.values(impostosCalc).reduce((a, b) => a + b, 0);
+  const apuracao = useMemo(
+    () => calcularImpostosPresumido(valorBrutoNum, aliquotasEmpresa),
+    [valorBrutoNum, aliquotasEmpresa]
+  );
+  const impostosCalc: Record<string, number> = useMemo(
+    () => Object.fromEntries(apuracao.itens.map((i) => [i.imposto, i.valor])),
+    [apuracao]
+  );
+  const totalImpostos = +apuracao.itens.reduce((s, i) => s + i.valor, 0).toFixed(2);
   const valorLiquido = +(valorBrutoNum - totalImpostos).toFixed(2);
 
   return (
