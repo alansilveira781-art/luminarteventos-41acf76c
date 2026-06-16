@@ -297,7 +297,7 @@ function CalendarioRotinas({ rotinas, onEdit }: { rotinas: Rotina[]; onEdit: (r:
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
 
-  const ativas = useMemo(() => rotinas.filter((r) => r.status === "ativa"), [rotinas]);
+  const ativas = useMemo(() => rotinas.filter((r) => r.status === "ativa" && !r.encerrada), [rotinas]);
   const cells = useMemo(() => buildMonthGrid(cursor, ativas), [cursor, ativas]);
 
   const monthLabel = cursor.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
