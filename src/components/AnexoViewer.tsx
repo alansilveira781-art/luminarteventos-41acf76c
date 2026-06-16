@@ -54,31 +54,34 @@ export async function baixarAnexo(bucket: string, path: string, nome: string) {
 }
 
 export function AnexoViewer({ bucket, anexo, open, onOpenChange }: AnexoViewerProps) {
-  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!open || !anexo) {
-      setSignedUrl(null);
+      setObjectUrl(null);
       return;
     }
     let cancelled = false;
+    let createdUrl: string | null = null;
     setLoading(true);
     supabase.storage
       .from(bucket)
-      .createSignedUrl(anexo.path, 300)
+      .download(anexo.path)
       .then(({ data, error }) => {
         if (cancelled) return;
-        if (error || !data?.signedUrl) {
+        if (error || !data) {
           toast.error("Não foi possível abrir a prévia");
-          setSignedUrl(null);
+          setObjectUrl(null);
         } else {
-          setSignedUrl(data.signedUrl);
+          createdUrl = URL.createObjectURL(data);
+          setObjectUrl(createdUrl);
         }
       })
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
     };
   }, [open, anexo, bucket]);
 
@@ -96,21 +99,29 @@ export function AnexoViewer({ bucket, anexo, open, onOpenChange }: AnexoViewerPr
         </DialogHeader>
 
         <div className="min-h-[40vh] flex items-center justify-center bg-muted/30 rounded-md overflow-hidden">
-          {loading || !signedUrl ? (
+          {loading || !objectUrl ? (
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           ) : kind === "image" ? (
             <img
-              src={signedUrl}
+              src={objectUrl}
               alt={anexo.nome}
               className="max-h-[70vh] max-w-full object-contain"
             />
           ) : kind === "pdf" ? (
-            <iframe
-              src={signedUrl}
-              title={anexo.nome}
+            <object
+              data={objectUrl}
+              type="application/pdf"
               className="w-full"
-              style={{ height: "70vh", border: 0 }}
-            />
+              style={{ height: "70vh" }}
+            >
+              <div className="flex flex-col items-center gap-2 p-8 text-center">
+                <FileIcon className="h-10 w-10 text-muted-foreground" />
+                <p className="text-sm">Não foi possível exibir a prévia do PDF neste navegador.</p>
+                <Button type="button" size="sm" onClick={() => baixarAnexo(bucket, anexo.path, anexo.nome)}>
+                  <Download className="h-4 w-4 mr-1" /> Baixar para visualizar
+                </Button>
+              </div>
+            </object>
           ) : (
             <div className="flex flex-col items-center gap-2 p-8 text-center">
               <FileIcon className="h-10 w-10 text-muted-foreground" />
