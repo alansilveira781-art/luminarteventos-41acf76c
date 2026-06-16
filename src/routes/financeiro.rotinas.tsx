@@ -27,13 +27,17 @@ type Rotina = {
   descricao: string | null;
   frequencia: "diaria" | "semanal" | "quinzenal" | "mensal" | "custom";
   dias_semana: number[] | null;
-  hora: string;
+  hora: string | null;
   data_inicio: string;
   data_fim: string | null;
   responsavel_id: string | null;
   responsavel_nome: string | null;
   status: "ativa" | "pausada";
   exige_validacao: boolean;
+  max_ocorrencias: number | null;
+  ocorrencias_realizadas: number | null;
+  proxima_data: string | null;
+  encerrada: boolean;
 };
 
 const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -107,7 +111,7 @@ function RotinasPage() {
         </TabsContent>
 
         <TabsContent value="execucao">
-          <ExecucaoRotinas rotinas={rotinas.filter((r) => r.status === "ativa")} />
+          <ExecucaoRotinas rotinas={rotinas.filter((r) => r.status === "ativa" && !r.encerrada)} />
         </TabsContent>
 
         {isFinAdmin && (
@@ -257,9 +261,12 @@ function TabelaRotinas({
                 </td>
                 <td className="px-4 py-2 text-xs">{r.responsavel_nome ?? "—"}</td>
                 <td className="px-4 py-2">
-                  <Badge variant={r.status === "ativa" ? "default" : "secondary"}>
-                    {r.status === "ativa" ? "Ativa" : "Pausada"}
-                  </Badge>
+                  <div className="flex items-center gap-1">
+                    <Badge variant={r.status === "ativa" ? "default" : "secondary"}>
+                      {r.status === "ativa" ? "Ativa" : "Pausada"}
+                    </Badge>
+                    {r.encerrada && <Badge variant="outline" className="text-[10px]">Encerrada</Badge>}
+                  </div>
                 </td>
                 <td className="px-4 py-2">
                   <div className="flex gap-1 justify-end">
@@ -293,7 +300,7 @@ function CalendarioRotinas({ rotinas, onEdit }: { rotinas: Rotina[]; onEdit: (r:
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
 
-  const ativas = useMemo(() => rotinas.filter((r) => r.status === "ativa"), [rotinas]);
+  const ativas = useMemo(() => rotinas.filter((r) => r.status === "ativa" && !r.encerrada), [rotinas]);
   const cells = useMemo(() => buildMonthGrid(cursor, ativas), [cursor, ativas]);
 
   const monthLabel = cursor.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
@@ -329,18 +336,21 @@ function CalendarioRotinas({ rotinas, onEdit }: { rotinas: Rotina[]; onEdit: (r:
           >
             <div className="text-[10px] font-medium text-muted-foreground mb-1">{cell.day}</div>
             <div className="space-y-0.5">
-              {cell.events.slice(0, 3).map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => onEdit(r)}
-                  className="w-full text-left text-[10px] rounded px-1 py-0.5 bg-primary/10 hover:bg-primary/20 text-primary truncate flex items-center gap-1"
-                  title={`${r.titulo} às ${r.hora.slice(0, 5)}`}
-                >
-                  <Clock className="h-2.5 w-2.5 shrink-0" />
-                  <span className="tabular-nums">{r.hora.slice(0, 5)}</span>
-                  <span className="truncate">{r.titulo}</span>
-                </button>
-              ))}
+              {cell.events.slice(0, 3).map((r) => {
+                const horaFmt = r.hora?.slice(0, 5) ?? "—";
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() => onEdit(r)}
+                    className="w-full text-left text-[10px] rounded px-1 py-0.5 bg-primary/10 hover:bg-primary/20 text-primary truncate flex items-center gap-1"
+                    title={`${r.titulo} às ${horaFmt}`}
+                  >
+                    <Clock className="h-2.5 w-2.5 shrink-0" />
+                    <span className="tabular-nums">{horaFmt}</span>
+                    <span className="truncate">{r.titulo}</span>
+                  </button>
+                );
+              })}
               {cell.events.length > 3 && (
                 <div className="text-[10px] text-muted-foreground px-1">+{cell.events.length - 3}</div>
               )}
@@ -364,12 +374,13 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
     descricao: rotina.descricao ?? "",
     frequencia: (rotina.frequencia ?? "diaria") as Rotina["frequencia"],
     dias_semana: rotina.dias_semana ?? [],
-    hora: (rotina.hora ?? "09:00").slice(0, 5),
+    hora: ((rotina.hora ?? "09:00") as string).slice(0, 5),
     data_inicio: rotina.data_inicio ?? new Date().toISOString().slice(0, 10),
     data_fim: rotina.data_fim ?? "",
     responsavel_nome: rotina.responsavel_nome ?? "",
     status: (rotina.status ?? "ativa") as Rotina["status"],
     exige_validacao: rotina.exige_validacao ?? false,
+    max_ocorrencias: rotina.max_ocorrencias != null ? String(rotina.max_ocorrencias) : "",
   });
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
@@ -380,7 +391,10 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
 
   const saveMut = useMutation({
     mutationFn: async () => {
-      const payload = {
+      const maxOcorr = form.max_ocorrencias.trim()
+        ? Math.max(1, parseInt(form.max_ocorrencias, 10) || 0) || null
+        : null;
+      const payload: any = {
         titulo: form.titulo,
         descricao: form.descricao || null,
         frequencia: form.frequencia,
@@ -391,13 +405,21 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
         responsavel_nome: form.responsavel_nome || null,
         status: form.status,
         exige_validacao: form.exige_validacao,
+        max_ocorrencias: maxOcorr,
       };
       if (isEdit) {
         const { error } = await supabase.from("financeiro_rotinas" as any).update(payload).eq("id", rotina.id!);
         if (error) throw error;
       } else {
         const { data: { user } } = await supabase.auth.getUser();
-        const { error } = await supabase.from("financeiro_rotinas" as any).insert({ ...payload, created_by: user?.id ?? null });
+        // calcular proxima_data inicial = data_inicio (primeira ocorrência)
+        const { error } = await supabase.from("financeiro_rotinas" as any).insert({
+          ...payload,
+          created_by: user?.id ?? null,
+          proxima_data: form.data_inicio,
+          ocorrencias_realizadas: 0,
+          encerrada: false,
+        });
         if (error) throw error;
       }
     },
@@ -464,8 +486,22 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
             <FormField label="Data de início*">
               <Input required type="date" value={form.data_inicio} onChange={(e) => set("data_inicio", e.target.value)} />
             </FormField>
-            <FormField label="Data de fim (opcional)">
+            <FormField label="Repetir até (data de término)">
               <Input type="date" value={form.data_fim} onChange={(e) => set("data_fim", e.target.value)} />
+            </FormField>
+            <FormField label="Nº máximo de ocorrências">
+              <Input
+                type="number"
+                min={1}
+                value={form.max_ocorrencias}
+                onChange={(e) => set("max_ocorrencias", e.target.value)}
+                placeholder="Sem limite"
+              />
+            </FormField>
+            <FormField label="" wide>
+              <p className="text-xs text-muted-foreground">
+                A rotina encerra quando atingir a data de término OU o nº de ocorrências, o que vier primeiro. Deixe ambos em branco para recorrência sem fim.
+              </p>
             </FormField>
             <FormField label="Responsável">
               <Input value={form.responsavel_nome} onChange={(e) => set("responsavel_nome", e.target.value)} placeholder="Nome do responsável" />
@@ -503,8 +539,10 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
 // HELPERS
 // ============================================================================
 
-function fmtDate(iso: string) {
+function fmtDate(iso: string | null | undefined) {
+  if (!iso || typeof iso !== "string" || !iso.includes("-")) return "—";
   const [y, m, d] = iso.split("-");
+  if (!y || !m || !d) return "—";
   return `${d}/${m}/${y}`;
 }
 
@@ -529,7 +567,7 @@ function buildMonthGrid(monthStart: Date, rotinas: Rotina[]) {
     const key = d.toISOString().slice(0, 10);
     const events = rotinas
       .filter((r) => occursOn(r, d))
-      .sort((a, b) => a.hora.localeCompare(b.hora));
+      .sort((a, b) => (a.hora ?? "").localeCompare(b.hora ?? ""));
     cells.push({
       date: d,
       day: d.getDate(),
@@ -588,8 +626,14 @@ type Execucao = {
   validacao_observacao: string | null;
 };
 
+type PeriodoKey = "hoje" | "amanha" | "semana" | "mes" | "custom";
+
 function ExecucaoRotinas({ rotinas }: { rotinas: Rotina[] }) {
   const [registrar, setRegistrar] = useState<Rotina | null>(null);
+  const [periodo, setPeriodo] = useState<PeriodoKey>("hoje");
+  const [customFrom, setCustomFrom] = useState(new Date().toISOString().slice(0, 10));
+  const [customTo, setCustomTo] = useState(new Date().toISOString().slice(0, 10));
+  const [respFilter, setRespFilter] = useState<string>("__all");
 
   const { data: execucoes = [] } = useQuery({
     queryKey: ["rotina-execucoes"],
@@ -604,80 +648,173 @@ function ExecucaoRotinas({ rotinas }: { rotinas: Rotina[] }) {
     },
   });
 
-  const hoje = new Date().toISOString().slice(0, 10);
-  const execByRotina = useMemo(() => {
-    const m: Record<string, Execucao[]> = {};
+  const hojeISO = new Date().toISOString().slice(0, 10);
+
+  // Janela de período
+  const { from, to } = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startISO = (d: Date) => d.toISOString().slice(0, 10);
+    if (periodo === "hoje") return { from: startISO(today), to: startISO(today) };
+    if (periodo === "amanha") {
+      const t = new Date(today); t.setDate(t.getDate() + 1);
+      return { from: startISO(t), to: startISO(t) };
+    }
+    if (periodo === "semana") {
+      const t = new Date(today); t.setDate(t.getDate() + 7);
+      return { from: startISO(today), to: startISO(t) };
+    }
+    if (periodo === "mes") {
+      const t = new Date(today); t.setDate(t.getDate() + 30);
+      return { from: startISO(today), to: startISO(t) };
+    }
+    return { from: customFrom, to: customTo };
+  }, [periodo, customFrom, customTo]);
+
+  // Map: rotina_id → set de datas com execução registrada
+  const execDatasByRotina = useMemo(() => {
+    const m: Record<string, Set<string>> = {};
     execucoes.forEach((e) => {
-      (m[e.rotina_id] ??= []).push(e);
+      (m[e.rotina_id] ??= new Set()).add(e.data_referencia);
     });
     return m;
   }, [execucoes]);
 
+  // Responsáveis disponíveis (apenas das rotinas ativas)
+  const responsaveis = useMemo(() => {
+    const s = new Set<string>();
+    rotinas.forEach((r) => r.responsavel_nome && s.add(r.responsavel_nome));
+    return Array.from(s).sort();
+  }, [rotinas]);
+
+  // Projeta ocorrências dentro do intervalo
+  type Ocorrencia = { rotina: Rotina; date: string; isFeita: boolean; atrasada: boolean };
+  const ocorrencias = useMemo<Ocorrencia[]>(() => {
+    const out: Ocorrencia[] = [];
+    if (!from || !to || from > to) return out;
+    const startD = new Date(from + "T00:00:00");
+    const endD = new Date(to + "T00:00:00");
+    for (const r of rotinas) {
+      if (respFilter !== "__all" && (r.responsavel_nome ?? "") !== respFilter) continue;
+      // Inclui também a proxima_data se < from (rotina atrasada) e dentro de hoje
+      const pData = r.proxima_data;
+      if (pData && pData < from && pData >= r.data_inicio && (!r.data_fim || pData <= r.data_fim)) {
+        const feita = execDatasByRotina[r.id]?.has(pData) ?? false;
+        if (!feita) out.push({ rotina: r, date: pData, isFeita: false, atrasada: true });
+      }
+      const d = new Date(startD);
+      while (d <= endD) {
+        const key = d.toISOString().slice(0, 10);
+        if (occursOn(r, d)) {
+          const feita = execDatasByRotina[r.id]?.has(key) ?? false;
+          out.push({ rotina: r, date: key, isFeita: feita, atrasada: key < hojeISO && !feita });
+        }
+        d.setDate(d.getDate() + 1);
+      }
+    }
+    return out.sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return (a.rotina.hora ?? "").localeCompare(b.rotina.hora ?? "");
+    });
+  }, [rotinas, from, to, execDatasByRotina, respFilter, hojeISO]);
+
+  // Agrupa por data
+  const grupos = useMemo(() => {
+    const map = new Map<string, Ocorrencia[]>();
+    ocorrencias.forEach((o) => {
+      if (!map.has(o.date)) map.set(o.date, []);
+      map.get(o.date)!.push(o);
+    });
+    return Array.from(map.entries());
+  }, [ocorrencias]);
+
   return (
     <>
+      <Card className="p-3 mb-4 flex flex-wrap items-center gap-2">
+        <Select value={periodo} onValueChange={(v) => setPeriodo(v as PeriodoKey)}>
+          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="hoje">Hoje</SelectItem>
+            <SelectItem value="amanha">Amanhã</SelectItem>
+            <SelectItem value="semana">Próximos 7 dias</SelectItem>
+            <SelectItem value="mes">Próximos 30 dias</SelectItem>
+            <SelectItem value="custom">Personalizado</SelectItem>
+          </SelectContent>
+        </Select>
+        {periodo === "custom" && (
+          <>
+            <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="w-40" />
+            <span className="text-xs text-muted-foreground">até</span>
+            <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="w-40" />
+          </>
+        )}
+        {responsaveis.length > 0 && (
+          <Select value={respFilter} onValueChange={setRespFilter}>
+            <SelectTrigger className="w-48"><SelectValue placeholder="Responsável" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todos responsáveis</SelectItem>
+              {responsaveis.map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
+        <div className="ml-auto text-xs text-muted-foreground">{ocorrencias.length} ocorrência(s)</div>
+      </Card>
+
       <Card className="p-0 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 text-left">Rotina</th>
-                <th className="px-4 py-2 text-left">Frequência</th>
-                <th className="px-4 py-2 text-left">Última execução</th>
-                <th className="px-4 py-2 text-left">Status</th>
-                <th className="px-4 py-2 w-40"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {rotinas.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Nenhuma rotina ativa</td></tr>
-              )}
-              {rotinas.map((r) => {
-                const execs = execByRotina[r.id] ?? [];
-                const ultima = execs[0];
-                const feitaHoje = execs.some((e) => e.data_referencia === hoje);
-                return (
-                  <tr key={r.id} className="border-t hover:bg-muted/20 align-top">
-                    <td className="px-4 py-2">
-                      <div className="font-medium flex items-center gap-2">
-                        {r.titulo}
-                        {r.exige_validacao && (
-                          <Badge variant="secondary" className="text-[10px]">
-                            <ShieldCheck className="h-3 w-3 mr-1" /> Requer validação
-                          </Badge>
+        {grupos.length === 0 ? (
+          <div className="px-4 py-8 text-center text-muted-foreground text-sm">
+            Nenhuma rotina prevista no período.
+          </div>
+        ) : (
+          <div className="divide-y">
+            {grupos.map(([data, items]) => (
+              <div key={data} className="p-3">
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  {fmtDate(data)} {data === hojeISO && <Badge variant="default" className="ml-1">Hoje</Badge>}
+                </div>
+                <div className="space-y-1.5">
+                  {items.map((o, idx) => {
+                    const r = o.rotina;
+                    const hora = r.hora?.slice(0, 5) ?? "—";
+                    return (
+                      <div key={`${r.id}-${o.date}-${idx}`} className="flex items-center gap-3 p-2 rounded border bg-background">
+                        <div className="text-xs tabular-nums text-muted-foreground w-12">{hora}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm flex items-center gap-2 flex-wrap">
+                            {r.titulo}
+                            {r.exige_validacao && (
+                              <Badge variant="secondary" className="text-[10px]">
+                                <ShieldCheck className="h-3 w-3 mr-1" /> Validação
+                              </Badge>
+                            )}
+                            {o.atrasada && <Badge variant="destructive" className="text-[10px]">Atrasada</Badge>}
+                            {o.isFeita && <Badge variant="default" className="text-[10px]">Feita</Badge>}
+                            {!o.isFeita && !o.atrasada && o.date === hojeISO && (
+                              <Badge variant="outline" className="text-[10px]">Pendente</Badge>
+                            )}
+                            {!o.isFeita && o.date > hojeISO && (
+                              <Badge variant="outline" className="text-[10px]">Prevista</Badge>
+                            )}
+                          </div>
+                          {r.responsavel_nome && (
+                            <div className="text-xs text-muted-foreground">Resp.: {r.responsavel_nome}</div>
+                          )}
+                        </div>
+                        {!o.isFeita && o.date <= hojeISO && (
+                          <Button size="sm" variant="outline" onClick={() => setRegistrar(r)}>
+                            <CheckCircle2 className="h-4 w-4 mr-1" /> Marcar feita
+                          </Button>
                         )}
                       </div>
-                      {r.responsavel_nome && (
-                        <div className="text-xs text-muted-foreground">Resp.: {r.responsavel_nome}</div>
-                      )}
-                    </td>
-                    <td className="px-4 py-2 text-xs">{FREQ_LABELS[r.frequencia]}</td>
-                    <td className="px-4 py-2 text-xs">
-                      {ultima ? (
-                        <>
-                          <div>{fmtDate(ultima.data_referencia)}</div>
-                          <div className="text-muted-foreground">por {ultima.executada_por_nome ?? "—"}</div>
-                        </>
-                      ) : <span className="text-muted-foreground">Nunca executada</span>}
-                    </td>
-                    <td className="px-4 py-2">
-                      {feitaHoje ? (
-                        <Badge variant="default">Feita hoje</Badge>
-                      ) : (
-                        <Badge variant="outline">Pendente</Badge>
-                      )}
-                    </td>
-                    <td className="px-4 py-2">
-                      <Button size="sm" variant="outline" onClick={() => setRegistrar(r)}>
-                        <CheckCircle2 className="h-4 w-4 mr-1" /> Marcar como feita
-                      </Button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
+
 
       <div className="mt-6">
         <div className="text-sm font-semibold mb-2">Histórico recente</div>
