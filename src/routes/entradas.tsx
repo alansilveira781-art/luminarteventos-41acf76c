@@ -1022,7 +1022,7 @@ function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor
               </div>
               <div className="w-[70px]">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">Qtd</label>
-                <Input ref={(el) => { qtyRefs.current[i] = el; }} type="number" min="0" step="any" value={l.quantidade} onChange={(e) => setL(i, "quantidade", e.target.value)}
+                <QuantidadeInput ref={(el) => { qtyRefs.current[i] = el; }} value={Number(l.quantidade) || 0} onChange={(n) => setL(i, "quantidade", String(n))}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (l.item_id && Number(l.quantidade) > 0) focusValor(i); } }} className="px-2" />
               </div>
               <div className="w-[110px]">
