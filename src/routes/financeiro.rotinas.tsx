@@ -532,7 +532,7 @@ function buildMonthGrid(monthStart: Date, rotinas: Rotina[]) {
     const key = d.toISOString().slice(0, 10);
     const events = rotinas
       .filter((r) => occursOn(r, d))
-      .sort((a, b) => a.hora.localeCompare(b.hora));
+      .sort((a, b) => (a.hora ?? "").localeCompare(b.hora ?? ""));
     cells.push({
       date: d,
       day: d.getDate(),
