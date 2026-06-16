@@ -860,7 +860,7 @@ function ExecucaoRotinas({ rotinas }: { rotinas: Rotina[] }) {
       </div>
 
       {registrar && (
-        <RegistrarExecucaoDialog rotina={registrar} onClose={() => setRegistrar(null)} />
+        <RegistrarExecucaoDialog rotina={registrar.rotina} dataInicial={registrar.date} onClose={() => setRegistrar(null)} />
       )}
     </>
   );
