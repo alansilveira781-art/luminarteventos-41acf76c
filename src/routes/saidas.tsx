@@ -798,13 +798,10 @@ function SaidaForm({ prefill, isEditing, itens, solicitantes, onEditSolicitante,
                 </div>
                 <div className="col-span-3">
                   <label className="text-[10px] uppercase tracking-wider text-muted-foreground h-4 block">Quantidade</label>
-                  <Input
+                  <QuantidadeInput
                     ref={(el) => { qtyRefs.current[i] = el; }}
-                    type="number"
-                    min="0.01"
-                    step="0.01"
                     value={l.quantidade}
-                    onChange={(e) => setL(i, "quantidade", e.target.value)}
+                    onChange={(v) => setL(i, "quantidade", v)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
