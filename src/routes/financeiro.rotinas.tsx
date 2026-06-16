@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FormField, FormSection, FormActions } from "@/components/FormSection";
 import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Pause, Play, Clock, CheckCircle2, Paperclip, ShieldCheck, X } from "lucide-react";
+import { AnexoViewer } from "@/components/AnexoViewer";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/financeiro/rotinas")({
@@ -874,6 +875,7 @@ function ValidacaoBadge({ status }: { status: Execucao["validacao_status"] }) {
 }
 
 function AnexosLinks({ execucaoId }: { execucaoId: string }) {
+  const [preview, setPreview] = useState<any | null>(null);
   const { data: anexos = [] } = useQuery({
     queryKey: ["rotina-exec-anexos", execucaoId],
     queryFn: async () => {
@@ -885,23 +887,24 @@ function AnexosLinks({ execucaoId }: { execucaoId: string }) {
     },
   });
   if (anexos.length === 0) return <span className="text-xs text-muted-foreground">—</span>;
-  async function open(path: string) {
-    const { data } = await supabase.storage.from("rotina-anexos").createSignedUrl(path, 60);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
-    else toast.error("Não foi possível abrir");
-  }
   return (
     <div className="flex flex-col gap-0.5">
       {anexos.map((a) => (
         <button
           key={a.id}
           type="button"
-          onClick={() => open(a.path)}
+          onClick={() => setPreview(a)}
           className="text-xs text-primary hover:underline flex items-center gap-1 text-left"
         >
           <Paperclip className="h-3 w-3" /> {a.nome}
         </button>
       ))}
+      <AnexoViewer
+        bucket="rotina-anexos"
+        anexo={preview}
+        open={!!preview}
+        onOpenChange={(o) => !o && setPreview(null)}
+      />
     </div>
   );
 }

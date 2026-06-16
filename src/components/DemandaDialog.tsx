@@ -13,6 +13,7 @@ import { DbComboboxCreatable } from "@/components/DbComboboxCreatable";
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { MentionInput, renderCommentText } from "@/components/MentionInput";
 import { Trash2, Upload, Download, FileIcon } from "lucide-react";
+import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
 import { DEMANDA_STATUSES, TIPO_DEMANDA_OPTIONS, type DemandaStatus } from "@/lib/demandas";
@@ -432,6 +433,8 @@ function Historico({ demandaId }: { demandaId: string }) {
 function Anexos({ demandaId, userId }: { demandaId: string; userId?: string }) {
   const qc = useQueryClient();
   const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState<any | null>(null);
+
 
   const { data: anexos = [] } = useQuery({
     queryKey: ["demanda-anexos", demandaId],
@@ -477,13 +480,9 @@ function Anexos({ demandaId, userId }: { demandaId: string; userId?: string }) {
   }
 
   async function handleDownload(a: any) {
-    const { data, error } = await sb.storage.from("demanda-anexos").createSignedUrl(a.path, 60);
-    if (error || !data?.signedUrl) {
-      toast.error("Não foi possível baixar");
-      return;
-    }
-    window.open(data.signedUrl, "_blank");
+    await baixarAnexo("demanda-anexos", a.path, a.nome);
   }
+
 
   async function handleDelete(a: any) {
     if (!confirm(`Remover anexo "${a.nome}"?`)) return;
@@ -531,12 +530,16 @@ function Anexos({ demandaId, userId }: { demandaId: string; userId?: string }) {
           {anexos.map((a: any) => (
             <div key={a.id} className="flex items-center gap-2 rounded-md border border-border p-2 text-sm">
               <FileIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-              <div className="flex-1 min-w-0">
+              <button
+                type="button"
+                className="flex-1 min-w-0 text-left hover:underline"
+                onClick={() => setPreview(a)}
+              >
                 <div className="truncate font-medium">{a.nome}</div>
                 <div className="text-[11px] text-muted-foreground">
                   {fmtSize(a.tamanho)} · {new Date(a.created_at).toLocaleString("pt-BR")}
                 </div>
-              </div>
+              </button>
               <Button type="button" variant="ghost" size="sm" onClick={() => handleDownload(a)}>
                 <Download className="h-3.5 w-3.5" />
               </Button>
@@ -547,6 +550,12 @@ function Anexos({ demandaId, userId }: { demandaId: string; userId?: string }) {
           ))}
         </div>
       )}
+      <AnexoViewer
+        bucket="demanda-anexos"
+        anexo={preview}
+        open={!!preview}
+        onOpenChange={(o) => !o && setPreview(null)}
+      />
     </div>
   );
 }
