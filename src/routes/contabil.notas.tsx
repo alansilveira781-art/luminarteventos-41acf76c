@@ -15,6 +15,7 @@ import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { EMPRESAS, EMPRESA_REGIME, REGIME_LABEL, IMPOSTOS_POR_REGIME, type Empresa } from "@/lib/empresas";
+import { calcularImpostosPresumido, type Aliquota } from "@/lib/contabil/calculo";
 
 const sb = supabase as any;
 
