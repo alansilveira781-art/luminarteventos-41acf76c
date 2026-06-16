@@ -584,6 +584,7 @@ function Historico({ compraId }: { compraId: string }) {
 function Anexos({ compraId, userId }: { compraId: string; userId?: string }) {
   const qc = useQueryClient();
   const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState<any | null>(null);
 
   const { data: anexos = [] } = useQuery({
     queryKey: ["compra-anexos", compraId],
