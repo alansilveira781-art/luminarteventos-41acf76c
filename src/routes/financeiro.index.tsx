@@ -36,6 +36,8 @@ type Demanda = {
   data_solicitacao: string | null;
   data_compra: string | null;
   valor_total: number | null;
+  responsavel_id?: string | null;
+  responsavel_nome?: string | null;
 };
 
 function DemandasKanban() {
@@ -50,10 +52,20 @@ function DemandasKanban() {
     queryFn: async () => {
       const { data, error } = await sb
         .from("demandas")
-        .select("id,numero,status,titulo,solicitante,fornecedor,comprador,data_solicitacao,data_compra,valor_total")
+        .select("id,numero,status,titulo,solicitante,fornecedor,comprador,data_solicitacao,data_compra,valor_total,responsavel_id,responsavel_nome")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Demanda[];
+    },
+  });
+
+  const { data: statusDefaults = [] } = useQuery({
+    queryKey: ["financeiro_status_defaults"],
+    queryFn: async () => {
+      const { data } = await sb
+        .from("financeiro_status_defaults")
+        .select("status, responsavel_id, responsavel_nome");
+      return (data ?? []) as { status: DemandaStatus; responsavel_id: string | null; responsavel_nome: string | null }[];
     },
   });
 
@@ -77,8 +89,13 @@ function DemandasKanban() {
   }, [filtered]);
 
   const moveStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: DemandaStatus }) => {
-      const { error } = await sb.from("demandas").update({ status }).eq("id", id);
+    mutationFn: async (vars: { id: string; status: DemandaStatus; responsavelId?: string | null; responsavelNome?: string | null }) => {
+      const patch: any = { status: vars.status };
+      if (vars.responsavelId) {
+        patch.responsavel_id = vars.responsavelId;
+        patch.responsavel_nome = vars.responsavelNome ?? null;
+      }
+      const { error } = await sb.from("demandas").update(patch).eq("id", vars.id);
       if (error) throw error;
     },
     onMutate: async ({ id, status }) => {
@@ -104,7 +121,13 @@ function DemandasKanban() {
     const status = overId as DemandaStatus;
     const d = demandas.find((c) => c.id === id);
     if (!d || d.status === status) return;
-    moveStatus.mutate({ id, status });
+    const def = statusDefaults.find((x) => x.status === status && x.responsavel_id);
+    if (def?.responsavel_id) {
+      moveStatus.mutate({ id, status, responsavelId: def.responsavel_id, responsavelNome: def.responsavel_nome });
+      toast.success(`Card movido. ${def.responsavel_nome ?? "Responsável"} atribuído.`);
+    } else {
+      moveStatus.mutate({ id, status });
+    }
   }
 
   return (
