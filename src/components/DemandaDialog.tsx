@@ -530,12 +530,16 @@ function Anexos({ demandaId, userId }: { demandaId: string; userId?: string }) {
           {anexos.map((a: any) => (
             <div key={a.id} className="flex items-center gap-2 rounded-md border border-border p-2 text-sm">
               <FileIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-              <div className="flex-1 min-w-0">
+              <button
+                type="button"
+                className="flex-1 min-w-0 text-left hover:underline"
+                onClick={() => setPreview(a)}
+              >
                 <div className="truncate font-medium">{a.nome}</div>
                 <div className="text-[11px] text-muted-foreground">
                   {fmtSize(a.tamanho)} · {new Date(a.created_at).toLocaleString("pt-BR")}
                 </div>
-              </div>
+              </button>
               <Button type="button" variant="ghost" size="sm" onClick={() => handleDownload(a)}>
                 <Download className="h-3.5 w-3.5" />
               </Button>
@@ -546,6 +550,12 @@ function Anexos({ demandaId, userId }: { demandaId: string; userId?: string }) {
           ))}
         </div>
       )}
+      <AnexoViewer
+        bucket="demanda-anexos"
+        anexo={preview}
+        open={!!preview}
+        onOpenChange={(o) => !o && setPreview(null)}
+      />
     </div>
   );
 }
