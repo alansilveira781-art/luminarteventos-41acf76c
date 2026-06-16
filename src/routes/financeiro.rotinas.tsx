@@ -261,9 +261,12 @@ function TabelaRotinas({
                 </td>
                 <td className="px-4 py-2 text-xs">{r.responsavel_nome ?? "—"}</td>
                 <td className="px-4 py-2">
-                  <Badge variant={r.status === "ativa" ? "default" : "secondary"}>
-                    {r.status === "ativa" ? "Ativa" : "Pausada"}
-                  </Badge>
+                  <div className="flex items-center gap-1">
+                    <Badge variant={r.status === "ativa" ? "default" : "secondary"}>
+                      {r.status === "ativa" ? "Ativa" : "Pausada"}
+                    </Badge>
+                    {r.encerrada && <Badge variant="outline" className="text-[10px]">Encerrada</Badge>}
+                  </div>
                 </td>
                 <td className="px-4 py-2">
                   <div className="flex gap-1 justify-end">
