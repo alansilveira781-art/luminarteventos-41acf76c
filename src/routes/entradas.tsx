@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { MoneyInput } from "@/components/MoneyInput";
+import { QuantidadeInput } from "@/components/QuantidadeInput";
 import { toBRTInputDateTime, fromBRTInputDateTime } from "@/lib/datetime";
 import { entradaTipoLabels } from "@/lib/labels";
 import { ImportDialog } from "@/components/ImportDialog";
