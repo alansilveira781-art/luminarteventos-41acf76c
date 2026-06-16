@@ -623,8 +623,14 @@ type Execucao = {
   validacao_observacao: string | null;
 };
 
+type PeriodoKey = "hoje" | "amanha" | "semana" | "mes" | "custom";
+
 function ExecucaoRotinas({ rotinas }: { rotinas: Rotina[] }) {
   const [registrar, setRegistrar] = useState<Rotina | null>(null);
+  const [periodo, setPeriodo] = useState<PeriodoKey>("hoje");
+  const [customFrom, setCustomFrom] = useState(new Date().toISOString().slice(0, 10));
+  const [customTo, setCustomTo] = useState(new Date().toISOString().slice(0, 10));
+  const [respFilter, setRespFilter] = useState<string>("__all");
 
   const { data: execucoes = [] } = useQuery({
     queryKey: ["rotina-execucoes"],
@@ -639,80 +645,173 @@ function ExecucaoRotinas({ rotinas }: { rotinas: Rotina[] }) {
     },
   });
 
-  const hoje = new Date().toISOString().slice(0, 10);
-  const execByRotina = useMemo(() => {
-    const m: Record<string, Execucao[]> = {};
+  const hojeISO = new Date().toISOString().slice(0, 10);
+
+  // Janela de período
+  const { from, to } = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startISO = (d: Date) => d.toISOString().slice(0, 10);
+    if (periodo === "hoje") return { from: startISO(today), to: startISO(today) };
+    if (periodo === "amanha") {
+      const t = new Date(today); t.setDate(t.getDate() + 1);
+      return { from: startISO(t), to: startISO(t) };
+    }
+    if (periodo === "semana") {
+      const t = new Date(today); t.setDate(t.getDate() + 7);
+      return { from: startISO(today), to: startISO(t) };
+    }
+    if (periodo === "mes") {
+      const t = new Date(today); t.setDate(t.getDate() + 30);
+      return { from: startISO(today), to: startISO(t) };
+    }
+    return { from: customFrom, to: customTo };
+  }, [periodo, customFrom, customTo]);
+
+  // Map: rotina_id → set de datas com execução registrada
+  const execDatasByRotina = useMemo(() => {
+    const m: Record<string, Set<string>> = {};
     execucoes.forEach((e) => {
-      (m[e.rotina_id] ??= []).push(e);
+      (m[e.rotina_id] ??= new Set()).add(e.data_referencia);
     });
     return m;
   }, [execucoes]);
 
+  // Responsáveis disponíveis (apenas das rotinas ativas)
+  const responsaveis = useMemo(() => {
+    const s = new Set<string>();
+    rotinas.forEach((r) => r.responsavel_nome && s.add(r.responsavel_nome));
+    return Array.from(s).sort();
+  }, [rotinas]);
+
+  // Projeta ocorrências dentro do intervalo
+  type Ocorrencia = { rotina: Rotina; date: string; isFeita: boolean; atrasada: boolean };
+  const ocorrencias = useMemo<Ocorrencia[]>(() => {
+    const out: Ocorrencia[] = [];
+    if (!from || !to || from > to) return out;
+    const startD = new Date(from + "T00:00:00");
+    const endD = new Date(to + "T00:00:00");
+    for (const r of rotinas) {
+      if (respFilter !== "__all" && (r.responsavel_nome ?? "") !== respFilter) continue;
+      // Inclui também a proxima_data se < from (rotina atrasada) e dentro de hoje
+      const pData = r.proxima_data;
+      if (pData && pData < from && pData >= r.data_inicio && (!r.data_fim || pData <= r.data_fim)) {
+        const feita = execDatasByRotina[r.id]?.has(pData) ?? false;
+        if (!feita) out.push({ rotina: r, date: pData, isFeita: false, atrasada: true });
+      }
+      const d = new Date(startD);
+      while (d <= endD) {
+        const key = d.toISOString().slice(0, 10);
+        if (occursOn(r, d)) {
+          const feita = execDatasByRotina[r.id]?.has(key) ?? false;
+          out.push({ rotina: r, date: key, isFeita: feita, atrasada: key < hojeISO && !feita });
+        }
+        d.setDate(d.getDate() + 1);
+      }
+    }
+    return out.sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return (a.rotina.hora ?? "").localeCompare(b.rotina.hora ?? "");
+    });
+  }, [rotinas, from, to, execDatasByRotina, respFilter, hojeISO]);
+
+  // Agrupa por data
+  const grupos = useMemo(() => {
+    const map = new Map<string, Ocorrencia[]>();
+    ocorrencias.forEach((o) => {
+      if (!map.has(o.date)) map.set(o.date, []);
+      map.get(o.date)!.push(o);
+    });
+    return Array.from(map.entries());
+  }, [ocorrencias]);
+
   return (
     <>
+      <Card className="p-3 mb-4 flex flex-wrap items-center gap-2">
+        <Select value={periodo} onValueChange={(v) => setPeriodo(v as PeriodoKey)}>
+          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="hoje">Hoje</SelectItem>
+            <SelectItem value="amanha">Amanhã</SelectItem>
+            <SelectItem value="semana">Próximos 7 dias</SelectItem>
+            <SelectItem value="mes">Próximos 30 dias</SelectItem>
+            <SelectItem value="custom">Personalizado</SelectItem>
+          </SelectContent>
+        </Select>
+        {periodo === "custom" && (
+          <>
+            <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="w-40" />
+            <span className="text-xs text-muted-foreground">até</span>
+            <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="w-40" />
+          </>
+        )}
+        {responsaveis.length > 0 && (
+          <Select value={respFilter} onValueChange={setRespFilter}>
+            <SelectTrigger className="w-48"><SelectValue placeholder="Responsável" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todos responsáveis</SelectItem>
+              {responsaveis.map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
+        <div className="ml-auto text-xs text-muted-foreground">{ocorrencias.length} ocorrência(s)</div>
+      </Card>
+
       <Card className="p-0 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 text-left">Rotina</th>
-                <th className="px-4 py-2 text-left">Frequência</th>
-                <th className="px-4 py-2 text-left">Última execução</th>
-                <th className="px-4 py-2 text-left">Status</th>
-                <th className="px-4 py-2 w-40"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {rotinas.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Nenhuma rotina ativa</td></tr>
-              )}
-              {rotinas.map((r) => {
-                const execs = execByRotina[r.id] ?? [];
-                const ultima = execs[0];
-                const feitaHoje = execs.some((e) => e.data_referencia === hoje);
-                return (
-                  <tr key={r.id} className="border-t hover:bg-muted/20 align-top">
-                    <td className="px-4 py-2">
-                      <div className="font-medium flex items-center gap-2">
-                        {r.titulo}
-                        {r.exige_validacao && (
-                          <Badge variant="secondary" className="text-[10px]">
-                            <ShieldCheck className="h-3 w-3 mr-1" /> Requer validação
-                          </Badge>
+        {grupos.length === 0 ? (
+          <div className="px-4 py-8 text-center text-muted-foreground text-sm">
+            Nenhuma rotina prevista no período.
+          </div>
+        ) : (
+          <div className="divide-y">
+            {grupos.map(([data, items]) => (
+              <div key={data} className="p-3">
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  {fmtDate(data)} {data === hojeISO && <Badge variant="default" className="ml-1">Hoje</Badge>}
+                </div>
+                <div className="space-y-1.5">
+                  {items.map((o, idx) => {
+                    const r = o.rotina;
+                    const hora = r.hora?.slice(0, 5) ?? "—";
+                    return (
+                      <div key={`${r.id}-${o.date}-${idx}`} className="flex items-center gap-3 p-2 rounded border bg-background">
+                        <div className="text-xs tabular-nums text-muted-foreground w-12">{hora}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm flex items-center gap-2 flex-wrap">
+                            {r.titulo}
+                            {r.exige_validacao && (
+                              <Badge variant="secondary" className="text-[10px]">
+                                <ShieldCheck className="h-3 w-3 mr-1" /> Validação
+                              </Badge>
+                            )}
+                            {o.atrasada && <Badge variant="destructive" className="text-[10px]">Atrasada</Badge>}
+                            {o.isFeita && <Badge variant="default" className="text-[10px]">Feita</Badge>}
+                            {!o.isFeita && !o.atrasada && o.date === hojeISO && (
+                              <Badge variant="outline" className="text-[10px]">Pendente</Badge>
+                            )}
+                            {!o.isFeita && o.date > hojeISO && (
+                              <Badge variant="outline" className="text-[10px]">Prevista</Badge>
+                            )}
+                          </div>
+                          {r.responsavel_nome && (
+                            <div className="text-xs text-muted-foreground">Resp.: {r.responsavel_nome}</div>
+                          )}
+                        </div>
+                        {!o.isFeita && o.date <= hojeISO && (
+                          <Button size="sm" variant="outline" onClick={() => setRegistrar(r)}>
+                            <CheckCircle2 className="h-4 w-4 mr-1" /> Marcar feita
+                          </Button>
                         )}
                       </div>
-                      {r.responsavel_nome && (
-                        <div className="text-xs text-muted-foreground">Resp.: {r.responsavel_nome}</div>
-                      )}
-                    </td>
-                    <td className="px-4 py-2 text-xs">{FREQ_LABELS[r.frequencia]}</td>
-                    <td className="px-4 py-2 text-xs">
-                      {ultima ? (
-                        <>
-                          <div>{fmtDate(ultima.data_referencia)}</div>
-                          <div className="text-muted-foreground">por {ultima.executada_por_nome ?? "—"}</div>
-                        </>
-                      ) : <span className="text-muted-foreground">Nunca executada</span>}
-                    </td>
-                    <td className="px-4 py-2">
-                      {feitaHoje ? (
-                        <Badge variant="default">Feita hoje</Badge>
-                      ) : (
-                        <Badge variant="outline">Pendente</Badge>
-                      )}
-                    </td>
-                    <td className="px-4 py-2">
-                      <Button size="sm" variant="outline" onClick={() => setRegistrar(r)}>
-                        <CheckCircle2 className="h-4 w-4 mr-1" /> Marcar como feita
-                      </Button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
+
 
       <div className="mt-6">
         <div className="text-sm font-semibold mb-2">Histórico recente</div>
