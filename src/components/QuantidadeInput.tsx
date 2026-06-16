@@ -1,7 +1,7 @@
 import { forwardRef, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 
-const DECIMAIS = 4;
+const DECIMAIS = 2;
 const FATOR = 10 ** DECIMAIS;
 
 type Props = {
