@@ -638,12 +638,12 @@ function SaidaForm({ prefill, isEditing, itens, solicitantes, onEditSolicitante,
   const [linhas, setLinhas] = useState<Linha[]>(() => {
     if (prefill?.linhas?.length) {
       const base = prefill.linhas.map((l: any) => ({ item_id: l.item_id, quantidade: String(l.quantidade) }));
-      return isEditing ? base : [...base, { item_id: "", quantidade: "1" }];
+      return isEditing ? base : [...base, { item_id: "", quantidade: "" }];
     }
     if (prefill) {
-      return [{ item_id: prefill.item_id, quantidade: String(prefill.quantidade) }, { item_id: "", quantidade: "1" }];
+      return [{ item_id: prefill.item_id, quantidade: String(prefill.quantidade) }, { item_id: "", quantidade: "" }];
     }
-    return [{ item_id: "", quantidade: "1" }];
+    return [{ item_id: "", quantidade: "" }];
   });
 
   const isEvento = meta.saida_tipo === "evento";
@@ -678,12 +678,12 @@ function SaidaForm({ prefill, isEditing, itens, solicitantes, onEditSolicitante,
   };
   const goNextItem = (i: number) => {
     setLinhas((arr) => {
-      if (i === arr.length - 1) return [...arr, { item_id: "", quantidade: "1" }];
+      if (i === arr.length - 1) return [...arr, { item_id: "", quantidade: "" }];
       return arr;
     });
     setAutoOpenIdx(i + 1);
   };
-  const addLinha = () => setLinhas((a) => [...a, { item_id: "", quantidade: "1" }]);
+  const addLinha = () => setLinhas((a) => [...a, { item_id: "", quantidade: "" }]);
   const remLinha = (i: number) => setLinhas((a) => (a.length === 1 ? a : a.filter((_, idx) => idx !== i)));
 
   return (

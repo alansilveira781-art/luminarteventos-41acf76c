@@ -856,7 +856,7 @@ function NfeImportDialog({ open, onOpenChange, onDone }: { open: boolean; onOpen
 }
 
 type Linha = { item_id: string; quantidade: string; valor_unitario: string; desconto: string; frete: string; ipi: string; outros_custos: string };
-const novaLinha = (overrides: Partial<Linha> = {}): Linha => ({ item_id: "", quantidade: "1", valor_unitario: "", desconto: "0", frete: "0", ipi: "0", outros_custos: "0", ...overrides });
+const novaLinha = (overrides: Partial<Linha> = {}): Linha => ({ item_id: "", quantidade: "", valor_unitario: "", desconto: "0", frete: "0", ipi: "0", outros_custos: "0", ...overrides });
 
 function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor, onSubmit, submitting }: any) {
   const [meta, setMeta] = useState({
