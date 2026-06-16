@@ -510,8 +510,10 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
 // HELPERS
 // ============================================================================
 
-function fmtDate(iso: string) {
+function fmtDate(iso: string | null | undefined) {
+  if (!iso || typeof iso !== "string" || !iso.includes("-")) return "—";
   const [y, m, d] = iso.split("-");
+  if (!y || !m || !d) return "—";
   return `${d}/${m}/${y}`;
 }
 
