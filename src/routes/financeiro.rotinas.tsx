@@ -2,17 +2,19 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FormField, FormSection, FormActions } from "@/components/FormSection";
-import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Pause, Play, Clock } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Pause, Play, Clock, CheckCircle2, Paperclip, ShieldCheck, X } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/financeiro/rotinas")({
@@ -31,6 +33,7 @@ type Rotina = {
   responsavel_id: string | null;
   responsavel_nome: string | null;
   status: "ativa" | "pausada";
+  exige_validacao: boolean;
 };
 
 const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -43,6 +46,8 @@ const FREQ_LABELS: Record<Rotina["frequencia"], string> = {
 };
 
 function RotinasPage() {
+  const { isAdmin, modulos } = useAuth();
+  const isFinAdmin = isAdmin || modulos.some((m) => m.slug === "financeiro" && m.is_admin);
   const [editing, setEditing] = useState<Partial<Rotina> | null>(null);
 
   const { data: rotinas = [] } = useQuery({
@@ -55,6 +60,18 @@ function RotinasPage() {
       if (error) throw error;
       return (data ?? []) as unknown as Rotina[];
     },
+  });
+
+  const { data: pendentesCount = 0 } = useQuery({
+    queryKey: ["financeiro-rotinas-validacoes-count"],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("financeiro_rotina_execucoes" as any)
+        .select("id", { count: "exact", head: true })
+        .eq("validacao_status", "pendente");
+      return count ?? 0;
+    },
+    enabled: isFinAdmin,
   });
 
   return (
@@ -73,6 +90,12 @@ function RotinasPage() {
         <TabsList>
           <TabsTrigger value="tabela">Tabela</TabsTrigger>
           <TabsTrigger value="calendario">Calendário</TabsTrigger>
+          <TabsTrigger value="execucao">Execução</TabsTrigger>
+          {isFinAdmin && (
+            <TabsTrigger value="validacoes">
+              Validações{pendentesCount > 0 ? ` (${pendentesCount})` : ""}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="tabela">
@@ -82,6 +105,16 @@ function RotinasPage() {
         <TabsContent value="calendario">
           <CalendarioRotinas rotinas={rotinas} onEdit={setEditing} />
         </TabsContent>
+
+        <TabsContent value="execucao">
+          <ExecucaoRotinas rotinas={rotinas.filter((r) => r.status === "ativa")} />
+        </TabsContent>
+
+        {isFinAdmin && (
+          <TabsContent value="validacoes">
+            <ValidacoesPanel />
+          </TabsContent>
+        )}
       </Tabs>
 
       {editing && (
