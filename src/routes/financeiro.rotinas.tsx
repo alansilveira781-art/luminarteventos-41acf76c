@@ -472,6 +472,15 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
                 </SelectContent>
               </Select>
             </FormField>
+            <FormField label="Validação" wide>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <Checkbox
+                  checked={form.exige_validacao}
+                  onCheckedChange={(v) => set("exige_validacao", !!v)}
+                />
+                Exige validação do gestor
+              </label>
+            </FormField>
           </FormSection>
           <FormActions>
             <Button type="button" variant="ghost" onClick={onClose}>Cancelar</Button>
