@@ -69,9 +69,19 @@ function NotasFiscaisPage() {
   const { data: aliquotas } = useQuery({
     queryKey: ["contabil-aliquotas"],
     queryFn: async () => {
-      const { data, error } = await sb.from("contabil_configuracao_aliquotas").select("*").eq("ativo", true);
+      const { data, error } = await sb
+        .from("contabil_configuracao_aliquotas")
+        .select("empresa, imposto, aliquota, base_calculo, aliquota_adicional, observacoes")
+        .eq("ativo", true);
       if (error) throw error;
-      return data as Array<{ empresa: string; imposto: string; aliquota: number }>;
+      return data as Array<{
+        empresa: string;
+        imposto: string;
+        aliquota: number;
+        base_calculo: number | null;
+        aliquota_adicional: number | null;
+        observacoes: string | null;
+      }>;
     },
   });
 
