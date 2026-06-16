@@ -33,6 +33,11 @@ function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => vo
         <p className="mt-2 text-sm text-muted-foreground">
           An unexpected error occurred. Please try again.
         </p>
+        {shortMsg && (
+          <p className="mt-3 text-[11px] font-mono text-muted-foreground/80 break-words">
+            {shortMsg}
+          </p>
+        )}
         {import.meta.env.DEV && error.message && (
           <pre className="mt-4 max-h-40 overflow-auto rounded-md bg-muted p-3 text-left font-mono text-xs text-destructive">
             {error.message}
