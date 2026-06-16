@@ -172,7 +172,7 @@ function ApuracoesPage() {
     <>
       <PageHeader
         title="Apurações de impostos"
-        description="Cálculo de PIS, COFINS, IRPJ e CSLL (Lucro Presumido). Escolha entre regime de caixa (valores recebidos) ou competência (notas emitidas)."
+        description="Apuração de PIS, COFINS, IRPJ e CSLL (Lucro Presumido). Selecione o mês de referência: no regime de caixa, soma os valores recebidos no mês; no de competência, soma as notas emitidas. O imposto apurado é pago no mês seguinte."
         actions={
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground hidden sm:block">Salva no histórico abaixo</span>
@@ -193,7 +193,7 @@ function ApuracoesPage() {
               </SelectContent>
             </Select>
           </FormField>
-          <FormField label="Competência (mês)">
+          <FormField label={regime === "caixa" ? "Mês de referência (recebimento)" : "Mês de referência (emissão)"}>
             <Select value={mes} onValueChange={setMes}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -217,10 +217,16 @@ function ApuracoesPage() {
                 <SelectItem value="competencia">Competência (valor emitido)</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              {regime === "caixa"
+                ? "Imposto incide sobre o que foi recebido no mês de referência."
+                : "Imposto incide sobre as notas emitidas no mês de referência, mesmo que ainda não recebidas."}
+            </p>
           </FormField>
         </FormSection>
         <div className="mt-3 text-xs text-muted-foreground">
-          Competência: <strong className="text-foreground">{mes}/{ano}</strong> · Vencimento dos impostos: <strong className="text-foreground">{vencimento}</strong>
+          {regime === "caixa" ? "Referência (recebimentos de): " : "Referência (notas emitidas em): "}
+          <strong className="text-foreground">{mes}/{ano}</strong> · Imposto a pagar em: <strong className="text-foreground">{vencimento}</strong>
         </div>
       </Card>
 
