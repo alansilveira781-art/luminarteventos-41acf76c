@@ -111,7 +111,7 @@ function RotinasPage() {
         </TabsContent>
 
         <TabsContent value="execucao">
-          <ExecucaoRotinas rotinas={rotinas.filter((r) => r.status === "ativa")} />
+          <ExecucaoRotinas rotinas={rotinas.filter((r) => r.status === "ativa" && !r.encerrada)} />
         </TabsContent>
 
         {isFinAdmin && (
