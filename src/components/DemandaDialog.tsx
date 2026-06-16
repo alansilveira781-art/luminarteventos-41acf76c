@@ -13,6 +13,7 @@ import { DbComboboxCreatable } from "@/components/DbComboboxCreatable";
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { MentionInput, renderCommentText } from "@/components/MentionInput";
 import { Trash2, Upload, Download, FileIcon } from "lucide-react";
+import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
 import { DEMANDA_STATUSES, TIPO_DEMANDA_OPTIONS, type DemandaStatus } from "@/lib/demandas";
