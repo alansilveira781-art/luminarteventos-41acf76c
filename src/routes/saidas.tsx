@@ -221,12 +221,16 @@ function SaidasPage() {
 
   const mut = useMutation({
     mutationFn: async (p: { meta: any; linhas: Array<{ item_id: string; quantidade: number }> }) => {
-      // Validar estoque por item
+      // Validar estoque por item, somando linhas do mesmo item no mesmo lançamento
+      const totalPorItem = new Map<string, number>();
       for (const l of p.linhas) {
-        const it = (itens ?? []).find((x: any) => x.id === l.item_id);
+        totalPorItem.set(l.item_id, (totalPorItem.get(l.item_id) ?? 0) + Number(l.quantidade));
+      }
+      for (const [itemId, total] of totalPorItem) {
+        const it = (itens ?? []).find((x: any) => x.id === itemId);
         if (!it) throw new Error("Item inválido");
-        if (l.quantidade > Number(it.quantidade_atual)) {
-          throw new Error(`Estoque insuficiente para ${it.nome}. Disponível: ${it.quantidade_atual} ${it.unidade}`);
+        if (total > Number(it.quantidade_atual)) {
+          throw new Error(`Item ${it.nome}: saída de ${total} excede o disponível (${it.quantidade_atual} ${it.unidade}). Estoque não pode ficar negativo.`);
         }
       }
       const { data: numData, error: numErr } = await supabase.rpc("next_requisicao_numero" as any);
