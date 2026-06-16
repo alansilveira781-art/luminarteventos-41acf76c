@@ -234,7 +234,7 @@ function ApuracoesPage() {
         <Card className="overflow-hidden">
           <div className="px-4 py-3 border-b border-border flex justify-between items-center">
             <div className="text-sm font-semibold">
-              {regime === "caixa" ? "Recebimentos do mês" : "Notas emitidas no mês"}
+              {regime === "caixa" ? "Recebimentos do mês de referência" : "Notas emitidas no mês de referência"}
             </div>
             <div className="text-xs text-muted-foreground">
               {regime === "caixa" ? (recebimentos ?? []).length : (notasEmitidas ?? []).length} registros
@@ -280,7 +280,7 @@ function ApuracoesPage() {
               )}
               <tr className="border-t-2 border-border bg-muted/30">
                 <td colSpan={3} className="px-4 py-2 text-sm font-semibold">
-                  Faturamento ({regime === "caixa" ? "caixa" : "competência"})
+                  Faturamento ({regime === "caixa" ? "caixa" : "competência"}) — base do imposto
                 </td>
                 <td className="px-4 py-2 text-right tabular-nums font-semibold">{fmtBRL(faturamento)}</td>
               </tr>
