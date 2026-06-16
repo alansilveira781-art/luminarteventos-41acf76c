@@ -358,14 +358,22 @@ function NotaForm({
           Cálculo de impostos — {REGIME_LABEL[regime]}
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
-          {impostosDisponiveis.map(({ imposto, aliquota }) => (
-            <div key={imposto} className="flex justify-between border border-border rounded-md px-2 py-1">
-              <span className="text-muted-foreground">{imposto} ({aliquota}%)</span>
-              <span className="tabular-nums">
-                {impostosCalc[imposto].toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-              </span>
-            </div>
-          ))}
+          {apuracao.itens.map((item) => {
+            const cfg = aliquotasEmpresa.find((a) => a.imposto === item.imposto);
+            const baseCalc = Number(cfg?.base_calculo ?? 0);
+            const rotulo =
+              baseCalc > 0
+                ? `${item.imposto} (${item.aliquota}% s/ base ${baseCalc}%)`
+                : `${item.imposto} (${item.aliquota}%)`;
+            return (
+              <div key={item.imposto} className="flex justify-between border border-border rounded-md px-2 py-1">
+                <span className="text-muted-foreground">{rotulo}</span>
+                <span className="tabular-nums">
+                  {item.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                </span>
+              </div>
+            );
+          })}
         </div>
         <div className="flex justify-between text-sm pt-2 border-t border-border">
           <span>Total impostos</span>
@@ -375,6 +383,9 @@ function NotaForm({
           <span>Valor líquido</span>
           <span className="tabular-nums">{valorLiquido.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
         </div>
+        <p className="text-xs text-muted-foreground pt-1">
+          O adicional de IRPJ (10% sobre o lucro presumido que exceder R$ 20.000/mês) é apurado na apuração mensal.
+        </p>
         {!aliquotas.some((a) => a.empresa === empresa) && (
           <p className="text-xs text-muted-foreground">
             As alíquotas exibidas são padrão. Configure alíquotas reais na aba <strong>Configuração</strong>.
