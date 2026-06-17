@@ -477,23 +477,35 @@ export function CompraDialog({
                 );
               }
               const idx = COMPRA_STATUSES.findIndex((s) => s.key === form.status);
+              let nextKey: CompraStatus | null = null;
               let nextLabel: string | null = null;
               for (let i = idx + 1; i < COMPRA_STATUSES.length; i++) {
                 if (COMPRA_STATUSES[i].key === "negada") continue;
+                nextKey = COMPRA_STATUSES[i].key;
                 nextLabel = COMPRA_STATUSES[i].label;
                 break;
               }
               if (!nextLabel) return null;
+              const missingTipo = nextKey === "a_receber" && !form.tipo_compra;
+              const disabled = !canMove || missingTipo;
+              const title = blocked ?? (missingTipo ? "Defina o tipo da compra antes de avançar para Compras a Receber." : undefined);
               return (
                 <Button
                   variant="secondary"
-                  onClick={() => canMove && onAdvance({ ...form, id: compraId })}
-                  disabled={!canMove}
-                  title={blocked ?? undefined}
+                  onClick={() => {
+                    if (missingTipo) {
+                      toast.error("Defina o tipo da compra antes de avançar para Compras a Receber.");
+                      return;
+                    }
+                    if (canMove) onAdvance({ ...form, id: compraId });
+                  }}
+                  disabled={disabled}
+                  title={title}
                 >
                   Avançar para "{nextLabel}" <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               );
+
             })()}
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button onClick={() => save.mutate()} disabled={save.isPending}>
