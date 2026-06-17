@@ -168,13 +168,13 @@ function ComprasKanban() {
           responsavelId: def.responsavel_id,
           responsavelNome: def.responsavel_nome ?? undefined,
         });
-        await notifyResponsavel({
+        notifyResponsavel({
           userId: def.responsavel_id,
           titulo: `Compra: ${statusLabel}`,
           mensagem: titulo,
           link: `/compras?id=${id}`,
           tipo: "compra_responsavel",
-        });
+        }).catch(() => {});
         toast.success(opts?.toastMsg ?? `Card movido. ${def.responsavel_nome ?? "Responsável"} foi notificado.`);
         return;
       }
