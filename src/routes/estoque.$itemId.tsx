@@ -24,8 +24,9 @@ function ItemHistorico() {
   const { data: item } = useQuery({
     queryKey: ["item", itemId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("itens").select("*").eq("id", itemId).single();
+      const { data, error } = await supabase.from("itens").select("*").eq("id", itemId).maybeSingle();
       if (error) throw error;
+      if (!data) throw new Error("Item não encontrado");
       return data;
     },
   });
