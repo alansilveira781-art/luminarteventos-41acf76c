@@ -25,6 +25,7 @@ import { BulkEditDialog, normalizeBulkPatch, type BulkField } from "@/components
 import { useAuth } from "@/contexts/AuthContext";
 import { PeriodoFilter, filterByPeriodo, periodoFromPreset, type Periodo, type PeriodoPreset } from "@/components/PeriodoFilter";
 import { TablePagination } from "@/components/TablePagination";
+import { ensureValidSession, describeSupabaseError } from "@/lib/supabase-guard";
 
 export const Route = createFileRoute("/devolucoes")({
   component: DevolucoesPage,
