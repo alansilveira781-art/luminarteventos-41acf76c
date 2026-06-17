@@ -65,9 +65,8 @@ function parseEgestor(file: ArrayBuffer): EgestorRow[] {
     const produto = String(r[colProduto] ?? "").trim();
     if (!produto) continue;
     const codigo = colCodigo >= 0 ? String(r[colCodigo] ?? "").trim() : "";
-    const rawEst = String(r[colEstoque] ?? "0").replace(/\./g, "").replace(",", ".");
-    const estoque = Number(rawEst);
-    rows.push({ codigo, produto, estoque: isNaN(estoque) ? 0 : estoque });
+    const estoque = parseSaldoEgestor(r[colEstoque]);
+    rows.push({ codigo, produto, estoque });
   }
   return rows;
 }
