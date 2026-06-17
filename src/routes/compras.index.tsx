@@ -89,6 +89,7 @@ function ComprasKanban() {
         .select("status, responsavel_id, responsavel_nome");
       return (data ?? []) as { status: CompraStatus; responsavel_id: string | null; responsavel_nome: string | null }[];
     },
+    staleTime: 1000 * 60 * 5,
   });
 
   const filteredCompras = useMemo(() => {
