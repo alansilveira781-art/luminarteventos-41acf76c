@@ -73,11 +73,22 @@ const initial: FormState = {
 
 const TIPOS_DEMANDA_PAGAVEIS = ["alimentacao", "estacionamento", "manutencao_galpao"];
 
+const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
+const MAX_FILES = 10;
+const ACCEPT_TYPES = "image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv";
+
+function fmtSize(n: number) {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(2)} MB`;
+}
+
 function SolicitarPage() {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormState>(initial);
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState<{ numero: number | null; tipo: Tipo } | null>(null);
+  const [anexos, setAnexos] = useState<File[]>([]);
   const [opcoes, setOpcoes] = useState<{ parcelamentos: string[]; condicoes_pagamento: string[] }>({
     parcelamentos: [],
     condicoes_pagamento: [],
