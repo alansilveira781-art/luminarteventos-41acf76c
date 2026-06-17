@@ -143,7 +143,11 @@ export function CompraDialog({
   const save = useMutation({
     mutationFn: async () => {
       await ensureValidSession();
+      if (form.status === "a_receber" && !form.tipo_compra) {
+        throw new Error("Defina o tipo da compra antes de salvar como Compras a Receber.");
+      }
       const payload: any = { ...form, valor_total: totalCalc };
+
       let id = compraId;
       if (id) {
         const { data: upd, error } = await sb.from("compras").update(payload).eq("id", id).select("id");
