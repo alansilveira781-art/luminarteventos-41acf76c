@@ -89,6 +89,7 @@ function ComprasKanban() {
         .select("status, responsavel_id, responsavel_nome");
       return (data ?? []) as { status: CompraStatus; responsavel_id: string | null; responsavel_nome: string | null }[];
     },
+    staleTime: 1000 * 60 * 5,
   });
 
   const filteredCompras = useMemo(() => {
@@ -168,13 +169,13 @@ function ComprasKanban() {
           responsavelId: def.responsavel_id,
           responsavelNome: def.responsavel_nome ?? undefined,
         });
-        await notifyResponsavel({
+        notifyResponsavel({
           userId: def.responsavel_id,
           titulo: `Compra: ${statusLabel}`,
           mensagem: titulo,
           link: `/compras?id=${id}`,
           tipo: "compra_responsavel",
-        });
+        }).catch(() => {});
         toast.success(opts?.toastMsg ?? `Card movido. ${def.responsavel_nome ?? "Responsável"} foi notificado.`);
         return;
       }
@@ -333,13 +334,13 @@ function ComprasKanban() {
           const { id, status, titulo } = pendingMove;
           const statusLabel = COMPRA_STATUSES.find((s) => s.key === status)?.label || status;
           moveStatus.mutate({ id, status, responsavelId, responsavelNome });
-          await notifyResponsavel({
+          notifyResponsavel({
             userId: responsavelId,
             titulo: `Compra: ${statusLabel}`,
             mensagem: `${titulo}${observacao ? ` — ${observacao}` : ""}`,
             link: `/compras?id=${id}`,
             tipo: "compra_responsavel",
-          });
+          }).catch(() => {});
           toast.success(`Card movido. ${responsavelNome} foi notificado.`);
           setPendingMove(null);
         }}

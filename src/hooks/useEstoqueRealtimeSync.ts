@@ -11,25 +11,28 @@ export function useEstoqueRealtimeSync() {
   const qc = useQueryClient();
 
   useEffect(() => {
-    const invalidateAll = () => {
+    // Invalida apenas o que cada tabela realmente afeta.
+    // Dashboards/selects ficam de fora (têm staleTime próprio e/ou recarregam por navegação).
+    const onItens = () => {
       qc.invalidateQueries({ queryKey: ["itens"] });
-      qc.invalidateQueries({ queryKey: ["itens-select"] });
-      qc.invalidateQueries({ queryKey: ["itens-select-saida"] });
-      qc.invalidateQueries({ queryKey: ["itens-busca"] });
+      qc.invalidateQueries({ queryKey: ["item"] });
+      qc.invalidateQueries({ queryKey: ["item-info"] });
       qc.invalidateQueries({ queryKey: ["itens-min"] });
+    };
+    const onMovimentacoes = () => {
+      // Saldo é recalculado pelo trigger -> reflete em "itens"
+      qc.invalidateQueries({ queryKey: ["itens"] });
       qc.invalidateQueries({ queryKey: ["item"] });
       qc.invalidateQueries({ queryKey: ["item-info"] });
       qc.invalidateQueries({ queryKey: ["item-movs"] });
-      qc.invalidateQueries({ queryKey: ["dashboard-itens"] });
       qc.invalidateQueries({ queryKey: ["entradas"] });
       qc.invalidateQueries({ queryKey: ["saidas"] });
-      qc.invalidateQueries({ queryKey: ["dashboard-movs"] });
     };
 
     const channel = supabase
       .channel("estoque-sync")
-      .on("postgres_changes", { event: "*", schema: "public", table: "itens" }, invalidateAll)
-      .on("postgres_changes", { event: "*", schema: "public", table: "movimentacoes" }, invalidateAll)
+      .on("postgres_changes", { event: "*", schema: "public", table: "itens" }, onItens)
+      .on("postgres_changes", { event: "*", schema: "public", table: "movimentacoes" }, onMovimentacoes)
       .subscribe();
 
     return () => {

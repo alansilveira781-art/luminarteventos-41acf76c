@@ -63,6 +63,7 @@ function QuadroVendas() {
         .select("status, responsavel_id, responsavel_nome");
       return (data ?? []) as { status: CardStatus; responsavel_id: string | null; responsavel_nome: string | null }[];
     },
+    staleTime: 1000 * 60 * 5,
   });
 
   // Filtros
@@ -133,13 +134,13 @@ function QuadroVendas() {
         if (def.responsavel_nome) updateCard(id, { responsavel: def.responsavel_nome });
         moveCard(id, status);
         const statusLabel = CARD_STATUSES.find((s) => s.key === status)?.label || status;
-        await notifyResponsavel({
+        notifyResponsavel({
           userId: def.responsavel_id,
           titulo: `Venda: ${statusLabel}`,
           mensagem: `${card.clienteNome}${card.eventoNome ? ` — ${card.eventoNome}` : ""}`,
           link: `/comercial?card=${id}`,
           tipo: "comercial_responsavel",
-        });
+        }).catch(() => {});
         toast.success(`Card movido. ${def.responsavel_nome ?? "Responsável"} foi notificado.`);
         return;
       }
@@ -270,13 +271,13 @@ function QuadroVendas() {
           const card = cards.find((c) => c.id === id);
           moveCard(id, status);
           const statusLabel = CARD_STATUSES.find((s) => s.key === status)?.label || status;
-          await notifyResponsavel({
+          notifyResponsavel({
             userId: responsavelId,
             titulo: `Venda: ${statusLabel}`,
             mensagem: `${card?.clienteNome ?? "Card"}${card?.eventoNome ? ` — ${card.eventoNome}` : ""}${observacao ? ` — ${observacao}` : ""}`,
             link: `/comercial?card=${id}`,
             tipo: "comercial_responsavel",
-          });
+          }).catch(() => {});
           toast.success(`Card movido. ${responsavelNome} foi notificado.`);
           setPendingMove(null);
         }}
