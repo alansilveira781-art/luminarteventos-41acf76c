@@ -242,12 +242,24 @@ export const Route = createFileRoute("/api/public/solicitar")({
 
           await (supabaseAdmin as any).from("compra_itens").insert(itensPayload);
 
+          let anexosFalhados = 0;
+          if (uploadedFiles.length > 0) {
+            anexosFalhados = await uploadAnexos(
+              "compra-anexos",
+              "compra_anexos",
+              "compra_id",
+              (compra as any).id,
+              uploadedFiles,
+            );
+          }
+
           return new Response(
             JSON.stringify({
               ok: true,
               id: (compra as any).id,
               numero: (compra as any).numero,
               tipo: "compra",
+              anexos_falhados: anexosFalhados,
             }),
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
           );
