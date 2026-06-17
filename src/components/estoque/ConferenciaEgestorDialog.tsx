@@ -38,6 +38,18 @@ type LinhaConferencia = {
 
 type Filtro = "todos" | "divergentes" | "so_egestor" | "so_sistema";
 
+function parseSaldoEgestor(raw: any): number {
+  const s = String(raw ?? "").trim();
+  if (s === "" || s.toLowerCase() === "nan") return 0;
+  if (s.includes(",")) {
+    const n = Number(s.replace(/\./g, "").replace(",", "."));
+    return Number.isFinite(n) ? n : 0;
+  }
+  const digits = s.replace(/\./g, "");
+  const n = Number(digits) / 1e10;
+  return Number.isFinite(n) ? n : 0;
+}
+
 function parseEgestor(file: ArrayBuffer): EgestorRow[] {
   const wb = XLSX.read(file, { type: "array" });
   const ws = wb.Sheets[wb.SheetNames[0]];
