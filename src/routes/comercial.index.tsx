@@ -270,13 +270,13 @@ function QuadroVendas() {
           const card = cards.find((c) => c.id === id);
           moveCard(id, status);
           const statusLabel = CARD_STATUSES.find((s) => s.key === status)?.label || status;
-          await notifyResponsavel({
+          notifyResponsavel({
             userId: responsavelId,
             titulo: `Venda: ${statusLabel}`,
             mensagem: `${card?.clienteNome ?? "Card"}${card?.eventoNome ? ` — ${card.eventoNome}` : ""}${observacao ? ` — ${observacao}` : ""}`,
             link: `/comercial?card=${id}`,
             tipo: "comercial_responsavel",
-          });
+          }).catch(() => {});
           toast.success(`Card movido. ${responsavelNome} foi notificado.`);
           setPendingMove(null);
         }}
