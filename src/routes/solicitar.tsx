@@ -246,6 +246,7 @@ function SolicitarPage() {
                 setForm(initial);
                 setStep(0);
                 setDone(null);
+                setAnexos([]);
               }}
             >
               Enviar outra solicitação
