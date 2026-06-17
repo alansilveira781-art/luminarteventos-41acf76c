@@ -39,21 +39,55 @@ type LinhaConferencia = {
 type Filtro = "todos" | "divergentes" | "so_egestor" | "so_sistema";
 
 function parseSaldoEgestor(raw: any): number {
-  const s = String(raw ?? "").trim();
+  let s = String(raw ?? "").trim();
   if (s === "" || s.toLowerCase() === "nan") return 0;
-  if (s.includes(",")) {
-    const n = Number(s.replace(/\./g, "").replace(",", "."));
-    return Number.isFinite(n) ? n : 0;
+  const neg = s.startsWith("-");
+  if (neg) s = s.slice(1);
+
+  let val: number;
+  if (/e\+?\d/i.test(s)) {
+    val = Number(s.replace(",", "."));
+    if (val >= 1e6) val = val / 1e10;
+  } else if (s.includes(",")) {
+    val = Number(s.replace(/\./g, "").replace(",", "."));
+  } else {
+    const digits = s.replace(/\./g, "");
+    const asNum = Number(digits);
+    val = asNum >= 1e7 ? asNum / 1e10 : asNum;
   }
-  const digits = s.replace(/\./g, "");
-  const n = Number(digits) / 1e10;
-  return Number.isFinite(n) ? n : 0;
+  if (!Number.isFinite(val)) return 0;
+  return neg ? -val : val;
+}
+
+function lerAOA(buf: ArrayBuffer): any[][] {
+  const bytes = new Uint8Array(buf);
+  const head = new TextDecoder("utf-8").decode(bytes.slice(0, 256)).toLowerCase();
+  const isHTML = head.includes("<!doctype") || head.includes("<html") || head.includes("<table");
+
+  if (isHTML) {
+    const html = new TextDecoder("utf-8").decode(bytes);
+    const rows: string[][] = [];
+    const trRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+    let m: RegExpExecArray | null;
+    while ((m = trRe.exec(html))) {
+      const cells: string[] = [];
+      const tdRe = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi;
+      let c: RegExpExecArray | null;
+      while ((c = tdRe.exec(m[1]))) {
+        cells.push(c[1].replace(/<[^>]*>/g, "").replace(/&nbsp;/gi, " ").trim());
+      }
+      if (cells.length) rows.push(cells);
+    }
+    return rows;
+  }
+
+  const wb = XLSX.read(buf, { type: "array" });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  return XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", raw: false });
 }
 
 function parseEgestor(file: ArrayBuffer): EgestorRow[] {
-  const wb = XLSX.read(file, { type: "array" });
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  const aoa: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", raw: false });
+  const aoa = lerAOA(file);
   let headerIdx = -1;
   for (let i = 0; i < Math.min(aoa.length, 10); i++) {
     const first = String(aoa[i]?.[0] ?? "").trim().toLowerCase();
