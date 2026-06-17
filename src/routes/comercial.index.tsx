@@ -133,13 +133,13 @@ function QuadroVendas() {
         if (def.responsavel_nome) updateCard(id, { responsavel: def.responsavel_nome });
         moveCard(id, status);
         const statusLabel = CARD_STATUSES.find((s) => s.key === status)?.label || status;
-        await notifyResponsavel({
+        notifyResponsavel({
           userId: def.responsavel_id,
           titulo: `Venda: ${statusLabel}`,
           mensagem: `${card.clienteNome}${card.eventoNome ? ` — ${card.eventoNome}` : ""}`,
           link: `/comercial?card=${id}`,
           tipo: "comercial_responsavel",
-        });
+        }).catch(() => {});
         toast.success(`Card movido. ${def.responsavel_nome ?? "Responsável"} foi notificado.`);
         return;
       }
