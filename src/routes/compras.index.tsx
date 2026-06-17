@@ -417,6 +417,14 @@ function Card({
             {compra.solicitante && <div>Solic.: {compra.solicitante}</div>}
             {compra.comprador && <div>Comprador: {compra.comprador}</div>}
             {compra.responsavel_nome && <div>Resp.: {compra.responsavel_nome}</div>}
+            {!compra.tipo_compra && (
+              <div>
+                <span className="inline-block rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 text-[10px] font-medium">
+                  Sem tipo
+                </span>
+              </div>
+            )}
+
             <div>{compra.data_compra ? `Comprada: ${formatDate(compra.data_compra)}` : "Não comprado"}</div>
             {compra.valor_total != null && (
               <div className="font-medium text-foreground">
