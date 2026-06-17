@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TIPO_COMPRA_OPTIONS } from "@/lib/compras";
 import { TIPO_DEMANDA_OPTIONS } from "@/lib/demandas";
-import { ShoppingCart, Wallet, ChevronLeft, ChevronRight, Check, Loader2, Plus, Trash2 } from "lucide-react";
+import { ShoppingCart, Wallet, ChevronLeft, ChevronRight, Check, Loader2, Plus, Trash2, Paperclip, X } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/solicitar")({
