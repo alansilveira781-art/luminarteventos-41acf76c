@@ -10,6 +10,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { syncIncrementalD1, processNextHistoricoChunk } from "@/lib/conta-azul/sync.server";
+import { requireProjectApiKey } from "@/lib/public-endpoint-auth";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -25,7 +26,9 @@ function nowInFortalezaHHMM(): string {
   return `${hh}:${mm}`;
 }
 
-async function handle() {
+async function handle({ request }: { request: Request }) {
+  const denied = requireProjectApiKey(request);
+  if (denied) return denied;
   const hhmm = nowInFortalezaHHMM();
   const sb = supabaseAdmin as any;
   const result: any = { hhmm };

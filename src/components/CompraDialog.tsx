@@ -15,6 +15,7 @@ import { Plus, Trash2, Upload, Download, FileIcon, ChevronRight, CheckCircle2 } 
 import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
+import { ensureValidSession, describeSupabaseError } from "@/lib/supabase-guard";
 import { COMPRA_STATUSES, TIPO_COMPRA_OPTIONS, canMoveCompra, moveBlockedMessage, type CompraStatus } from "@/lib/compras";
 import { useAuth } from "@/contexts/AuthContext";
 import { notifyResponsiblesForStatus, notifyMentions } from "@/lib/notify";
@@ -141,14 +142,17 @@ export function CompraDialog({
 
   const save = useMutation({
     mutationFn: async () => {
+      await ensureValidSession();
       const payload: any = { ...form, valor_total: totalCalc };
       let id = compraId;
       if (id) {
-        const { error } = await sb.from("compras").update(payload).eq("id", id);
+        const { data: upd, error } = await sb.from("compras").update(payload).eq("id", id).select("id");
         if (error) throw error;
+        if (!upd || upd.length === 0) throw new Error("Compra não foi atualizada (sem permissão ou registro removido).");
       } else {
         const { data, error } = await sb.from("compras").insert(payload).select("id").single();
         if (error) throw error;
+        if (!data?.id) throw new Error("Compra não foi confirmada pelo banco.");
         id = data.id;
       }
       await sb.from("compra_itens").delete().eq("compra_id", id);
@@ -164,8 +168,11 @@ export function CompraDialog({
           valor_unitario: it.valor_unitario ?? null,
           evento_projeto: it.evento_projeto || null,
         }));
-        const { error } = await sb.from("compra_itens").insert(rows);
+        const { data: ins, error } = await sb.from("compra_itens").insert(rows).select("id");
         if (error) throw error;
+        if (!ins || ins.length !== rows.length) {
+          throw new Error("Itens da compra não foram totalmente confirmados pelo banco.");
+        }
       }
       // Notificar responsáveis quando status muda
       if (form.status !== statusInicial) {
@@ -173,13 +180,13 @@ export function CompraDialog({
       }
       return id;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Compra salva");
-      qc.invalidateQueries({ queryKey: ["compras"] });
+      await qc.refetchQueries({ queryKey: ["compras"] });
       qc.invalidateQueries({ queryKey: ["compras-receber"] });
       onOpenChange(false);
     },
-    onError: (e: any) => toast.error(e.message ?? "Erro ao salvar"),
+    onError: (e: any) => toast.error(describeSupabaseError(e)),
   });
 
   function addItem() { setItens((p) => [...p, { descricao: "", quantidade: 1 }]); }

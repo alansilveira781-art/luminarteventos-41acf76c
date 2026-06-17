@@ -16,6 +16,7 @@ import { Trash2, Upload, Download, FileIcon } from "lucide-react";
 import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
+import { ensureValidSession, describeSupabaseError } from "@/lib/supabase-guard";
 import { DEMANDA_STATUSES, TIPO_DEMANDA_OPTIONS, type DemandaStatus } from "@/lib/demandas";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -100,14 +101,17 @@ export function DemandaDialog({
 
   const save = useMutation({
     mutationFn: async () => {
+      await ensureValidSession();
       const payload: any = { ...form };
       let id = demandaId;
       if (id) {
-        const { error } = await sb.from("demandas").update(payload).eq("id", id);
+        const { data: upd, error } = await sb.from("demandas").update(payload).eq("id", id).select("id");
         if (error) throw error;
+        if (!upd || upd.length === 0) throw new Error("Demanda não foi atualizada (sem permissão ou registro removido).");
       } else {
         const { data, error } = await sb.from("demandas").insert(payload).select("id").single();
         if (error) throw error;
+        if (!data?.id) throw new Error("Demanda não foi confirmada pelo banco.");
         id = data.id;
       }
       // Upload de anexos pendentes (anexados antes de salvar)
@@ -132,13 +136,13 @@ export function DemandaDialog({
       }
       return id;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Demanda salva");
       setPendingFiles([]);
-      qc.invalidateQueries({ queryKey: ["demandas"] });
+      await qc.refetchQueries({ queryKey: ["demandas"] });
       onOpenChange(false);
     },
-    onError: (e: any) => toast.error(e.message ?? "Erro ao salvar"),
+    onError: (e: any) => toast.error(describeSupabaseError(e)),
   });
 
   return (

@@ -106,8 +106,9 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
         .from("compras")
         .select("id,fornecedor,fornecedor_id,documento,comprador")
         .eq("id", compraId)
-        .single();
+        .maybeSingle();
       if (error) throw error;
+      if (!data) throw new Error("Compra não encontrada");
       return data as { id: string; fornecedor: string | null; fornecedor_id: string | null; documento: string | null; comprador: string | null };
     },
   });
