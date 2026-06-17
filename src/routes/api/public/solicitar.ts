@@ -74,10 +74,39 @@ export const Route = createFileRoute("/api/public/solicitar")({
         }
 
         let body: unknown;
+        let uploadedFiles: File[] = [];
+        const contentType = request.headers.get("content-type") || "";
         try {
-          body = await request.json();
+          if (contentType.includes("multipart/form-data")) {
+            const fd = await request.formData();
+            const payloadRaw = fd.get("payload");
+            if (typeof payloadRaw !== "string") {
+              throw new Error("Campo 'payload' ausente");
+            }
+            body = JSON.parse(payloadRaw);
+            const files = fd.getAll("anexos");
+            for (const v of files) {
+              if (v instanceof File && v.size > 0) uploadedFiles.push(v);
+            }
+            if (uploadedFiles.length > MAX_FILES) {
+              return new Response(
+                JSON.stringify({ error: `Máximo de ${MAX_FILES} anexos por solicitação` }),
+                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+              );
+            }
+            for (const f of uploadedFiles) {
+              if (f.size > MAX_FILE_BYTES) {
+                return new Response(
+                  JSON.stringify({ error: `Arquivo '${f.name}' excede 10 MB` }),
+                  { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+                );
+              }
+            }
+          } else {
+            body = await request.json();
+          }
         } catch {
-          return new Response(JSON.stringify({ error: "JSON inválido" }), {
+          return new Response(JSON.stringify({ error: "Requisição inválida" }), {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
