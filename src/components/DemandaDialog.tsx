@@ -16,6 +16,7 @@ import { Trash2, Upload, Download, FileIcon } from "lucide-react";
 import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
+import { ensureValidSession, describeSupabaseError } from "@/lib/supabase-guard";
 import { DEMANDA_STATUSES, TIPO_DEMANDA_OPTIONS, type DemandaStatus } from "@/lib/demandas";
 import { useAuth } from "@/contexts/AuthContext";
 
