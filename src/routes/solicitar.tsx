@@ -135,6 +135,34 @@ function SolicitarPage() {
     return true;
   }
 
+  function addFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const incoming = Array.from(files);
+    const accepted: File[] = [];
+    let rejectedSize = 0;
+    for (const f of incoming) {
+      if (f.size > MAX_FILE_BYTES) {
+        rejectedSize++;
+        continue;
+      }
+      accepted.push(f);
+    }
+    if (rejectedSize > 0) {
+      toast.error(`${rejectedSize} arquivo(s) acima de 10 MB foram ignorados.`);
+    }
+    setAnexos((prev) => {
+      const merged = [...prev, ...accepted];
+      if (merged.length > MAX_FILES) {
+        toast.error(`Máximo de ${MAX_FILES} arquivos. Os excedentes foram removidos.`);
+        return merged.slice(0, MAX_FILES);
+      }
+      return merged;
+    });
+  }
+  function removeAnexo(idx: number) {
+    setAnexos((prev) => prev.filter((_, i) => i !== idx));
+  }
+
   async function submit() {
     if (!form.tipo) return;
     setSending(true);
@@ -151,31 +179,41 @@ function SolicitarPage() {
               }))
           : undefined;
 
+      const payload = {
+        tipo: form.tipo,
+        titulo: form.titulo.trim(),
+        subtipo: form.subtipo || null,
+        fornecedor: form.fornecedor || "",
+        solicitante_nome: form.solicitante_nome.trim(),
+        solicitante_email: form.solicitante_email.trim(),
+        solicitante_telefone: form.solicitante_telefone.trim(),
+        descricao: form.descricao.trim(),
+        valor_total: form.valor_total ? Number(form.valor_total) : null,
+        itens: itensValidos,
+        pago: form.tipo === "demanda" && !form.is_reembolso ? form.pago : null,
+        parcelamento: form.is_reembolso ? "" : (form.parcelamento || ""),
+        condicao_pagamento: form.is_reembolso ? "" : (form.condicao_pagamento || ""),
+        data_compra: form.is_reembolso ? "" : (form.data_compra || ""),
+        is_reembolso: form.tipo === "demanda" ? form.is_reembolso : false,
+        reembolsar_para: form.is_reembolso ? form.reembolsar_para.trim() : "",
+      };
+
+      const fd = new FormData();
+      fd.append("payload", JSON.stringify(payload));
+      for (const file of anexos) {
+        fd.append("anexos", file, file.name);
+      }
+
       const res = await fetch("/api/public/solicitar", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tipo: form.tipo,
-          titulo: form.titulo.trim(),
-          subtipo: form.subtipo || null,
-          fornecedor: form.fornecedor || "",
-          solicitante_nome: form.solicitante_nome.trim(),
-          solicitante_email: form.solicitante_email.trim(),
-          solicitante_telefone: form.solicitante_telefone.trim(),
-          descricao: form.descricao.trim(),
-          valor_total: form.valor_total ? Number(form.valor_total) : null,
-          itens: itensValidos,
-          pago: form.tipo === "demanda" && !form.is_reembolso ? form.pago : null,
-          parcelamento: form.is_reembolso ? "" : (form.parcelamento || ""),
-          condicao_pagamento: form.is_reembolso ? "" : (form.condicao_pagamento || ""),
-          data_compra: form.is_reembolso ? "" : (form.data_compra || ""),
-          is_reembolso: form.tipo === "demanda" ? form.is_reembolso : false,
-          reembolsar_para: form.is_reembolso ? form.reembolsar_para.trim() : "",
-        }),
+        body: fd,
       });
       const json = await res.json();
       if (!res.ok || !json.ok) {
         throw new Error(json?.error || "Erro ao enviar");
+      }
+      if (json.anexos_falhados && json.anexos_falhados > 0) {
+        toast.warning(`${json.anexos_falhados} anexo(s) não puderam ser enviados.`);
       }
       setDone({ numero: json.numero ?? null, tipo: form.tipo });
     } catch (e: any) {
