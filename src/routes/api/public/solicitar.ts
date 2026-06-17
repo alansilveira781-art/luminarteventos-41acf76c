@@ -295,12 +295,24 @@ export const Route = createFileRoute("/api/public/solicitar")({
           );
         }
 
+        let anexosFalhadosDemanda = 0;
+        if (uploadedFiles.length > 0) {
+          anexosFalhadosDemanda = await uploadAnexos(
+            "demanda-anexos",
+            "demanda_anexos",
+            "demanda_id",
+            (demanda as any).id,
+            uploadedFiles,
+          );
+        }
+
         return new Response(
           JSON.stringify({
             ok: true,
             id: (demanda as any).id,
             numero: (demanda as any).numero,
             tipo: "demanda",
+            anexos_falhados: anexosFalhadosDemanda,
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
