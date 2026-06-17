@@ -1,56 +1,80 @@
-## Objetivo
+# Plano — Endurecer comunicação com o banco e segurança
 
-Restringir movimentação de cards no quadro de Compras ao **responsável atual do card**, com exceções para admins e cards sem responsável.
+Aplicar as quatro correções da revisão, em ordem de prioridade.
 
-## Regra de permissão (`canMoveCard`)
+---
 
-Usuário pode mover/avançar/aprovar um card se **qualquer uma** for verdadeira:
-1. `compra.responsavel_id === user.id`
-2. `compra.responsavel_id` é nulo/vazio (card sem responsável → liberado para qualquer um com acesso ao módulo compras)
-3. `isModuleAdmin('compras')` (admin global ou admin do módulo)
+## A. Proteger endpoints públicos com segredo (prioridade alta)
 
-Helper único em `src/lib/compras.ts` (ou no topo de `compras.index.tsx`):
-```ts
-canMoveCard(compra, userId, isAdmin): boolean
-```
+Hoje `api/public/hooks/comercial-vendas-sync` e `api/public/contaazul/cron` aceitam qualquer chamada da internet. Vou exigir um token (um por endpoint, conforme escolha).
 
-## 1. `src/routes/compras.index.tsx`
+**Novos secrets (via add_secret):**
+- `CRON_SECRET` — para `/api/public/contaazul/cron`
+- `VENDAS_SYNC_SECRET` — para `/api/public/hooks/comercial-vendas-sync`
 
-- Buscar `responsavel_id` no SELECT da query `compras` (hoje só pega responsavel_nome implicitamente — confirmar e adicionar).
-- Importar `useAuth` para obter `user.id` e `isModuleAdmin('compras')`.
-- Aplicar `canMoveCard` em três pontos:
+**Mudanças no handler:**
+- Ler `Authorization: Bearer <token>` (ou `?token=` como fallback para o agendador do pg_cron).
+- Comparar com o secret usando `timingSafeEqual`.
+- Retornar `401` quando ausente/incorreto. Quando correto, processar normalmente.
 
-### a) Drag and drop
-- No `Card`, passar `disabled` para `useDraggable({ id, disabled: !canMove })`.
-- Sem isso, o usuário ainda consegue arrastar — bloquear no `useDraggable` é a forma correta.
-- Em `onDragEnd`, redundância: rejeitar com `toast.error("Apenas o responsável pode mover este card.")` se `!canMove`.
+**Chamadores legítimos a atualizar:**
+- `pg_cron` que dispara `/contaazul/cron` (atualizar o `net.http_post` em migration para incluir o header com o token — sem expor valor em SQL: usar `current_setting` ou hardcode do valor sob orientação do usuário em uma migration controlada).
+- Qualquer ponto da UI que dispare `/contaazul/cron` imediatamente após iniciar carga histórica (passar token via server fn no backend, nunca do browser).
+- Hook do Dropbox de `comercial-vendas-sync` (se configurado externamente, o usuário coloca o header no Dropbox; documento isso).
 
-### b) Botão ChevronRight no card
-- Renderizar sempre, mas com `disabled` + `title` quando `!canMove`: "Apenas {responsavel_nome} pode avançar este card".
-- Visual: opacity reduzida e cursor not-allowed.
+**Importante:** o token não pode vazar para o navegador. Se a UI precisar disparar o cron, fazer via `createServerFn` com `requireSupabaseAuth` que injeta o header no fetch interno.
 
-### c) Diálogo `AvancarCardDialog`
-- Não muda — só abre se o avanço foi iniciado por quem pode.
+---
 
-## 2. `src/components/CompraDialog.tsx`
+## B. Restringir RLS de tabelas de negócio comerciais
 
-- Receber `responsavel_id` e `responsavel_nome` no `form` (já estão no type).
-- Calcular `canMove` localmente com `useAuth`.
-- Botão **"Avançar para X"**: sempre renderizado, `disabled` quando `!canMove`, com `title` explicando.
-- Botão **"Aprovar compra"**: mesma regra (substitui a condição atual de "responsavel OR admin" pela `canMove` unificada — efeito é equivalente, mas consistente).
-- Adicionar pequeno texto/badge no header do dialog quando há responsável: "Responsável: {nome}".
+Trocar policies `USING (true)` por checagem de módulo nas tabelas de negócio. Catálogos (`modulos`, `compradores`) ficam como estão.
 
-## 3. Mensagem do tooltip
+**Migration:**
+- `comercial_vendas` — substituir policies por `USING (public.has_module_access(auth.uid(), 'comercial'))` em SELECT/INSERT/UPDATE/DELETE; manter `service_role` com `ALL`.
+- `comercial_vendas_sync` — mesma regra (módulo `comercial`).
+- `ca_dre_estrutura` — restringir ao módulo `financeiro`.
+- Revisar e listar quaisquer outras tabelas com `USING(true)` para confirmar antes de aplicar (executar `supabase--read_query` no `pg_policies` durante a implementação).
 
-Helper `moveBlockedMessage(compra)`:
-- Com responsável: `Apenas ${responsavel_nome} pode mover este card.`
-- Sem responsável + sem acesso compras: `Você não tem permissão para mover este card.` (caso raro, módulo não habilitado).
+---
+
+## C. Confirmar gravação com `.select()` em inserts/updates críticos
+
+Estender o padrão já adotado em Entradas/Saídas/Devoluções (`insert(...).select("id")` + verificação de retorno + `ensureValidSession()` + `describeSupabaseError`) para outras mutações de escrita:
+
+- `CompraDialog` (insert/update de compras e itens).
+- `DemandaDialog` (insert/update de demandas).
+- `financeiro.rotinas.tsx` (criação/edição de rotinas e execuções).
+- `juridico_contratos` (criar/editar contratos).
+- `patrimonio/Movimentacoes.tsx` e `patrimonio/Devolucoes.tsx`.
+- `rh_vagas`, `solicitantes`, `fornecedores` (CRUD).
+
+Para cada mutation:
+1. `await ensureValidSession()` antes do insert/update.
+2. `.insert(...).select("id")` (ou `.update(...).select("id")`).
+3. Validar que o retorno tem o tamanho esperado; se não, lançar erro claro.
+4. `await qc.refetchQueries(...)` antes de fechar modal.
+5. Usar `describeSupabaseError` no `onError`.
+
+---
+
+## D. Trocar `.single()` por `.maybeSingle()` onde aplicável
+
+Varrer com `rg "\.single\(\)"` os 18 usos, classificar cada um:
+- **Manter `.single()`** quando o registro é garantidamente único (ex.: inserts com `.select().single()` logo após criar).
+- **Trocar por `.maybeSingle()`** quando a ausência é possível (lookup por id vindo de URL, busca de configuração opcional, etc.) e tratar `null` na UI sem quebrar a tela.
+
+---
+
+## Validação
+
+- Após A: chamar os endpoints sem token → 401; com token → 200.
+- Após B: `supabase--read_query` em `pg_policies` confirma novas policies; teste manual com usuário sem módulo Comercial não vê linhas em `comercial_vendas`.
+- Após C: salvar registros em cada módulo afetado e confirmar que toast só aparece após `.select()` retornar; simular sessão expirada e verificar mensagem clara.
+- Após D: rotas listadas abrem mesmo quando o registro alvo não existe (mostra estado vazio, não tela quebrada).
 
 ## Fora de escopo
-- Não muda RLS no banco (a validação é de UX/UI; o backend já permite update via RLS atual, e não há requisito de "ninguém consegue burlar via SQL").
-- Não muda módulos demandas/comercial.
-- Não cria papel novo "responsável por status" — segue usando `compras_status_defaults` + `responsavel_id` do card.
 
-## Arquivos afetados
-- `src/routes/compras.index.tsx` — query (`responsavel_id`), `canMoveCard`, `useDraggable({ disabled })`, botão do card, guarda em `onDragEnd`.
-- `src/components/CompraDialog.tsx` — `canMove` no rodapé, badge de responsável no header.
+- Edge Functions `admin-create-user` / `admin-update-user` (já protegidas via service role).
+- Reorganização de buckets de storage.
+- Auditoria dinâmica via Security Advisor do Supabase (recomendar ao usuário rodar manualmente depois).
