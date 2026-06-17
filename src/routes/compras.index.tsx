@@ -43,7 +43,9 @@ type Compra = {
   valor_total: number | null;
   responsavel_id: string | null;
   responsavel_nome: string | null;
+  tipo_compra: string | null;
 };
+
 
 function ComprasKanban() {
   const qc = useQueryClient();
@@ -71,7 +73,8 @@ function ComprasKanban() {
     queryFn: async () => {
       const { data, error } = await sb
         .from("compras")
-        .select("id,numero,status,titulo,solicitante,fornecedor,comprador,data_solicitacao,data_compra,valor_total,responsavel_id,responsavel_nome")
+        .select("id,numero,status,titulo,solicitante,fornecedor,comprador,data_solicitacao,data_compra,valor_total,responsavel_id,responsavel_nome,tipo_compra")
+
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Compra[];
@@ -144,6 +147,11 @@ function ComprasKanban() {
     opts?: { force?: boolean; toastMsg?: string },
   ) {
     if (compra.status === status) return;
+    if (status === "a_receber" && !compra.tipo_compra) {
+      toast.error("Defina o tipo da compra antes de movê-la para Compras a Receber.");
+      return;
+    }
+
     const oldIdx = COMPRA_STATUSES.findIndex((s) => s.key === compra.status);
     const newIdx = COMPRA_STATUSES.findIndex((s) => s.key === status);
     const isAdvance = newIdx > oldIdx;
@@ -409,6 +417,14 @@ function Card({
             {compra.solicitante && <div>Solic.: {compra.solicitante}</div>}
             {compra.comprador && <div>Comprador: {compra.comprador}</div>}
             {compra.responsavel_nome && <div>Resp.: {compra.responsavel_nome}</div>}
+            {!compra.tipo_compra && (
+              <div>
+                <span className="inline-block rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 text-[10px] font-medium">
+                  Sem tipo
+                </span>
+              </div>
+            )}
+
             <div>{compra.data_compra ? `Comprada: ${formatDate(compra.data_compra)}` : "Não comprado"}</div>
             {compra.valor_total != null && (
               <div className="font-medium text-foreground">
