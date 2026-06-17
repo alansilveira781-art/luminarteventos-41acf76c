@@ -37,6 +37,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { EMPRESAS } from "@/lib/empresas";
 import { PeriodoFilter, filterByPeriodo, periodoFromPreset, type Periodo, type PeriodoPreset } from "@/components/PeriodoFilter";
 import { TablePagination } from "@/components/TablePagination";
+import { ensureValidSession, describeSupabaseError } from "@/lib/supabase-guard";
 
 export const Route = createFileRoute("/saidas")({
   component: SaidasPage,
@@ -221,6 +222,7 @@ function SaidasPage() {
 
   const mut = useMutation({
     mutationFn: async (p: { meta: any; linhas: Array<{ item_id: string; quantidade: number }> }) => {
+      await ensureValidSession();
       // Validar estoque por item
       for (const l of p.linhas) {
         const it = (itens ?? []).find((x: any) => x.id === l.item_id);
@@ -239,11 +241,14 @@ function SaidasPage() {
         quantidade: l.quantidade,
         requisicao_numero,
       }));
-      const { error } = await supabase.from("movimentacoes").insert(inserts);
+      const { data: inseridos, error } = await supabase.from("movimentacoes").insert(inserts).select("id");
       if (error) throw error;
+      if (!inseridos || inseridos.length !== inserts.length) {
+        throw new Error("O lançamento não foi confirmado pelo banco. Verifique seu acesso e tente novamente.");
+      }
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["saidas"] });
+    onSuccess: async () => {
+      await qc.refetchQueries({ queryKey: ["saidas"] });
       qc.invalidateQueries({ queryKey: ["itens"] });
       qc.invalidateQueries({ queryKey: ["itens-select"] });
       qc.invalidateQueries({ queryKey: ["itens-select-saida"] });
@@ -254,7 +259,10 @@ function SaidasPage() {
       toast.success("Saída registrada");
       setOpen(false);
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => {
+      console.error("[saidas] insert error:", e);
+      toast.error(describeSupabaseError(e));
+    },
   });
 
   // Filtros + agrupamento por requisicao_numero

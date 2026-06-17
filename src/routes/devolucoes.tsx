@@ -25,6 +25,7 @@ import { BulkEditDialog, normalizeBulkPatch, type BulkField } from "@/components
 import { useAuth } from "@/contexts/AuthContext";
 import { PeriodoFilter, filterByPeriodo, periodoFromPreset, type Periodo, type PeriodoPreset } from "@/components/PeriodoFilter";
 import { TablePagination } from "@/components/TablePagination";
+import { ensureValidSession, describeSupabaseError } from "@/lib/supabase-guard";
 
 export const Route = createFileRoute("/devolucoes")({
   component: DevolucoesPage,
@@ -99,13 +100,17 @@ function DevolucoesPage() {
 
   const mut = useMutation({
     mutationFn: async (payload: { linhas: any[]; idsSemDevolucao: string[] }) => {
+      await ensureValidSession();
       const { linhas, idsSemDevolucao } = payload;
       if (linhas.length === 0 && idsSemDevolucao.length === 0) {
         throw new Error("Informe a quantidade devolvida de pelo menos um item ou marque como sem devolução");
       }
       if (linhas.length) {
-        const { error } = await supabase.from("movimentacoes").insert(linhas);
+        const { data: inseridos, error } = await supabase.from("movimentacoes").insert(linhas).select("id");
         if (error) throw error;
+        if (!inseridos || inseridos.length !== linhas.length) {
+          throw new Error("O lançamento não foi confirmado pelo banco. Verifique seu acesso e tente novamente.");
+        }
       }
       if (idsSemDevolucao.length) {
         const { error } = await supabase
@@ -115,12 +120,16 @@ function DevolucoesPage() {
         if (error) throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await qc.refetchQueries({ queryKey: ["devolucoes"] });
       invalidateAll(qc);
       toast.success("Devolução registrada");
       setOpen(false);
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => {
+      console.error("[devolucoes] insert error:", e);
+      toast.error(describeSupabaseError(e));
+    },
   });
 
   // Excluir devolução (revertendo estoque)

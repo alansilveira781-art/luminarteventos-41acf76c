@@ -40,6 +40,7 @@ import { NotasSefaz } from "@/components/estoque/NotasSefaz";
 import { EMPRESAS } from "@/lib/empresas";
 import { PeriodoFilter, filterByPeriodo, periodoFromPreset, type Periodo, type PeriodoPreset } from "@/components/PeriodoFilter";
 import { TablePagination } from "@/components/TablePagination";
+import { ensureValidSession, describeSupabaseError } from "@/lib/supabase-guard";
 
 export const Route = createFileRoute("/entradas")({
   component: EntradasPage,
@@ -183,6 +184,7 @@ function EntradasPage() {
   // Múltiplos itens em uma única entrada: criamos N movimentações compartilhando metadados + requisicao_numero
   const mut = useMutation({
     mutationFn: async (p: { meta: any; linhas: Array<{ item_id: string; quantidade: number; valor_unitario: number | null; valor_total: number | null; desconto: number; frete: number; ipi: number; outros_custos: number }> }) => {
+      await ensureValidSession();
       const { data: numData, error: numErr } = await supabase.rpc("next_requisicao_numero" as any);
       if (numErr) throw numErr;
       const requisicao_numero = numData as number;
@@ -199,11 +201,14 @@ function EntradasPage() {
         outros_custos: l.outros_custos,
         requisicao_numero,
       }));
-      const { error } = await supabase.from("movimentacoes").insert(inserts);
+      const { data: inseridos, error } = await supabase.from("movimentacoes").insert(inserts).select("id");
       if (error) throw error;
+      if (!inseridos || inseridos.length !== inserts.length) {
+        throw new Error("O lançamento não foi confirmado pelo banco. Verifique seu acesso e tente novamente.");
+      }
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["entradas"] });
+    onSuccess: async () => {
+      await qc.refetchQueries({ queryKey: ["entradas"] });
       qc.invalidateQueries({ queryKey: ["itens"] });
       qc.invalidateQueries({ queryKey: ["itens-select"] });
       qc.invalidateQueries({ queryKey: ["itens-select-saida"] });
@@ -212,7 +217,10 @@ function EntradasPage() {
       toast.success("Entrada registrada");
       setOpen(false);
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => {
+      console.error("[entradas] insert error:", e);
+      toast.error(describeSupabaseError(e));
+    },
   });
 
   // Filtros + agrupamento por requisicao_numero
