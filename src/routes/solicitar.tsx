@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TIPO_COMPRA_OPTIONS } from "@/lib/compras";
 import { TIPO_DEMANDA_OPTIONS } from "@/lib/demandas";
-import { ShoppingCart, Wallet, ChevronLeft, ChevronRight, Check, Loader2, Plus, Trash2 } from "lucide-react";
+import { ShoppingCart, Wallet, ChevronLeft, ChevronRight, Check, Loader2, Plus, Trash2, Paperclip, X } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/solicitar")({
@@ -73,11 +73,22 @@ const initial: FormState = {
 
 const TIPOS_DEMANDA_PAGAVEIS = ["alimentacao", "estacionamento", "manutencao_galpao"];
 
+const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
+const MAX_FILES = 10;
+const ACCEPT_TYPES = "image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv";
+
+function fmtSize(n: number) {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(2)} MB`;
+}
+
 function SolicitarPage() {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormState>(initial);
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState<{ numero: number | null; tipo: Tipo } | null>(null);
+  const [anexos, setAnexos] = useState<File[]>([]);
   const [opcoes, setOpcoes] = useState<{ parcelamentos: string[]; condicoes_pagamento: string[] }>({
     parcelamentos: [],
     condicoes_pagamento: [],
@@ -124,6 +135,34 @@ function SolicitarPage() {
     return true;
   }
 
+  function addFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const incoming = Array.from(files);
+    const accepted: File[] = [];
+    let rejectedSize = 0;
+    for (const f of incoming) {
+      if (f.size > MAX_FILE_BYTES) {
+        rejectedSize++;
+        continue;
+      }
+      accepted.push(f);
+    }
+    if (rejectedSize > 0) {
+      toast.error(`${rejectedSize} arquivo(s) acima de 10 MB foram ignorados.`);
+    }
+    setAnexos((prev) => {
+      const merged = [...prev, ...accepted];
+      if (merged.length > MAX_FILES) {
+        toast.error(`Máximo de ${MAX_FILES} arquivos. Os excedentes foram removidos.`);
+        return merged.slice(0, MAX_FILES);
+      }
+      return merged;
+    });
+  }
+  function removeAnexo(idx: number) {
+    setAnexos((prev) => prev.filter((_, i) => i !== idx));
+  }
+
   async function submit() {
     if (!form.tipo) return;
     setSending(true);
@@ -140,31 +179,41 @@ function SolicitarPage() {
               }))
           : undefined;
 
+      const payload = {
+        tipo: form.tipo,
+        titulo: form.titulo.trim(),
+        subtipo: form.subtipo || null,
+        fornecedor: form.fornecedor || "",
+        solicitante_nome: form.solicitante_nome.trim(),
+        solicitante_email: form.solicitante_email.trim(),
+        solicitante_telefone: form.solicitante_telefone.trim(),
+        descricao: form.descricao.trim(),
+        valor_total: form.valor_total ? Number(form.valor_total) : null,
+        itens: itensValidos,
+        pago: form.tipo === "demanda" && !form.is_reembolso ? form.pago : null,
+        parcelamento: form.is_reembolso ? "" : (form.parcelamento || ""),
+        condicao_pagamento: form.is_reembolso ? "" : (form.condicao_pagamento || ""),
+        data_compra: form.is_reembolso ? "" : (form.data_compra || ""),
+        is_reembolso: form.tipo === "demanda" ? form.is_reembolso : false,
+        reembolsar_para: form.is_reembolso ? form.reembolsar_para.trim() : "",
+      };
+
+      const fd = new FormData();
+      fd.append("payload", JSON.stringify(payload));
+      for (const file of anexos) {
+        fd.append("anexos", file, file.name);
+      }
+
       const res = await fetch("/api/public/solicitar", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tipo: form.tipo,
-          titulo: form.titulo.trim(),
-          subtipo: form.subtipo || null,
-          fornecedor: form.fornecedor || "",
-          solicitante_nome: form.solicitante_nome.trim(),
-          solicitante_email: form.solicitante_email.trim(),
-          solicitante_telefone: form.solicitante_telefone.trim(),
-          descricao: form.descricao.trim(),
-          valor_total: form.valor_total ? Number(form.valor_total) : null,
-          itens: itensValidos,
-          pago: form.tipo === "demanda" && !form.is_reembolso ? form.pago : null,
-          parcelamento: form.is_reembolso ? "" : (form.parcelamento || ""),
-          condicao_pagamento: form.is_reembolso ? "" : (form.condicao_pagamento || ""),
-          data_compra: form.is_reembolso ? "" : (form.data_compra || ""),
-          is_reembolso: form.tipo === "demanda" ? form.is_reembolso : false,
-          reembolsar_para: form.is_reembolso ? form.reembolsar_para.trim() : "",
-        }),
+        body: fd,
       });
       const json = await res.json();
       if (!res.ok || !json.ok) {
         throw new Error(json?.error || "Erro ao enviar");
+      }
+      if (json.anexos_falhados && json.anexos_falhados > 0) {
+        toast.warning(`${json.anexos_falhados} anexo(s) não puderam ser enviados.`);
       }
       setDone({ numero: json.numero ?? null, tipo: form.tipo });
     } catch (e: any) {
@@ -197,6 +246,7 @@ function SolicitarPage() {
                 setForm(initial);
                 setStep(0);
                 setDone(null);
+                setAnexos([]);
               }}
             >
               Enviar outra solicitação
@@ -521,6 +571,52 @@ function SolicitarPage() {
               </>
 
             )}
+
+            <Field label="Anexos (opcional)">
+              <p className="text-[11px] text-muted-foreground -mt-1 mb-1">
+                Você pode anexar comprovantes, orçamentos, imagens ou PDFs (até {MAX_FILES} arquivos, 10 MB cada).
+              </p>
+              <label className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-border px-3 py-3 text-sm cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition">
+                <Paperclip className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">
+                  {anexos.length > 0 ? "Adicionar mais arquivos" : "Selecionar arquivos"}
+                </span>
+                <input
+                  type="file"
+                  multiple
+                  accept={ACCEPT_TYPES}
+                  className="hidden"
+                  onChange={(e) => {
+                    addFiles(e.target.files);
+                    e.currentTarget.value = "";
+                  }}
+                />
+              </label>
+              {anexos.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {anexos.map((f, idx) => (
+                    <li
+                      key={idx}
+                      className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/20 px-2 py-1.5 text-xs"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium">{f.name}</div>
+                        <div className="text-muted-foreground">{fmtSize(f.size)}</div>
+                      </div>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => removeAnexo(idx)}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Field>
           </div>
         </Step>
       )}

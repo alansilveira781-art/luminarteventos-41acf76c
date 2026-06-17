@@ -56,6 +56,53 @@ function rateLimit(ip: string): boolean {
   return true;
 }
 
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_FILES = 10;
+
+async function uploadAnexos(
+  bucket: string,
+  table: "compra_anexos" | "demanda_anexos",
+  parentField: "compra_id" | "demanda_id",
+  parentId: string,
+  files: File[],
+): Promise<number> {
+  let falhados = 0;
+  for (const file of files) {
+    try {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `${parentId}/${Date.now()}_${safeName}`;
+      const buffer = await file.arrayBuffer();
+      const { error: upErr } = await (supabaseAdmin as any).storage
+        .from(bucket)
+        .upload(path, buffer, {
+          contentType: file.type || "application/octet-stream",
+          upsert: false,
+        });
+      if (upErr) {
+        console.error("[solicitar] upload anexo falhou", file.name, upErr);
+        falhados++;
+        continue;
+      }
+      const { error: insErr } = await (supabaseAdmin as any).from(table).insert({
+        [parentField]: parentId,
+        nome: file.name,
+        path,
+        mime_type: file.type || null,
+        tamanho: file.size,
+        uploaded_by: null,
+      });
+      if (insErr) {
+        console.error("[solicitar] insert anexo falhou", file.name, insErr);
+        falhados++;
+      }
+    } catch (err) {
+      console.error("[solicitar] anexo erro inesperado", err);
+      falhados++;
+    }
+  }
+  return falhados;
+}
+
 export const Route = createFileRoute("/api/public/solicitar")({
   server: {
     handlers: {
@@ -74,10 +121,39 @@ export const Route = createFileRoute("/api/public/solicitar")({
         }
 
         let body: unknown;
+        let uploadedFiles: File[] = [];
+        const contentType = request.headers.get("content-type") || "";
         try {
-          body = await request.json();
+          if (contentType.includes("multipart/form-data")) {
+            const fd = await request.formData();
+            const payloadRaw = fd.get("payload");
+            if (typeof payloadRaw !== "string") {
+              throw new Error("Campo 'payload' ausente");
+            }
+            body = JSON.parse(payloadRaw);
+            const files = fd.getAll("anexos");
+            for (const v of files) {
+              if (v instanceof File && v.size > 0) uploadedFiles.push(v);
+            }
+            if (uploadedFiles.length > MAX_FILES) {
+              return new Response(
+                JSON.stringify({ error: `Máximo de ${MAX_FILES} anexos por solicitação` }),
+                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+              );
+            }
+            for (const f of uploadedFiles) {
+              if (f.size > MAX_FILE_BYTES) {
+                return new Response(
+                  JSON.stringify({ error: `Arquivo '${f.name}' excede 10 MB` }),
+                  { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+                );
+              }
+            }
+          } else {
+            body = await request.json();
+          }
         } catch {
-          return new Response(JSON.stringify({ error: "JSON inválido" }), {
+          return new Response(JSON.stringify({ error: "Requisição inválida" }), {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
@@ -166,12 +242,24 @@ export const Route = createFileRoute("/api/public/solicitar")({
 
           await (supabaseAdmin as any).from("compra_itens").insert(itensPayload);
 
+          let anexosFalhados = 0;
+          if (uploadedFiles.length > 0) {
+            anexosFalhados = await uploadAnexos(
+              "compra-anexos",
+              "compra_anexos",
+              "compra_id",
+              (compra as any).id,
+              uploadedFiles,
+            );
+          }
+
           return new Response(
             JSON.stringify({
               ok: true,
               id: (compra as any).id,
               numero: (compra as any).numero,
               tipo: "compra",
+              anexos_falhados: anexosFalhados,
             }),
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
           );
@@ -207,12 +295,24 @@ export const Route = createFileRoute("/api/public/solicitar")({
           );
         }
 
+        let anexosFalhadosDemanda = 0;
+        if (uploadedFiles.length > 0) {
+          anexosFalhadosDemanda = await uploadAnexos(
+            "demanda-anexos",
+            "demanda_anexos",
+            "demanda_id",
+            (demanda as any).id,
+            uploadedFiles,
+          );
+        }
+
         return new Response(
           JSON.stringify({
             ok: true,
             id: (demanda as any).id,
             numero: (demanda as any).numero,
             tipo: "demanda",
+            anexos_falhados: anexosFalhadosDemanda,
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
