@@ -38,6 +38,18 @@ type LinhaConferencia = {
 
 type Filtro = "todos" | "divergentes" | "so_egestor" | "so_sistema";
 
+function parseSaldoEgestor(raw: any): number {
+  const s = String(raw ?? "").trim();
+  if (s === "" || s.toLowerCase() === "nan") return 0;
+  if (s.includes(",")) {
+    const n = Number(s.replace(/\./g, "").replace(",", "."));
+    return Number.isFinite(n) ? n : 0;
+  }
+  const digits = s.replace(/\./g, "");
+  const n = Number(digits) / 1e10;
+  return Number.isFinite(n) ? n : 0;
+}
+
 function parseEgestor(file: ArrayBuffer): EgestorRow[] {
   const wb = XLSX.read(file, { type: "array" });
   const ws = wb.Sheets[wb.SheetNames[0]];
@@ -65,9 +77,8 @@ function parseEgestor(file: ArrayBuffer): EgestorRow[] {
     const produto = String(r[colProduto] ?? "").trim();
     if (!produto) continue;
     const codigo = colCodigo >= 0 ? String(r[colCodigo] ?? "").trim() : "";
-    const rawEst = String(r[colEstoque] ?? "0").replace(/\./g, "").replace(",", ".");
-    const estoque = Number(rawEst);
-    rows.push({ codigo, produto, estoque: isNaN(estoque) ? 0 : estoque });
+    const estoque = parseSaldoEgestor(r[colEstoque]);
+    rows.push({ codigo, produto, estoque });
   }
   return rows;
 }
