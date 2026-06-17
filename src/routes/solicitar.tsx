@@ -571,6 +571,52 @@ function SolicitarPage() {
               </>
 
             )}
+
+            <Field label="Anexos (opcional)">
+              <p className="text-[11px] text-muted-foreground -mt-1 mb-1">
+                Você pode anexar comprovantes, orçamentos, imagens ou PDFs (até {MAX_FILES} arquivos, 10 MB cada).
+              </p>
+              <label className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-border px-3 py-3 text-sm cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition">
+                <Paperclip className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">
+                  {anexos.length > 0 ? "Adicionar mais arquivos" : "Selecionar arquivos"}
+                </span>
+                <input
+                  type="file"
+                  multiple
+                  accept={ACCEPT_TYPES}
+                  className="hidden"
+                  onChange={(e) => {
+                    addFiles(e.target.files);
+                    e.currentTarget.value = "";
+                  }}
+                />
+              </label>
+              {anexos.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {anexos.map((f, idx) => (
+                    <li
+                      key={idx}
+                      className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/20 px-2 py-1.5 text-xs"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium">{f.name}</div>
+                        <div className="text-muted-foreground">{fmtSize(f.size)}</div>
+                      </div>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => removeAnexo(idx)}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Field>
           </div>
         </Step>
       )}
