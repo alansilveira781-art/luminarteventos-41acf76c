@@ -503,7 +503,12 @@ function CargaHistoricaCard({ canManage, connected }: { canManage: boolean; conn
       setEditing(false);
       toast.success("Carga histórica iniciada — processando 1 mês por minuto");
       // Dispara o cron imediatamente para começar o 1º mês sem esperar.
-      fetch("/api/public/contaazul/cron", { method: "POST" }).catch(() => {});
+      // Dispara o tick imediatamente para começar o 1º mês sem esperar.
+      // Usa server fn autenticada em vez de chamar /api/public/contaazul/cron
+      // do browser (evita expor segredo no front).
+      import("@/lib/conta-azul/cron-trigger.functions")
+        .then((m) => m.tickContaAzulHistorico())
+        .catch(() => {});
     } catch (e: any) {
       toast.error(`Erro: ${e?.message ?? e}`);
     } finally {
