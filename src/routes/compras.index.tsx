@@ -333,13 +333,13 @@ function ComprasKanban() {
           const { id, status, titulo } = pendingMove;
           const statusLabel = COMPRA_STATUSES.find((s) => s.key === status)?.label || status;
           moveStatus.mutate({ id, status, responsavelId, responsavelNome });
-          await notifyResponsavel({
+          notifyResponsavel({
             userId: responsavelId,
             titulo: `Compra: ${statusLabel}`,
             mensagem: `${titulo}${observacao ? ` — ${observacao}` : ""}`,
             link: `/compras?id=${id}`,
             tipo: "compra_responsavel",
-          });
+          }).catch(() => {});
           toast.success(`Card movido. ${responsavelNome} foi notificado.`);
           setPendingMove(null);
         }}
