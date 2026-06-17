@@ -147,6 +147,11 @@ function ComprasKanban() {
     opts?: { force?: boolean; toastMsg?: string },
   ) {
     if (compra.status === status) return;
+    if (status === "a_receber" && !compra.tipo_compra) {
+      toast.error("Defina o tipo da compra antes de movê-la para Compras a Receber.");
+      return;
+    }
+
     const oldIdx = COMPRA_STATUSES.findIndex((s) => s.key === compra.status);
     const newIdx = COMPRA_STATUSES.findIndex((s) => s.key === status);
     const isAdvance = newIdx > oldIdx;
