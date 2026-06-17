@@ -37,6 +37,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { EMPRESAS } from "@/lib/empresas";
 import { PeriodoFilter, filterByPeriodo, periodoFromPreset, type Periodo, type PeriodoPreset } from "@/components/PeriodoFilter";
 import { TablePagination } from "@/components/TablePagination";
+import { ensureValidSession, describeSupabaseError } from "@/lib/supabase-guard";
 
 export const Route = createFileRoute("/saidas")({
   component: SaidasPage,
