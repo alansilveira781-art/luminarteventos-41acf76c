@@ -14,7 +14,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FormField, FormSection, FormActions } from "@/components/FormSection";
-import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Pause, Play, Clock, CheckCircle2, Paperclip, ShieldCheck, X } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Pause, Play, Clock, CheckCircle2, Paperclip, ShieldCheck, X, Share2 } from "lucide-react";
 import { AnexoViewer } from "@/components/AnexoViewer";
 import { toast } from "sonner";
 
@@ -82,8 +82,8 @@ function RotinasPage() {
   return (
     <>
       <PageHeader
-        title="Rotinas de Despesas"
-        description="Cadastre as rotinas recorrentes do setor de despesas"
+        title="Rotinas Financeiras"
+        description="Cadastre as rotinas recorrentes do setor financeiro"
         actions={
           <Button onClick={() => setEditing({})}>
             <Plus className="h-4 w-4 mr-1" /> Nova rotina
@@ -271,6 +271,9 @@ function TabelaRotinas({
                 </td>
                 <td className="px-4 py-2">
                   <div className="flex gap-1 justify-end">
+                    <Button size="icon" variant="ghost" onClick={() => shareWithMaicon(r)} title="Compartilhar com Maicon">
+                      <Share2 className="h-4 w-4" />
+                    </Button>
                     <Button size="icon" variant="ghost" onClick={() => toggleStatus.mutate(r)} title={r.status === "ativa" ? "Pausar" : "Ativar"}>
                       {r.status === "ativa" ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                     </Button>
@@ -367,6 +370,31 @@ function CalendarioRotinas({ rotinas, onEdit }: { rotinas: Rotina[]; onEdit: (r:
 // DIALOG
 // ============================================================================
 
+const MAICON_USER_ID = "7df29f9f-beb0-4710-9036-17996e9cbd82";
+
+async function shareWithMaicon(rotina: Rotina) {
+  const url = `${window.location.origin}/financeiro/rotinas?rotina=${rotina.id}`;
+  try {
+    await navigator.clipboard.writeText(url);
+    toast.success("Link copiado para a área de transferência");
+  } catch {
+    toast.warning("Não foi possível copiar o link automaticamente");
+  }
+  try {
+    const { error } = await supabase.from("notificacoes").insert({
+      user_id: MAICON_USER_ID,
+      tipo: "rotina_compartilhada",
+      titulo: "Rotina compartilhada",
+      mensagem: rotina.titulo,
+      link: `/financeiro/rotinas?rotina=${rotina.id}`,
+    });
+    if (error) throw error;
+    toast.success("Maicon foi notificado");
+  } catch (e: any) {
+    toast.error(`Falha ao notificar: ${e.message ?? e}`);
+  }
+}
+
 function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: () => void }) {
   const qc = useQueryClient();
   const isEdit = !!rotina.id;
@@ -383,12 +411,48 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
     exige_validacao: rotina.exige_validacao ?? false,
     max_ocorrencias: rotina.max_ocorrencias != null ? String(rotina.max_ocorrencias) : "",
   });
+  const [files, setFiles] = useState<File[]>([]);
+
+  const { data: existingAnexos = [] } = useQuery({
+    queryKey: ["rotina-anexos", rotina.id],
+    queryFn: async () => {
+      if (!rotina.id) return [] as any[];
+      const { data } = await supabase
+        .from("financeiro_rotina_anexos" as any)
+        .select("*")
+        .eq("rotina_id", rotina.id)
+        .order("created_at", { ascending: true });
+      return (data ?? []) as any[];
+    },
+    enabled: !!rotina.id,
+  });
+  const [previewAnexo, setPreviewAnexo] = useState<any | null>(null);
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
   const toggleDay = (d: number) => {
     const cur = form.dias_semana ?? [];
     set("dias_semana", cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d].sort());
   };
+
+  async function uploadRotinaAnexos(rotinaId: string, userId: string | null, filesToUpload: File[]) {
+    for (const file of filesToUpload) {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `rotinas/${rotinaId}/${Date.now()}_${safeName}`;
+      const { error: upErr } = await supabase.storage.from("rotina-anexos").upload(path, file, {
+        contentType: file.type || undefined,
+      });
+      if (upErr) throw upErr;
+      const { error: insErr } = await supabase.from("financeiro_rotina_anexos" as any).insert({
+        rotina_id: rotinaId,
+        nome: file.name,
+        path,
+        mime_type: file.type || null,
+        tamanho: file.size,
+        uploaded_by: userId,
+      });
+      if (insErr) throw insErr;
+    }
+  }
 
   const saveMut = useMutation({
     mutationFn: async () => {
@@ -408,24 +472,29 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
         exige_validacao: form.exige_validacao,
         max_ocorrencias: maxOcorr,
       };
+      const { data: { user } } = await supabase.auth.getUser();
+      let savedId = rotina.id as string | undefined;
       if (isEdit) {
         const { error } = await supabase.from("financeiro_rotinas" as any).update(payload).eq("id", rotina.id!);
         if (error) throw error;
       } else {
-        const { data: { user } } = await supabase.auth.getUser();
-        // calcular proxima_data inicial = data_inicio (primeira ocorrência)
-        const { error } = await supabase.from("financeiro_rotinas" as any).insert({
+        const { data, error } = await supabase.from("financeiro_rotinas" as any).insert({
           ...payload,
           created_by: user?.id ?? null,
           proxima_data: form.data_inicio,
           ocorrencias_realizadas: 0,
           encerrada: false,
-        });
+        }).select("id").single();
         if (error) throw error;
+        savedId = (data as any).id;
+      }
+      if (savedId && files.length > 0) {
+        await uploadRotinaAnexos(savedId, user?.id ?? null, files);
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["financeiro-rotinas"] });
+      qc.invalidateQueries({ queryKey: ["rotina-anexos"] });
       toast.success(isEdit ? "Rotina atualizada" : "Rotina criada");
       onClose();
     },
@@ -525,12 +594,61 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
                 Exige validação do gestor
               </label>
             </FormField>
+            <FormField label="Anexos" wide>
+              {existingAnexos.length > 0 && (
+                <ul className="text-xs mb-2 space-y-0.5">
+                  {existingAnexos.map((a: any) => (
+                    <li key={a.id}>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewAnexo(a)}
+                        className="text-primary hover:underline flex items-center gap-1"
+                      >
+                        <Paperclip className="h-3 w-3" /> {a.nome}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <label className="flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-md py-3 cursor-pointer hover:bg-muted/40 transition text-sm">
+                <Paperclip className="h-4 w-4" />
+                <span>{files.length > 0 ? `${files.length} arquivo(s) selecionado(s)` : "Clique para anexar arquivos"}</span>
+                <input
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+                />
+              </label>
+              {files.length > 0 && (
+                <ul className="text-xs text-muted-foreground mt-2 space-y-0.5">
+                  {files.map((f, i) => (
+                    <li key={i} className="flex items-center gap-1">
+                      <span className="flex-1 truncate">{f.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setFiles(files.filter((_, j) => j !== i))}
+                        className="hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </FormField>
           </FormSection>
           <FormActions>
             <Button type="button" variant="ghost" onClick={onClose}>Cancelar</Button>
             <Button type="submit" disabled={saveMut.isPending}>{saveMut.isPending ? "Salvando…" : "Salvar"}</Button>
           </FormActions>
         </form>
+        <AnexoViewer
+          bucket="rotina-anexos"
+          anexo={previewAnexo}
+          open={!!previewAnexo}
+          onOpenChange={(o) => !o && setPreviewAnexo(null)}
+        />
       </DialogContent>
     </Dialog>
   );

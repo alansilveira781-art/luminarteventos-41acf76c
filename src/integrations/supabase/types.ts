@@ -1767,6 +1767,47 @@ export type Database = {
         }
         Relationships: []
       }
+      financeiro_rotina_anexos: {
+        Row: {
+          created_at: string
+          id: string
+          mime_type: string | null
+          nome: string
+          path: string
+          rotina_id: string
+          tamanho: number | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          nome: string
+          path: string
+          rotina_id: string
+          tamanho?: number | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          nome?: string
+          path?: string
+          rotina_id?: string
+          tamanho?: number | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_rotina_anexos_rotina_id_fkey"
+            columns: ["rotina_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_rotinas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financeiro_rotina_execucao_anexos: {
         Row: {
           created_at: string
