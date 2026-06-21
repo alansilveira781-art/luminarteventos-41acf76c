@@ -206,33 +206,42 @@ function QuadroVendas() {
       <TooltipProvider>
         <DndContext sensors={sensors} onDragEnd={onDragEnd}>
           <div className="flex gap-3 overflow-x-auto overflow-y-hidden pb-4 items-stretch h-[calc(100dvh-230px)] min-h-[420px]">
-            {CARD_STATUSES.map((s) => (
-              <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={byStatus[s.key]?.length ?? 0}>
-                {(byStatus[s.key] ?? []).map((c) => {
-                  const proposta = c.propostaId ? propostas.find((p) => p.id === c.propostaId) : null;
-                  return (
-                    <KanbanCard
-                      key={c.id}
-                      card={c}
-                      hasProposta={!!proposta}
-                      onEdit={() => { setEditCard(c); setOpenCard(true); }}
-                      onDetalhes={() => setDetalhesCard(c)}
-                      onVenda={() => moveCard(c.id, "fechamento")}
-                      onPerda={() => setPerdaCardId(c.id)}
-                      onProposta={() => { setWizardCardId(c.id); setWizardOpen(true); }}
-                      onImprimir={() => proposta && gerarPropostaPDF(proposta)}
-                    />
-                  );
-                })}
-                <button
-                  type="button"
-                  onClick={() => { setEditCard(null); setDefaultStatus(s.key); setOpenCard(true); }}
-                  className="w-full text-xs text-muted-foreground hover:text-foreground py-1.5 rounded border border-dashed border-border hover:border-primary"
-                >
-                  + adicionar
-                </button>
-              </Column>
-            ))}
+            {CARD_STATUSES.map((s) => {
+              const colCards = byStatus[s.key] ?? [];
+              const totalCol = colCards.reduce((acc, c) => {
+                const prop = c.propostaId ? propostas.find((p) => p.id === c.propostaId) : null;
+                return acc + (prop ? propostaTotal(prop) : (c.valorEstimado || 0));
+              }, 0);
+              return (
+                <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={colCards.length} total={totalCol}>
+                  {colCards.map((c) => {
+                    const proposta = c.propostaId ? propostas.find((p) => p.id === c.propostaId) : null;
+                    const valorReal = proposta ? propostaTotal(proposta) : null;
+                    return (
+                      <KanbanCard
+                        key={c.id}
+                        card={c}
+                        hasProposta={!!proposta}
+                        valorReal={valorReal}
+                        onEdit={() => { setEditCard(c); setOpenCard(true); }}
+                        onDetalhes={() => setDetalhesCard(c)}
+                        onVenda={() => moveCard(c.id, "fechamento")}
+                        onPerda={() => setPerdaCardId(c.id)}
+                        onProposta={() => { setWizardCardId(c.id); setWizardOpen(true); }}
+                        onImprimir={() => proposta && gerarPropostaPDF(proposta)}
+                      />
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => { setEditCard(null); setDefaultStatus(s.key); setOpenCard(true); }}
+                    className="w-full text-xs text-muted-foreground hover:text-foreground py-1.5 rounded border border-dashed border-border hover:border-primary"
+                  >
+                    + adicionar
+                  </button>
+                </Column>
+              );
+            })}
           </div>
         </DndContext>
       </TooltipProvider>
