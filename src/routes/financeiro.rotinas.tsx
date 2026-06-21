@@ -1031,33 +1031,8 @@ function RegistrarExecucaoDialog({ rotina, dataInicial, onClose }: { rotina: Rot
   const qc = useQueryClient();
   const [dataRef, setDataRef] = useState(dataInicial ?? new Date().toISOString().slice(0, 10));
   const [obs, setObs] = useState("");
-  const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
 
-  async function uploadAnexosEmBackground(execId: string, userId: string | null, filesToUpload: File[]) {
-    try {
-      for (const file of filesToUpload) {
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const path = `${execId}/${Date.now()}_${safeName}`;
-        const { error: upErr } = await supabase.storage.from("rotina-anexos").upload(path, file, {
-          contentType: file.type || undefined,
-        });
-        if (upErr) throw upErr;
-        const { error: insErr } = await supabase.from("financeiro_rotina_execucao_anexos" as any).insert({
-          execucao_id: execId,
-          nome: file.name,
-          path,
-          mime_type: file.type || null,
-          tamanho: file.size,
-          uploaded_by: userId,
-        });
-        if (insErr) throw insErr;
-      }
-      qc.invalidateQueries({ queryKey: ["rotina-exec-anexos", execId] });
-    } catch (err: any) {
-      toast.error(`Falha ao enviar anexos: ${err.message ?? err}`);
-    }
-  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -1123,11 +1098,6 @@ function RegistrarExecucaoDialog({ rotina, dataInicial, onClose }: { rotina: Rot
       qc.invalidateQueries({ queryKey: ["rotina-execucoes"] });
       qc.invalidateQueries({ queryKey: ["financeiro-rotinas"] });
       qc.invalidateQueries({ queryKey: ["financeiro-rotinas-validacoes-count"] });
-
-      // Upload de anexos em background
-      if (files.length > 0) {
-        void uploadAnexosEmBackground(execId, user?.id ?? null, files);
-      }
     } catch (err: any) {
       // Reverte cache otimista
       qc.setQueryData<Execucao[]>(["rotina-execucoes"], prev);
@@ -1151,39 +1121,8 @@ function RegistrarExecucaoDialog({ rotina, dataInicial, onClose }: { rotina: Rot
         </DialogHeader>
         <form onSubmit={handleSave}>
           <FormSection>
-            <FormField label="Data de referência*">
-              <Input required type="date" value={dataRef} onChange={(e) => setDataRef(e.target.value)} />
-            </FormField>
             <FormField label="Observações" wide>
-              <Textarea rows={2} value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Opcional" />
-            </FormField>
-            <FormField label="Anexos (opcional)" wide>
-              <label className="flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-md py-4 cursor-pointer hover:bg-muted/40 transition text-sm">
-                <Paperclip className="h-4 w-4" />
-                <span>{files.length > 0 ? `${files.length} arquivo(s) selecionado(s)` : "Clique para anexar arquivos"}</span>
-                <input
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
-                />
-              </label>
-              {files.length > 0 && (
-                <ul className="text-xs text-muted-foreground mt-2 space-y-0.5">
-                  {files.map((f, i) => (
-                    <li key={i} className="flex items-center gap-1">
-                      <span className="flex-1 truncate">{f.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => setFiles(files.filter((_, j) => j !== i))}
-                        className="hover:text-destructive"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <Textarea rows={3} value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Opcional" />
             </FormField>
           </FormSection>
           {rotina.exige_validacao && (

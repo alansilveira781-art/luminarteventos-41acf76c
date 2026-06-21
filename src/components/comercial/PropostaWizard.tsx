@@ -31,7 +31,7 @@ import {
   useComercial,
   addConsultor,
 } from "@/lib/comercial/store";
-import { useCatalogo } from "@/lib/comercial/useCatalogo";
+import { CatalogoPicker } from "@/components/comercial/CatalogoPicker";
 import { NumberInput } from "@/components/comercial/NumberInput";
 import { MoneyInput } from "@/components/MoneyInput";
 
@@ -92,7 +92,6 @@ function newAmbiente(nome = ""): Ambiente {
 
 export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta }: Props) {
   const { consultores } = useComercial();
-  const { catalogo } = useCatalogo();
   const [step, setStep] = useState(0);
   const [cliente, setCliente] = useState({ nome: "", telefone: "", email: "" });
   const [evento, setEvento] = useState<Proposta["evento"]>({
@@ -232,17 +231,6 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
     }));
   }
 
-  function adicionarDescricaoDoCatalogo(aIdx: number, iIdx: number, catalogoId: string) {
-    if (catalogoId === "__vazia__") {
-      const novas = [...ambientes[aIdx].itens[iIdx].descricoes, newDescricaoVazia()];
-      patchItem(aIdx, iIdx, { descricoes: novas });
-      return;
-    }
-    const c = catalogo.find((x) => x.id === catalogoId);
-    if (!c) return;
-    const novas = [...ambientes[aIdx].itens[iIdx].descricoes, descricaoFromCatalogo(c)];
-    patchItem(aIdx, iIdx, { descricoes: novas });
-  }
 
   async function adicionarImagens(aIdx: number, files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -431,9 +419,15 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
                           ))}
 
                           <div className="flex gap-2 pt-1">
-                            <CatalogoCombobox
-                              catalogo={catalogo}
-                              onPick={(v) => adicionarDescricaoDoCatalogo(aIdx, iIdx, v)}
+                            <CatalogoPicker
+                              onPick={(c) => {
+                                const novas = [...item.descricoes, descricaoFromCatalogo(c)];
+                                patchItem(aIdx, iIdx, { descricoes: novas });
+                              }}
+                              onPickVazia={() => {
+                                const novas = [...item.descricoes, newDescricaoVazia()];
+                                patchItem(aIdx, iIdx, { descricoes: novas });
+                              }}
                             />
                           </div>
                         </div>
