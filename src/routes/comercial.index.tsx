@@ -58,11 +58,13 @@ function QuadroVendas() {
   const [wizardProposta, setWizardProposta] = useState<Proposta | null>(null);
   const { user } = useAuth();
   const [contratoDefaults, setContratoDefaults] = useState<NovoContratoDefaults | null>(null);
+  const [contratoCardId, setContratoCardId] = useState<string | null>(null);
 
   function abrirContratoParaCard(cardId: string) {
     const card = cards.find((c) => c.id === cardId);
     if (!card) return;
     const prop = card.propostaId ? propostas.find((p) => p.id === card.propostaId) : null;
+    setContratoCardId(cardId);
     setContratoDefaults({
       titulo: card.eventoNome || card.clienteNome || "Contrato",
       cliente_nome: card.clienteNome || (prop?.cliente?.nome ?? null),
