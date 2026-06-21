@@ -36,6 +36,7 @@ type Compra = {
   status: CompraStatus;
   titulo: string | null;
   solicitante: string | null;
+  solicitante_id: string | null;
   fornecedor: string | null;
   comprador: string | null;
   data_solicitacao: string | null;
