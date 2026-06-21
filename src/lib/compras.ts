@@ -21,9 +21,7 @@ export const COMPRA_STATUSES: { key: CompraStatus; label: string; color: string 
 
 export const TIPO_COMPRA_OPTIONS = [
   { value: "mercadoria", label: "Mercadoria" },
-  { value: "imobilizado", label: "Imobilizado" },
   { value: "servico", label: "Serviço" },
-  { value: "administrativo", label: "Administrativo" },
 ] as const;
 
 export type TipoCompra = typeof TIPO_COMPRA_OPTIONS[number]["value"];
@@ -32,6 +30,40 @@ export const STATUS_LABEL: Record<CompraStatus, string> = COMPRA_STATUSES.reduce
   (acc, s) => ({ ...acc, [s.key]: s.label }),
   {} as Record<CompraStatus, string>,
 );
+
+// User ID do Natanael (regra de movimentação interna — sem notificação)
+export const NATANAEL_USER_ID = "fd75a882-75fe-4e5b-935b-d650f050d6be";
+const NATANAEL_NOME = "Natanael";
+
+function isNatanaelSolicitante(compra: { solicitante?: string | null; solicitante_id?: string | null }): boolean {
+  if (compra.solicitante_id && compra.solicitante_id === NATANAEL_USER_ID) return true;
+  return (compra.solicitante ?? "").trim().toLowerCase() === NATANAEL_NOME.toLowerCase();
+}
+
+function isNatanaelComprador(compra: { comprador?: string | null }): boolean {
+  return (compra.comprador ?? "").trim().toLowerCase() === NATANAEL_NOME.toLowerCase();
+}
+
+/**
+ * Regra extra para o Natanael (silenciosa, sem notificação):
+ * - Se ele é solicitante E comprador → pode mover livremente até finalizado.
+ * - Caso contrário → só pode mover até pendente_aprovacao (não além).
+ * Retorna true se o movimento é permitido pela regra do Natanael (ou se a regra não se aplica).
+ */
+export function canNatanaelMoveTo(
+  compra: { solicitante?: string | null; solicitante_id?: string | null; comprador?: string | null },
+  userId: string | undefined | null,
+  isAdmin: boolean,
+  targetStatus: CompraStatus,
+): boolean {
+  if (isAdmin) return true;
+  if (!userId || userId !== NATANAEL_USER_ID) return true; // regra só se aplica ao Natanael
+  const ambos = isNatanaelSolicitante(compra) && isNatanaelComprador(compra);
+  if (ambos) return true;
+  // Só pode mover até pendente_aprovacao
+  const allowed: CompraStatus[] = ["solicitacao", "analise", "pendente_aprovacao", "negada"];
+  return allowed.includes(targetStatus);
+}
 
 export function canMoveCompra(
   compra: { responsavel_id?: string | null },
@@ -48,3 +80,4 @@ export function moveBlockedMessage(compra: { responsavel_nome?: string | null })
     ? `Apenas ${compra.responsavel_nome} pode mover este card.`
     : "Você não tem permissão para mover este card.";
 }
+
