@@ -312,6 +312,13 @@ function QuadroVendas() {
         }}
       />
 
+      <NovoContratoDialog
+        open={!!contratoDefaults}
+        onOpenChange={(v) => { if (!v) setContratoDefaults(null); }}
+        defaults={contratoDefaults ?? undefined}
+        userId={user?.id ?? null}
+      />
+
       <PropostaWizard
         open={wizardOpen}
         onOpenChange={(v) => { setWizardOpen(v); if (!v) setWizardCardId(null); }}
