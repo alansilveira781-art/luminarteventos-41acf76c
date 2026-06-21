@@ -271,6 +271,9 @@ function TabelaRotinas({
                 </td>
                 <td className="px-4 py-2">
                   <div className="flex gap-1 justify-end">
+                    <Button size="icon" variant="ghost" onClick={() => shareWithMaicon(r)} title="Compartilhar com Maicon">
+                      <Share2 className="h-4 w-4" />
+                    </Button>
                     <Button size="icon" variant="ghost" onClick={() => toggleStatus.mutate(r)} title={r.status === "ativa" ? "Pausar" : "Ativar"}>
                       {r.status === "ativa" ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                     </Button>
