@@ -4,7 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { EMPRESAS } from "@/lib/empresas";
@@ -31,10 +33,8 @@ export type NovoContratoDefaults = {
   proposta_ref?: string | null;
 };
 
-/**
- * Abre o cadastro de um novo contrato no módulo Jurídico, acionado quando uma
- * venda é movida para "Fechamento" no Quadro de Vendas.
- */
+const STEPS = ["Dados do contrato", "Pagamento"];
+
 export function NovoContratoDialog({
   open, onOpenChange, defaults, userId, onSaved,
 }: {
@@ -44,11 +44,13 @@ export function NovoContratoDialog({
   userId: string | null;
   onSaved?: () => void;
 }) {
+  const [step, setStep] = useState(0);
   const [form, setForm] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
+    setStep(0);
     setForm({
       empresa: EMPRESAS[0],
       titulo: defaults?.titulo ?? "",
@@ -60,12 +62,18 @@ export function NovoContratoDialog({
       valor: defaults?.valor ?? "",
       proposta_ref: defaults?.proposta_ref ?? "",
       forma_pagamento: "",
-      data_fechamento: new Date().toISOString().slice(0, 10),
+      condicoes_pagamento: "",
       observacoes: "",
+      data_fechamento: new Date().toISOString().slice(0, 10),
     });
   }, [open, defaults]);
 
-  async function save() {
+  function podeAvancar() {
+    if (step === 0) return !!String(form.titulo ?? "").trim();
+    return true;
+  }
+
+  async function salvar() {
     if (!form.titulo) return toast.error("Informe o título");
     setSaving(true);
     const payload: any = {
@@ -84,6 +92,11 @@ export function NovoContratoDialog({
       forma_pagamento: form.forma_pagamento || null,
       created_by: userId,
     };
+    if (form.condicoes_pagamento) {
+      payload.observacoes = [payload.observacoes, `Condições: ${form.condicoes_pagamento}`]
+        .filter(Boolean)
+        .join(" — ");
+    }
     const { error } = await (supabase as any).from("juridico_contratos").insert(payload);
     setSaving(false);
     if (error) return toast.error(error.message);
@@ -92,75 +105,109 @@ export function NovoContratoDialog({
     onSaved?.();
   }
 
+  const progress = ((step + 1) / STEPS.length) * 100;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Novo contrato — venda fechada</DialogTitle>
+          <DialogTitle>Fechamento da venda — {STEPS[step]}</DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="md:col-span-2">
-            <Label>Título *</Label>
-            <Input value={form.titulo ?? ""} onChange={(e) => setForm({ ...form, titulo: e.target.value })} />
+
+        <Progress value={progress} className="mb-3" />
+
+        {step === 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="md:col-span-2">
+              <Label>Título *</Label>
+              <Input value={form.titulo ?? ""} onChange={(e) => setForm({ ...form, titulo: e.target.value })} />
+            </div>
+            <div>
+              <Label>Empresa</Label>
+              <Select value={form.empresa ?? ""} onValueChange={(v) => setForm({ ...form, empresa: v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {EMPRESAS.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Responsável</Label>
+              <Input value={form.responsavel ?? ""} onChange={(e) => setForm({ ...form, responsavel: e.target.value })} />
+            </div>
+            <div>
+              <Label>Cliente</Label>
+              <Input value={form.cliente_nome ?? ""} onChange={(e) => setForm({ ...form, cliente_nome: e.target.value })} />
+            </div>
+            <div>
+              <Label>CPF/CNPJ</Label>
+              <Input value={form.cliente_documento ?? ""} onChange={(e) => setForm({ ...form, cliente_documento: e.target.value })} />
+            </div>
+            <div>
+              <Label>E-mail</Label>
+              <Input value={form.cliente_email ?? ""} onChange={(e) => setForm({ ...form, cliente_email: e.target.value })} />
+            </div>
+            <div>
+              <Label>Telefone</Label>
+              <Input value={form.cliente_telefone ?? ""} onChange={(e) => setForm({ ...form, cliente_telefone: e.target.value })} />
+            </div>
+            <div className="md:col-span-2">
+              <Label>Ref. proposta</Label>
+              <Input value={form.proposta_ref ?? ""} onChange={(e) => setForm({ ...form, proposta_ref: e.target.value })} />
+            </div>
+            <div className="md:col-span-2">
+              <Label>Observações</Label>
+              <Textarea value={form.observacoes ?? ""} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
+            </div>
           </div>
-          <div>
-            <Label>Empresa</Label>
-            <Select value={form.empresa ?? ""} onValueChange={(v) => setForm({ ...form, empresa: v })}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>
-                {EMPRESAS.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
-              </SelectContent>
-            </Select>
+        )}
+
+        {step === 1 && (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Forma de pagamento</Label>
+              <Select value={form.forma_pagamento ?? ""} onValueChange={(v) => setForm({ ...form, forma_pagamento: v })}>
+                <SelectTrigger><SelectValue placeholder="Como o cliente fechou" /></SelectTrigger>
+                <SelectContent>
+                  {FORMAS_PAGAMENTO.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Valor (R$)</Label>
+              <Input type="number" step="0.01" value={form.valor ?? ""} onChange={(e) => setForm({ ...form, valor: e.target.value })} />
+            </div>
+            <div className="col-span-2">
+              <Label>Condições de pagamento</Label>
+              <Textarea
+                rows={2}
+                value={form.condicoes_pagamento ?? ""}
+                onChange={(e) => setForm({ ...form, condicoes_pagamento: e.target.value })}
+                placeholder="Ex: entrada de 30% + 3x no cartão; vencimento dia 10…"
+              />
+            </div>
+            <div>
+              <Label>Data de fechamento</Label>
+              <Input type="date" value={form.data_fechamento ?? ""} onChange={(e) => setForm({ ...form, data_fechamento: e.target.value })} />
+            </div>
           </div>
-          <div>
-            <Label>Forma de pagamento</Label>
-            <Select value={form.forma_pagamento ?? ""} onValueChange={(v) => setForm({ ...form, forma_pagamento: v })}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>
-                {FORMAS_PAGAMENTO.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Cliente</Label>
-            <Input value={form.cliente_nome ?? ""} onChange={(e) => setForm({ ...form, cliente_nome: e.target.value })} />
-          </div>
-          <div>
-            <Label>CPF/CNPJ</Label>
-            <Input value={form.cliente_documento ?? ""} onChange={(e) => setForm({ ...form, cliente_documento: e.target.value })} />
-          </div>
-          <div>
-            <Label>E-mail</Label>
-            <Input value={form.cliente_email ?? ""} onChange={(e) => setForm({ ...form, cliente_email: e.target.value })} />
-          </div>
-          <div>
-            <Label>Telefone</Label>
-            <Input value={form.cliente_telefone ?? ""} onChange={(e) => setForm({ ...form, cliente_telefone: e.target.value })} />
-          </div>
-          <div>
-            <Label>Responsável</Label>
-            <Input value={form.responsavel ?? ""} onChange={(e) => setForm({ ...form, responsavel: e.target.value })} />
-          </div>
-          <div>
-            <Label>Valor (R$)</Label>
-            <Input type="number" step="0.01" value={form.valor ?? ""} onChange={(e) => setForm({ ...form, valor: e.target.value })} />
-          </div>
-          <div>
-            <Label>Data de fechamento</Label>
-            <Input type="date" value={form.data_fechamento ?? ""} onChange={(e) => setForm({ ...form, data_fechamento: e.target.value })} />
-          </div>
-          <div>
-            <Label>Ref. proposta</Label>
-            <Input value={form.proposta_ref ?? ""} onChange={(e) => setForm({ ...form, proposta_ref: e.target.value })} />
-          </div>
-          <div className="md:col-span-2">
-            <Label>Observações</Label>
-            <Textarea value={form.observacoes ?? ""} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Pular por agora</Button>
-          <Button onClick={save} disabled={saving}>{saving ? "Criando…" : "Criar contrato"}</Button>
+        )}
+
+        <DialogFooter className="gap-2 mt-2">
+          {step === 0 ? (
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          ) : (
+            <Button variant="outline" onClick={() => setStep(step - 1)}>
+              <ChevronLeft className="h-4 w-4 mr-1" /> Voltar
+            </Button>
+          )}
+          {step < STEPS.length - 1 ? (
+            <Button disabled={!podeAvancar()} onClick={() => setStep(step + 1)}>
+              Avançar <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          ) : (
+            <Button onClick={salvar} disabled={saving}>{saving ? "Criando…" : "Concluir fechamento"}</Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

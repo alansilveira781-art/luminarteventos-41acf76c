@@ -58,11 +58,13 @@ function QuadroVendas() {
   const [wizardProposta, setWizardProposta] = useState<Proposta | null>(null);
   const { user } = useAuth();
   const [contratoDefaults, setContratoDefaults] = useState<NovoContratoDefaults | null>(null);
+  const [contratoCardId, setContratoCardId] = useState<string | null>(null);
 
   function abrirContratoParaCard(cardId: string) {
     const card = cards.find((c) => c.id === cardId);
     if (!card) return;
     const prop = card.propostaId ? propostas.find((p) => p.id === card.propostaId) : null;
+    setContratoCardId(cardId);
     setContratoDefaults({
       titulo: card.eventoNome || card.clienteNome || "Contrato",
       cliente_nome: card.clienteNome || (prop?.cliente?.nome ?? null),
@@ -143,31 +145,41 @@ function QuadroVendas() {
     const status = overId as CardStatus;
     const card = cards.find((c) => c.id === id);
     if (!card || card.status === status) return;
+
+    // Fechamento e Perda são livres a partir de qualquer status.
     if (status === "perda") { setPerdaCardId(id); return; }
-    if (status === "orcamento_enviado") { setEnvioCardId(id); return; }
-    if (status === "fechamento") { moveCard(id, "fechamento"); abrirContratoParaCard(id); return; }
+    if (status === "fechamento") { abrirContratoParaCard(id); return; }
+
     const oldIdx = CARD_STATUSES.findIndex((s) => s.key === card.status);
     const newIdx = CARD_STATUSES.findIndex((s) => s.key === status);
-    if (newIdx > oldIdx) {
-      const def = statusDefaults.find((d) => d.status === status && d.responsavel_id);
-      if (def?.responsavel_id) {
-        if (def.responsavel_nome) updateCard(id, { responsavel: def.responsavel_nome });
-        moveCard(id, status);
-        const statusLabel = CARD_STATUSES.find((s) => s.key === status)?.label || status;
-        notifyResponsavel({
-          userId: def.responsavel_id,
-          titulo: `Venda: ${statusLabel}`,
-          mensagem: `${card.clienteNome}${card.eventoNome ? ` — ${card.eventoNome}` : ""}`,
-          link: `/comercial?card=${id}`,
-          tipo: "comercial_responsavel",
-        }).catch(() => {});
-        toast.success(`Card movido. ${def.responsavel_nome ?? "Responsável"} foi notificado.`);
-        return;
-      }
-      setPendingMove({ id, status });
-    } else {
-      moveCard(id, status);
+
+    if (newIdx <= oldIdx) {
+      toast.error("Não é possível mover o card para trás.");
+      return;
     }
+    if (newIdx !== oldIdx + 1) {
+      toast.error("Avance um status por vez, sem pular etapas.");
+      return;
+    }
+
+    if (status === "orcamento_enviado") { setEnvioCardId(id); return; }
+
+    const def = statusDefaults.find((d) => d.status === status && d.responsavel_id);
+    if (def?.responsavel_id) {
+      if (def.responsavel_nome) updateCard(id, { responsavel: def.responsavel_nome });
+      moveCard(id, status);
+      const statusLabel = CARD_STATUSES.find((s) => s.key === status)?.label || status;
+      notifyResponsavel({
+        userId: def.responsavel_id,
+        titulo: `Venda: ${statusLabel}`,
+        mensagem: `${card.clienteNome}${card.eventoNome ? ` — ${card.eventoNome}` : ""}`,
+        link: `/comercial?card=${id}`,
+        tipo: "comercial_responsavel",
+      }).catch(() => {});
+      toast.success(`Card movido. ${def.responsavel_nome ?? "Responsável"} foi notificado.`);
+      return;
+    }
+    setPendingMove({ id, status });
   }
 
 
@@ -245,7 +257,7 @@ function QuadroVendas() {
                         valorReal={valorReal}
                         onEdit={() => { setEditCard(c); setOpenCard(true); }}
                         onDetalhes={() => setDetalhesCard(c)}
-                        onVenda={() => { moveCard(c.id, "fechamento"); abrirContratoParaCard(c.id); }}
+                        onVenda={() => abrirContratoParaCard(c.id)}
                         onPerda={() => setPerdaCardId(c.id)}
                         onProposta={() => { setWizardCardId(c.id); setWizardOpen(true); }}
                         onImprimir={() => proposta && gerarPropostaPDF(proposta)}
@@ -314,9 +326,13 @@ function QuadroVendas() {
 
       <NovoContratoDialog
         open={!!contratoDefaults}
-        onOpenChange={(v) => { if (!v) setContratoDefaults(null); }}
+        onOpenChange={(v) => { if (!v) { setContratoDefaults(null); setContratoCardId(null); } }}
         defaults={contratoDefaults ?? undefined}
         userId={user?.id ?? null}
+        onSaved={() => {
+          if (contratoCardId) moveCard(contratoCardId, "fechamento");
+          setContratoCardId(null);
+        }}
       />
 
       <PropostaWizard
