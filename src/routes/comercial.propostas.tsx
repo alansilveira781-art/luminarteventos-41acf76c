@@ -98,8 +98,8 @@ function Propostas() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => {
-                          const nova = criarNovaVersaoProposta(p.id);
+                        onClick={async () => {
+                          const nova = await criarNovaVersaoProposta(p.id);
                           if (nova) toast.success(`Nova versão criada (v${nova.version})`);
                         }}
                       >
