@@ -208,14 +208,18 @@ export function CardDialog({ open, onOpenChange, card, defaultStatus }: Props) {
             </div>
             <div className="sm:col-span-2">
               <Label>Status</Label>
-              <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as CardStatus })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {CARD_STATUSES.map((s) => (
-                    <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex h-10 items-center gap-2 rounded-md border border-border bg-muted/40 px-3">
+                <span className={`h-2 w-2 rounded-full ${CARD_STATUSES.find((s) => s.key === form.status)?.color ?? "bg-slate-400"}`} />
+                <span className="text-sm">
+                  {CARD_STATUSES.find((s) => s.key === form.status)?.label ?? form.status}
+                </span>
+                <span className="ml-auto text-[10px] uppercase tracking-wide text-muted-foreground">
+                  somente leitura
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                O status muda arrastando o card no quadro, respeitando as regras de avanço.
+              </p>
             </div>
             {form.status === "orcamento_enviado" && (
               <div className="sm:col-span-2">
