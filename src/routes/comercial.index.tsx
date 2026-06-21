@@ -370,9 +370,13 @@ function KanbanCard({
           <div className="mt-1.5 space-y-0.5 text-[11px] text-muted-foreground">
             {(card.eventoDataInicio || card.eventoDataFim) && <div>Data: {fmtPeriodo(card.eventoDataInicio, card.eventoDataFim)}</div>}
             {card.responsavel && <div>Consultor(a): {card.responsavel}</div>}
-            {card.valorEstimado > 0 && (
-              <div className="font-medium text-foreground">{brl(card.valorEstimado)}</div>
-            )}
+            {valorReal !== null ? (
+              <div className="font-medium text-foreground">{brl(valorReal)}</div>
+            ) : card.valorEstimado > 0 ? (
+              <div className="font-medium text-foreground">
+                {brl(card.valorEstimado)} <span className="text-[10px] font-normal text-muted-foreground">estimado</span>
+              </div>
+            ) : null}
           </div>
           {card.status === "perda" && card.motivoPerda && (
             <span className="inline-block mt-1.5 px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-600 dark:text-rose-400 text-[10px] truncate max-w-full">
