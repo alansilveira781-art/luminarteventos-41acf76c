@@ -167,7 +167,7 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
     return true;
   }
 
-  function finish() {
+  async function finish() {
     if (!cliente.nome.trim()) return toast.error("Informe o cliente");
     const totalDescricoes = ambientes.reduce(
       (s, a) => s + a.itens.reduce((si, it) => si + it.descricoes.length, 0),
@@ -183,7 +183,7 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
       });
       toast.success("Proposta atualizada e enviada para validação");
     } else {
-      createProposta({
+      await createProposta({
         cardId: cardId ?? null, clienteId: c.id, cliente, evento, ambientes, custos, resumo, responsavel,
       });
       toast.success("Proposta enviada para validação interna");
