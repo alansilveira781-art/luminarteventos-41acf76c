@@ -547,6 +547,17 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
 function DescricaoRow({
   d, onPatch, onRemove,
 }: { d: DescricaoItem; onPatch: (p: Partial<DescricaoItem>) => void; onRemove: () => void }) {
+  const fromCatalogo = !!d.catalogoId;
+
+  function changeTipo(t: DescricaoItem["tipoMedida"]) {
+    const patch: Partial<DescricaoItem> = { tipoMedida: t };
+    if (t === "unidade") { patch.largura = undefined; patch.altura = undefined; patch.comprimento = undefined; }
+    if (t === "dimensional") { patch.largura = d.largura ?? 0; patch.altura = d.altura ?? 0; patch.comprimento = d.comprimento ?? 0; }
+    if (t === "area") { patch.largura = d.largura ?? 0; patch.altura = undefined; patch.comprimento = d.comprimento ?? 0; }
+    if (t === "linear") { patch.largura = undefined; patch.altura = undefined; patch.comprimento = d.comprimento ?? 0; }
+    onPatch(patch);
+  }
+
   return (
     <div className="rounded border border-border bg-muted/10 p-2">
       <div className="flex items-center gap-2 mb-2">
@@ -556,9 +567,22 @@ function DescricaoRow({
           onChange={(e) => onPatch({ descricao: e.target.value })}
           placeholder="Descrição"
         />
-        <span className="text-[10px] uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-          {TIPO_MEDIDA_LABEL[d.tipoMedida]}
-        </span>
+        {fromCatalogo ? (
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+            {TIPO_MEDIDA_LABEL[d.tipoMedida]}
+          </span>
+        ) : (
+          <Select value={d.tipoMedida} onValueChange={(v) => changeTipo(v as DescricaoItem["tipoMedida"])}>
+            <SelectTrigger className="h-7 text-[11px] w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(["unidade","dimensional","area","linear"] as const).map((t) => (
+                <SelectItem key={t} value={t} className="text-xs">{TIPO_MEDIDA_LABEL[t]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Button size="icon" variant="ghost" onClick={onRemove} title="Remover descrição">
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
@@ -597,7 +621,16 @@ function DescricaoRow({
           <Label className="text-[10px]">
             Valor un.{d.tipoMedida === "area" ? " (/m²)" : d.tipoMedida === "linear" ? " (/m)" : ""}
           </Label>
-          <MoneyInput className="h-8 text-sm" value={d.valorUnitario} onChange={(n) => onPatch({ valorUnitario: n })} />
+          {fromCatalogo ? (
+            <div
+              className="h-8 px-2 flex items-center text-sm rounded-md border border-border bg-muted/40 text-muted-foreground"
+              title="Valor herdado do catálogo"
+            >
+              {Number(d.valorUnitario || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            </div>
+          ) : (
+            <MoneyInput className="h-8 text-sm" value={d.valorUnitario} onChange={(n) => onPatch({ valorUnitario: n })} />
+          )}
         </div>
         <div className="text-right">
           <div className="text-[10px] text-muted-foreground">Subtotal</div>
@@ -605,6 +638,52 @@ function DescricaoRow({
         </div>
       </div>
     </div>
+  );
+}
+
+function CatalogoCombobox({
+  catalogo, onPick,
+}: { catalogo: CatalogoDescricao[]; onPick: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-8 text-xs w-full justify-between">
+          <span className="truncate">+ Adicionar descrição (catálogo)</span>
+          <ChevronsUpDown className="h-3 w-3 opacity-50 ml-1" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0 w-[380px]" align="start">
+        <Command
+          filter={(value, search) => {
+            const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            return norm(value).includes(norm(search)) ? 1 : 0;
+          }}
+        >
+          <CommandInput placeholder="Buscar descrição..." className="h-9" />
+          <CommandList>
+            <CommandEmpty>Nenhuma descrição encontrada.</CommandEmpty>
+            <CommandGroup heading="Catálogo">
+              {catalogo.map((c) => (
+                <CommandItem
+                  key={c.id}
+                  value={`${c.nome} ${TIPO_MEDIDA_LABEL[c.tipoMedida]}`}
+                  onSelect={() => { onPick(c.id); setOpen(false); }}
+                >
+                  <span className="flex-1 truncate">{c.nome}</span>
+                  <span className="text-[10px] text-muted-foreground ml-2">{TIPO_MEDIDA_LABEL[c.tipoMedida]}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            <CommandGroup>
+              <CommandItem value="__vazia__" onSelect={() => { onPick("__vazia__"); setOpen(false); }}>
+                + Descrição manual (em branco)
+              </CommandItem>
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
 
