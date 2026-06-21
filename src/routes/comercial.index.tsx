@@ -25,6 +25,8 @@ import { gerarPropostaPDF } from "@/lib/comercial/pdf";
 import { AvancarCardDialog } from "@/components/AvancarCardDialog";
 import { notifyResponsavel } from "@/lib/notify";
 import { toast } from "sonner";
+import { NovoContratoDialog, type NovoContratoDefaults } from "@/components/comercial/NovoContratoDialog";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const Route = createFileRoute("/comercial/")({
   component: QuadroVendas,
@@ -54,6 +56,23 @@ function QuadroVendas() {
   const [wizardCardId, setWizardCardId] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardProposta, setWizardProposta] = useState<Proposta | null>(null);
+  const { user } = useAuth();
+  const [contratoDefaults, setContratoDefaults] = useState<NovoContratoDefaults | null>(null);
+
+  function abrirContratoParaCard(cardId: string) {
+    const card = cards.find((c) => c.id === cardId);
+    if (!card) return;
+    const prop = card.propostaId ? propostas.find((p) => p.id === card.propostaId) : null;
+    setContratoDefaults({
+      titulo: card.eventoNome || card.clienteNome || "Contrato",
+      cliente_nome: card.clienteNome || (prop?.cliente?.nome ?? null),
+      cliente_email: prop?.cliente?.email ?? null,
+      cliente_telefone: prop?.cliente?.telefone ?? null,
+      responsavel: card.responsavel || null,
+      valor: prop ? propostaTotal(prop) : (card.valorEstimado || null),
+      proposta_ref: prop ? `#${String(prop.numero).padStart(4, "0")}` : null,
+    });
+  }
 
   const { data: statusDefaults = [] } = useQuery({
     queryKey: ["comercial_status_defaults"],
@@ -126,6 +145,7 @@ function QuadroVendas() {
     if (!card || card.status === status) return;
     if (status === "perda") { setPerdaCardId(id); return; }
     if (status === "orcamento_enviado") { setEnvioCardId(id); return; }
+    if (status === "fechamento") { moveCard(id, "fechamento"); abrirContratoParaCard(id); return; }
     const oldIdx = CARD_STATUSES.findIndex((s) => s.key === card.status);
     const newIdx = CARD_STATUSES.findIndex((s) => s.key === status);
     if (newIdx > oldIdx) {
@@ -225,7 +245,7 @@ function QuadroVendas() {
                         valorReal={valorReal}
                         onEdit={() => { setEditCard(c); setOpenCard(true); }}
                         onDetalhes={() => setDetalhesCard(c)}
-                        onVenda={() => moveCard(c.id, "fechamento")}
+                        onVenda={() => { moveCard(c.id, "fechamento"); abrirContratoParaCard(c.id); }}
                         onPerda={() => setPerdaCardId(c.id)}
                         onProposta={() => { setWizardCardId(c.id); setWizardOpen(true); }}
                         onImprimir={() => proposta && gerarPropostaPDF(proposta)}
