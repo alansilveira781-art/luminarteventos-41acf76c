@@ -1,10 +1,10 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Printer, GitBranch } from "lucide-react";
+import { Printer, GitBranch, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { CARD_STATUSES, type ComercialCard, PROPOSTA_STATUS_LABEL, propostaTotal, type Proposta } from "@/lib/comercial/types";
-import { useComercial, criarNovaVersaoProposta, getPropostasDoCard, getRootPropostaId } from "@/lib/comercial/store";
+import { useComercial, criarNovaVersaoProposta, getPropostasDoCard, getRootPropostaId, deleteProposta } from "@/lib/comercial/store";
 import { gerarPropostaPDF } from "@/lib/comercial/pdf";
 
 const brl = (v: number) =>
