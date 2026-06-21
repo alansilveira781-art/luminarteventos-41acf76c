@@ -594,12 +594,61 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
                 Exige validação do gestor
               </label>
             </FormField>
+            <FormField label="Anexos" wide>
+              {existingAnexos.length > 0 && (
+                <ul className="text-xs mb-2 space-y-0.5">
+                  {existingAnexos.map((a: any) => (
+                    <li key={a.id}>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewAnexo(a)}
+                        className="text-primary hover:underline flex items-center gap-1"
+                      >
+                        <Paperclip className="h-3 w-3" /> {a.nome}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <label className="flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-md py-3 cursor-pointer hover:bg-muted/40 transition text-sm">
+                <Paperclip className="h-4 w-4" />
+                <span>{files.length > 0 ? `${files.length} arquivo(s) selecionado(s)` : "Clique para anexar arquivos"}</span>
+                <input
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+                />
+              </label>
+              {files.length > 0 && (
+                <ul className="text-xs text-muted-foreground mt-2 space-y-0.5">
+                  {files.map((f, i) => (
+                    <li key={i} className="flex items-center gap-1">
+                      <span className="flex-1 truncate">{f.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setFiles(files.filter((_, j) => j !== i))}
+                        className="hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </FormField>
           </FormSection>
           <FormActions>
             <Button type="button" variant="ghost" onClick={onClose}>Cancelar</Button>
             <Button type="submit" disabled={saveMut.isPending}>{saveMut.isPending ? "Salvando…" : "Salvar"}</Button>
           </FormActions>
         </form>
+        <AnexoViewer
+          bucket="rotina-anexos"
+          anexo={previewAnexo}
+          open={!!previewAnexo}
+          onOpenChange={(o) => !o && setPreviewAnexo(null)}
+        />
       </DialogContent>
     </Dialog>
   );
