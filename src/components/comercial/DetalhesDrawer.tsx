@@ -1,10 +1,10 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Printer, GitBranch } from "lucide-react";
+import { Printer, GitBranch, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { CARD_STATUSES, type ComercialCard, PROPOSTA_STATUS_LABEL, propostaTotal, type Proposta } from "@/lib/comercial/types";
-import { useComercial, criarNovaVersaoProposta, getPropostasDoCard, getRootPropostaId } from "@/lib/comercial/store";
+import { useComercial, criarNovaVersaoProposta, getPropostasDoCard, getRootPropostaId, deleteProposta } from "@/lib/comercial/store";
 import { gerarPropostaPDF } from "@/lib/comercial/pdf";
 
 const brl = (v: number) =>
@@ -133,6 +133,19 @@ export function DetalhesDrawer({
                               >
                                 <Printer className="h-3 w-3" />
                               </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6 text-destructive hover:text-destructive"
+                                title="Excluir versão"
+                                onClick={() => {
+                                  if (!confirm(`Excluir a versão v${v.version ?? 1} da proposta #${String(v.numero).padStart(4, "0")}?`)) return;
+                                  deleteProposta(v.id);
+                                  toast.success("Versão excluída");
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
                             </span>
                           </li>
                         ))}
@@ -142,8 +155,8 @@ export function DetalhesDrawer({
                         className="w-full mt-2"
                         size="sm"
                         variant="outline"
-                        onClick={() => {
-                          const nova = criarNovaVersaoProposta(atual.id);
+                        onClick={async () => {
+                          const nova = await criarNovaVersaoProposta(atual.id);
                           if (nova) {
                             toast.success(`Nova versão criada (v${nova.version})`);
                             onEditProposta?.(nova);

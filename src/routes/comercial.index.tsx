@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { CARD_STATUSES, type CardStatus, type ComercialCard, TIPOS_EVENTO } from "@/lib/comercial/types";
+import { CARD_STATUSES, type CardStatus, type ComercialCard, TIPOS_EVENTO, propostaTotal } from "@/lib/comercial/types";
 import { useComercial, moveCard, updateCard } from "@/lib/comercial/store";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -206,33 +206,42 @@ function QuadroVendas() {
       <TooltipProvider>
         <DndContext sensors={sensors} onDragEnd={onDragEnd}>
           <div className="flex gap-3 overflow-x-auto overflow-y-hidden pb-4 items-stretch h-[calc(100dvh-230px)] min-h-[420px]">
-            {CARD_STATUSES.map((s) => (
-              <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={byStatus[s.key]?.length ?? 0}>
-                {(byStatus[s.key] ?? []).map((c) => {
-                  const proposta = c.propostaId ? propostas.find((p) => p.id === c.propostaId) : null;
-                  return (
-                    <KanbanCard
-                      key={c.id}
-                      card={c}
-                      hasProposta={!!proposta}
-                      onEdit={() => { setEditCard(c); setOpenCard(true); }}
-                      onDetalhes={() => setDetalhesCard(c)}
-                      onVenda={() => moveCard(c.id, "fechamento")}
-                      onPerda={() => setPerdaCardId(c.id)}
-                      onProposta={() => { setWizardCardId(c.id); setWizardOpen(true); }}
-                      onImprimir={() => proposta && gerarPropostaPDF(proposta)}
-                    />
-                  );
-                })}
-                <button
-                  type="button"
-                  onClick={() => { setEditCard(null); setDefaultStatus(s.key); setOpenCard(true); }}
-                  className="w-full text-xs text-muted-foreground hover:text-foreground py-1.5 rounded border border-dashed border-border hover:border-primary"
-                >
-                  + adicionar
-                </button>
-              </Column>
-            ))}
+            {CARD_STATUSES.map((s) => {
+              const colCards = byStatus[s.key] ?? [];
+              const totalCol = colCards.reduce((acc, c) => {
+                const prop = c.propostaId ? propostas.find((p) => p.id === c.propostaId) : null;
+                return acc + (prop ? propostaTotal(prop) : (c.valorEstimado || 0));
+              }, 0);
+              return (
+                <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={colCards.length} total={totalCol}>
+                  {colCards.map((c) => {
+                    const proposta = c.propostaId ? propostas.find((p) => p.id === c.propostaId) : null;
+                    const valorReal = proposta ? propostaTotal(proposta) : null;
+                    return (
+                      <KanbanCard
+                        key={c.id}
+                        card={c}
+                        hasProposta={!!proposta}
+                        valorReal={valorReal}
+                        onEdit={() => { setEditCard(c); setOpenCard(true); }}
+                        onDetalhes={() => setDetalhesCard(c)}
+                        onVenda={() => moveCard(c.id, "fechamento")}
+                        onPerda={() => setPerdaCardId(c.id)}
+                        onProposta={() => { setWizardCardId(c.id); setWizardOpen(true); }}
+                        onImprimir={() => proposta && gerarPropostaPDF(proposta)}
+                      />
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => { setEditCard(null); setDefaultStatus(s.key); setOpenCard(true); }}
+                    className="w-full text-xs text-muted-foreground hover:text-foreground py-1.5 rounded border border-dashed border-border hover:border-primary"
+                  >
+                    + adicionar
+                  </button>
+                </Column>
+              );
+            })}
           </div>
         </DndContext>
       </TooltipProvider>
@@ -305,20 +314,25 @@ function QuadroVendas() {
 }
 
 function Column({
-  statusKey, label, color, count, children,
-}: { statusKey: string; label: string; color: string; count: number; children: React.ReactNode }) {
+  statusKey, label, color, count, total, children,
+}: { statusKey: string; label: string; color: string; count: number; total: number; children: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id: statusKey });
   return (
     <div
       ref={setNodeRef}
       className={`flex-shrink-0 w-72 flex flex-col h-full rounded-lg border bg-muted/30 ${isOver ? "border-primary ring-2 ring-primary/30" : "border-border"}`}
     >
-      <div className="px-3 py-2 border-b border-border flex items-center justify-between shrink-0">
+      <div className="px-3 py-2 border-b border-border flex items-center justify-between shrink-0 gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className={`h-2 w-2 rounded-full ${color}`} />
           <span className="text-xs font-semibold truncate">{label}</span>
         </div>
-        <span className="text-[10px] text-muted-foreground">{count}</span>
+        <div className="flex items-center gap-2 shrink-0">
+          {total > 0 && (
+            <span className="text-[10px] font-medium text-foreground tabular-nums">{brl(total)}</span>
+          )}
+          <span className="text-[10px] text-muted-foreground">{count}</span>
+        </div>
       </div>
       <div className="p-2 space-y-2 flex-1 overflow-y-auto">{children}</div>
     </div>
@@ -326,10 +340,11 @@ function Column({
 }
 
 function KanbanCard({
-  card, hasProposta, onEdit, onDetalhes, onVenda, onPerda, onProposta, onImprimir,
+  card, hasProposta, valorReal, onEdit, onDetalhes, onVenda, onPerda, onProposta, onImprimir,
 }: {
   card: ComercialCard;
   hasProposta: boolean;
+  valorReal: number | null;
   onEdit: () => void; onDetalhes: () => void; onVenda: () => void; onPerda: () => void; onProposta: () => void; onImprimir: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id });
@@ -355,9 +370,13 @@ function KanbanCard({
           <div className="mt-1.5 space-y-0.5 text-[11px] text-muted-foreground">
             {(card.eventoDataInicio || card.eventoDataFim) && <div>Data: {fmtPeriodo(card.eventoDataInicio, card.eventoDataFim)}</div>}
             {card.responsavel && <div>Consultor(a): {card.responsavel}</div>}
-            {card.valorEstimado > 0 && (
-              <div className="font-medium text-foreground">{brl(card.valorEstimado)}</div>
-            )}
+            {valorReal !== null ? (
+              <div className="font-medium text-foreground">{brl(valorReal)}</div>
+            ) : card.valorEstimado > 0 ? (
+              <div className="font-medium text-foreground">
+                {brl(card.valorEstimado)} <span className="text-[10px] font-normal text-muted-foreground">estimado</span>
+              </div>
+            ) : null}
           </div>
           {card.status === "perda" && card.motivoPerda && (
             <span className="inline-block mt-1.5 px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-600 dark:text-rose-400 text-[10px] truncate max-w-full">

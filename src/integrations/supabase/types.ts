@@ -425,6 +425,143 @@ export type Database = {
         }
         Relationships: []
       }
+      comercial_cards: {
+        Row: {
+          cliente_id: string | null
+          cliente_nome: string
+          created_at: string
+          created_by: string | null
+          data_envio: string | null
+          evento_data_fim: string | null
+          evento_data_inicio: string | null
+          evento_nome: string
+          id: string
+          motivo_perda: string | null
+          observacoes: string
+          proposta_id: string | null
+          responsavel: string
+          status: string
+          valor_estimado: number
+        }
+        Insert: {
+          cliente_id?: string | null
+          cliente_nome?: string
+          created_at?: string
+          created_by?: string | null
+          data_envio?: string | null
+          evento_data_fim?: string | null
+          evento_data_inicio?: string | null
+          evento_nome?: string
+          id?: string
+          motivo_perda?: string | null
+          observacoes?: string
+          proposta_id?: string | null
+          responsavel?: string
+          status?: string
+          valor_estimado?: number
+        }
+        Update: {
+          cliente_id?: string | null
+          cliente_nome?: string
+          created_at?: string
+          created_by?: string | null
+          data_envio?: string | null
+          evento_data_fim?: string | null
+          evento_data_inicio?: string | null
+          evento_nome?: string
+          id?: string
+          motivo_perda?: string | null
+          observacoes?: string
+          proposta_id?: string | null
+          responsavel?: string
+          status?: string
+          valor_estimado?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comercial_cards_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "comercial_clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comercial_catalogo: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          nome: string
+          tipo_medida: string
+          unidade: string
+          valor_unitario: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nome: string
+          tipo_medida?: string
+          unidade?: string
+          valor_unitario?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nome?: string
+          tipo_medida?: string
+          unidade?: string
+          valor_unitario?: number
+        }
+        Relationships: []
+      }
+      comercial_clientes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string
+          id: string
+          nome: string
+          telefone: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          id?: string
+          nome: string
+          telefone?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          id?: string
+          nome?: string
+          telefone?: string
+        }
+        Relationships: []
+      }
+      comercial_consultores: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
       comercial_email_log: {
         Row: {
           card_id: string | null
@@ -484,6 +621,86 @@ export type Database = {
           template_name?: string
         }
         Relationships: []
+      }
+      comercial_proposta_seq: {
+        Row: {
+          id: boolean
+          valor: number
+        }
+        Insert: {
+          id?: boolean
+          valor?: number
+        }
+        Update: {
+          id?: boolean
+          valor?: number
+        }
+        Relationships: []
+      }
+      comercial_propostas: {
+        Row: {
+          ambientes: Json
+          approved_at: string | null
+          card_id: string | null
+          cliente: Json
+          cliente_id: string | null
+          created_at: string
+          created_by: string | null
+          custos: Json
+          evento: Json
+          id: string
+          numero: number
+          parent_id: string | null
+          responsavel: string
+          resumo: Json
+          status: string
+          version: number
+        }
+        Insert: {
+          ambientes?: Json
+          approved_at?: string | null
+          card_id?: string | null
+          cliente?: Json
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          custos?: Json
+          evento?: Json
+          id?: string
+          numero: number
+          parent_id?: string | null
+          responsavel?: string
+          resumo?: Json
+          status?: string
+          version?: number
+        }
+        Update: {
+          ambientes?: Json
+          approved_at?: string | null
+          card_id?: string | null
+          cliente?: Json
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          custos?: Json
+          evento?: Json
+          id?: string
+          numero?: number
+          parent_id?: string | null
+          responsavel?: string
+          resumo?: Json
+          status?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comercial_propostas_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "comercial_cards"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       comercial_status_defaults: {
         Row: {
@@ -2710,6 +2927,7 @@ export type Database = {
         Returns: boolean
       }
       next_pat_requisicao_numero: { Args: never; Returns: number }
+      next_proposta_numero: { Args: never; Returns: number }
       next_requisicao_numero: { Args: never; Returns: number }
       primeira_data_rotina: {
         Args: {
