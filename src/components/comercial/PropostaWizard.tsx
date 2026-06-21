@@ -429,24 +429,10 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
                           ))}
 
                           <div className="flex gap-2 pt-1">
-                            <Select value="" onValueChange={(v) => adicionarDescricaoDoCatalogo(aIdx, iIdx, v)}>
-                              <SelectTrigger className="h-8 text-xs">
-                                <SelectValue placeholder="+ Adicionar descrição (catálogo)" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {catalogo.length === 0 && (
-                                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                                    Catálogo vazio
-                                  </div>
-                                )}
-                                {catalogo.map((c) => (
-                                  <SelectItem key={c.id} value={c.id}>
-                                    {c.nome} <span className="text-muted-foreground">— {TIPO_MEDIDA_LABEL[c.tipoMedida]}</span>
-                                  </SelectItem>
-                                ))}
-                                <SelectItem value="__vazia__">+ Descrição manual (em branco)</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <CatalogoCombobox
+                              catalogo={catalogo}
+                              onPick={(v) => adicionarDescricaoDoCatalogo(aIdx, iIdx, v)}
+                            />
                           </div>
                         </div>
                       </div>
