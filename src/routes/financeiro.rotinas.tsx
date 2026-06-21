@@ -370,6 +370,31 @@ function CalendarioRotinas({ rotinas, onEdit }: { rotinas: Rotina[]; onEdit: (r:
 // DIALOG
 // ============================================================================
 
+const MAICON_USER_ID = "7df29f9f-beb0-4710-9036-17996e9cbd82";
+
+async function shareWithMaicon(rotina: Rotina) {
+  const url = `${window.location.origin}/financeiro/rotinas?rotina=${rotina.id}`;
+  try {
+    await navigator.clipboard.writeText(url);
+    toast.success("Link copiado para a área de transferência");
+  } catch {
+    toast.warning("Não foi possível copiar o link automaticamente");
+  }
+  try {
+    const { error } = await supabase.from("notificacoes").insert({
+      user_id: MAICON_USER_ID,
+      tipo: "rotina_compartilhada",
+      titulo: "Rotina compartilhada",
+      mensagem: rotina.titulo,
+      link: `/financeiro/rotinas?rotina=${rotina.id}`,
+    });
+    if (error) throw error;
+    toast.success("Maicon foi notificado");
+  } catch (e: any) {
+    toast.error(`Falha ao notificar: ${e.message ?? e}`);
+  }
+}
+
 function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: () => void }) {
   const qc = useQueryClient();
   const isEdit = !!rotina.id;
