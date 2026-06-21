@@ -61,7 +61,7 @@ const allItems: NavItem[] = [
   { title: "Quadro de Compras", url: "/compras", icon: KanbanSquare, group: "Compras", module: "compras" },
   { title: "Configurações", url: "/compras/configuracoes", icon: Settings, group: "Compras", module: "compras", moduleAdminOnly: "compras" },
   { title: "Dashboard", url: "/financeiro/dashboard", icon: BarChart3, group: "Despesas", module: "financeiro" },
-  { title: "Quadro de Demandas", url: "/financeiro", icon: KanbanSquare, group: "Despesas", module: "financeiro" },
+  { title: "Quadro de Despesas", url: "/financeiro", icon: KanbanSquare, group: "Despesas", module: "financeiro" },
   { title: "Rotinas", url: "/financeiro/rotinas", icon: ClipboardCheck, group: "Despesas", module: "financeiro" },
   { title: "Conta Azul", url: "/financeiro/conta-azul", icon: Link2, group: "Despesas", module: "financeiro" },
   { title: "Configurações", url: "/financeiro/configuracoes", icon: Settings, group: "Despesas", module: "financeiro", moduleAdminOnly: "financeiro" },
