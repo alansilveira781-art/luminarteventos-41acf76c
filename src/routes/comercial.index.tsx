@@ -314,20 +314,25 @@ function QuadroVendas() {
 }
 
 function Column({
-  statusKey, label, color, count, children,
-}: { statusKey: string; label: string; color: string; count: number; children: React.ReactNode }) {
+  statusKey, label, color, count, total, children,
+}: { statusKey: string; label: string; color: string; count: number; total: number; children: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id: statusKey });
   return (
     <div
       ref={setNodeRef}
       className={`flex-shrink-0 w-72 flex flex-col h-full rounded-lg border bg-muted/30 ${isOver ? "border-primary ring-2 ring-primary/30" : "border-border"}`}
     >
-      <div className="px-3 py-2 border-b border-border flex items-center justify-between shrink-0">
+      <div className="px-3 py-2 border-b border-border flex items-center justify-between shrink-0 gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className={`h-2 w-2 rounded-full ${color}`} />
           <span className="text-xs font-semibold truncate">{label}</span>
         </div>
-        <span className="text-[10px] text-muted-foreground">{count}</span>
+        <div className="flex items-center gap-2 shrink-0">
+          {total > 0 && (
+            <span className="text-[10px] font-medium text-foreground tabular-nums">{brl(total)}</span>
+          )}
+          <span className="text-[10px] text-muted-foreground">{count}</span>
+        </div>
       </div>
       <div className="p-2 space-y-2 flex-1 overflow-y-auto">{children}</div>
     </div>
@@ -335,10 +340,11 @@ function Column({
 }
 
 function KanbanCard({
-  card, hasProposta, onEdit, onDetalhes, onVenda, onPerda, onProposta, onImprimir,
+  card, hasProposta, valorReal, onEdit, onDetalhes, onVenda, onPerda, onProposta, onImprimir,
 }: {
   card: ComercialCard;
   hasProposta: boolean;
+  valorReal: number | null;
   onEdit: () => void; onDetalhes: () => void; onVenda: () => void; onPerda: () => void; onProposta: () => void; onImprimir: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id });
