@@ -82,8 +82,8 @@ function RotinasPage() {
   return (
     <>
       <PageHeader
-        title="Rotinas de Despesas"
-        description="Cadastre as rotinas recorrentes do setor de despesas"
+        title="Rotinas Financeiras"
+        description="Cadastre as rotinas recorrentes do setor financeiro"
         actions={
           <Button onClick={() => setEditing({})}>
             <Plus className="h-4 w-4 mr-1" /> Nova rotina
