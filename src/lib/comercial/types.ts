@@ -9,7 +9,7 @@ export const CARD_STATUSES = [
 ] as const;
 export type CardStatus = (typeof CARD_STATUSES)[number]["key"];
 
-export const TIPOS_EVENTO = ["Cenografia", "Casamento", "Corporativo", "Stand"] as const;
+export const TIPOS_EVENTO = ["Cenografia", "Casamento", "Corporativo", "Stand", "Social"] as const;
 export type TipoEvento = (typeof TIPOS_EVENTO)[number];
 
 export const CONSULTORES_PADRAO = ["Pádua Costa", "Romulo Manoel"] as const;

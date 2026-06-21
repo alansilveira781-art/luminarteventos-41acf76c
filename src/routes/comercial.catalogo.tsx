@@ -11,12 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NumberInput } from "@/components/comercial/NumberInput";
 import { MoneyInput } from "@/components/MoneyInput";
-import {
-  useComercial,
-  createCatalogoDescricao,
-  updateCatalogoDescricao,
-  deleteCatalogoDescricao,
-} from "@/lib/comercial/store";
+import { useCatalogo, useCatalogoMutations } from "@/lib/comercial/useCatalogo";
 import {
   TIPO_MEDIDA_LABEL,
   type CatalogoDescricao,
