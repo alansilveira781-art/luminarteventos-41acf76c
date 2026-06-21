@@ -31,6 +31,7 @@ import {
   useComercial,
   addConsultor,
 } from "@/lib/comercial/store";
+import { useCatalogo } from "@/lib/comercial/useCatalogo";
 import { NumberInput } from "@/components/comercial/NumberInput";
 import { MoneyInput } from "@/components/MoneyInput";
 
@@ -90,7 +91,8 @@ function newAmbiente(nome = ""): Ambiente {
 }
 
 export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta }: Props) {
-  const { consultores, catalogo } = useComercial();
+  const { consultores } = useComercial();
+  const { catalogo } = useCatalogo();
   const [step, setStep] = useState(0);
   const [cliente, setCliente] = useState({ nome: "", telefone: "", email: "" });
   const [evento, setEvento] = useState<Proposta["evento"]>({

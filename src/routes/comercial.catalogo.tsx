@@ -28,7 +28,8 @@ const brl = (v: number) =>
 const TIPOS: TipoMedida[] = ["unidade", "dimensional", "area", "linear"];
 
 function CatalogoPage() {
-  const { catalogo } = useComercial();
+  const { catalogo } = useCatalogo();
+  const { remove } = useCatalogoMutations();
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState<CatalogoDescricao | null>(null);
   const [q, setQ] = useState("");
@@ -86,7 +87,7 @@ function CatalogoPage() {
                     </Button>
                     <Button size="icon" variant="ghost" onClick={() => {
                       if (confirm(`Excluir "${c.nome}"?`)) {
-                        deleteCatalogoDescricao(c.id);
+                        remove.mutate(c.id);
                         toast.success("Descrição excluída");
                       }
                     }}>
@@ -108,6 +109,7 @@ function CatalogoPage() {
 function CatalogoDialog({
   open, onOpenChange, edit,
 }: { open: boolean; onOpenChange: (v: boolean) => void; edit: CatalogoDescricao | null }) {
+  const { create, update } = useCatalogoMutations();
   const [nome, setNome] = useState("");
   const [tipoMedida, setTipoMedida] = useState<TipoMedida>("unidade");
   const [valor, setValor] = useState(0);
@@ -124,14 +126,24 @@ function CatalogoDialog({
   function save() {
     if (!nome.trim()) return toast.error("Informe o nome");
     if (edit) {
-      updateCatalogoDescricao(edit.id, { nome: nome.trim(), tipoMedida, valorUnitario: valor, unidade });
-      toast.success("Descrição atualizada");
+      update.mutate(
+        { id: edit.id, patch: { nome: nome.trim(), tipoMedida, valorUnitario: valor, unidade } },
+        {
+          onSuccess: () => { toast.success("Descrição atualizada"); onOpenChange(false); },
+          onError: (e: any) => toast.error(e?.message ?? "Falha ao salvar"),
+        },
+      );
     } else {
-      createCatalogoDescricao({ nome: nome.trim(), tipoMedida, valorUnitario: valor, unidade });
-      toast.success("Descrição cadastrada");
+      create.mutate(
+        { nome: nome.trim(), tipoMedida, valorUnitario: valor, unidade },
+        {
+          onSuccess: () => { toast.success("Descrição cadastrada"); onOpenChange(false); },
+          onError: (e: any) => toast.error(e?.message ?? "Falha ao cadastrar"),
+        },
+      );
     }
-    onOpenChange(false);
   }
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
