@@ -404,6 +404,16 @@ export function AppTopBar() {
 
         <div className="ml-auto flex items-center gap-2">
           <ThemeToggle />
+          <a
+            href="https://luminarteventos.lovable.app/solicitar"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Solicitar demanda"
+            aria-label="Solicitar demanda"
+            className="h-9 w-9 inline-flex items-center justify-center rounded-md border border-border bg-card text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+          >
+            <ClipboardCheck className="h-4 w-4" />
+          </a>
           <NotificationBell />
           <div className="hidden sm:flex items-center gap-2 px-2 py-1 rounded-md border border-border bg-card">
             <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />

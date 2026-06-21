@@ -2121,6 +2121,7 @@ export type Database = {
           data_assinatura: string | null
           data_fechamento: string | null
           empresa: string | null
+          forma_pagamento: string | null
           id: string
           modelo_id: string | null
           observacoes: string | null
@@ -2145,6 +2146,7 @@ export type Database = {
           data_assinatura?: string | null
           data_fechamento?: string | null
           empresa?: string | null
+          forma_pagamento?: string | null
           id?: string
           modelo_id?: string | null
           observacoes?: string | null
@@ -2169,6 +2171,7 @@ export type Database = {
           data_assinatura?: string | null
           data_fechamento?: string | null
           empresa?: string | null
+          forma_pagamento?: string | null
           id?: string
           modelo_id?: string | null
           observacoes?: string | null
