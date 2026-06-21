@@ -231,17 +231,6 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
     }));
   }
 
-  function adicionarDescricaoDoCatalogo(aIdx: number, iIdx: number, catalogoId: string) {
-    if (catalogoId === "__vazia__") {
-      const novas = [...ambientes[aIdx].itens[iIdx].descricoes, newDescricaoVazia()];
-      patchItem(aIdx, iIdx, { descricoes: novas });
-      return;
-    }
-    const c = catalogo.find((x) => x.id === catalogoId);
-    if (!c) return;
-    const novas = [...ambientes[aIdx].itens[iIdx].descricoes, descricaoFromCatalogo(c)];
-    patchItem(aIdx, iIdx, { descricoes: novas });
-  }
 
   async function adicionarImagens(aIdx: number, files: FileList | null) {
     if (!files || files.length === 0) return;
