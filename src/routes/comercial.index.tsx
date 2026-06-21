@@ -257,7 +257,7 @@ function QuadroVendas() {
                         valorReal={valorReal}
                         onEdit={() => { setEditCard(c); setOpenCard(true); }}
                         onDetalhes={() => setDetalhesCard(c)}
-                        onVenda={() => { moveCard(c.id, "fechamento"); abrirContratoParaCard(c.id); }}
+                        onVenda={() => abrirContratoParaCard(c.id)}
                         onPerda={() => setPerdaCardId(c.id)}
                         onProposta={() => { setWizardCardId(c.id); setWizardOpen(true); }}
                         onImprimir={() => proposta && gerarPropostaPDF(proposta)}
