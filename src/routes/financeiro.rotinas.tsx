@@ -411,12 +411,48 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
     exige_validacao: rotina.exige_validacao ?? false,
     max_ocorrencias: rotina.max_ocorrencias != null ? String(rotina.max_ocorrencias) : "",
   });
+  const [files, setFiles] = useState<File[]>([]);
+
+  const { data: existingAnexos = [] } = useQuery({
+    queryKey: ["rotina-anexos", rotina.id],
+    queryFn: async () => {
+      if (!rotina.id) return [] as any[];
+      const { data } = await supabase
+        .from("financeiro_rotina_anexos" as any)
+        .select("*")
+        .eq("rotina_id", rotina.id)
+        .order("created_at", { ascending: true });
+      return (data ?? []) as any[];
+    },
+    enabled: !!rotina.id,
+  });
+  const [previewAnexo, setPreviewAnexo] = useState<any | null>(null);
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
   const toggleDay = (d: number) => {
     const cur = form.dias_semana ?? [];
     set("dias_semana", cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d].sort());
   };
+
+  async function uploadRotinaAnexos(rotinaId: string, userId: string | null, filesToUpload: File[]) {
+    for (const file of filesToUpload) {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `rotinas/${rotinaId}/${Date.now()}_${safeName}`;
+      const { error: upErr } = await supabase.storage.from("rotina-anexos").upload(path, file, {
+        contentType: file.type || undefined,
+      });
+      if (upErr) throw upErr;
+      const { error: insErr } = await supabase.from("financeiro_rotina_anexos" as any).insert({
+        rotina_id: rotinaId,
+        nome: file.name,
+        path,
+        mime_type: file.type || null,
+        tamanho: file.size,
+        uploaded_by: userId,
+      });
+      if (insErr) throw insErr;
+    }
+  }
 
   const saveMut = useMutation({
     mutationFn: async () => {
@@ -436,24 +472,29 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
         exige_validacao: form.exige_validacao,
         max_ocorrencias: maxOcorr,
       };
+      const { data: { user } } = await supabase.auth.getUser();
+      let savedId = rotina.id as string | undefined;
       if (isEdit) {
         const { error } = await supabase.from("financeiro_rotinas" as any).update(payload).eq("id", rotina.id!);
         if (error) throw error;
       } else {
-        const { data: { user } } = await supabase.auth.getUser();
-        // calcular proxima_data inicial = data_inicio (primeira ocorrência)
-        const { error } = await supabase.from("financeiro_rotinas" as any).insert({
+        const { data, error } = await supabase.from("financeiro_rotinas" as any).insert({
           ...payload,
           created_by: user?.id ?? null,
           proxima_data: form.data_inicio,
           ocorrencias_realizadas: 0,
           encerrada: false,
-        });
+        }).select("id").single();
         if (error) throw error;
+        savedId = (data as any).id;
+      }
+      if (savedId && files.length > 0) {
+        await uploadRotinaAnexos(savedId, user?.id ?? null, files);
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["financeiro-rotinas"] });
+      qc.invalidateQueries({ queryKey: ["rotina-anexos"] });
       toast.success(isEdit ? "Rotina atualizada" : "Rotina criada");
       onClose();
     },
