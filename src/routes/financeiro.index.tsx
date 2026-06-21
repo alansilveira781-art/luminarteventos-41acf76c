@@ -133,7 +133,7 @@ function DemandasKanban() {
   return (
     <>
       <PageHeader
-        title="Quadro de Demandas"
+        title="Quadro de Despesas"
         description="Arraste os cards entre as colunas para alterar o status"
         actions={
           <Button onClick={() => { setEditId(null); setDefaultStatus("solicitacao"); setOpen(true); }}>
