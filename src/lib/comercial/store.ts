@@ -269,7 +269,7 @@ async function maybeMigrate() {
       }
     }
     if (lsConsultores.length) {
-      const padrao = new Set([...CONSULTORES_PADRAO]);
+      const padrao = new Set<string>(CONSULTORES_PADRAO as readonly string[]);
       const novos = lsConsultores.filter((n) => !padrao.has(n));
       if (novos.length) {
         await sb.from("comercial_consultores").upsert(novos.map((nome) => ({ nome })), { onConflict: "nome" });
