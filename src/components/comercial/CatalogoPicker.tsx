@@ -119,7 +119,7 @@ export function CatalogoPicker({
               className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent text-left text-primary"
             >
               <Plus className="h-3.5 w-3.5" />
-              {search.trim() ? `“${search.trim()}” + Nova descrição` : "+ Nova descrição"}
+              {search.trim() ? `“${search.trim()}” + Nova descrição` : "Nova descrição"}
             </button>
             <button
               type="button"
