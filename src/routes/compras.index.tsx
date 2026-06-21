@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, ChevronRight } from "lucide-react";
 import { CompraDialog } from "@/components/CompraDialog";
-import { COMPRA_STATUSES, canMoveCompra, moveBlockedMessage, type CompraStatus } from "@/lib/compras";
+import { COMPRA_STATUSES, canMoveCompra, canNatanaelMoveTo, moveBlockedMessage, type CompraStatus } from "@/lib/compras";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   DndContext,
@@ -36,6 +36,7 @@ type Compra = {
   status: CompraStatus;
   titulo: string | null;
   solicitante: string | null;
+  solicitante_id: string | null;
   fornecedor: string | null;
   comprador: string | null;
   data_solicitacao: string | null;
@@ -73,7 +74,7 @@ function ComprasKanban() {
     queryFn: async () => {
       const { data, error } = await sb
         .from("compras")
-        .select("id,numero,status,titulo,solicitante,fornecedor,comprador,data_solicitacao,data_compra,valor_total,responsavel_id,responsavel_nome,tipo_compra")
+        .select("id,numero,status,titulo,solicitante,solicitante_id,fornecedor,comprador,data_solicitacao,data_compra,valor_total,responsavel_id,responsavel_nome,tipo_compra")
 
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -148,6 +149,8 @@ function ComprasKanban() {
     opts?: { force?: boolean; toastMsg?: string },
   ) {
     if (compra.status === status) return;
+    // Regra silenciosa do Natanael (sem notificação/toast)
+    if (!canNatanaelMoveTo(compra, user?.id, isAdmin, status)) return;
     if (status === "a_receber" && !compra.tipo_compra) {
       toast.error("Defina o tipo da compra antes de movê-la para Compras a Receber.");
       return;
