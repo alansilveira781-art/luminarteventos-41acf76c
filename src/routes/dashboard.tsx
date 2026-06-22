@@ -191,6 +191,7 @@ function Dashboard() {
   const tabelaItens = useMemo(() => {
     const map = new Map<string, { item: any; qtd: number; valorTotal: number }>();
     for (const m of movsPeriodo ?? []) {
+      if (isAjusteMovimentacao(m)) continue;
       const it: any = (m as any).item;
       if (!it) continue;
       const key = m.item_id as string | null;
