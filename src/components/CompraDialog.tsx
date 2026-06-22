@@ -81,6 +81,9 @@ export function CompraDialog({
   const [form, setForm] = useState<Compra>({ status: defaultStatus });
   const [itens, setItens] = useState<CompraItem[]>([]);
   const [statusInicial, setStatusInicial] = useState<CompraStatus>(defaultStatus);
+  const isAdmin = isModuleAdmin("compras") || isModuleAdmin("estoque");
+  const canEdit = !compraId || canEditCompra(form as any, user?.id, isAdmin);
+  const editBlockedMsg = canEdit ? null : moveBlockedMessage(form as any);
 
   const { data: estoqueItens = [] } = useQuery({
     queryKey: ["itens-min"],
