@@ -56,8 +56,8 @@ function EntradasPage() {
   const [importingXml, setImportingXml] = useState(false);
   const [q, setQ] = useState<string>(""); const qd = useDebouncedValue(q, 300);
   const [filterItemQ, setFilterItemQ] = useState<string>(""); const filterItemQd = useDebouncedValue(filterItemQ, 300);
-  const [periodoPreset, setPeriodoPreset] = useState<PeriodoPreset>("mes");
-  const [periodo, setPeriodo] = useState<Periodo>(() => periodoFromPreset("mes"));
+  const [periodoPreset, setPeriodoPreset] = useState<PeriodoPreset>("todos");
+  const [periodo, setPeriodo] = useState<Periodo>(() => periodoFromPreset("todos"));
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
   const [filterEvento, setFilterEvento] = useState<string>("__all");
