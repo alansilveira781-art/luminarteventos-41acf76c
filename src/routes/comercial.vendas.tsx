@@ -197,10 +197,9 @@ function VendasPage() {
 
   function exportCsv() {
     const headers = [
-      "Data Evento", "Data Registro", "Nome do Evento", "Empresa", "Local",
-      "Cidade", "Estado", "Salão", "Tipo Evento", "Classificação",
-      "Consultor", "Gestor", "Cerimonial", "Decorador",
-      "Quantidade", "Valor Proposta", "Desconto", "Valor Final", "Valor BV",
+      "Data de Registro", "Tipo", "Nome do Evento", "Local", "Cidade", "Estado",
+      "Classificação", "Consultor", "Cerimonial", "Decorador", "Empresa",
+      "Valor da Proposta", "Desconto", "Valor Final", "Valor BV",
     ];
     const esc = (v: string | number | null) => {
       const s = v === null || v === undefined ? "" : String(v);
@@ -209,11 +208,10 @@ function VendasPage() {
     const lines = [headers.join(";")];
     for (const r of sorted) {
       lines.push([
-        r.dataEvento ?? "", r.dataRegistro ?? "", r.nomeEvento ?? "", r.empresa ?? "",
-        r.local ?? "", r.cidade ?? "", r.estado ?? "", r.salao ?? "",
-        r.tipoEvento ?? "", r.classificacao ?? "",
-        r.consultor ?? "", r.gestor ?? "", r.cerimonial ?? "", r.decorador ?? "",
-        r.quantidade, r.valorProposta, r.desconto, r.valorFinal, r.valorBV,
+        r.dataRegistro ?? "", r.tipo ?? "", r.nomeEvento ?? "",
+        r.local ?? "", r.cidade ?? "", r.estado ?? "",
+        r.classificacao ?? "", r.consultor ?? "", r.cerimonial ?? "", r.decorador ?? "", r.empresa ?? "",
+        r.valorProposta, r.desconto, r.valorFinal, r.valorBV,
       ].map(esc).join(";"));
     }
     const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
@@ -224,6 +222,7 @@ function VendasPage() {
     a.click();
     URL.revokeObjectURL(url);
   }
+
 
   function resetFiltros() {
     setEmpresa("Todos"); setAno("Todos"); setMes("Todos");
