@@ -386,6 +386,15 @@ function PatrimonioDashboard() {
   );
 }
 
+function AlertaCount({ label, value, className }: { label: string; value: number; className: string }) {
+  return (
+    <div className={`rounded-md border px-3 py-2 ${className}`}>
+      <div className="text-[11px] uppercase tracking-wide opacity-80">{label}</div>
+      <div className="text-2xl font-semibold leading-tight">{value}</div>
+    </div>
+  );
+}
+
 function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: string; color: string }) {
   return (
     <Card className="p-4">
