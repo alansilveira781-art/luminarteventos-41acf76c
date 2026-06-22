@@ -67,7 +67,7 @@ export function getAno(r: VendaRow): number | null {
   );
 }
 export function getMes(r: VendaRow): string | null {
-  const stored = norm(r.mesEvento) || norm(r.mes);
+  const stored = cleanText(r.mesEvento) || cleanText(r.mes);
   if (stored) return stored;
   const m = parseMonth(pickDateIso(r)) ?? parseMonth(pickAnyDateIso(r));
   return m ? MESES_PT[m - 1] : null;

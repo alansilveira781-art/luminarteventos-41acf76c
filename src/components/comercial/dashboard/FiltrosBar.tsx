@@ -2,13 +2,22 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Filtros } from "@/lib/comercial/vendas-metrics";
 import type { VendaRow } from "@/lib/comercial/vendas.functions";
-import { uniqueValues, getAno } from "@/lib/comercial/vendas-metrics";
+import { getAno, cleanText } from "@/lib/comercial/vendas-metrics";
 
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
 export type FiltroField = "empresa" | "ano" | "mes" | "trimestre" | "consultor" | "classificacao";
 
 const DEFAULT_FIELDS: FiltroField[] = ["empresa", "ano", "mes", "consultor", "classificacao"];
+
+function uniqueClean(rows: VendaRow[], get: (r: VendaRow) => string | null | undefined): string[] {
+  const s = new Set<string>();
+  for (const r of rows) {
+    const v = cleanText(get(r));
+    if (v) s.add(v);
+  }
+  return [...s].sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
 
 export function FiltrosBar({
   rows,
@@ -35,13 +44,12 @@ export function FiltrosBar({
     if (showTrimestre) active.splice(active.indexOf("consultor"), 0, "trimestre");
   }
 
-  const empresas = (uniqueValues(rows, (r) => r.empresa) as string[]).sort();
+  const empresas = uniqueClean(rows, (r) => r.empresa);
   const anosSet = new Set<number>();
   for (const r of rows) { const a = getAno(r); if (a) anosSet.add(a); }
-  if (typeof filtros.ano === "number") anosSet.add(filtros.ano);
   const anos = [...anosSet].sort((a, b) => b - a);
-  const consultores = (uniqueValues(rows, (r) => r.consultor) as string[]).sort();
-  const classificacoes = (uniqueValues(rows, (r) => r.classificacao) as string[]).sort();
+  const consultores = uniqueClean(rows, (r) => r.consultor);
+  const classificacoes = uniqueClean(rows, (r) => r.classificacao);
 
   const set = <K extends keyof Filtros>(k: K, v: Filtros[K]) => onChange({ ...filtros, [k]: v });
 
