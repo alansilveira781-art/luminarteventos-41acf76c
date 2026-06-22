@@ -88,22 +88,13 @@ function DashboardLayout() {
   const filtered = useMemo(() => applyFilters(rows, filtros), [rows, filtros]);
   const previous = useMemo(() => previousPeriod(rows, filtros), [rows, filtros]);
 
-  async function refreshAll() {
-    await qc.invalidateQueries({ queryKey: ["comercial-vendas-db"] });
-  }
-
   return (
     <div className="p-4 sm:p-6 space-y-4">
       <PageHeader
         title="Dashboard Comercial"
-        description="Vendas cadastradas manualmente"
-        actions={
-          <Button variant="outline" size="sm" onClick={refreshAll} disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-            Atualizar
-          </Button>
-        }
+        description="Vendas cadastradas na aba Vendas"
       />
+
 
       <div className="flex flex-wrap gap-1 border-b border-border">
         {TABS.map((t) => {
