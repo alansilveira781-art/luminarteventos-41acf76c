@@ -275,14 +275,26 @@ function Dashboard() {
   const { data: saidasAbc } = useQuery({
     queryKey: ["dashboard-abc", dataIni, dataFim, categoriaAbc],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("movimentacoes")
-        .select("quantidade,valor_unitario,saida_tipo,observacoes,finalidade,tipo,item:itens(nome,codigo,categoria,valor_unitario)")
-        .eq("tipo", "saida")
-        .gte("data_movimento", new Date(dataIni).toISOString())
-        .lte("data_movimento", new Date(`${dataFim}T23:59:59`).toISOString())
-        .limit(10000);
-      let rows = data ?? [];
+      const all: any[] = [];
+      const size = 1000;
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("movimentacoes")
+          .select("quantidade,valor_unitario,saida_tipo,observacoes,finalidade,tipo,item:itens(nome,codigo,categoria,valor_unitario)")
+          .eq("tipo", "saida")
+          .gte("data_movimento", new Date(dataIni).toISOString())
+          .lte("data_movimento", new Date(`${dataFim}T23:59:59`).toISOString())
+          .order("data_movimento", { ascending: false })
+          .range(from, from + size - 1);
+        if (error) throw error;
+        const rows0 = data ?? [];
+        all.push(...rows0);
+        if (rows0.length < size) break;
+        from += size;
+      }
+      let rows = all;
+
       rows = rows.filter((r: any) => !isAjusteMovimentacao(r));
       if (categoriaAbc !== ALL) rows = rows.filter((r: any) => r.item?.categoria === categoriaAbc);
       return rows;
