@@ -51,6 +51,38 @@ function PatrimonioDashboard() {
     },
   });
 
+  // Empréstimos em aberto com previsão de devolução
+  const { data: saidasAbertas } = useQuery({
+    queryKey: ["pat_saidas_abertas_alertas"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pat_movimentacoes")
+        .select("id,item_id,quantidade,saida_status,data_prevista_devolucao,responsavel,evento_projeto")
+        .eq("tipo", "saida")
+        .in("saida_status", ["aberta", "parcialmente_devolvida"])
+        .not("data_prevista_devolucao", "is", null);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: devolvidoPorOrigem } = useQuery({
+    queryKey: ["pat_devolvido_por_origem_alertas"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("pat_movimentacoes")
+        .select("saida_origem_id,quantidade")
+        .eq("tipo", "devolucao")
+        .not("saida_origem_id", "is", null);
+      const m = new Map<string, number>();
+      (data ?? []).forEach((r: any) => {
+        m.set(r.saida_origem_id, (m.get(r.saida_origem_id) ?? 0) + Number(r.quantidade));
+      });
+      return m;
+    },
+  });
+
+
   const stats = useMemo(() => {
     const list = itens ?? [];
     const totalItens = list.length;
