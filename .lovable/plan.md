@@ -1,80 +1,70 @@
-# Plano — Endurecer comunicação com o banco e segurança
+## Plano — Dashboard Comercial refletir a base de Vendas
 
-Aplicar as quatro correções da revisão, em ordem de prioridade.
+### Parte 1 — Corrigir zeramento (ano/mês/trimestre derivados)
 
----
+**`src/lib/comercial/vendas-metrics.ts`**
+- Adicionar helpers de derivação a partir da `VendaRow`:
+  - `getAno(r)` → `r.anoEvento ?? r.ano ?? year(r.dataRegistro ?? r.dataEvento)`
+  - `getMes(r)` → `r.mesEvento ?? r.mes ?? nomeMesPt(date)`
+  - `getTrimestre(r)` → `r.trimestreEvento ?? trimestreFromMonth(date)`
+- Reescrever `applyFilters` para usar esses helpers (ano/mês/trimestre tolerantes a NULL).
+- Reescrever `evolucaoTrimestre`, `compararAnos` e qualquer agregação por período usando os mesmos helpers.
 
-## A. Proteger endpoints públicos com segredo (prioridade alta)
+**`src/components/comercial/dashboard/FiltrosBar.tsx`**
+- Lista de anos passa a usar `getAno(r)` em vez de `r.anoEvento ?? r.ano`.
+- Garantir que o valor atualmente selecionado sempre aparece como opção.
 
-Hoje `api/public/hooks/comercial-vendas-sync` e `api/public/contaazul/cron` aceitam qualquer chamada da internet. Vou exigir um token (um por endpoint, conforme escolha).
+**`src/lib/comercial/vendas-metrics.ts` (filtrosIniciais)**
+- Alterar `ano` inicial para `"Todos"` (evita abrir num ano sem dados).
+- Manter o `useEffect` em `comercial.dashboard.tsx` que ajusta para o último ano com dados se um ano específico estiver selecionado.
 
-**Novos secrets (via add_secret):**
-- `CRON_SECRET` — para `/api/public/contaazul/cron`
-- `VENDAS_SYNC_SECRET` — para `/api/public/hooks/comercial-vendas-sync`
+**Migration SQL (backfill idempotente)**
+- `UPDATE public.comercial_vendas` preenchendo `ano`, `ano_evento`, `mes`, `mes_evento`, `trimestre_evento` quando NULL, a partir de `COALESCE(data_registro, data_evento)`:
+  - `ano / ano_evento` = `EXTRACT(YEAR FROM ...)`
+  - `mes / mes_evento` = nome do mês em pt-BR (CASE com `EXTRACT(MONTH …)`)
+  - `trimestre_evento` = `CEIL(month/3.0)`
 
-**Mudanças no handler:**
-- Ler `Authorization: Bearer <token>` (ou `?token=` como fallback para o agendador do pg_cron).
-- Comparar com o secret usando `timingSafeEqual`.
-- Retornar `401` quando ausente/incorreto. Quando correto, processar normalmente.
+### Parte 2 — Ligar cards à base
 
-**Chamadores legítimos a atualizar:**
-- `pg_cron` que dispara `/contaazul/cron` (atualizar o `net.http_post` em migration para incluir o header com o token — sem expor valor em SQL: usar `current_setting` ou hardcode do valor sob orientação do usuário em uma migration controlada).
-- Qualquer ponto da UI que dispare `/contaazul/cron` imediatamente após iniciar carga histórica (passar token via server fn no backend, nunca do browser).
-- Hook do Dropbox de `comercial-vendas-sync` (se configurado externamente, o usuário coloca o header no Dropbox; documento isso).
+Adicionar agregações em `vendas-metrics.ts` (todas operam sobre `filtered`):
+- `comissoesPorVendedor(rows)` já existe usando `valorBV` → trocar para somar `valorComissao` por consultor. Adicionar `totalComissao` e `totalBV` como indicadores.
+- `rankingCerimonial` / `vendasPorCerimonial` → group by `cerimonial`, soma de `valorFinal` (já existe `rankingCerimonial`; conectar nos cards).
+- `rankingDecorador` / `vendasPorDecorador` → group by `decorador`, soma de `valorFinal` (já existe; conectar nos cards).
+- Real vs Meta: `realizado = sum(valorFinal)` do `filtered`, `meta = META_DEFAULT` (12.000.000).
 
-**Importante:** o token não pode vazar para o navegador. Se a UI precisar disparar o cron, fazer via `createServerFn` com `requireSupabaseAuth` que injeta o header no fetch interno.
+Conectar nas sub-rotas correspondentes:
+- `src/routes/comercial.dashboard.painel.tsx` — Gauge Real vs Meta, Vendas por Cerimonial, Vendas por Decorador.
+- `src/routes/comercial.dashboard.relatorios.tsx` — Comissões vendedores (com `valorComissao`) + total de BV.
+- `src/routes/comercial.dashboard.vendedores.tsx` — Rankings Cerimonial/Decorador conectados.
 
----
+(Leitura prévia de cada sub-rota para confirmar nomes exatos dos cards antes da edição.)
 
-## B. Restringir RLS de tabelas de negócio comerciais
+### Parte 3 — Tempo real
 
-Trocar policies `USING (true)` por checagem de módulo nas tabelas de negócio. Catálogos (`modulos`, `compradores`) ficam como estão.
+**`src/routes/comercial.dashboard.tsx`**
+- Reduzir `staleTime` de `["comercial-vendas-db"]` para 30s.
+- Adicionar `useEffect` que assina canal Supabase Realtime em `comercial_vendas` (INSERT/UPDATE/DELETE) e chama `qc.invalidateQueries({ queryKey: ["comercial-vendas-db"] })`. Cleanup com `removeChannel`.
 
-**Migration:**
-- `comercial_vendas` — substituir policies por `USING (public.has_module_access(auth.uid(), 'comercial'))` em SELECT/INSERT/UPDATE/DELETE; manter `service_role` com `ALL`.
-- `comercial_vendas_sync` — mesma regra (módulo `comercial`).
-- `ca_dre_estrutura` — restringir ao módulo `financeiro`.
-- Revisar e listar quaisquer outras tabelas com `USING(true)` para confirmar antes de aplicar (executar `supabase--read_query` no `pg_policies` durante a implementação).
+**Migration** (idempotente):
+- `ALTER TABLE public.comercial_vendas REPLICA IDENTITY FULL;`
+- Adicionar à publicação `supabase_realtime` se ainda não estiver (verificar via `pg_publication_tables`).
 
----
+### Parte 4 — Remover Dropbox do Dashboard
 
-## C. Confirmar gravação com `.select()` em inserts/updates críticos
+**`src/routes/comercial.dashboard.tsx`**
+- Remover: texto "Base local · Última sincronização", botões "Importar .xlsx" e "Sincronizar agora", `fileInputRef`, `handleUpload`, `handleSyncDropbox`, query `["comercial-vendas-last-sync"]`, imports `getLastSync`, `syncVendasFromDropbox`, `syncVendasFromUpload`, ícones `Upload`/`CloudDownload`.
+- Manter apenas o botão "Atualizar" que invalida `["comercial-vendas-db"]`.
+- Trocar `description` do `PageHeader` para algo neutro (ex: "Vendas cadastradas manualmente").
 
-Estender o padrão já adotado em Entradas/Saídas/Devoluções (`insert(...).select("id")` + verificação de retorno + `ensureValidSession()` + `describeSupabaseError`) para outras mutações de escrita:
+### Validação
 
-- `CompraDialog` (insert/update de compras e itens).
-- `DemandaDialog` (insert/update de demandas).
-- `financeiro.rotinas.tsx` (criação/edição de rotinas e execuções).
-- `juridico_contratos` (criar/editar contratos).
-- `patrimonio/Movimentacoes.tsx` e `patrimonio/Devolucoes.tsx`.
-- `rh_vagas`, `solicitantes`, `fornecedores` (CRUD).
+1. Abrir Dashboard com vendas 2026: KPIs e gráficos com valores reais; seletor de Ano com 2026 disponível e não vazio.
+2. Cards "Comissões vendedores", "Ranking Cerimonial/Agência", "Ranking Decorador", "Vendas por Cerimonial/Agência", "Vendas por Decorador", "Real vs Meta" exibem dados.
+3. Cadastrar nova venda em /comercial/vendas → Dashboard atualiza sem reload (via invalidação + Realtime).
+4. Vendas antigas com data nula passam a aparecer após backfill.
+5. Sem botões de Dropbox no cabeçalho.
 
-Para cada mutation:
-1. `await ensureValidSession()` antes do insert/update.
-2. `.insert(...).select("id")` (ou `.update(...).select("id")`).
-3. Validar que o retorno tem o tamanho esperado; se não, lançar erro claro.
-4. `await qc.refetchQueries(...)` antes de fechar modal.
-5. Usar `describeSupabaseError` no `onError`.
-
----
-
-## D. Trocar `.single()` por `.maybeSingle()` onde aplicável
-
-Varrer com `rg "\.single\(\)"` os 18 usos, classificar cada um:
-- **Manter `.single()`** quando o registro é garantidamente único (ex.: inserts com `.select().single()` logo após criar).
-- **Trocar por `.maybeSingle()`** quando a ausência é possível (lookup por id vindo de URL, busca de configuração opcional, etc.) e tratar `null` na UI sem quebrar a tela.
-
----
-
-## Validação
-
-- Após A: chamar os endpoints sem token → 401; com token → 200.
-- Após B: `supabase--read_query` em `pg_policies` confirma novas policies; teste manual com usuário sem módulo Comercial não vê linhas em `comercial_vendas`.
-- Após C: salvar registros em cada módulo afetado e confirmar que toast só aparece após `.select()` retornar; simular sessão expirada e verificar mensagem clara.
-- Após D: rotas listadas abrem mesmo quando o registro alvo não existe (mostra estado vazio, não tela quebrada).
-
-## Fora de escopo
-
-- Edge Functions `admin-create-user` / `admin-update-user` (já protegidas via service role).
-- Reorganização de buckets de storage.
-- Auditoria dinâmica via Security Advisor do Supabase (recomendar ao usuário rodar manualmente depois).
+### Fora de escopo
+- Não alterar cálculo de Valor Final/BV/Comissão (definidos na venda).
+- Não trocar fonte de dados (continua `comercial_vendas` via `listVendasDb`).
+- Não tocar em Estoque/Compras/Patrimônio.
