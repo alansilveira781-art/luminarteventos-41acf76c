@@ -297,8 +297,9 @@ function SaidasPage() {
     },
   });
 
-  // Filtros + agrupamento por requisicao_numero
+  // Filtros + agrupamento por requisicao_numero (ajustes de estoque ficam ocultos na lista)
   const filteredBaseList = (saidas ?? []).filter((m: any) => {
+    if (isAjusteMovimentacao(m)) return false;
     if (filterItemQd.trim()) {
       const itemHay = `${m.item?.codigo ?? ""} ${m.item?.nome ?? ""}`;
       if (!matchTokens(itemHay, filterItemQd)) return false;
