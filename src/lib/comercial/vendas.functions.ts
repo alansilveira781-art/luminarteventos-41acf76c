@@ -38,5 +38,3 @@ export type ListVendasResult = {
   fetchedAt: string;
   error?: string;
 };
-
-);
