@@ -45,13 +45,14 @@ type Compra = {
   responsavel_id: string | null;
   responsavel_nome: string | null;
   tipo_compra: string | null;
+  created_by: string | null;
 };
 
 
 function ComprasKanban() {
   const qc = useQueryClient();
   const { user, isModuleAdmin } = useAuth();
-  const isAdmin = isModuleAdmin("compras");
+  const isAdmin = isModuleAdmin("compras") || isModuleAdmin("estoque");
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [defaultStatus, setDefaultStatus] = useState<CompraStatus>("solicitacao");
@@ -74,7 +75,7 @@ function ComprasKanban() {
     queryFn: async () => {
       const { data, error } = await sb
         .from("compras")
-        .select("id,numero,status,titulo,solicitante,solicitante_id,fornecedor,comprador,data_solicitacao,data_compra,valor_total,responsavel_id,responsavel_nome,tipo_compra")
+        .select("id,numero,status,titulo,solicitante,solicitante_id,fornecedor,comprador,data_solicitacao,data_compra,valor_total,responsavel_id,responsavel_nome,tipo_compra,created_by")
 
         .order("created_at", { ascending: false });
       if (error) throw error;

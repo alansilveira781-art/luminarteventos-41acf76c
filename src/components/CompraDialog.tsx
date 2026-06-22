@@ -16,7 +16,7 @@ import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
 import { ensureValidSession, describeSupabaseError } from "@/lib/supabase-guard";
-import { COMPRA_STATUSES, TIPO_COMPRA_OPTIONS, canMoveCompra, moveBlockedMessage, type CompraStatus } from "@/lib/compras";
+import { COMPRA_STATUSES, TIPO_COMPRA_OPTIONS, canMoveCompra, canEditCompra, moveBlockedMessage, type CompraStatus } from "@/lib/compras";
 import { useAuth } from "@/contexts/AuthContext";
 import { notifyResponsiblesForStatus, notifyMentions } from "@/lib/notify";
 import { listEventos } from "@/lib/sheets.functions";
@@ -58,6 +58,7 @@ export type Compra = {
   tipo_compra?: string | null;
   responsavel_id?: string | null;
   responsavel_nome?: string | null;
+  created_by?: string | null;
 };
 
 export type AdvanceOpts = { approve?: boolean };
@@ -80,6 +81,9 @@ export function CompraDialog({
   const [form, setForm] = useState<Compra>({ status: defaultStatus });
   const [itens, setItens] = useState<CompraItem[]>([]);
   const [statusInicial, setStatusInicial] = useState<CompraStatus>(defaultStatus);
+  const isAdmin = isModuleAdmin("compras") || isModuleAdmin("estoque");
+  const canEdit = !compraId || canEditCompra(form as any, user?.id, isAdmin);
+  const editBlockedMsg = canEdit ? null : moveBlockedMessage(form as any);
 
   const { data: estoqueItens = [] } = useQuery({
     queryKey: ["itens-min"],
@@ -190,7 +194,14 @@ export function CompraDialog({
       qc.invalidateQueries({ queryKey: ["compras-receber"] });
       onOpenChange(false);
     },
-    onError: (e: any) => toast.error(describeSupabaseError(e)),
+    onError: (e: any) => {
+      const msg = describeSupabaseError(e) || "";
+      if (/row-level security|permission denied|policy/i.test(msg) || e?.code === "42501") {
+        toast.error(editBlockedMsg ?? "Apenas o responsável, o criador do card ou um admin pode editá-lo.");
+      } else {
+        toast.error(msg || "Erro ao salvar");
+      }
+    },
   });
 
   function addItem() { setItens((p) => [...p, { descricao: "", quantidade: 1 }]); }
@@ -237,7 +248,7 @@ export function CompraDialog({
                 <Input value={form.titulo ?? ""} onChange={(e) => setForm({ ...form, titulo: e.target.value })} placeholder="Ex.: Compra de tintas" />
               </FormField>
               <FormField label="Status">
-                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as CompraStatus })}>
+                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as CompraStatus })} disabled={!canEdit}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {COMPRA_STATUSES.map((s) => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}
@@ -438,7 +449,10 @@ export function CompraDialog({
             {compraId && (
               <Button
                 variant="destructive"
+                disabled={!canEdit}
+                title={editBlockedMsg ?? undefined}
                 onClick={async () => {
+                  if (!canEdit) { toast.error(editBlockedMsg ?? ""); return; }
                   if (!confirm("Tem certeza que deseja excluir esta compra? Esta ação não pode ser desfeita.")) return;
                   try {
                     await sb.from("compra_itens").delete().eq("compra_id", compraId);
@@ -451,7 +465,12 @@ export function CompraDialog({
                     qc.invalidateQueries({ queryKey: ["compras-receber"] });
                     onOpenChange(false);
                   } catch (e: any) {
-                    toast.error(e.message ?? "Erro ao excluir");
+                    const msg = e?.message ?? "";
+                    if (/row-level security|permission denied|policy/i.test(msg) || e?.code === "42501") {
+                      toast.error(editBlockedMsg ?? "Sem permissão para excluir este card.");
+                    } else {
+                      toast.error(msg || "Erro ao excluir");
+                    }
                   }
                 }}
               >
@@ -462,7 +481,7 @@ export function CompraDialog({
           <div className="flex flex-wrap gap-2">
             {(() => {
               if (!compraId || !onAdvance) return null;
-              const canMove = canMoveCompra(form, user?.id, isModuleAdmin("compras"));
+              const canMove = canMoveCompra(form as any, user?.id, isAdmin);
               const blocked = canMove ? null : moveBlockedMessage(form);
               if (form.status === "pendente_aprovacao") {
                 return (
@@ -508,7 +527,11 @@ export function CompraDialog({
 
             })()}
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button onClick={() => save.mutate()} disabled={save.isPending}>
+            <Button
+              onClick={() => save.mutate()}
+              disabled={save.isPending || !canEdit}
+              title={editBlockedMsg ?? undefined}
+            >
               {save.isPending ? "Salvando…" : "Salvar"}
             </Button>
           </div>

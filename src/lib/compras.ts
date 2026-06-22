@@ -65,19 +65,31 @@ export function canNatanaelMoveTo(
   return allowed.includes(targetStatus);
 }
 
-export function canMoveCompra(
-  compra: { responsavel_id?: string | null },
+export function canEditCompra(
+  compra: { responsavel_id?: string | null; created_by?: string | null },
   userId: string | undefined | null,
   isAdmin: boolean,
 ): boolean {
   if (isAdmin) return true;
-  if (!compra.responsavel_id) return true;
-  return !!userId && compra.responsavel_id === userId;
+  if (!userId) return false;
+  if (compra.responsavel_id && compra.responsavel_id === userId) return true;
+  if (compra.created_by && compra.created_by === userId) return true;
+  // Cards antigos sem responsável nem criador conhecidos: liberar para evitar travar dados legados.
+  if (!compra.responsavel_id && !compra.created_by) return true;
+  return false;
+}
+
+export function canMoveCompra(
+  compra: { responsavel_id?: string | null; created_by?: string | null },
+  userId: string | undefined | null,
+  isAdmin: boolean,
+): boolean {
+  return canEditCompra(compra, userId, isAdmin);
 }
 
 export function moveBlockedMessage(compra: { responsavel_nome?: string | null }): string {
   return compra.responsavel_nome
-    ? `Apenas ${compra.responsavel_nome} pode mover este card.`
-    : "Você não tem permissão para mover este card.";
+    ? `Apenas ${compra.responsavel_nome} (ou o criador / um admin) pode editar este card.`
+    : "Apenas o responsável, o criador do card ou um admin pode editá-lo.";
 }
 
