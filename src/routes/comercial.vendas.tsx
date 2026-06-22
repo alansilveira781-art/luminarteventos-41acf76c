@@ -522,21 +522,22 @@ function VendasPage() {
                   <th className="px-3 py-2 w-8">
                     <Checkbox checked={sel.allSelected} onCheckedChange={() => sel.toggleAll()} />
                   </th>
-                  <Th>Data de Registro</Th>
-                  <Th>Tipo</Th>
-                  <Th>Nome do Evento</Th>
-                  <Th>Local</Th>
-                  <Th>Cidade</Th>
-                  <Th>Estado</Th>
-                  <Th>Classificação</Th>
-                  <Th>Consultor</Th>
-                  <Th>Cerimonial</Th>
-                  <Th>Decorador</Th>
-                  <Th>Empresa</Th>
-                  <Th className="text-right">Valor da Proposta</Th>
-                  <Th className="text-right">Desconto</Th>
-                  <Th className="text-right">Valor Final</Th>
-                  <Th className="text-right">Valor BV</Th>
+                  <SortableTh sort={sort} onToggle={toggleSort} k="data_registro" label="Data de Registro" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="tipo" label="Tipo" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="nome_evento" label="Nome do Evento" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="local" label="Local" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="cidade" label="Cidade" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="estado" label="Estado" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="classificacao" label="Classificação" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="consultor" label="Consultor" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="cerimonial" label="Cerimonial" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="decorador" label="Decorador" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="empresa" label="Empresa" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="valor_proposta" label="Valor da Proposta" align="right" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="desconto" label="Desconto" align="right" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="valor_final" label="Valor Final" align="right" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="valor_bv" label="Valor BV" align="right" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+
                   <th className="px-3 py-2 w-20" />
                 </tr>
               </thead>
