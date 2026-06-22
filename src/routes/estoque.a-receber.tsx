@@ -340,15 +340,17 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
           </div>
           <div>
             <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Fornecedor*</label>
-            <Input value={fornecedor} onChange={(e) => setFornecedor(e.target.value)} placeholder="Fornecedor" />
+            <EntitySearchSelect
+              options={fornecedores as any}
+              value={fornecedorId}
+              onChange={(v) => setFornecedorId(v)}
+              placeholder="Selecione…"
+              searchPlaceholder="Buscar fornecedor…"
+            />
           </div>
           <div>
             <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Nota Fiscal</label>
             <Input value={notaFiscal} onChange={(e) => setNotaFiscal(e.target.value)} placeholder="Nº NF" />
-          </div>
-          <div>
-            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Responsável*</label>
-            <Input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} placeholder="Quem recebeu" />
           </div>
           <div className="sm:col-span-3">
             <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Observações</label>
