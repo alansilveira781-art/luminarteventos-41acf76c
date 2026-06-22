@@ -14,9 +14,11 @@ type Props = {
   placeholder?: string;
 };
 
-function toDigits(value: number | null | undefined): string {
+function toDigits(value: number | null | undefined, max = 1_000_000): string {
   if (!value || value <= 0) return "";
-  return String(Math.round(value * FATOR));
+  const v = Math.round((value ?? 0) * 100) / 100;
+  if (v <= 0 || v > max) return "";
+  return String(Math.round(v * FATOR));
 }
 
 function format(digits: string): string {
@@ -35,7 +37,7 @@ function toValue(digits: string): number {
 
 export const QuantidadeInput = forwardRef<HTMLInputElement, Props>(
   ({ value, onChange, max = 1_000_000, onKeyDown, className, disabled }, ref) => {
-    const digits = toDigits(value);
+    const digits = toDigits(value, max);
     const display = format(digits);
 
     const handleKeyDown = useCallback(
