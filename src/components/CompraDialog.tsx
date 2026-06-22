@@ -16,7 +16,7 @@ import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
 import { ensureValidSession, describeSupabaseError } from "@/lib/supabase-guard";
-import { COMPRA_STATUSES, TIPO_COMPRA_OPTIONS, canMoveCompra, moveBlockedMessage, type CompraStatus } from "@/lib/compras";
+import { COMPRA_STATUSES, TIPO_COMPRA_OPTIONS, canMoveCompra, canEditCompra, moveBlockedMessage, type CompraStatus } from "@/lib/compras";
 import { useAuth } from "@/contexts/AuthContext";
 import { notifyResponsiblesForStatus, notifyMentions } from "@/lib/notify";
 import { listEventos } from "@/lib/sheets.functions";
