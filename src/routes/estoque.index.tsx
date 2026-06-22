@@ -91,9 +91,28 @@ function EstoquePage() {
       }
       return all;
     },
-    staleTime: 0,
-    refetchOnMount: "always",
+    staleTime: 30_000,
+    placeholderData: keepPreviousData,
   });
+
+  // Suprime invalidação automática de ["itens"] durante a conferência
+  // (campo de busca com texto ou modal de conferência aberto) e mostra
+  // banner não-bloqueante quando há atualizações pendentes.
+  const [pendingUpdate, setPendingUpdate] = useState(false);
+  const conferindoAtivo = qd.trim().length > 0 || conferindo;
+  useEffect(() => {
+    setEstoqueItensSuppressed(conferindoAtivo);
+    if (!conferindoAtivo) setPendingUpdate(false);
+    return () => setEstoqueItensSuppressed(false);
+  }, [conferindoAtivo]);
+  useEffect(() => {
+    return onEstoqueItensPending(() => setPendingUpdate(true));
+  }, []);
+  function aplicarAtualizacoes() {
+    setPendingUpdate(false);
+    qc.invalidateQueries({ queryKey: ["itens"] });
+  }
+
 
   const mut = useMutation({
     mutationFn: async (payload: any) => {
