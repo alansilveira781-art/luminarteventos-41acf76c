@@ -158,10 +158,10 @@ export function AlertaEstoqueCard() {
               <th className="px-2 py-1 text-left">Categoria</th>
               <th className="px-2 py-1 text-right">Atual</th>
               <th className="px-2 py-1 text-right">Mínimo</th>
-              <th className="px-2 py-1 text-right">Saídas</th>
               <th className="px-2 py-1 text-left">Status</th>
               <th className="px-2 py-1"></th>
             </tr>
+
           </thead>
           <tbody>
             {filtradosOrdenados.length === 0 ? (
