@@ -103,6 +103,7 @@ export async function parseVendasXlsx(buf: ArrayBuffer): Promise<VendaRow[]> {
       percentual: toNum(r["Percentual"]),
       valorFinal: toNum(r["Valor Final"]),
       valorBV: toNum(r["Valor BV"]),
+      valorComissao: toNum(r["Valor Comissão"]) || toNum(r["Valor Comissao"]),
       comissaoGestor: toNum(r["Comissão Gestor"]),
       tipoComissao: toStr(r["Tipo de comissão"]),
       comissaoConsultor: toNum(r["Comissão Consultor"]),
