@@ -217,10 +217,6 @@ export function SelectCreatable({
                   e.preventDefault();
                   handleAdd();
                 }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleAdd();
-                }}
                 disabled={add.isPending}
               >
                 <Plus className="mr-2 h-4 w-4" /> Adicionar “{trimmedSearch}”
