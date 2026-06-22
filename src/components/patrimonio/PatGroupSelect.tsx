@@ -226,3 +226,165 @@ export function PatGroupSelect({
     </div>
   );
 }
+
+/* ============================================================
+ * PatItemSelect — lista PEÇA A PEÇA (um por id de pat_itens)
+ * Busca por cod, id_item, nome, especificação, dimensão, categoria.
+ * Ordena por cod asc, depois id.
+ * ============================================================ */
+export type PatItemOption = PatItem & { livre: number; emUso: number };
+
+export function buildPatItemOptions(
+  itens: PatItem[],
+  emUsoPorItem: Map<string, number>,
+  excludeItemIds: Set<string> = new Set(),
+): PatItemOption[] {
+  const out: PatItemOption[] = itens.map((it) => {
+    const qtd = Number(it.quantidade ?? 1);
+    const emUsoRaw = emUsoPorItem.get(it.id) ?? 0;
+    const emUso = excludeItemIds.has(it.id) ? 0 : emUsoRaw;
+    const estado = (it.estado ?? "").toUpperCase();
+    const bom = ESTADOS_BONS.has(estado);
+    const livre = bom ? Math.max(0, qtd - emUso) : 0;
+    return { ...it, livre, emUso };
+  });
+  out.sort((a, b) => {
+    const ca = a.cod ?? Number.POSITIVE_INFINITY;
+    const cb = b.cod ?? Number.POSITIVE_INFINITY;
+    if (ca !== cb) return ca - cb;
+    return (a.id_item ?? a.id).localeCompare(b.id_item ?? b.id);
+  });
+  return out;
+}
+
+export function PatItemSelect({
+  options,
+  value,
+  onChange,
+  placeholder = "Buscar por COD, ID ou nome…",
+  onAfterSelect,
+  onlyAvailable = false,
+}: {
+  options: PatItemOption[];
+  value: string;
+  onChange: (id: string) => void;
+  placeholder?: string;
+  onAfterSelect?: (id: string) => void;
+  onlyAvailable?: boolean;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const selected = options.find((o) => o.id === value);
+
+  const filtered = useMemo(() => {
+    const base = onlyAvailable ? options.filter((o) => o.livre > 0 || o.id === value) : options;
+    const raw = search.trim();
+    const terms = normalize(raw).split(/\s+/).filter(Boolean);
+    if (!terms.length && !raw) return base;
+    return base.filter((o) => {
+      const codStr = o.cod != null ? String(o.cod) : "";
+      const haystack = normalize(
+        [o.nome, o.especificacao, o.dimensoes, o.categoria, o.subcategoria, o.unidade, o.id_item ?? "", codStr]
+          .filter(Boolean).join(" "),
+      );
+      // Match every normalized term
+      const textOk = terms.every((t) => haystack.includes(t));
+      // Match against raw code (numeric/alpha) as substring
+      const rawN = raw.toLowerCase();
+      const codOk = codStr.includes(rawN) || (o.id_item ?? "").toLowerCase().includes(rawN);
+      return textOk || codOk;
+    });
+  }, [options, search, onlyAvailable, value]);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  const select = (id: string) => {
+    onChange(id);
+    setSearch("");
+    setOpen(false);
+    if (onAfterSelect) setTimeout(() => onAfterSelect(id), 0);
+  };
+
+  const fmtCod = (o: PatItem) => (o.cod != null ? `COD ${o.cod}` : (o.id_item ? `ID ${o.id_item}` : "—"));
+
+  return (
+    <div ref={containerRef} className="relative">
+      <Button
+        type="button" variant="outline" role="combobox"
+        className="w-full justify-between font-normal h-9"
+        onClick={() => setOpen((c) => !c)}
+      >
+        <span className="truncate text-left">
+          {selected ? (
+            <>
+              <span className="font-mono text-xs text-muted-foreground mr-1">{fmtCod(selected)}</span>
+              <span className="font-medium">{selected.nome}</span>
+              {selected.especificacao && <span className="text-muted-foreground"> · {selected.especificacao}</span>}
+            </>
+          ) : (
+            <span className="text-muted-foreground">{placeholder}</span>
+          )}
+        </span>
+        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+      </Button>
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-1 w-full min-w-[460px] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md">
+          <div className="flex items-center border-b px-3">
+            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+            <Input
+              autoFocus value={search} onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
+              placeholder="Buscar por COD, ID, nome, especificação…"
+              className="h-10 border-0 bg-transparent px-0 py-3 shadow-none focus-visible:ring-0"
+            />
+          </div>
+          <div className="max-h-[360px] overflow-y-auto p-1">
+            {filtered.length === 0 ? (
+              <div className="py-6 text-center text-sm text-muted-foreground">Nenhum item encontrado.</div>
+            ) : (
+              filtered.map((o) => {
+                const indisponivel = o.livre <= 0;
+                return (
+                  <button
+                    key={o.id} type="button"
+                    className={cn(
+                      "flex w-full items-start gap-2 rounded-sm px-2 py-2 text-left text-sm outline-none hover:bg-accent",
+                      indisponivel && onlyAvailable && "opacity-60",
+                    )}
+                    onPointerDown={(e) => { e.preventDefault(); select(o.id); }}
+                  >
+                    <Check className={cn("h-4 w-4 shrink-0 mt-0.5", value === o.id ? "opacity-100" : "opacity-0")} />
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate">
+                        <span className="font-mono text-xs text-muted-foreground mr-1">{fmtCod(o)}</span>
+                        <span className="font-medium">{o.nome}</span>
+                        {o.especificacao && <span className="text-muted-foreground"> · {o.especificacao}</span>}
+                        {o.dimensoes && <span className="text-muted-foreground"> · {o.dimensoes}</span>}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground flex flex-wrap gap-x-3">
+                        {o.estado && <span>Estado: <b className="text-foreground">{o.estado}</b></span>}
+                        <span className={o.livre > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}>
+                          {o.livre > 0 ? <>Disponível: <b>{o.livre}</b></> : "Indisponível"}
+                        </span>
+                        {o.emUso > 0 && <span>Em uso: <b>{o.emUso}</b></span>}
+                        {o.categoria && <span>· {o.categoria}{o.subcategoria ? " / " + o.subcategoria : ""}</span>}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

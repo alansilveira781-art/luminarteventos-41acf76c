@@ -17,7 +17,7 @@ import { ItemSearchSelect } from "@/components/ItemSearchSelect";
 import { ComboboxCreatable } from "@/components/ComboboxCreatable";
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { PatItemInfoHover } from "@/components/patrimonio/PatItemInfoHover";
-import { PatGroupSelect, buildPatGroups, allocateFromGroup, type PatItem, type PatGroup } from "@/components/patrimonio/PatGroupSelect";
+import { PatGroupSelect, PatItemSelect, buildPatGroups, buildPatItemOptions, allocateFromGroup, type PatItem, type PatGroup, type PatItemOption } from "@/components/patrimonio/PatGroupSelect";
 
 type Mov = {
   id: string; tipo: string; item_id: string | null; quantidade: number;
@@ -32,7 +32,7 @@ type Mov = {
 const FINALIDADES = ["Evento", "Manutenção", "Empréstimo", "Descarte", "Transferência", "Outro"];
 const CONDICOES = ["perfeito", "danificado", "quebrado", "faltando_peca", "em_manutencao"];
 
-type LinhaSaida = { groupKey: string; quantidade: string };
+type LinhaSaida = { item_id: string; quantidade: string };
 type LinhaEntrada = { item_id: string; quantidade: string };
 
 export function PatrimonioMovimentacoes({ tipo, titulo, descricao }: {
@@ -438,18 +438,13 @@ function MovForm({ tipo, editing, itens, emUsoPorItem, onSubmit, submitting }: {
     [itens, emUsoPorItem, excludeIds],
   );
 
-  // Linhas — SAÍDA usa groupKey; ENTRADA usa item_id
+  // Linhas — SAÍDA agora também usa item_id (peça a peça)
   const [linhasSaida, setLinhasSaida] = useState<LinhaSaida[]>(() => {
-    if (!isSaida || !editing?.linhas?.length) return [{ groupKey: "", quantidade: "1" }];
-    // Reagrupa peças por groupKey
-    const map = new Map<string, number>();
-    for (const l of editing.linhas as Mov[]) {
-      const it: any = l.item_id ? (itemMap as any)[l.item_id] : null;
-      if (!it) continue;
-      const gk = [normalize(it.nome ?? ""), normalize(it.especificacao ?? ""), normalize(it.dimensoes ?? ""), normalize(it.unidade ?? ""), normalize(it.categoria ?? ""), normalize(it.subcategoria ?? "")].join("|");
-      map.set(gk, (map.get(gk) ?? 0) + Number(l.quantidade));
-    }
-    return Array.from(map.entries()).map(([groupKey, qtd]) => ({ groupKey, quantidade: String(qtd) }));
+    if (!isSaida || !editing?.linhas?.length) return [{ item_id: "", quantidade: "1" }];
+    return (editing.linhas as Mov[]).map((l) => ({
+      item_id: l.item_id ?? "",
+      quantidade: String(l.quantidade),
+    }));
   });
 
   const [linhasEntrada, setLinhasEntrada] = useState<LinhaEntrada[]>(() => {
@@ -462,7 +457,7 @@ function MovForm({ tipo, editing, itens, emUsoPorItem, onSubmit, submitting }: {
 
   const setM = (k: string, v: any) => setMeta((p) => ({ ...p, [k]: v }));
 
-  const addLinhaSaida = () => setLinhasSaida((a) => [...a, { groupKey: "", quantidade: "1" }]);
+  const addLinhaSaida = () => setLinhasSaida((a) => [...a, { item_id: "", quantidade: "1" }]);
   const remLinhaSaida = (i: number) => setLinhasSaida((a) => (a.length === 1 ? a : a.filter((_, idx) => idx !== i)));
   const setLS = (i: number, k: keyof LinhaSaida, v: string) => setLinhasSaida((arr) => {
     const novo = [...arr]; novo[i] = { ...novo[i], [k]: v }; return novo;
@@ -493,6 +488,16 @@ function MovForm({ tipo, editing, itens, emUsoPorItem, onSubmit, submitting }: {
     [itens],
   );
 
+  // Opções item-a-item para SAÍDA (uma linha por peça, com livre/em uso)
+  const itemOptionsSaida: PatItemOption[] = useMemo(
+    () => buildPatItemOptions(itens, emUsoPorItem, excludeIds),
+    [itens, emUsoPorItem, excludeIds],
+  );
+  const itemOptionsById = useMemo(
+    () => new Map(itemOptionsSaida.map((o) => [o.id, o])),
+    [itemOptionsSaida],
+  );
+
   const qtyRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const focusQty = (i: number) => {
     setTimeout(() => { const el = qtyRefs.current[i]; if (el) { el.focus(); el.select(); } }, 30);
@@ -519,17 +524,21 @@ function MovForm({ tipo, editing, itens, emUsoPorItem, onSubmit, submitting }: {
           return;
         }
 
-        // SAÍDA: aloca peças por grupo
+        // SAÍDA: cada linha = uma peça específica
         const rows: Array<{ item_id: string; quantidade: number }> = [];
+        const usados = new Set<string>();
         for (const l of linhasSaida) {
-          if (!l.groupKey || Number(l.quantidade) <= 0) continue;
-          const g = groups.find((gg) => gg.key === l.groupKey);
-          if (!g) return toast.error("Grupo de item inválido");
-          const qtdReq = Math.floor(Number(l.quantidade));
-          if (qtdReq > g.disponivel) return toast.error(`Disponível insuficiente para ${g.nome} (disp: ${g.disponivel})`);
-          const ids = allocateFromGroup(g, qtdReq, emUsoPorItem, excludeIds);
-          if (ids.length < qtdReq) return toast.error(`Não foi possível alocar ${qtdReq} de ${g.nome}`);
-          for (const id of ids) rows.push({ item_id: id, quantidade: 1 });
+          if (!l.item_id || Number(l.quantidade) <= 0) continue;
+          if (usados.has(l.item_id)) {
+            const o = itemOptionsById.get(l.item_id);
+            return toast.error(`Item duplicado: ${o?.nome ?? l.item_id}`);
+          }
+          usados.add(l.item_id);
+          const o = itemOptionsById.get(l.item_id);
+          if (!o) return toast.error("Item inválido");
+          const qtdReq = Number(l.quantidade);
+          if (qtdReq > o.livre) return toast.error(`Disponível insuficiente para ${o.nome} (disp: ${o.livre})`);
+          rows.push({ item_id: l.item_id, quantidade: qtdReq });
         }
         if (!rows.length) return toast.error("Adicione pelo menos um item");
         onSubmit(metaPayload, rows);
@@ -595,28 +604,31 @@ function MovForm({ tipo, editing, itens, emUsoPorItem, onSubmit, submitting }: {
         <Card className="p-3 space-y-2">
           {isSaida ? (
             linhasSaida.map((l, i) => {
-              const grupo = groups.find((g) => g.key === l.groupKey);
+              const opt = l.item_id ? itemOptionsById.get(l.item_id) : null;
+              const maxLivre = opt?.livre ?? undefined;
               return (
                 <div key={i} className="flex flex-wrap items-end gap-2">
                   <div className="flex-1 min-w-[260px]">
-                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">
-                      Item (grupo)
+                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-1 h-[14px]">
+                      Item (por código)
+                      {l.item_id && <PatItemInfoHover itemId={l.item_id} />}
                     </label>
-                    <PatGroupSelect
-                      groups={groups}
-                      value={l.groupKey}
-                      onChange={(key) => setLS(i, "groupKey", key)}
+                    <PatItemSelect
+                      options={itemOptionsSaida}
+                      value={l.item_id}
+                      onChange={(id) => setLS(i, "item_id", id)}
                       onAfterSelect={() => focusQty(i)}
+                      onlyAvailable
                     />
                   </div>
                   <div className="w-28">
                     <label className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">
-                      Quantidade {grupo ? `(máx. ${grupo.disponivel})` : ""}
+                      Quantidade {opt ? `(máx. ${opt.livre})` : ""}
                     </label>
                     <Input
                       ref={(el) => { qtyRefs.current[i] = el; }}
                       type="number" min="1" step="1"
-                      max={grupo?.disponivel ?? undefined}
+                      max={maxLivre}
                       value={l.quantidade}
                       onChange={(e) => setLS(i, "quantidade", e.target.value)}
                     />
