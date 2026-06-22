@@ -232,12 +232,13 @@ function Dashboard() {
     queryFn: async () => {
       const { data } = await supabase
         .from("movimentacoes")
-        .select("quantidade,valor_unitario,item:itens(nome,codigo,categoria,valor_unitario)")
+        .select("quantidade,valor_unitario,saida_tipo,observacoes,finalidade,tipo,item:itens(nome,codigo,categoria,valor_unitario)")
         .eq("tipo", "saida")
         .gte("data_movimento", new Date(dataIni).toISOString())
         .lte("data_movimento", new Date(`${dataFim}T23:59:59`).toISOString())
         .limit(10000);
       let rows = data ?? [];
+      rows = rows.filter((r: any) => !isAjusteMovimentacao(r));
       if (categoriaAbc !== ALL) rows = rows.filter((r: any) => r.item?.categoria === categoriaAbc);
       return rows;
     },
