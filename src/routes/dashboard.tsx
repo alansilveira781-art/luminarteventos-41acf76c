@@ -18,6 +18,7 @@ import {
   ListChecks,
 } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
+import { isAjusteMovimentacao } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear } from "date-fns";
 import {
   ResponsiveContainer,
@@ -143,7 +144,7 @@ function Dashboard() {
     queryFn: async () => {
       let q = supabase
         .from("movimentacoes")
-        .select("id,tipo,quantidade,valor_unitario,data_movimento,item_id,solicitante_id,fornecedor_id, item:itens(nome,codigo,unidade,categoria,valor_unitario,quantidade_atual,quantidade_minima,status)")
+        .select("id,tipo,quantidade,valor_unitario,data_movimento,item_id,solicitante_id,fornecedor_id,entrada_tipo,saida_tipo,observacoes,finalidade, item:itens(nome,codigo,unidade,categoria,valor_unitario,quantidade_atual,quantidade_minima,status)")
         .eq("tipo", tipoMov)
         .gte("data_movimento", new Date(dataIni).toISOString())
         .lte("data_movimento", new Date(`${dataFim}T23:59:59`).toISOString())
@@ -165,7 +166,7 @@ function Dashboard() {
       const ini = startOfMonth(subMonths(new Date(), 11));
       const { data, error } = await supabase
         .from("movimentacoes")
-        .select("tipo,quantidade,data_movimento")
+        .select("tipo,quantidade,data_movimento,entrada_tipo,saida_tipo,observacoes,finalidade")
         .gte("data_movimento", ini.toISOString())
         .limit(20000);
       if (error) throw error;
@@ -177,8 +178,8 @@ function Dashboard() {
   const baixo = itens?.filter((i) => i.status === "baixo_estoque").length ?? 0;
   const sem = itens?.filter((i) => i.status === "sem_estoque").length ?? 0;
   const manut = itens?.filter((i) => i.status === "em_manutencao").length ?? 0;
-  const entradasMes = movsMes?.filter((m) => m.tipo === "entrada").length ?? 0;
-  const saidasMes = movsMes?.filter((m) => m.tipo === "saida").length ?? 0;
+  const entradasMes = movsMes?.filter((m) => m.tipo === "entrada" && !isAjusteMovimentacao(m)).length ?? 0;
+  const saidasMes = movsMes?.filter((m) => m.tipo === "saida" && !isAjusteMovimentacao(m)).length ?? 0;
   const devolucoesMes = movsMes?.filter((m) => m.tipo === "devolucao").length ?? 0;
   const saidasAbertas = recentes?.filter(
     (m) => m.tipo === "saida" && (m.saida_status === "aberta" || m.saida_status === "parcialmente_devolvida"),
@@ -190,6 +191,7 @@ function Dashboard() {
   const tabelaItens = useMemo(() => {
     const map = new Map<string, { item: any; qtd: number; valorTotal: number }>();
     for (const m of movsPeriodo ?? []) {
+      if (isAjusteMovimentacao(m)) continue;
       const it: any = (m as any).item;
       if (!it) continue;
       const key = m.item_id as string | null;
@@ -213,6 +215,7 @@ function Dashboard() {
       m.set(k, { mes: format(subMonths(hoje, i), "MMM/yy"), entradas: 0, saidas: 0 });
     }
     for (const mov of movs12m ?? []) {
+      if (isAjusteMovimentacao(mov)) continue;
       const k = format(new Date(mov.data_movimento), "yyyy-MM");
       const cur = m.get(k);
       if (!cur) continue;
@@ -229,12 +232,13 @@ function Dashboard() {
     queryFn: async () => {
       const { data } = await supabase
         .from("movimentacoes")
-        .select("quantidade,valor_unitario,item:itens(nome,codigo,categoria,valor_unitario)")
+        .select("quantidade,valor_unitario,saida_tipo,observacoes,finalidade,tipo,item:itens(nome,codigo,categoria,valor_unitario)")
         .eq("tipo", "saida")
         .gte("data_movimento", new Date(dataIni).toISOString())
         .lte("data_movimento", new Date(`${dataFim}T23:59:59`).toISOString())
         .limit(10000);
       let rows = data ?? [];
+      rows = rows.filter((r: any) => !isAjusteMovimentacao(r));
       if (categoriaAbc !== ALL) rows = rows.filter((r: any) => r.item?.categoria === categoriaAbc);
       return rows;
     },
