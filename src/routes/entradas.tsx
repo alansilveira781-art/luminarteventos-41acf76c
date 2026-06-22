@@ -457,7 +457,7 @@ function EntradasPage() {
                   </th>
                 )}
                 <th className="px-3 py-3 w-8"></th>
-                <SortableTh sort={sort} onToggle={toggleSort} k="numero" label="REQ" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="numero" label="ENT" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="data_movimento" label="Data" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="entrada_tipo" label="Tipo" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="fornecedor" label="Fornecedor" />
