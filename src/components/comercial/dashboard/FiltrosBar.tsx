@@ -2,7 +2,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Filtros } from "@/lib/comercial/vendas-metrics";
 import type { VendaRow } from "@/lib/comercial/vendas.functions";
-import { uniqueValues } from "@/lib/comercial/vendas-metrics";
+import { uniqueValues, getAno } from "@/lib/comercial/vendas-metrics";
 
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
@@ -36,7 +36,10 @@ export function FiltrosBar({
   }
 
   const empresas = (uniqueValues(rows, (r) => r.empresa) as string[]).sort();
-  const anos = (uniqueValues(rows, (r) => r.anoEvento ?? r.ano) as number[]).sort((a, b) => b - a);
+  const anosSet = new Set<number>();
+  for (const r of rows) { const a = getAno(r); if (a) anosSet.add(a); }
+  if (typeof filtros.ano === "number") anosSet.add(filtros.ano);
+  const anos = [...anosSet].sort((a, b) => b - a);
   const consultores = (uniqueValues(rows, (r) => r.consultor) as string[]).sort();
   const classificacoes = (uniqueValues(rows, (r) => r.classificacao) as string[]).sort();
 
