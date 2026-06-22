@@ -209,7 +209,7 @@ function EstoquePage() {
     return arr;
   }, [itens, qd, hideZero, sort, periodo]);
 
-  useEffect(() => { setPage(1); }, [q, hideZero, sort, periodo]);
+  useEffect(() => { setPage(1); }, [qd, hideZero, sort, periodo]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageItems = useMemo(() => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [filtered, page]);
 
