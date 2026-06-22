@@ -133,7 +133,7 @@ export function SelectCreatable({
         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
       </Button>
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-full min-w-[260px] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md">
+        <div className="absolute left-0 top-full z-50 mt-1 flex w-full min-w-[260px] flex-col overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md">
           <div className="flex items-center border-b px-3">
             <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
             <Input
@@ -157,7 +157,8 @@ export function SelectCreatable({
               className="h-10 border-0 bg-transparent px-0 py-3 shadow-none focus-visible:ring-0"
             />
           </div>
-          <div className="max-h-64 overflow-y-auto py-1">
+
+          <div className="max-h-56 overflow-y-auto py-1">
             <button
               type="button"
               onPointerDown={(e) => {
@@ -203,8 +204,9 @@ export function SelectCreatable({
               <div className="px-3 py-2 text-xs text-muted-foreground">Nenhum resultado.</div>
             )}
           </div>
-          {!exactExists && search.trim() && (
-            <div className="p-2 border-t border-border">
+
+          {search.trim() && !exactExists && (
+            <div className="border-t bg-popover p-2">
               <Button
                 type="button"
                 size="sm"
@@ -215,7 +217,7 @@ export function SelectCreatable({
                 }}
                 disabled={add.isPending}
               >
-                <Plus className="h-4 w-4 mr-2" /> Adicionar “{search.trim()}”
+                <Plus className="mr-2 h-4 w-4" /> Adicionar “{search.trim()}”
               </Button>
             </div>
           )}
