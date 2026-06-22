@@ -604,28 +604,31 @@ function MovForm({ tipo, editing, itens, emUsoPorItem, onSubmit, submitting }: {
         <Card className="p-3 space-y-2">
           {isSaida ? (
             linhasSaida.map((l, i) => {
-              const grupo = groups.find((g) => g.key === l.groupKey);
+              const opt = l.item_id ? itemOptionsById.get(l.item_id) : null;
+              const maxLivre = opt?.livre ?? undefined;
               return (
                 <div key={i} className="flex flex-wrap items-end gap-2">
                   <div className="flex-1 min-w-[260px]">
-                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">
-                      Item (grupo)
+                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-1 h-[14px]">
+                      Item (por código)
+                      {l.item_id && <PatItemInfoHover itemId={l.item_id} />}
                     </label>
-                    <PatGroupSelect
-                      groups={groups}
-                      value={l.groupKey}
-                      onChange={(key) => setLS(i, "groupKey", key)}
+                    <PatItemSelect
+                      options={itemOptionsSaida}
+                      value={l.item_id}
+                      onChange={(id) => setLS(i, "item_id", id)}
                       onAfterSelect={() => focusQty(i)}
+                      onlyAvailable
                     />
                   </div>
                   <div className="w-28">
                     <label className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">
-                      Quantidade {grupo ? `(máx. ${grupo.disponivel})` : ""}
+                      Quantidade {opt ? `(máx. ${opt.livre})` : ""}
                     </label>
                     <Input
                       ref={(el) => { qtyRefs.current[i] = el; }}
                       type="number" min="1" step="1"
-                      max={grupo?.disponivel ?? undefined}
+                      max={maxLivre}
                       value={l.quantidade}
                       onChange={(e) => setLS(i, "quantidade", e.target.value)}
                     />
