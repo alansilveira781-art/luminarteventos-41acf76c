@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { VendaRow } from "./vendas.functions";
 
 export type ListVendasDbResult = {
@@ -9,15 +10,15 @@ export type ListVendasDbResult = {
 
 const PAGE = 1000;
 
-export const listVendasDb = createServerFn({ method: "GET" }).handler(
-  async (): Promise<ListVendasDbResult> => {
+export const listVendasDb = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<ListVendasDbResult> => {
     try {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { dbRowToVenda } = await import("./vendas-parse.server");
       const all: VendaRow[] = [];
       let from = 0;
       while (true) {
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await context.supabase
           .from("comercial_vendas")
           .select("*")
           .range(from, from + PAGE - 1);
@@ -32,5 +33,4 @@ export const listVendasDb = createServerFn({ method: "GET" }).handler(
       const msg = e instanceof Error ? e.message : "Falha ao carregar vendas";
       return { rows: [], fetchedAt: new Date().toISOString(), error: msg };
     }
-  },
-);
+  });
