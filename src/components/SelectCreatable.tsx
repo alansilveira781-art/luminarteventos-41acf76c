@@ -207,7 +207,7 @@ export function SelectCreatable({
             )}
           </div>
 
-          {!exactExists && (
+          {trimmedSearch && !exactExists && (
             <div className="shrink-0 border-t bg-popover p-2">
               <Button
                 type="button"
@@ -215,28 +215,15 @@ export function SelectCreatable({
                 className="w-full justify-start"
                 onPointerDown={(e) => {
                   e.preventDefault();
-                  if (trimmedSearch) handleAdd();
-                  else inputRef.current?.focus();
+                  handleAdd();
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleAdd();
                 }}
                 disabled={add.isPending}
               >
                 <Plus className="mr-2 h-4 w-4" /> Adicionar “{trimmedSearch}”
-              </Button>
-            </div>
-          )}
-          {!trimmedSearch && (
-            <div className="shrink-0 border-t bg-popover p-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="w-full justify-start text-muted-foreground"
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  inputRef.current?.focus();
-                }}
-              >
-                <Plus className="mr-2 h-4 w-4" /> Digite para adicionar novo
               </Button>
             </div>
           )}
