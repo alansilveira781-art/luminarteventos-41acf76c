@@ -32,7 +32,7 @@ type Mov = {
 const FINALIDADES = ["Evento", "Manutenção", "Empréstimo", "Descarte", "Transferência", "Outro"];
 const CONDICOES = ["perfeito", "danificado", "quebrado", "faltando_peca", "em_manutencao"];
 
-type LinhaSaida = { groupKey: string; quantidade: string };
+type LinhaSaida = { item_id: string; quantidade: string };
 type LinhaEntrada = { item_id: string; quantidade: string };
 
 export function PatrimonioMovimentacoes({ tipo, titulo, descricao }: {
