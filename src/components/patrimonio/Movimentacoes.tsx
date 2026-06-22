@@ -438,18 +438,13 @@ function MovForm({ tipo, editing, itens, emUsoPorItem, onSubmit, submitting }: {
     [itens, emUsoPorItem, excludeIds],
   );
 
-  // Linhas — SAÍDA usa groupKey; ENTRADA usa item_id
+  // Linhas — SAÍDA agora também usa item_id (peça a peça)
   const [linhasSaida, setLinhasSaida] = useState<LinhaSaida[]>(() => {
-    if (!isSaida || !editing?.linhas?.length) return [{ groupKey: "", quantidade: "1" }];
-    // Reagrupa peças por groupKey
-    const map = new Map<string, number>();
-    for (const l of editing.linhas as Mov[]) {
-      const it: any = l.item_id ? (itemMap as any)[l.item_id] : null;
-      if (!it) continue;
-      const gk = [normalize(it.nome ?? ""), normalize(it.especificacao ?? ""), normalize(it.dimensoes ?? ""), normalize(it.unidade ?? ""), normalize(it.categoria ?? ""), normalize(it.subcategoria ?? "")].join("|");
-      map.set(gk, (map.get(gk) ?? 0) + Number(l.quantidade));
-    }
-    return Array.from(map.entries()).map(([groupKey, qtd]) => ({ groupKey, quantidade: String(qtd) }));
+    if (!isSaida || !editing?.linhas?.length) return [{ item_id: "", quantidade: "1" }];
+    return (editing.linhas as Mov[]).map((l) => ({
+      item_id: l.item_id ?? "",
+      quantidade: String(l.quantidade),
+    }));
   });
 
   const [linhasEntrada, setLinhasEntrada] = useState<LinhaEntrada[]>(() => {
@@ -462,7 +457,7 @@ function MovForm({ tipo, editing, itens, emUsoPorItem, onSubmit, submitting }: {
 
   const setM = (k: string, v: any) => setMeta((p) => ({ ...p, [k]: v }));
 
-  const addLinhaSaida = () => setLinhasSaida((a) => [...a, { groupKey: "", quantidade: "1" }]);
+  const addLinhaSaida = () => setLinhasSaida((a) => [...a, { item_id: "", quantidade: "1" }]);
   const remLinhaSaida = (i: number) => setLinhasSaida((a) => (a.length === 1 ? a : a.filter((_, idx) => idx !== i)));
   const setLS = (i: number, k: keyof LinhaSaida, v: string) => setLinhasSaida((arr) => {
     const novo = [...arr]; novo[i] = { ...novo[i], [k]: v }; return novo;
