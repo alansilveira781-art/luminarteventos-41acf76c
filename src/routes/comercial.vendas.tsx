@@ -421,14 +421,10 @@ function VendasPage() {
             <Button variant="outline" size="sm" onClick={exportCsv} disabled={!sorted.length}>
               <Download className="h-4 w-4 mr-2" /> Exportar CSV
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => qc.invalidateQueries({ queryKey: ["comercial-vendas-db"] })}
-              disabled={isLoading}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} /> Atualizar
+            <Button size="sm" onClick={openNew}>
+              <Plus className="h-4 w-4 mr-2" /> Nova venda
             </Button>
+
             <Button size="sm" onClick={openNew}>
               <Plus className="h-4 w-4 mr-2" /> Nova venda
             </Button>
