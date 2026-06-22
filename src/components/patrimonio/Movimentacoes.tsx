@@ -524,17 +524,21 @@ function MovForm({ tipo, editing, itens, emUsoPorItem, onSubmit, submitting }: {
           return;
         }
 
-        // SAÍDA: aloca peças por grupo
+        // SAÍDA: cada linha = uma peça específica
         const rows: Array<{ item_id: string; quantidade: number }> = [];
+        const usados = new Set<string>();
         for (const l of linhasSaida) {
-          if (!l.groupKey || Number(l.quantidade) <= 0) continue;
-          const g = groups.find((gg) => gg.key === l.groupKey);
-          if (!g) return toast.error("Grupo de item inválido");
-          const qtdReq = Math.floor(Number(l.quantidade));
-          if (qtdReq > g.disponivel) return toast.error(`Disponível insuficiente para ${g.nome} (disp: ${g.disponivel})`);
-          const ids = allocateFromGroup(g, qtdReq, emUsoPorItem, excludeIds);
-          if (ids.length < qtdReq) return toast.error(`Não foi possível alocar ${qtdReq} de ${g.nome}`);
-          for (const id of ids) rows.push({ item_id: id, quantidade: 1 });
+          if (!l.item_id || Number(l.quantidade) <= 0) continue;
+          if (usados.has(l.item_id)) {
+            const o = itemOptionsById.get(l.item_id);
+            return toast.error(`Item duplicado: ${o?.nome ?? l.item_id}`);
+          }
+          usados.add(l.item_id);
+          const o = itemOptionsById.get(l.item_id);
+          if (!o) return toast.error("Item inválido");
+          const qtdReq = Number(l.quantidade);
+          if (qtdReq > o.livre) return toast.error(`Disponível insuficiente para ${o.nome} (disp: ${o.livre})`);
+          rows.push({ item_id: l.item_id, quantidade: qtdReq });
         }
         if (!rows.length) return toast.error("Adicione pelo menos um item");
         onSubmit(metaPayload, rows);
