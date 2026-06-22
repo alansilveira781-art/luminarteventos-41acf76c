@@ -7,25 +7,6 @@ export type ListVendasDbResult = {
   error?: string;
 };
 
-export type LastSync = {
-  id: string;
-  started_at: string;
-  finished_at: string | null;
-  source: string;
-  rows_total: number | null;
-  rows_inserted: number | null;
-  rows_updated: number | null;
-  status: string;
-  error: string | null;
-} | null;
-
-export type SyncResult = {
-  ok: boolean;
-  rows_total: number;
-  rows_inserted: number;
-  rows_updated: number;
-  error?: string;
-};
 
 const PAGE = 1000;
 
