@@ -195,6 +195,23 @@ function VendasPage() {
   const [form, setForm] = useState<FormState>(emptyForm());
   const [bulkOpen, setBulkOpen] = useState(false);
 
+  const { data: vendedores = [] } = useVendedores();
+  const { data: cerimoniais = [] } = useCerimoniais();
+  const { data: decoradores = [] } = useDecoradores();
+
+  const derived = useMemo(() => {
+    const valor_final = Math.max(0, (form.valor_proposta || 0) - (form.desconto || 0));
+    const vend = vendedores.find((v) => v.nome === form.consultor);
+    const ceri = cerimoniais.find((c) => c.nome === form.cerimonial);
+    const valor_comissao = vend ? valor_final * (Number(vend.percentual_comissao) || 0) / 100 : 0;
+    const valor_bv = ceri ? valor_final * (Number(ceri.percentual_bv) || 0) / 100 : 0;
+    return {
+      valor_final: Number(valor_final.toFixed(2)),
+      valor_bv: Number(valor_bv.toFixed(2)),
+      valor_comissao: Number(valor_comissao.toFixed(2)),
+    };
+  }, [form.valor_proposta, form.desconto, form.consultor, form.cerimonial, vendedores, cerimoniais]);
+
   const { data, isLoading, error } = useQuery({
     queryKey: ["comercial-vendas-db"],
     queryFn: () => listVendasDb(),
