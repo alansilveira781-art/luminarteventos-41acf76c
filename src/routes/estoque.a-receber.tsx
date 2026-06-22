@@ -280,7 +280,7 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
         }).eq("id", it.id);
       }
       const { error } = await sb.from("compras")
-        .update({ status: "finalizado", fornecedor, documento: notaFiscal || null })
+        .update({ status: "finalizado", fornecedor: fornecedorNome || null, fornecedor_id: fornecedorId || null, documento: notaFiscal || null })
         .eq("id", compraId);
       if (error) throw error;
     },
