@@ -194,6 +194,7 @@ export function dbRowToVenda(d: Record<string, unknown>): VendaRow {
     percentual: Number(d.percentual) || 0,
     valorFinal: Number(d.valor_final) || 0,
     valorBV: Number(d.valor_bv) || 0,
+    valorComissao: Number(d.valor_comissao) || 0,
     comissaoGestor: Number(d.comissao_gestor) || 0,
     tipoComissao: (d.tipo_comissao as string) ?? null,
     comissaoConsultor: Number(d.comissao_consultor) || 0,
