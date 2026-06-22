@@ -665,17 +665,26 @@ function VendasPage() {
               <SelectFree value={form.classificacao} options={CLASSIFICACOES}
                 onChange={(v) => setForm({ ...form, classificacao: v })} />
             </Field>
-            <Field label="Consultor">
-              <SelectFree value={form.consultor} options={CONSULTORES_DEFAULT}
-                onChange={(v) => setForm({ ...form, consultor: v })} />
+            <Field label="Consultor(a)">
+              <SelectFree
+                value={form.consultor}
+                options={vendedores.map((v) => v.nome)}
+                onChange={(v) => setForm({ ...form, consultor: v })}
+              />
             </Field>
             <Field label="Cerimonial">
-              <Input value={form.cerimonial}
-                onChange={(e) => setForm({ ...form, cerimonial: e.target.value })} />
+              <SelectFree
+                value={form.cerimonial}
+                options={cerimoniais.map((c) => c.nome)}
+                onChange={(v) => setForm({ ...form, cerimonial: v })}
+              />
             </Field>
-            <Field label="Decorador">
-              <Input value={form.decorador}
-                onChange={(e) => setForm({ ...form, decorador: e.target.value })} />
+            <Field label="Decorador(a)/Agência">
+              <SelectFree
+                value={form.decorador}
+                options={decoradores.map((d) => d.nome)}
+                onChange={(v) => setForm({ ...form, decorador: v })}
+              />
             </Field>
             <Field label="Valor da Proposta">
               <MoneyInput value={form.valor_proposta}
@@ -685,20 +694,29 @@ function VendasPage() {
               <MoneyInput value={form.desconto}
                 onChange={(n) => setForm({ ...form, desconto: n })} />
             </Field>
-            <Field label="Valor Final">
-              <MoneyInput value={form.valor_final}
-                onChange={(n) => setForm({ ...form, valor_final: n })} />
-            </Field>
-            <Field label="Valor BV">
-              <MoneyInput value={form.valor_bv}
-                onChange={(n) => setForm({ ...form, valor_bv: n })} />
-            </Field>
-            {valorFinalDivergente && (
-              <div className="sm:col-span-2 lg:col-span-3 text-xs text-amber-600 flex items-center gap-1">
-                <AlertTriangle className="h-3.5 w-3.5" />
-                Atenção: Proposta − Desconto ({brl(form.valor_proposta - form.desconto)}) é diferente do Valor Final.
+            <Field label="Valor Final (calculado)">
+              <div className="h-9 px-3 flex items-center text-sm rounded-md border bg-muted/40 font-medium tabular-nums">
+                {brl(derived.valor_final)}
               </div>
-            )}
+            </Field>
+            <Field label="Valor BV (calculado)">
+              <div className="h-9 px-3 flex items-center text-sm rounded-md border bg-muted/40 tabular-nums">
+                {brl(derived.valor_bv)}
+              </div>
+            </Field>
+            <Field label="Valor Comissão (calculado)">
+              <div className="h-9 px-3 flex items-center text-sm rounded-md border bg-muted/40 tabular-nums">
+                {brl(derived.valor_comissao)}
+              </div>
+            </Field>
+            <div className="sm:col-span-2 lg:col-span-3 text-xs text-muted-foreground flex items-start gap-1">
+              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>
+                Valor Final = Proposta − Desconto. BV e Comissão usam os percentuais cadastrados em
+                Configurações (vendedor/cerimonial). Se o nome for digitado como "Outro...", o percentual
+                fica zerado.
+              </span>
+            </div>
             <div className="sm:col-span-2 lg:col-span-3 flex justify-end gap-2 pt-2 border-t border-border">
               <Button type="button" variant="ghost" onClick={() => setFormOpen(false)}>Cancelar</Button>
               <Button type="submit" disabled={saveMut.isPending}>
