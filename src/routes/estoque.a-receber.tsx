@@ -163,11 +163,16 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
     staleTime: 0,
   });
 
+  const { data: fornecedores = [] } = useQuery({
+    queryKey: ["fornecedores-select"],
+    queryFn: async () =>
+      (await sb.from("fornecedores").select("*").eq("status", "ativo").order("nome")).data ?? [],
+  });
+
   const [linhaExtras, setLinhaExtras] = useState<Record<string, LinhaExtra>>({});
   const [itemMap, setItemMap] = useState<Record<string, string>>({});
-  const [fornecedor, setFornecedor] = useState("");
+  const [fornecedorId, setFornecedorId] = useState("");
   const [notaFiscal, setNotaFiscal] = useState("");
-  const [responsavel, setResponsavel] = useState("");
   const [empresa, setEmpresa] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [dataMovimento, setDataMovimento] = useState(() => toBRTInputDateTime());
@@ -176,9 +181,8 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
 
   if (compra && !prefilled) {
     setPrefilled(true);
-    if (compra.fornecedor) setFornecedor(compra.fornecedor);
+    if (compra.fornecedor_id) setFornecedorId(compra.fornecedor_id);
     if (compra.documento) setNotaFiscal(compra.documento);
-    if (compra.comprador) setResponsavel(compra.comprador);
     if (compra.empresa) setEmpresa(compra.empresa);
     if (compra.observacoes) setObservacoes(compra.observacoes);
   }
