@@ -201,7 +201,7 @@ function ComprasKanban() {
     const status = overId as CompraStatus;
     const compra = compras.find((c) => c.id === id);
     if (!compra) return;
-    if (!canMoveCompra(compra, user?.id, isAdmin)) {
+    if (!canMoveCompra(compra, user?.id, isAdmin, user?.email)) {
       toast.error(moveBlockedMessage(compra));
       return;
     }
@@ -287,7 +287,7 @@ function ComprasKanban() {
             <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={byStatus[s.key]?.length ?? 0}>
               {(byStatus[s.key] ?? []).map((c) => {
                 const next = nextStatus(c.status);
-                const canMove = canMoveCompra(c, user?.id, isAdmin);
+                const canMove = canMoveCompra(c, user?.id, isAdmin, user?.email);
                 return (
                   <Card
                     key={c.id}
