@@ -130,6 +130,33 @@ function EstoquePage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const bulkDelMut = useMutation({
+    mutationFn: async (ids: string[]) => {
+      for (const id of ids) {
+        await supabase.from("movimentacao_itens").delete().eq("item_id", id);
+        await supabase.from("movimentacoes").delete().eq("item_id", id);
+        const { error } = await supabase.from("itens").delete().eq("id", id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["itens"] });
+      qc.invalidateQueries({ queryKey: ["itens-select"] });
+      qc.invalidateQueries({ queryKey: ["itens-select-saida"] });
+      toast.success("Itens excluídos");
+      sel.clear();
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  function handleBulkDelete() {
+    const ids = Array.from(sel.selected);
+    if (!ids.length) return;
+    if (!confirm(`Excluir ${ids.length} item(ns)? Todas as movimentações vinculadas serão apagadas. Esta ação não pode ser desfeita.`)) return;
+    bulkDelMut.mutate(ids);
+  }
+
+
   const filtered = useMemo(() => {
     if (!itens) return [];
     let arr = itens as any[];
@@ -256,7 +283,18 @@ function EstoquePage() {
         </div>
       </Card>
 
-      <BulkActionsBar count={sel.count} onEdit={() => setBulkOpen(true)} onClear={sel.clear} />
+      {isAdmin && (
+        <BulkActionsBar
+          count={sel.count}
+          onEdit={() => setBulkOpen(true)}
+          onClear={sel.clear}
+          extraActions={
+            <Button variant="destructive" size="sm" onClick={handleBulkDelete} disabled={bulkDelMut.isPending}>
+              <Trash2 className="h-4 w-4 mr-1" /> Excluir selecionadas
+            </Button>
+          }
+        />
+      )}
 
       <Card className="overflow-hidden">
         <div className="overflow-auto max-h-[calc(100vh-180px)]">
