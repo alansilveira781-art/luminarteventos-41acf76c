@@ -21,6 +21,7 @@ export function useEstoqueRealtimeSync() {
       qc.invalidateQueries({ queryKey: ["itens-select-saida"] });
       qc.invalidateQueries({ queryKey: ["itens-busca"] });
       qc.invalidateQueries({ queryKey: ["dashboard-itens"] });
+      qc.invalidateQueries({ queryKey: ["alerta-estoque"] });
     };
     const onMovimentacoes = () => {
       qc.invalidateQueries({ queryKey: ["itens"] });
@@ -38,6 +39,8 @@ export function useEstoqueRealtimeSync() {
       qc.invalidateQueries({ queryKey: ["dashboard-itens"] });
       qc.invalidateQueries({ queryKey: ["dashboard-movs"] });
       qc.invalidateQueries({ queryKey: ["compras-receber"] });
+      qc.invalidateQueries({ queryKey: ["alerta-estoque"] });
+      qc.invalidateQueries({ queryKey: ["alerta-estoque-saidas"] });
     };
     const onCompras = () => {
       qc.invalidateQueries({ queryKey: ["compras"] });
