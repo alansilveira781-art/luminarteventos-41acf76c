@@ -178,8 +178,8 @@ function Dashboard() {
   const baixo = itens?.filter((i) => i.status === "baixo_estoque").length ?? 0;
   const sem = itens?.filter((i) => i.status === "sem_estoque").length ?? 0;
   const manut = itens?.filter((i) => i.status === "em_manutencao").length ?? 0;
-  const entradasMes = movsMes?.filter((m) => m.tipo === "entrada").length ?? 0;
-  const saidasMes = movsMes?.filter((m) => m.tipo === "saida").length ?? 0;
+  const entradasMes = movsMes?.filter((m) => m.tipo === "entrada" && !isAjusteMovimentacao(m)).length ?? 0;
+  const saidasMes = movsMes?.filter((m) => m.tipo === "saida" && !isAjusteMovimentacao(m)).length ?? 0;
   const devolucoesMes = movsMes?.filter((m) => m.tipo === "devolucao").length ?? 0;
   const saidasAbertas = recentes?.filter(
     (m) => m.tipo === "saida" && (m.saida_status === "aberta" || m.saida_status === "parcialmente_devolvida"),
