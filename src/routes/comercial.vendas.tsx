@@ -45,7 +45,6 @@ const MESES_PT = [
 ];
 
 const CLASSIFICACOES = ["Cenografia", "Social", "Stand", "Corporativo"];
-const CONSULTORES_DEFAULT = ["Rômulo", "Pádua"];
 const EMPRESAS = ["Planejados", "Eventos"];
 
 const brl = (v: number) =>
