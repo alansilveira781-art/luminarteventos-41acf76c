@@ -70,7 +70,6 @@ import { Route as ComercialDashboardVendedoresRouteImport } from './routes/comer
 import { Route as ComercialDashboardRelatoriosRouteImport } from './routes/comercial.dashboard.relatorios'
 import { Route as ComercialDashboardPropostasRouteImport } from './routes/comercial.dashboard.propostas'
 import { Route as ComercialDashboardPainelRouteImport } from './routes/comercial.dashboard.painel'
-import { Route as ComercialDashboardMetasRouteImport } from './routes/comercial.dashboard.metas'
 import { Route as ComercialDashboardIndicadoresRouteImport } from './routes/comercial.dashboard.indicadores'
 import { Route as ApiPublicSolicitarRouteImport } from './routes/api/public/solicitar'
 import { Route as ApiPublicSendPushRouteImport } from './routes/api/public/send-push'
@@ -393,11 +392,6 @@ const ComercialDashboardPainelRoute =
     path: '/painel',
     getParentRoute: () => ComercialDashboardRoute,
   } as any)
-const ComercialDashboardMetasRoute = ComercialDashboardMetasRouteImport.update({
-  id: '/metas',
-  path: '/metas',
-  getParentRoute: () => ComercialDashboardRoute,
-} as any)
 const ComercialDashboardIndicadoresRoute =
   ComercialDashboardIndicadoresRouteImport.update({
     id: '/indicadores',
@@ -530,7 +524,6 @@ export interface FileRoutesByFullPath {
   '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
   '/comercial/dashboard/indicadores': typeof ComercialDashboardIndicadoresRoute
-  '/comercial/dashboard/metas': typeof ComercialDashboardMetasRoute
   '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
   '/comercial/dashboard/propostas': typeof ComercialDashboardPropostasRoute
   '/comercial/dashboard/relatorios': typeof ComercialDashboardRelatoriosRoute
@@ -597,7 +590,6 @@ export interface FileRoutesByTo {
   '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
   '/comercial/dashboard/indicadores': typeof ComercialDashboardIndicadoresRoute
-  '/comercial/dashboard/metas': typeof ComercialDashboardMetasRoute
   '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
   '/comercial/dashboard/propostas': typeof ComercialDashboardPropostasRoute
   '/comercial/dashboard/relatorios': typeof ComercialDashboardRelatoriosRoute
@@ -674,7 +666,6 @@ export interface FileRoutesById {
   '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
   '/comercial/dashboard/indicadores': typeof ComercialDashboardIndicadoresRoute
-  '/comercial/dashboard/metas': typeof ComercialDashboardMetasRoute
   '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
   '/comercial/dashboard/propostas': typeof ComercialDashboardPropostasRoute
   '/comercial/dashboard/relatorios': typeof ComercialDashboardRelatoriosRoute
@@ -752,7 +743,6 @@ export interface FileRouteTypes {
     | '/api/public/send-push'
     | '/api/public/solicitar'
     | '/comercial/dashboard/indicadores'
-    | '/comercial/dashboard/metas'
     | '/comercial/dashboard/painel'
     | '/comercial/dashboard/propostas'
     | '/comercial/dashboard/relatorios'
@@ -819,7 +809,6 @@ export interface FileRouteTypes {
     | '/api/public/send-push'
     | '/api/public/solicitar'
     | '/comercial/dashboard/indicadores'
-    | '/comercial/dashboard/metas'
     | '/comercial/dashboard/painel'
     | '/comercial/dashboard/propostas'
     | '/comercial/dashboard/relatorios'
@@ -895,7 +884,6 @@ export interface FileRouteTypes {
     | '/api/public/send-push'
     | '/api/public/solicitar'
     | '/comercial/dashboard/indicadores'
-    | '/comercial/dashboard/metas'
     | '/comercial/dashboard/painel'
     | '/comercial/dashboard/propostas'
     | '/comercial/dashboard/relatorios'
@@ -1371,13 +1359,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ComercialDashboardPainelRouteImport
       parentRoute: typeof ComercialDashboardRoute
     }
-    '/comercial/dashboard/metas': {
-      id: '/comercial/dashboard/metas'
-      path: '/metas'
-      fullPath: '/comercial/dashboard/metas'
-      preLoaderRoute: typeof ComercialDashboardMetasRouteImport
-      parentRoute: typeof ComercialDashboardRoute
-    }
     '/comercial/dashboard/indicadores': {
       id: '/comercial/dashboard/indicadores'
       path: '/indicadores'
@@ -1483,7 +1464,6 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface ComercialDashboardRouteChildren {
   ComercialDashboardIndicadoresRoute: typeof ComercialDashboardIndicadoresRoute
-  ComercialDashboardMetasRoute: typeof ComercialDashboardMetasRoute
   ComercialDashboardPainelRoute: typeof ComercialDashboardPainelRoute
   ComercialDashboardPropostasRoute: typeof ComercialDashboardPropostasRoute
   ComercialDashboardRelatoriosRoute: typeof ComercialDashboardRelatoriosRoute
@@ -1493,7 +1473,6 @@ interface ComercialDashboardRouteChildren {
 
 const ComercialDashboardRouteChildren: ComercialDashboardRouteChildren = {
   ComercialDashboardIndicadoresRoute: ComercialDashboardIndicadoresRoute,
-  ComercialDashboardMetasRoute: ComercialDashboardMetasRoute,
   ComercialDashboardPainelRoute: ComercialDashboardPainelRoute,
   ComercialDashboardPropostasRoute: ComercialDashboardPropostasRoute,
   ComercialDashboardRelatoriosRoute: ComercialDashboardRelatoriosRoute,
