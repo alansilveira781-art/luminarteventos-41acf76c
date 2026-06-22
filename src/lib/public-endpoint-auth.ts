@@ -38,7 +38,7 @@ export function requireProjectApiKey(request: Request): Response | null {
 }
 
 /**
- * Valida um token dedicado (ex.: webhook externo do Dropbox).
+ * Valida um token dedicado de webhook/integração externa.
  * O segredo é lido de process.env[envName].
  */
 export function requireSharedSecret(request: Request, envName: string): Response | null {

@@ -117,55 +117,6 @@ export async function parseVendasXlsx(buf: ArrayBuffer): Promise<VendaRow[]> {
   return rows;
 }
 
-export const DROPBOX_VENDAS_URL =
-  "https://www.dropbox.com/scl/fi/f1r2414qsg2sfriu7xxdh/CONTROLE-DE-VENDAS-NOVO.xlsx?rlkey=xpw1rxphb6r82j6szw2t26acf&dl=1";
-
-export async function fetchVendasFromDropbox(): Promise<VendaRow[]> {
-  const res = await fetch(DROPBOX_VENDAS_URL, {
-    redirect: "follow",
-    headers: { "User-Agent": "Mozilla/5.0 LuminartDashboard" },
-  });
-  if (!res.ok) throw new Error(`Erro ${res.status} ao baixar planilha do Dropbox`);
-  const buf = await res.arrayBuffer();
-  return parseVendasXlsx(buf);
-}
-
-// Map VendaRow -> DB row
-export function vendaRowToDb(r: VendaRow, source: "dropbox" | "upload") {
-  return {
-    nome_evento: r.nomeEvento,
-    data_registro: r.dataRegistro,
-    data_evento: r.dataEvento,
-    ano: r.ano,
-    mes: r.mes,
-    semana: r.semana,
-    mes_evento: r.mesEvento,
-    ano_evento: r.anoEvento,
-    trimestre_evento: r.trimestreEvento,
-    tipo: r.tipo,
-    tipo_evento: r.tipoEvento,
-    classificacao: r.classificacao,
-    empresa: r.empresa,
-    local: r.local,
-    estado: r.estado,
-    cidade: r.cidade,
-    salao: r.salao,
-    consultor: r.consultor,
-    gestor: r.gestor,
-    cerimonial: r.cerimonial,
-    decorador: r.decorador,
-    quantidade: r.quantidade,
-    valor_proposta: r.valorProposta,
-    desconto: r.desconto,
-    percentual: r.percentual,
-    valor_final: r.valorFinal,
-    valor_bv: r.valorBV,
-    comissao_gestor: r.comissaoGestor,
-    tipo_comissao: r.tipoComissao,
-    comissao_consultor: r.comissaoConsultor,
-    source,
-  };
-}
 
 export function dbRowToVenda(d: Record<string, unknown>): VendaRow {
   return {

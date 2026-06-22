@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/PageHeader";
@@ -7,8 +7,7 @@ import type { VendaRow } from "@/lib/comercial/vendas.functions";
 import { listVendasDb } from "@/lib/comercial/vendas-db.functions";
 import { applyFilters, filtrosIniciais, previousPeriod, getAno, type Filtros } from "@/lib/comercial/vendas-metrics";
 import { usePersistedState } from "@/hooks/usePersistedState";
-import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/comercial/dashboard")({
@@ -88,22 +87,13 @@ function DashboardLayout() {
   const filtered = useMemo(() => applyFilters(rows, filtros), [rows, filtros]);
   const previous = useMemo(() => previousPeriod(rows, filtros), [rows, filtros]);
 
-  async function refreshAll() {
-    await qc.invalidateQueries({ queryKey: ["comercial-vendas-db"] });
-  }
-
   return (
     <div className="p-4 sm:p-6 space-y-4">
       <PageHeader
         title="Dashboard Comercial"
-        description="Vendas cadastradas manualmente"
-        actions={
-          <Button variant="outline" size="sm" onClick={refreshAll} disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-            Atualizar
-          </Button>
-        }
+        description="Vendas cadastradas na aba Vendas"
       />
+
 
       <div className="flex flex-wrap gap-1 border-b border-border">
         {TABS.map((t) => {
