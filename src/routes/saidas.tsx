@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Plus, RefreshCw, Trash2, Pencil, Search, Copy, X } from "lucide-react";
-import { normalize, matchTokens } from "@/lib/utils";
+import { normalize, matchTokens, isAjusteMovimentacao } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -297,8 +297,9 @@ function SaidasPage() {
     },
   });
 
-  // Filtros + agrupamento por requisicao_numero
+  // Filtros + agrupamento por requisicao_numero (ajustes de estoque ficam ocultos na lista)
   const filteredBaseList = (saidas ?? []).filter((m: any) => {
+    if (isAjusteMovimentacao(m)) return false;
     if (filterItemQd.trim()) {
       const itemHay = `${m.item?.codigo ?? ""} ${m.item?.nome ?? ""}`;
       if (!matchTokens(itemHay, filterItemQd)) return false;
