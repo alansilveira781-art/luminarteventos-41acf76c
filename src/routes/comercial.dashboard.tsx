@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/PageHeader";
@@ -7,8 +7,7 @@ import type { VendaRow } from "@/lib/comercial/vendas.functions";
 import { listVendasDb } from "@/lib/comercial/vendas-db.functions";
 import { applyFilters, filtrosIniciais, previousPeriod, getAno, type Filtros } from "@/lib/comercial/vendas-metrics";
 import { usePersistedState } from "@/hooks/usePersistedState";
-import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/comercial/dashboard")({
