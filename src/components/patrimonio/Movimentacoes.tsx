@@ -17,7 +17,7 @@ import { ItemSearchSelect } from "@/components/ItemSearchSelect";
 import { ComboboxCreatable } from "@/components/ComboboxCreatable";
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { PatItemInfoHover } from "@/components/patrimonio/PatItemInfoHover";
-import { PatGroupSelect, buildPatGroups, allocateFromGroup, type PatItem, type PatGroup } from "@/components/patrimonio/PatGroupSelect";
+import { PatGroupSelect, PatItemSelect, buildPatGroups, buildPatItemOptions, allocateFromGroup, type PatItem, type PatGroup, type PatItemOption } from "@/components/patrimonio/PatGroupSelect";
 
 type Mov = {
   id: string; tipo: string; item_id: string | null; quantidade: number;
