@@ -13,10 +13,10 @@ import {
   applyFilters,
   evolucaoTrimestre,
   kpis,
-  rankingCerimonial,
-  rankingDecorador,
   uniqueValues,
-  valorPorClassificacao,
+  vendasPorCerimonial,
+  vendasPorDecorador,
+  vendasPorTipoEvento,
 } from "@/lib/comercial/vendas-metrics";
 
 export const Route = createFileRoute("/comercial/dashboard/vendedores")({
@@ -30,9 +30,9 @@ function Vendedores() {
   const { rows, filtered, previous, filtros, setFiltros } = useDashboard();
   const k = useMemo(() => kpis(filtered, previous), [filtered, previous]);
   const evol = useMemo(() => evolucaoTrimestre(filtered), [filtered]);
-  const porTipo = useMemo(() => valorPorClassificacao(filtered), [filtered]);
-  const cerimonial = useMemo(() => rankingCerimonial(filtered).slice(0, 8), [filtered]);
-  const decorador = useMemo(() => rankingDecorador(filtered).slice(0, 8), [filtered]);
+  const porTipo = useMemo(() => vendasPorTipoEvento(filtered), [filtered]);
+  const cerimonial = useMemo(() => vendasPorCerimonial(filtered).slice(0, 8), [filtered]);
+  const decorador = useMemo(() => vendasPorDecorador(filtered).slice(0, 8), [filtered]);
 
   // Consultores disponíveis no recorte atual (ignorando o filtro de consultor)
   const consultoresList = useMemo(() => {
