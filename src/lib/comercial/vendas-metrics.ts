@@ -185,7 +185,20 @@ function rankBy(
 
 export const rankingConsultor = (rows: VendaRow[]) => rankBy(rows, (r) => r.consultor);
 export const valorPorClassificacao = (rows: VendaRow[]) => rankBy(rows, (r) => r.classificacao);
-export const rankingCerimonial = (rows: VendaRow[]) => rankBy(rows, (r) => r.cerimonial);
+export function rankingCerimonial(rows: VendaRow[]): { nome: string; valor: number; bv: number }[] {
+  const map = new Map<string, { valor: number; bv: number }>();
+  for (const r of rows) {
+    const k = (r.cerimonial ?? "").trim();
+    if (!k) continue;
+    const cur = map.get(k) ?? { valor: 0, bv: 0 };
+    cur.valor += r.valorFinal || 0;
+    cur.bv += r.valorBV || 0;
+    map.set(k, cur);
+  }
+  return [...map.entries()]
+    .map(([nome, v]) => ({ nome, valor: v.valor, bv: v.bv }))
+    .sort((a, b) => b.valor - a.valor);
+}
 export const vendasPorCerimonial = rankingCerimonial;
 export const rankingDecorador = (rows: VendaRow[]) => rankBy(rows, (r) => r.decorador);
 export const vendasPorDecorador = rankingDecorador;
