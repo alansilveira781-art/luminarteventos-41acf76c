@@ -78,7 +78,6 @@ import { Route as ApiContaazulStatusRouteImport } from './routes/api/contaazul/s
 import { Route as ApiContaazulScheduleRouteImport } from './routes/api/contaazul/schedule'
 import { Route as ApiContaazulReprocessarFalhasRouteImport } from './routes/api/contaazul/reprocessar-falhas'
 import { Route as ApiContaazulHistoricoRouteImport } from './routes/api/contaazul/historico'
-import { Route as ApiPublicHooksComercialVendasSyncRouteImport } from './routes/api/public/hooks/comercial-vendas-sync'
 import { Route as ApiPublicContaazulCronRouteImport } from './routes/api/public/contaazul/cron'
 import { Route as ApiContaazulOauthPrepareRouteImport } from './routes/api/contaazul/oauth.prepare'
 import { Route as ApiContaazulOauthCallbackRouteImport } from './routes/api/contaazul/oauth.callback'
@@ -435,12 +434,6 @@ const ApiContaazulHistoricoRoute = ApiContaazulHistoricoRouteImport.update({
   path: '/api/contaazul/historico',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicHooksComercialVendasSyncRoute =
-  ApiPublicHooksComercialVendasSyncRouteImport.update({
-    id: '/api/public/hooks/comercial-vendas-sync',
-    path: '/api/public/hooks/comercial-vendas-sync',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiPublicContaazulCronRoute = ApiPublicContaazulCronRouteImport.update({
   id: '/api/public/contaazul/cron',
   path: '/api/public/contaazul/cron',
@@ -532,7 +525,6 @@ export interface FileRoutesByFullPath {
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
   '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
   '/api/public/contaazul/cron': typeof ApiPublicContaazulCronRoute
-  '/api/public/hooks/comercial-vendas-sync': typeof ApiPublicHooksComercialVendasSyncRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -598,7 +590,6 @@ export interface FileRoutesByTo {
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
   '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
   '/api/public/contaazul/cron': typeof ApiPublicContaazulCronRoute
-  '/api/public/hooks/comercial-vendas-sync': typeof ApiPublicHooksComercialVendasSyncRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -674,7 +665,6 @@ export interface FileRoutesById {
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
   '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
   '/api/public/contaazul/cron': typeof ApiPublicContaazulCronRoute
-  '/api/public/hooks/comercial-vendas-sync': typeof ApiPublicHooksComercialVendasSyncRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -751,7 +741,6 @@ export interface FileRouteTypes {
     | '/api/contaazul/oauth/callback'
     | '/api/contaazul/oauth/prepare'
     | '/api/public/contaazul/cron'
-    | '/api/public/hooks/comercial-vendas-sync'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -817,7 +806,6 @@ export interface FileRouteTypes {
     | '/api/contaazul/oauth/callback'
     | '/api/contaazul/oauth/prepare'
     | '/api/public/contaazul/cron'
-    | '/api/public/hooks/comercial-vendas-sync'
   id:
     | '__root__'
     | '/'
@@ -892,7 +880,6 @@ export interface FileRouteTypes {
     | '/api/contaazul/oauth/callback'
     | '/api/contaazul/oauth/prepare'
     | '/api/public/contaazul/cron'
-    | '/api/public/hooks/comercial-vendas-sync'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -929,7 +916,6 @@ export interface RootRouteChildren {
   ApiContaazulOauthCallbackRoute: typeof ApiContaazulOauthCallbackRoute
   ApiContaazulOauthPrepareRoute: typeof ApiContaazulOauthPrepareRoute
   ApiPublicContaazulCronRoute: typeof ApiPublicContaazulCronRoute
-  ApiPublicHooksComercialVendasSyncRoute: typeof ApiPublicHooksComercialVendasSyncRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1417,13 +1403,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiContaazulHistoricoRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/comercial-vendas-sync': {
-      id: '/api/public/hooks/comercial-vendas-sync'
-      path: '/api/public/hooks/comercial-vendas-sync'
-      fullPath: '/api/public/hooks/comercial-vendas-sync'
-      preLoaderRoute: typeof ApiPublicHooksComercialVendasSyncRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/contaazul/cron': {
       id: '/api/public/contaazul/cron'
       path: '/api/public/contaazul/cron'
@@ -1644,9 +1623,16 @@ const rootRouteChildren: RootRouteChildren = {
   ApiContaazulOauthCallbackRoute: ApiContaazulOauthCallbackRoute,
   ApiContaazulOauthPrepareRoute: ApiContaazulOauthPrepareRoute,
   ApiPublicContaazulCronRoute: ApiPublicContaazulCronRoute,
-  ApiPublicHooksComercialVendasSyncRoute:
-    ApiPublicHooksComercialVendasSyncRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

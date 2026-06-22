@@ -1,5 +1,3 @@
-import { createServerFn } from "@tanstack/react-start";
-
 export type VendaRow = {
   id?: string;
   dataRegistro: string | null; // ISO yyyy-mm-dd
@@ -40,6 +38,7 @@ export type ListVendasResult = {
   fetchedAt: string;
   error?: string;
 };
+
 
 const DROPBOX_URL =
   "https://www.dropbox.com/scl/fi/f1r2414qsg2sfriu7xxdh/CONTROLE-DE-VENDAS-NOVO.xlsx?rlkey=xpw1rxphb6r82j6szw2t26acf&dl=1";
