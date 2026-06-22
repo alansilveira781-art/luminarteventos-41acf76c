@@ -227,10 +227,34 @@ function VendasPage() {
     return list;
   }, [rows, empresa, consultor, classificacao, busca, periodo]);
 
-  const sorted = useMemo(
-    () => [...filtered].sort((a, b) => (b.dataRegistro ?? "").localeCompare(a.dataRegistro ?? "")),
-    [filtered],
-  );
+  const { sort, toggleSort, applySort } = useSort();
+
+  const sorted = useMemo(() => {
+    if (sort) {
+      return applySort(filtered as any, (r: any, key: string) => {
+        switch (key) {
+          case "data_registro": return r.dataRegistro ?? "";
+          case "tipo": return r.tipo ?? "";
+          case "nome_evento": return r.nomeEvento ?? "";
+          case "local": return r.local ?? "";
+          case "cidade": return r.cidade ?? "";
+          case "estado": return r.estado ?? "";
+          case "classificacao": return r.classificacao ?? "";
+          case "consultor": return r.consultor ?? "";
+          case "cerimonial": return r.cerimonial ?? "";
+          case "decorador": return r.decorador ?? "";
+          case "empresa": return r.empresa ?? "";
+          case "valor_proposta": return r.valorProposta || 0;
+          case "desconto": return r.desconto || 0;
+          case "valor_final": return r.valorFinal || 0;
+          case "valor_bv": return r.valorBV || 0;
+          default: return r[key];
+        }
+      }) as VendaRow[];
+    }
+    return [...filtered].sort((a, b) => (b.dataRegistro ?? "").localeCompare(a.dataRegistro ?? ""));
+  }, [filtered, sort, applySort]);
+
 
   const totalProposta = useMemo(() => sorted.reduce((s, r) => s + (r.valorProposta || 0), 0), [sorted]);
   const totalDesc = useMemo(() => sorted.reduce((s, r) => s + (r.desconto || 0), 0), [sorted]);
