@@ -661,6 +661,36 @@ export type Database = {
         }
         Relationships: []
       }
+      comercial_metas: {
+        Row: {
+          ano: number
+          classificacao: string
+          created_at: string
+          id: string
+          mes: number
+          updated_at: string
+          valor_meta: number
+        }
+        Insert: {
+          ano: number
+          classificacao: string
+          created_at?: string
+          id?: string
+          mes: number
+          updated_at?: string
+          valor_meta?: number
+        }
+        Update: {
+          ano?: number
+          classificacao?: string
+          created_at?: string
+          id?: string
+          mes?: number
+          updated_at?: string
+          valor_meta?: number
+        }
+        Relationships: []
+      }
       comercial_proposta_seq: {
         Row: {
           id: boolean
