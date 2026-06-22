@@ -107,8 +107,6 @@ type FormState = {
   empresa: string;
   valor_proposta: number;
   desconto: number;
-  valor_final: number;
-  valor_bv: number;
 };
 
 function emptyForm(): FormState {
@@ -126,8 +124,6 @@ function emptyForm(): FormState {
     empresa: "",
     valor_proposta: 0,
     desconto: 0,
-    valor_final: 0,
-    valor_bv: 0,
   };
 }
 
@@ -146,12 +142,13 @@ function formFromRow(r: VendaRow): FormState {
     empresa: r.empresa ?? "",
     valor_proposta: r.valorProposta || 0,
     desconto: r.desconto || 0,
-    valor_final: r.valorFinal || 0,
-    valor_bv: r.valorBV || 0,
   };
 }
 
-function buildDbPayload(f: FormState) {
+function buildDbPayload(
+  f: FormState,
+  derived: { valor_final: number; valor_bv: number; valor_comissao: number },
+) {
   const data = f.data_registro || null;
   return {
     data_registro: data,
@@ -167,8 +164,9 @@ function buildDbPayload(f: FormState) {
     empresa: f.empresa || null,
     valor_proposta: f.valor_proposta || 0,
     desconto: f.desconto || 0,
-    valor_final: f.valor_final || 0,
-    valor_bv: f.valor_bv || 0,
+    valor_final: derived.valor_final,
+    valor_bv: derived.valor_bv,
+    valor_comissao: derived.valor_comissao,
     ano: anoFrom(data),
     mes: mesNomeFrom(data),
     mes_evento: mesNomeFrom(data),
