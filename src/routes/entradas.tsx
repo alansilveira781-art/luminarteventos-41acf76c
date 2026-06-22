@@ -345,6 +345,14 @@ function EntradasPage() {
     },
     onError: (e: any) => toast.error(e.message),
   });
+  function handleBulkDelete() {
+    const ids = Array.from(sel.selected);
+    const rows = grupos.filter((g: any) => ids.includes(g.id));
+    if (!rows.length) return;
+    if (!confirm(`Excluir ${rows.length} entrada(s)? O estoque será revertido.`)) return;
+    bulkDelMut.mutate(rows);
+  }
+
   return (
     <>
       <PageHeader
