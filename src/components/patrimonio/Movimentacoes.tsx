@@ -488,6 +488,16 @@ function MovForm({ tipo, editing, itens, emUsoPorItem, onSubmit, submitting }: {
     [itens],
   );
 
+  // Opções item-a-item para SAÍDA (uma linha por peça, com livre/em uso)
+  const itemOptionsSaida: PatItemOption[] = useMemo(
+    () => buildPatItemOptions(itens, emUsoPorItem, excludeIds),
+    [itens, emUsoPorItem, excludeIds],
+  );
+  const itemOptionsById = useMemo(
+    () => new Map(itemOptionsSaida.map((o) => [o.id, o])),
+    [itemOptionsSaida],
+  );
+
   const qtyRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const focusQty = (i: number) => {
     setTimeout(() => { const el = qtyRefs.current[i]; if (el) { el.focus(); el.select(); } }, 30);
