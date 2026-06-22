@@ -1,48 +1,33 @@
-## Objetivo
+## Diagnóstico
 
-Garantir que o Dashboard puxa os dados da MESMA base da aba Vendas e que cada filtro mostra exatamente as opções reais que aparecem em Vendas (ex.: Empresa = `EVENTO` e `PLANEJADOS`, sem valores fantasmas).
+Olhando os logs do servidor, encontrei dois problemas que explicam o Dashboard zerado:
 
-## Diagnóstico (base atual)
+1. **Build "preso" com referência fantasma**: o `routeTree.gen.ts` da última build (preview/produção) ainda apontava para `src/routes/api/public/hooks/comercial-vendas-sync.ts`, arquivo que apagamos. Isso fazia o servidor responder **500** quando o Dashboard tentava buscar as vendas — por isso "nada acontece". O dev-server do sandbox já regenerou o arquivo, mas a build publicada precisa rodar de novo.
 
-Consultei a tabela `comercial_vendas`. Hoje a base tem:
+2. **`listVendasDb` está usando o cliente admin (`supabaseAdmin`)** para uma leitura comum da aba Vendas/Dashboard. Esse caminho é frágil no Lovable Cloud: quando a chave injetada vier no formato novo `sb_secret_*`, a Data API retorna `Expected 3 parts in JWT; got 1` e o endpoint cai em 500 silencioso — exatamente o que aconteceu no `luminarteventos.lovable.app`. A recomendação oficial é usar o cliente do usuário autenticado (`requireSupabaseAuth`), que respeita RLS e usa a chave pública correta.
 
-- **Empresa**: `EVENTO` (932), `PLANEJADOS` (117) e 1 linha NULL. Já filtra OK no Dashboard.
-- **Ano**: vários registros com `ano_evento = 1900` (69 linhas, lixo de importação). Como `getAno` usa `r.anoEvento ?? r.ano ?? ...`, ele devolve `1900` e o filtro de Ano lista `1900` como uma opção válida.
-- **Consultor**: aparece um valor literal `"-"` na base, além dos consultores reais (André, Cristiano, Gabi, Jefferson, Maicon, Padua, Romulo). O `"-"` polui o filtro.
-- Mesmas situações pontuais podem ocorrer em `cerimonial`, `decorador`, `classificacao`, `mes_evento`.
+Confirmei na base: existem **1.050 vendas** com 2 empresas (`EVENTO`, `PLANEJADOS`) — os dados estão lá, o problema é só na leitura.
 
-Por isso o Dashboard “liga” na base correta, mas o usuário vê filtros estranhos que não batem com Vendas.
+## O que vou fazer
 
-## Plano
+### 1. Trocar `listVendasDb` para usar autenticação do usuário
+Arquivo: `src/lib/comercial/vendas-db.functions.ts`
 
-Mudanças pontuais, sem mexer em Propostas, sem trocar a fonte (`listVendasDb`) e sem recalcular valores.
+- Adicionar `.middleware([requireSupabaseAuth])`.
+- Substituir `supabaseAdmin` por `context.supabase` (cliente do usuário logado, com RLS).
+- Manter a mesma assinatura/retorno (`{ rows, fetchedAt, error? }`) para não quebrar a aba Vendas nem o Dashboard.
 
-1. **Sanitizar derivações em `src/lib/comercial/vendas-metrics.ts`**
-   - `getAno(r)`: aceitar apenas anos válidos (`> 1900` e `<= ano atual + 5`). Aplicar a TODAS as fontes (`anoEvento`, `ano`, `parseYear(dataEvento)`, `parseYear(dataRegistro)`), não só ao parse de string. Resultado: o ano `1900` deixa de aparecer no filtro e nas agregações.
-   - Criar `cleanText(v)`: trata `null`, `""`, `"-"`, `"—"`, `"N/A"` como vazio.
-   - Aplicar `cleanText` em `applyFilters` para consultor/empresa/classificacao/cerimonial/decorador (linhas com valor “lixo” não casam com nenhum filtro real).
-   - `uniqueValues` ganha uma versão/uso que filtra via `cleanText`, garantindo dropdowns sem `"-"`, `""`, etc.
+### 2. Garantir leitura para usuários autenticados em `comercial_vendas`
+- Conferir as RLS atuais da tabela (`SELECT` para `authenticated`) e, se faltar, criar via migração uma policy `TO authenticated USING (true)` + `GRANT SELECT ON public.comercial_vendas TO authenticated` (só leitura; mutações já existem para a aba Vendas).
 
-2. **`src/components/comercial/dashboard/FiltrosBar.tsx`**
-   - Empresas/consultores/classificacoes/cerimoniais/decoradores: construir as opções com o helper sanitizado, idêntico ao critério da aba Vendas. Resultado prático: o filtro Empresa mostrará exatamente `EVENTO` e `PLANEJADOS`.
-   - Anos: usar o novo `getAno` saneado. O ano fantasma `1900` some.
-   - Manter o comportamento defensivo já existente: se o valor atual do filtro não está nas opções, exibir `Todos` (nunca campo vazio).
+### 3. Forçar rebuild limpo
+A edição do arquivo acima invalida o cache de build, regenera o `routeTree.gen.ts` sem a referência fantasma e republica o preview — encerrando o 500.
 
-3. **`src/routes/comercial.dashboard.tsx`**
-   - Manter a leitura via `useQuery({ queryKey: ["comercial-vendas-db"], queryFn: listVendasDb })` — mesma queryKey usada pela aba Vendas, então qualquer cadastro/edição já reflete (mais o realtime que já existe).
-   - Confirmar que o fallback de ano padrão (ano atual → último ano com dados → "Todos") continua funcionando com o `getAno` saneado.
+### 4. Validar
+- Invocar `listVendasDb` via debug do servidor (esperado: 200 com `rows.length > 0`).
+- Abrir `/comercial/dashboard/painel` no Playwright e conferir que os KPIs deixam de mostrar `R$ 0` e que os selects de **Ano** e **Empresa** (apenas `EVENTO` e `PLANEJADOS`) aparecem preenchidos.
+- Cadastrar uma venda na aba Vendas e confirmar que o Dashboard reflete sem F5 (realtime já está ligado).
 
-## Validação
+## Observação
 
-- Filtro Empresa do Dashboard mostra apenas `EVENTO` e `PLANEJADOS` — igual a Vendas.
-- Filtro Ano não mostra mais `1900`; ao abrir, mostra 2026 (atual). Se 2026 não tiver dados, cai para 2025 (último com dados).
-- Filtro Consultor não mostra `"-"`; mostra só os nomes reais.
-- Cadastrar/editar uma venda na aba Vendas atualiza o Dashboard sem F5.
-- Propostas continua intocada.
-
-## Não fazer
-
-- Não reescrever Propostas.
-- Não alterar a tabela `comercial_vendas` nem fazer backfill de dados.
-- Não trocar a fonte de leitura nem a queryKey.
-- Não recalcular valorFinal/valorBV/valorComissao.
+Nada na lógica de filtros/KPIs muda — eles já estão corretos desde o último ajuste. O problema atual é puramente de leitura/build, não de cálculo.
