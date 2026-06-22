@@ -457,7 +457,7 @@ function EntradasPage() {
                   </th>
                 )}
                 <th className="px-3 py-3 w-8"></th>
-                <SortableTh sort={sort} onToggle={toggleSort} k="numero" label="REQ" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="numero" label="ENT" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="data_movimento" label="Data" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="entrada_tipo" label="Tipo" />
                 <SortableTh sort={sort} onToggle={toggleSort} k="fornecedor" label="Fornecedor" />
@@ -488,7 +488,7 @@ function EntradasPage() {
                         </Button>
                       </td>
                       <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">
-                        {g.numero != null ? `REQ-${String(g.numero).padStart(4, "0")}` : "—"}
+                        {g.numero != null ? `ENT-${String(g.numero).padStart(4, "0")}` : "—"}
                       </td>
                       <td className="px-4 py-3 tabular-nums whitespace-nowrap">{format(new Date(g.data_movimento), "dd/MM/yyyy HH:mm")}</td>
                       <td className="px-4 py-3 text-muted-foreground">{g.entrada_tipo ? entradaTipoLabels[g.entrada_tipo] ?? g.entrada_tipo : "—"}</td>
@@ -596,7 +596,7 @@ function EntradasPage() {
         <DialogContent className="max-w-[min(1500px,98vw)] w-[98vw]">
           <DialogHeader>
             <DialogTitle>
-              Editar entrada{editing?.numero != null ? ` REQ-${String(editing.numero).padStart(4, "0")}` : ""}
+              Editar entrada{editing?.numero != null ? ` ENT-${String(editing.numero).padStart(4, "0")}` : ""}
             </DialogTitle>
           </DialogHeader>
           {editing && (
