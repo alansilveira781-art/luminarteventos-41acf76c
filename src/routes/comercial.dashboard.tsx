@@ -39,6 +39,7 @@ const TABS = [
   { to: "/comercial/dashboard/vendedores", label: "Vendedores" },
   { to: "/comercial/dashboard/indicadores", label: "Indicadores" },
   { to: "/comercial/dashboard/propostas", label: "Propostas" },
+  { to: "/comercial/dashboard/metas", label: "Metas" },
 ] as const;
 
 function DashboardLayout() {
