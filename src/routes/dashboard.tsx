@@ -18,6 +18,7 @@ import {
   ListChecks,
 } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
+import { isAjusteMovimentacao } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear } from "date-fns";
 import {
   ResponsiveContainer,
