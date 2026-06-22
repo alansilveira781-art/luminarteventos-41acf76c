@@ -58,6 +58,7 @@ export type Compra = {
   tipo_compra?: string | null;
   responsavel_id?: string | null;
   responsavel_nome?: string | null;
+  created_by?: string | null;
 };
 
 export type AdvanceOpts = { approve?: boolean };
