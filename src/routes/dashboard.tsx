@@ -144,7 +144,7 @@ function Dashboard() {
     queryFn: async () => {
       let q = supabase
         .from("movimentacoes")
-        .select("id,tipo,quantidade,valor_unitario,data_movimento,item_id,solicitante_id,fornecedor_id, item:itens(nome,codigo,unidade,categoria,valor_unitario,quantidade_atual,quantidade_minima,status)")
+        .select("id,tipo,quantidade,valor_unitario,data_movimento,item_id,solicitante_id,fornecedor_id,entrada_tipo,saida_tipo,observacoes,finalidade, item:itens(nome,codigo,unidade,categoria,valor_unitario,quantidade_atual,quantidade_minima,status)")
         .eq("tipo", tipoMov)
         .gte("data_movimento", new Date(dataIni).toISOString())
         .lte("data_movimento", new Date(`${dataFim}T23:59:59`).toISOString())
