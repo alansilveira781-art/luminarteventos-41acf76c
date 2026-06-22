@@ -45,6 +45,7 @@ type Compra = {
   responsavel_id: string | null;
   responsavel_nome: string | null;
   tipo_compra: string | null;
+  created_by: string | null;
 };
 
 
