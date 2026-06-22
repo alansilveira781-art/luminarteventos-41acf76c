@@ -262,13 +262,13 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
           outros_custos: Number(out.toFixed(4)),
           empresa,
           data_movimento: dataIso,
-          fornecedor_id: compra?.fornecedor_id ?? null,
+          fornecedor_id: fornecedorId || null,
           nota_fiscal: notaFiscal || null,
-          responsavel_recebimento: responsavel,
-          responsavel_lancamento: responsavel,
+          responsavel_recebimento: compra?.comprador ?? null,
+          responsavel_lancamento: compra?.comprador ?? null,
           observacoes:
             (observacoes ? observacoes + " — " : "") +
-            `Recebimento da compra ${compraId}${fornecedor ? ` - Fornecedor: ${fornecedor}` : ""}`,
+            `Recebimento da compra ${compraId}${fornecedorNome ? ` - Fornecedor: ${fornecedorNome}` : ""}`,
         }).select("id");
         if (error) throw error;
 
