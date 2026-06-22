@@ -11,7 +11,7 @@ export type Filtros = {
 
 export const filtrosIniciais: Filtros = {
   empresa: "Todos",
-  ano: new Date().getFullYear(),
+  ano: "Todos",
   mes: "Todos",
   trimestre: "Todos",
   consultor: "Todos",
