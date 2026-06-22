@@ -45,7 +45,7 @@ const TABS = [
 function DashboardLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const qc = useQueryClient();
-  const [filtros, setFiltros] = usePersistedState<Filtros>("comercial.dashboard.filtros.v3", filtrosIniciais);
+  const [filtros, setFiltros] = usePersistedState<Filtros>("comercial.dashboard.filtros.v4", filtrosIniciais);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["comercial-vendas-db"],
