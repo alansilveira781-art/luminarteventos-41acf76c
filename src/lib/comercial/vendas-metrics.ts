@@ -11,7 +11,7 @@ export type Filtros = {
 
 export const filtrosIniciais: Filtros = {
   empresa: "Todos",
-  ano: "Todos",
+  ano: new Date().getFullYear(),
   mes: "Todos",
   trimestre: "Todos",
   consultor: "Todos",
@@ -167,12 +167,24 @@ function rankBy(
 export const rankingConsultor = (rows: VendaRow[]) => rankBy(rows, (r) => r.consultor);
 export const valorPorClassificacao = (rows: VendaRow[]) => rankBy(rows, (r) => r.classificacao);
 export const rankingCerimonial = (rows: VendaRow[]) => rankBy(rows, (r) => r.cerimonial);
+export const vendasPorCerimonial = rankingCerimonial;
 export const rankingDecorador = (rows: VendaRow[]) => rankBy(rows, (r) => r.decorador);
-export const vendasPorTipoEvento = (rows: VendaRow[]) => rankBy(rows, (r) => r.classificacao);
+export const vendasPorDecorador = rankingDecorador;
+export const vendasPorTipoEvento = (rows: VendaRow[]) =>
+  rankBy(rows, (r) => r.tipoEvento || r.classificacao);
 
 export function comissoesPorVendedor(rows: VendaRow[]) {
   // Soma de valor_comissao (comissão real da venda) por consultor
   return rankBy(rows, (r) => r.consultor, (r) => r.valorComissao || 0);
+}
+
+export function evolucaoTicketTrimestre(rows: VendaRow[]) {
+  return evolucaoTrimestre(rows).map((b) => ({ trim: b.trim, ticket: b.ticket, qtde: b.qtde }));
+}
+
+export function realVsMeta(rows: VendaRow[], meta: number) {
+  const realizado = sumValor(rows);
+  return { realizado, meta, pct: meta > 0 ? (realizado / meta) * 100 : 0 };
 }
 
 // ---------- Indicadores: Ano A vs Ano B ----------
