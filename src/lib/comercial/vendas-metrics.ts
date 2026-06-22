@@ -25,6 +25,21 @@ const MESES_PT = [
 
 const norm = (s: string | null) => (s ?? "").toString().trim();
 
+// Trata "-", "—", "N/A", "" e nulos como vazio (lixo de importação)
+const GARBAGE_TEXT = new Set(["", "-", "—", "--", "n/a", "na", "null", "none", "sem"]);
+export function cleanText(v: string | null | undefined): string {
+  const s = norm(v ?? null).toLowerCase();
+  if (GARBAGE_TEXT.has(s)) return "";
+  return norm(v ?? null);
+}
+
+const MAX_VALID_YEAR = new Date().getFullYear() + 5;
+function validYear(y: number | null | undefined): number | null {
+  if (y == null) return null;
+  const n = Number(y);
+  return Number.isFinite(n) && n > 1900 && n <= MAX_VALID_YEAR ? n : null;
+}
+
 function pickDateIso(r: VendaRow): string | null {
   // Prefer data_evento for "evento" derivations, fallback to dataRegistro
   return r.dataEvento || r.dataRegistro || null;
@@ -39,16 +54,20 @@ function parseMonth(iso: string | null): number | null {
 }
 function parseYear(iso: string | null): number | null {
   if (!iso) return null;
-  const y = Number(iso.slice(0, 4));
-  return Number.isFinite(y) && y > 1900 ? y : null;
+  return validYear(Number(iso.slice(0, 4)));
 }
 
-// Derivation helpers — tolerant of NULL stored fields
+// Derivation helpers — tolerant of NULL/garbage stored fields
 export function getAno(r: VendaRow): number | null {
-  return r.anoEvento ?? r.ano ?? parseYear(pickDateIso(r)) ?? parseYear(pickAnyDateIso(r));
+  return (
+    validYear(r.anoEvento) ??
+    validYear(r.ano) ??
+    parseYear(pickDateIso(r)) ??
+    parseYear(pickAnyDateIso(r))
+  );
 }
 export function getMes(r: VendaRow): string | null {
-  const stored = norm(r.mesEvento) || norm(r.mes);
+  const stored = cleanText(r.mesEvento) || cleanText(r.mes);
   if (stored) return stored;
   const m = parseMonth(pickDateIso(r)) ?? parseMonth(pickAnyDateIso(r));
   return m ? MESES_PT[m - 1] : null;
@@ -63,7 +82,7 @@ export function getTrimestre(r: VendaRow): 1 | 2 | 3 | 4 | null {
 export function applyFilters(rows: VendaRow[], f: Filtros): VendaRow[] {
   const mesAlvo = f.mes === "Todos" ? null : String(f.mes).toLowerCase();
   return rows.filter((r) => {
-    if (f.empresa !== "Todos" && norm(r.empresa) !== f.empresa) return false;
+    if (f.empresa !== "Todos" && cleanText(r.empresa) !== f.empresa) return false;
     if (f.ano !== "Todos") {
       const ano = getAno(r);
       if (ano !== f.ano) return false;
@@ -73,8 +92,8 @@ export function applyFilters(rows: VendaRow[], f: Filtros): VendaRow[] {
       if (mes !== mesAlvo) return false;
     }
     if (f.trimestre !== "Todos" && getTrimestre(r) !== f.trimestre) return false;
-    if (f.consultor !== "Todos" && norm(r.consultor) !== f.consultor) return false;
-    if (f.classificacao !== "Todos" && norm(r.classificacao) !== f.classificacao) return false;
+    if (f.consultor !== "Todos" && cleanText(r.consultor) !== f.consultor) return false;
+    if (f.classificacao !== "Todos" && cleanText(r.classificacao) !== f.classificacao) return false;
     return true;
   });
 }
