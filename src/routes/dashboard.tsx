@@ -113,15 +113,24 @@ function Dashboard() {
   const { data: movsMes } = useQuery({
     queryKey: ["dashboard-movs", visaoRange.ini, visaoRange.fim],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("movimentacoes")
-        .select("*, item:itens(nome,codigo), solicitante:solicitantes(nome), fornecedor:fornecedores(nome)")
-        .gte("data_movimento", visaoRange.ini)
-        .lte("data_movimento", visaoRange.fim)
-        .order("data_movimento", { ascending: false })
-        .limit(2000);
-      if (error) throw error;
-      return data;
+      const all: any[] = [];
+      const size = 1000;
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("movimentacoes")
+          .select("*, item:itens(nome,codigo), solicitante:solicitantes(nome), fornecedor:fornecedores(nome)")
+          .gte("data_movimento", visaoRange.ini)
+          .lte("data_movimento", visaoRange.fim)
+          .order("data_movimento", { ascending: false })
+          .range(from, from + size - 1);
+        if (error) throw error;
+        const rows = data ?? [];
+        all.push(...rows);
+        if (rows.length < size) break;
+        from += size;
+      }
+      return all;
     },
   });
 
@@ -142,20 +151,30 @@ function Dashboard() {
   const { data: movsPeriodo } = useQuery({
     queryKey: ["dashboard-movs-periodo", dataIni, dataFim, tipoMov, pessoaTipo, pessoaId],
     queryFn: async () => {
-      let q = supabase
-        .from("movimentacoes")
-        .select("id,tipo,quantidade,valor_unitario,data_movimento,item_id,solicitante_id,fornecedor_id,entrada_tipo,saida_tipo,observacoes,finalidade, item:itens(nome,codigo,unidade,categoria,valor_unitario,quantidade_atual,quantidade_minima,status)")
-        .eq("tipo", tipoMov)
-        .gte("data_movimento", new Date(dataIni).toISOString())
-        .lte("data_movimento", new Date(`${dataFim}T23:59:59`).toISOString())
-        .limit(5000);
-      if (pessoaId !== ALL) {
-        if (pessoaTipo === "solicitante") q = q.eq("solicitante_id", pessoaId);
-        else q = q.eq("fornecedor_id", pessoaId);
+      const all: any[] = [];
+      const size = 1000;
+      let from = 0;
+      while (true) {
+        let q = supabase
+          .from("movimentacoes")
+          .select("id,tipo,quantidade,valor_unitario,data_movimento,item_id,solicitante_id,fornecedor_id,entrada_tipo,saida_tipo,observacoes,finalidade,requisicao_numero, item:itens(nome,codigo,unidade,categoria,valor_unitario,quantidade_atual,quantidade_minima,status)")
+          .eq("tipo", tipoMov)
+          .gte("data_movimento", new Date(dataIni).toISOString())
+          .lte("data_movimento", new Date(`${dataFim}T23:59:59`).toISOString())
+          .order("data_movimento", { ascending: false })
+          .range(from, from + size - 1);
+        if (pessoaId !== ALL) {
+          if (pessoaTipo === "solicitante") q = q.eq("solicitante_id", pessoaId);
+          else q = q.eq("fornecedor_id", pessoaId);
+        }
+        const { data, error } = await q;
+        if (error) throw error;
+        const rows = data ?? [];
+        all.push(...rows);
+        if (rows.length < size) break;
+        from += size;
       }
-      const { data, error } = await q;
-      if (error) throw error;
-      return data ?? [];
+      return all;
     },
   });
 
@@ -164,26 +183,52 @@ function Dashboard() {
     queryKey: ["dashboard-12m"],
     queryFn: async () => {
       const ini = startOfMonth(subMonths(new Date(), 11));
-      const { data, error } = await supabase
-        .from("movimentacoes")
-        .select("tipo,quantidade,data_movimento,entrada_tipo,saida_tipo,observacoes,finalidade")
-        .gte("data_movimento", ini.toISOString())
-        .limit(20000);
-      if (error) throw error;
-      return data ?? [];
+      const all: any[] = [];
+      const size = 1000;
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("movimentacoes")
+          .select("id,tipo,quantidade,data_movimento,entrada_tipo,saida_tipo,observacoes,finalidade,requisicao_numero")
+          .gte("data_movimento", ini.toISOString())
+          .order("data_movimento", { ascending: false })
+          .range(from, from + size - 1);
+        if (error) throw error;
+        const rows = data ?? [];
+        all.push(...rows);
+        if (rows.length < size) break;
+        from += size;
+      }
+      return all;
     },
   });
+
 
   const total = itens?.length ?? 0;
   const baixo = itens?.filter((i) => i.status === "baixo_estoque").length ?? 0;
   const sem = itens?.filter((i) => i.status === "sem_estoque").length ?? 0;
   const manut = itens?.filter((i) => i.status === "em_manutencao").length ?? 0;
-  const entradasMes = movsMes?.filter((m) => m.tipo === "entrada" && !isAjusteMovimentacao(m)).length ?? 0;
-  const saidasMes = movsMes?.filter((m) => m.tipo === "saida" && !isAjusteMovimentacao(m)).length ?? 0;
-  const devolucoesMes = movsMes?.filter((m) => m.tipo === "devolucao").length ?? 0;
+  // Conta requisições (grupos) por tipo no período: linhas com mesmo requisicao_numero
+  // contam como 1; linhas sem requisicao_numero contam individualmente.
+  const countRequisicoes = (tipo: "entrada" | "saida" | "devolucao", aplicarFiltroAjuste: boolean) => {
+    const set = new Set<string>();
+    for (const m of movsMes ?? []) {
+      if (m.tipo !== tipo) continue;
+      if (aplicarFiltroAjuste && isAjusteMovimentacao(m)) continue;
+      const key = (m as any).requisicao_numero != null
+        ? `req-${(m as any).requisicao_numero}`
+        : `solo-${m.id}`;
+      set.add(key);
+    }
+    return set.size;
+  };
+  const entradasMes = countRequisicoes("entrada", true);
+  const saidasMes = countRequisicoes("saida", true);
+  const devolucoesMes = countRequisicoes("devolucao", false);
   const saidasAbertas = recentes?.filter(
     (m) => m.tipo === "saida" && (m.saida_status === "aberta" || m.saida_status === "parcialmente_devolvida"),
   ).length ?? 0;
+
 
   const baixoItens = itens?.filter((i) => i.status === "baixo_estoque" || i.status === "sem_estoque").slice(0, 6) ?? [];
 
@@ -230,14 +275,26 @@ function Dashboard() {
   const { data: saidasAbc } = useQuery({
     queryKey: ["dashboard-abc", dataIni, dataFim, categoriaAbc],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("movimentacoes")
-        .select("quantidade,valor_unitario,saida_tipo,observacoes,finalidade,tipo,item:itens(nome,codigo,categoria,valor_unitario)")
-        .eq("tipo", "saida")
-        .gte("data_movimento", new Date(dataIni).toISOString())
-        .lte("data_movimento", new Date(`${dataFim}T23:59:59`).toISOString())
-        .limit(10000);
-      let rows = data ?? [];
+      const all: any[] = [];
+      const size = 1000;
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("movimentacoes")
+          .select("quantidade,valor_unitario,saida_tipo,observacoes,finalidade,tipo,item:itens(nome,codigo,categoria,valor_unitario)")
+          .eq("tipo", "saida")
+          .gte("data_movimento", new Date(dataIni).toISOString())
+          .lte("data_movimento", new Date(`${dataFim}T23:59:59`).toISOString())
+          .order("data_movimento", { ascending: false })
+          .range(from, from + size - 1);
+        if (error) throw error;
+        const rows0 = data ?? [];
+        all.push(...rows0);
+        if (rows0.length < size) break;
+        from += size;
+      }
+      let rows = all;
+
       rows = rows.filter((r: any) => !isAjusteMovimentacao(r));
       if (categoriaAbc !== ALL) rows = rows.filter((r: any) => r.item?.categoria === categoriaAbc);
       return rows;
