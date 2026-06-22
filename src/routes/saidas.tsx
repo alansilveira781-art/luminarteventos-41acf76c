@@ -479,7 +479,18 @@ function SaidasPage() {
         </div>
       </Card>
 
-      {isAdmin && <BulkActionsBar count={sel.count} onEdit={() => setBulkOpen(true)} onClear={sel.clear} />}
+      {isAdmin && (
+        <BulkActionsBar
+          count={sel.count}
+          onEdit={() => setBulkOpen(true)}
+          onClear={sel.clear}
+          extraActions={
+            <Button variant="destructive" size="sm" onClick={handleBulkDelete} disabled={bulkDelMut.isPending}>
+              <Trash2 className="h-4 w-4 mr-1" /> Excluir selecionadas
+            </Button>
+          }
+        />
+      )}
 
       <Card className="overflow-hidden">
         <div className="overflow-auto max-h-[calc(100vh-180px)]">
