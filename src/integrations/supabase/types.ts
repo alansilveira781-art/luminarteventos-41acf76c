@@ -517,6 +517,27 @@ export type Database = {
         }
         Relationships: []
       }
+      comercial_cerimoniais: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          percentual_bv: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          percentual_bv?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          percentual_bv?: number
+        }
+        Relationships: []
+      }
       comercial_clientes: {
         Row: {
           created_at: string
@@ -545,6 +566,24 @@ export type Database = {
         Relationships: []
       }
       comercial_consultores: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
+      comercial_decoradores: {
         Row: {
           created_at: string
           id: string
@@ -764,6 +803,7 @@ export type Database = {
           trimestre_evento: number | null
           updated_at: string
           valor_bv: number | null
+          valor_comissao: number
           valor_final: number | null
           valor_proposta: number | null
         }
@@ -804,6 +844,7 @@ export type Database = {
           trimestre_evento?: number | null
           updated_at?: string
           valor_bv?: number | null
+          valor_comissao?: number
           valor_final?: number | null
           valor_proposta?: number | null
         }
@@ -844,6 +885,7 @@ export type Database = {
           trimestre_evento?: number | null
           updated_at?: string
           valor_bv?: number | null
+          valor_comissao?: number
           valor_final?: number | null
           valor_proposta?: number | null
         }
@@ -885,6 +927,27 @@ export type Database = {
           source?: string
           started_at?: string
           status?: string
+        }
+        Relationships: []
+      }
+      comercial_vendedores: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          percentual_comissao: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          percentual_comissao?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          percentual_comissao?: number
         }
         Relationships: []
       }

@@ -32,6 +32,7 @@ import {
   BulkEditDialog, normalizeBulkPatch, type BulkField,
 } from "@/components/BulkEditDialog";
 import { useSort, SortableTh } from "@/components/SortableTh";
+import { useVendedores, useCerimoniais, useDecoradores } from "@/lib/comercial/cadastros";
 
 
 export const Route = createFileRoute("/comercial/vendas")({
@@ -44,7 +45,6 @@ const MESES_PT = [
 ];
 
 const CLASSIFICACOES = ["Cenografia", "Social", "Stand", "Corporativo"];
-const CONSULTORES_DEFAULT = ["Rômulo", "Pádua"];
 const EMPRESAS = ["Planejados", "Eventos"];
 
 const brl = (v: number) =>
@@ -106,8 +106,6 @@ type FormState = {
   empresa: string;
   valor_proposta: number;
   desconto: number;
-  valor_final: number;
-  valor_bv: number;
 };
 
 function emptyForm(): FormState {
@@ -125,8 +123,6 @@ function emptyForm(): FormState {
     empresa: "",
     valor_proposta: 0,
     desconto: 0,
-    valor_final: 0,
-    valor_bv: 0,
   };
 }
 
@@ -145,12 +141,13 @@ function formFromRow(r: VendaRow): FormState {
     empresa: r.empresa ?? "",
     valor_proposta: r.valorProposta || 0,
     desconto: r.desconto || 0,
-    valor_final: r.valorFinal || 0,
-    valor_bv: r.valorBV || 0,
   };
 }
 
-function buildDbPayload(f: FormState) {
+function buildDbPayload(
+  f: FormState,
+  derived: { valor_final: number; valor_bv: number; valor_comissao: number },
+) {
   const data = f.data_registro || null;
   return {
     data_registro: data,
@@ -166,8 +163,9 @@ function buildDbPayload(f: FormState) {
     empresa: f.empresa || null,
     valor_proposta: f.valor_proposta || 0,
     desconto: f.desconto || 0,
-    valor_final: f.valor_final || 0,
-    valor_bv: f.valor_bv || 0,
+    valor_final: derived.valor_final,
+    valor_bv: derived.valor_bv,
+    valor_comissao: derived.valor_comissao,
     ano: anoFrom(data),
     mes: mesNomeFrom(data),
     mes_evento: mesNomeFrom(data),
@@ -195,6 +193,23 @@ function VendasPage() {
   const [editing, setEditing] = useState<VendaRow | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
   const [bulkOpen, setBulkOpen] = useState(false);
+
+  const { data: vendedores = [] } = useVendedores();
+  const { data: cerimoniais = [] } = useCerimoniais();
+  const { data: decoradores = [] } = useDecoradores();
+
+  const derived = useMemo(() => {
+    const valor_final = Math.max(0, (form.valor_proposta || 0) - (form.desconto || 0));
+    const vend = vendedores.find((v) => v.nome === form.consultor);
+    const ceri = cerimoniais.find((c) => c.nome === form.cerimonial);
+    const valor_comissao = vend ? valor_final * (Number(vend.percentual_comissao) || 0) / 100 : 0;
+    const valor_bv = ceri ? valor_final * (Number(ceri.percentual_bv) || 0) / 100 : 0;
+    return {
+      valor_final: Number(valor_final.toFixed(2)),
+      valor_bv: Number(valor_bv.toFixed(2)),
+      valor_comissao: Number(valor_comissao.toFixed(2)),
+    };
+  }, [form.valor_proposta, form.desconto, form.consultor, form.cerimonial, vendedores, cerimoniais]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["comercial-vendas-db"],
@@ -284,7 +299,7 @@ function VendasPage() {
 
   const saveMut = useMutation({
     mutationFn: async () => {
-      const payload = buildDbPayload(form);
+      const payload = buildDbPayload(form, derived);
       if (editing?.id) {
         const { error } = await supabase
           .from("comercial_vendas")
@@ -431,10 +446,6 @@ function VendasPage() {
     );
   }
 
-  const valorFinalDivergente =
-    form.valor_final > 0 &&
-    Math.abs((form.valor_proposta - form.desconto) - form.valor_final) > 0.01;
-
   return (
     <div className="p-4 sm:p-6 space-y-4">
       <PageHeader
@@ -445,10 +456,6 @@ function VendasPage() {
             <Button variant="outline" size="sm" onClick={exportCsv} disabled={!sorted.length}>
               <Download className="h-4 w-4 mr-2" /> Exportar CSV
             </Button>
-            <Button size="sm" onClick={openNew}>
-              <Plus className="h-4 w-4 mr-2" /> Nova venda
-            </Button>
-
             <Button size="sm" onClick={openNew}>
               <Plus className="h-4 w-4 mr-2" /> Nova venda
             </Button>
@@ -657,17 +664,26 @@ function VendasPage() {
               <SelectFree value={form.classificacao} options={CLASSIFICACOES}
                 onChange={(v) => setForm({ ...form, classificacao: v })} />
             </Field>
-            <Field label="Consultor">
-              <SelectFree value={form.consultor} options={CONSULTORES_DEFAULT}
-                onChange={(v) => setForm({ ...form, consultor: v })} />
+            <Field label="Consultor(a)">
+              <SelectFree
+                value={form.consultor}
+                options={vendedores.map((v) => v.nome)}
+                onChange={(v) => setForm({ ...form, consultor: v })}
+              />
             </Field>
             <Field label="Cerimonial">
-              <Input value={form.cerimonial}
-                onChange={(e) => setForm({ ...form, cerimonial: e.target.value })} />
+              <SelectFree
+                value={form.cerimonial}
+                options={cerimoniais.map((c) => c.nome)}
+                onChange={(v) => setForm({ ...form, cerimonial: v })}
+              />
             </Field>
-            <Field label="Decorador">
-              <Input value={form.decorador}
-                onChange={(e) => setForm({ ...form, decorador: e.target.value })} />
+            <Field label="Decorador(a)/Agência">
+              <SelectFree
+                value={form.decorador}
+                options={decoradores.map((d) => d.nome)}
+                onChange={(v) => setForm({ ...form, decorador: v })}
+              />
             </Field>
             <Field label="Valor da Proposta">
               <MoneyInput value={form.valor_proposta}
@@ -677,20 +693,29 @@ function VendasPage() {
               <MoneyInput value={form.desconto}
                 onChange={(n) => setForm({ ...form, desconto: n })} />
             </Field>
-            <Field label="Valor Final">
-              <MoneyInput value={form.valor_final}
-                onChange={(n) => setForm({ ...form, valor_final: n })} />
-            </Field>
-            <Field label="Valor BV">
-              <MoneyInput value={form.valor_bv}
-                onChange={(n) => setForm({ ...form, valor_bv: n })} />
-            </Field>
-            {valorFinalDivergente && (
-              <div className="sm:col-span-2 lg:col-span-3 text-xs text-amber-600 flex items-center gap-1">
-                <AlertTriangle className="h-3.5 w-3.5" />
-                Atenção: Proposta − Desconto ({brl(form.valor_proposta - form.desconto)}) é diferente do Valor Final.
+            <Field label="Valor Final (calculado)">
+              <div className="h-9 px-3 flex items-center text-sm rounded-md border bg-muted/40 font-medium tabular-nums">
+                {brl(derived.valor_final)}
               </div>
-            )}
+            </Field>
+            <Field label="Valor BV (calculado)">
+              <div className="h-9 px-3 flex items-center text-sm rounded-md border bg-muted/40 tabular-nums">
+                {brl(derived.valor_bv)}
+              </div>
+            </Field>
+            <Field label="Valor Comissão (calculado)">
+              <div className="h-9 px-3 flex items-center text-sm rounded-md border bg-muted/40 tabular-nums">
+                {brl(derived.valor_comissao)}
+              </div>
+            </Field>
+            <div className="sm:col-span-2 lg:col-span-3 text-xs text-muted-foreground flex items-start gap-1">
+              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>
+                Valor Final = Proposta − Desconto. BV e Comissão usam os percentuais cadastrados em
+                Configurações (vendedor/cerimonial). Se o nome for digitado como "Outro...", o percentual
+                fica zerado.
+              </span>
+            </div>
             <div className="sm:col-span-2 lg:col-span-3 flex justify-end gap-2 pt-2 border-t border-border">
               <Button type="button" variant="ghost" onClick={() => setFormOpen(false)}>Cancelar</Button>
               <Button type="submit" disabled={saveMut.isPending}>

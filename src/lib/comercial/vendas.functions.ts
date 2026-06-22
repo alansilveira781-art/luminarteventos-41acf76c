@@ -26,6 +26,7 @@ export type VendaRow = {
   percentual: number;
   valorFinal: number;
   valorBV: number;
+  valorComissao: number;
   comissaoGestor: number;
   tipoComissao: string | null;
   comissaoConsultor: number; // sometimes bool; converted to numeric flag
@@ -158,6 +159,7 @@ export const listVendasDropbox = createServerFn({ method: "GET" }).handler(
           percentual: toNum(r["Percentual"]),
           valorFinal: toNum(r["Valor Final"]),
           valorBV: toNum(r["Valor BV"]),
+          valorComissao: toNum(r["Valor Comissão"]) || toNum(r["Valor Comissao"]),
           comissaoGestor: toNum(r["Comissão Gestor"]),
           tipoComissao: toStr(r["Tipo de comissão"]),
           comissaoConsultor: toNum(r["Comissão Consultor"]),
