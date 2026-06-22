@@ -488,7 +488,7 @@ function EntradasPage() {
                         </Button>
                       </td>
                       <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">
-                        {g.numero != null ? `REQ-${String(g.numero).padStart(4, "0")}` : "—"}
+                        {g.numero != null ? `ENT-${String(g.numero).padStart(4, "0")}` : "—"}
                       </td>
                       <td className="px-4 py-3 tabular-nums whitespace-nowrap">{format(new Date(g.data_movimento), "dd/MM/yyyy HH:mm")}</td>
                       <td className="px-4 py-3 text-muted-foreground">{g.entrada_tipo ? entradaTipoLabels[g.entrada_tipo] ?? g.entrada_tipo : "—"}</td>
