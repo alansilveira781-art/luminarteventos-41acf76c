@@ -45,7 +45,7 @@ const TABS = [
 function DashboardLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const qc = useQueryClient();
-  const [filtros, setFiltros] = usePersistedState<Filtros>("comercial.dashboard.filtros.v2", filtrosIniciais);
+  const [filtros, setFiltros] = usePersistedState<Filtros>("comercial.dashboard.filtros.v3", filtrosIniciais);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["comercial-vendas-db"],
@@ -68,7 +68,8 @@ function DashboardLayout() {
     return () => { supabase.removeChannel(channel); };
   }, [qc]);
 
-  // Se o ano selecionado não tem dados, cai para "Todos" (destino seguro)
+  // Se o ano selecionado não tem dados, cai para o último ano com dados
+  // (ou "Todos" se não houver dados). Nunca deixa o filtro num ano vazio.
   useEffect(() => {
     if (!rows.length) return;
     if (filtros.ano === "Todos") return;
@@ -78,7 +79,8 @@ function DashboardLayout() {
       if (a) anosComDados.add(a);
     }
     if (!anosComDados.has(filtros.ano as number)) {
-      setFiltros({ ...filtros, ano: "Todos" });
+      const ultimo = [...anosComDados].sort((a, b) => b - a)[0];
+      setFiltros({ ...filtros, ano: ultimo ?? "Todos" });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows.length, filtros.ano]);
