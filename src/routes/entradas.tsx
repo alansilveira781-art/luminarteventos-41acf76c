@@ -135,6 +135,29 @@ function EntradasPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const bulkDelMut = useMutation({
+    mutationFn: async (grupos: any[]) => {
+      const ids: string[] = [];
+      for (const g of grupos) {
+        const linhas: any[] = g.linhas ?? [g];
+        ids.push(...linhas.map((l) => l.id));
+      }
+      if (!ids.length) return;
+      const { error } = await supabase.from("movimentacoes").delete().in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["entradas"] });
+      qc.invalidateQueries({ queryKey: ["itens"] });
+      qc.invalidateQueries({ queryKey: ["itens-select"] });
+      qc.invalidateQueries({ queryKey: ["itens-select-saida"] });
+      toast.success("Entradas excluídas");
+      sel.clear();
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+
   const { data: entradas } = useQuery({
     queryKey: ["entradas"],
     queryFn: async () => {
