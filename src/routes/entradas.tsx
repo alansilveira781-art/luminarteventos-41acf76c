@@ -596,7 +596,7 @@ function EntradasPage() {
         <DialogContent className="max-w-[min(1500px,98vw)] w-[98vw]">
           <DialogHeader>
             <DialogTitle>
-              Editar entrada{editing?.numero != null ? ` REQ-${String(editing.numero).padStart(4, "0")}` : ""}
+              Editar entrada{editing?.numero != null ? ` ENT-${String(editing.numero).padStart(4, "0")}` : ""}
             </DialogTitle>
           </DialogHeader>
           {editing && (
