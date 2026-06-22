@@ -8,12 +8,13 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { MoneyInput } from "@/components/MoneyInput";
+import { PageHeader } from "@/components/PageHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Save } from "lucide-react";
 
-export const Route = createFileRoute("/comercial/dashboard/metas")({
+export const Route = createFileRoute("/comercial/metas")({
   component: MetasPage,
 });
 
@@ -103,14 +104,22 @@ function MetasPage() {
 
   if (!isComercialAdmin) {
     return (
-      <Card className="p-6 text-sm text-muted-foreground">
-        Acesso restrito — somente administradores do comercial podem visualizar e editar metas.
-      </Card>
+      <div className="p-4 sm:p-6">
+        <PageHeader title="Metas" description="Defina as metas de faturamento por classificação e mês." />
+        <Card className="p-6 text-sm text-muted-foreground">
+          Acesso restrito — somente administradores do comercial podem visualizar e editar metas.
+        </Card>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="p-4 sm:p-6 space-y-4">
+      <PageHeader
+        title="Metas"
+        description="Defina as metas de faturamento por classificação e mês."
+      />
+
       <Card className="p-4">
         <div className="flex flex-wrap items-end gap-4">
           <div className="space-y-1">
