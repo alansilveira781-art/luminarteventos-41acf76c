@@ -35,6 +35,9 @@ export const STATUS_LABEL: Record<CompraStatus, string> = COMPRA_STATUSES.reduce
 export const NATANAEL_USER_ID = "fd75a882-75fe-4e5b-935b-d650f050d6be";
 const NATANAEL_NOME = "Natanael";
 
+// Email do Pedro: pode editar cards, mas não pode mover/avançar status
+export const PEDRO_EMAIL = "pedro123jrsergio@gmail.com";
+
 function isNatanaelSolicitante(compra: { solicitante?: string | null; solicitante_id?: string | null }): boolean {
   if (compra.solicitante_id && compra.solicitante_id === NATANAEL_USER_ID) return true;
   return (compra.solicitante ?? "").trim().toLowerCase() === NATANAEL_NOME.toLowerCase();
@@ -83,7 +86,9 @@ export function canMoveCompra(
   compra: { responsavel_id?: string | null; created_by?: string | null },
   userId: string | undefined | null,
   isAdmin: boolean,
+  userEmail?: string | undefined | null,
 ): boolean {
+  if (userEmail && userEmail.trim().toLowerCase() === PEDRO_EMAIL) return false;
   return canEditCompra(compra, userId, isAdmin);
 }
 
