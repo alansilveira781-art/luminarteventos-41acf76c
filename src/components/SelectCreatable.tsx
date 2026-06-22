@@ -1,22 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Check, ChevronsUpDown, Plus, Trash2 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { Check, ChevronsUpDown, Plus, Search, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { normalize } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { cn, normalize } from "@/lib/utils";
 
 const sb = supabase as any;
 
 type Opt = { id: string; nome: string };
 
 /**
- * Select com lista vinda de uma tabela (id, nome). Permite buscar digitando,
- * selecionar uma opção existente, criar nova (quando o texto não corresponde
- * a nenhuma opção) e remover.
+ * Select com lista vinda de uma tabela (id, nome). Busca digitável,
+ * adicionar e remover opções. Implementado como dropdown inline (sem
+ * Popover/Portal) para funcionar dentro de Dialogs do Radix.
  */
 export function SelectCreatable({
   table,
@@ -30,9 +28,10 @@ export function SelectCreatable({
   placeholder?: string;
 }) {
   const qc = useQueryClient();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const { data = [] } = useQuery<Opt[]>({
     queryKey: [`opts-${table}`],
@@ -53,8 +52,6 @@ export function SelectCreatable({
       return data as Opt;
     },
     onSuccess: (d) => {
-      // Atualiza cache local imediatamente para o parent conseguir
-      // resolver o id pelo nome assim que onChange disparar.
       qc.setQueryData<Opt[]>([`opts-${table}`], (prev) => {
         const next = [...(prev ?? []), d];
         next.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
@@ -93,10 +90,24 @@ export function SelectCreatable({
     return data.some((o) => normalize(o.nome) === term);
   }, [data, search]);
 
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 0);
+    else setSearch("");
+  }, [open]);
+
   function selectNome(nome: string) {
-    onChange(nome);
-    setOpen(false);
+    onChange(nome || null);
     setSearch("");
+    setOpen(false);
   }
 
   function handleAdd() {
@@ -106,105 +117,110 @@ export function SelectCreatable({
   }
 
   return (
-    <Popover open={open} onOpenChange={(v) => { setOpen(v); if (!v) setSearch(""); }}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn(
-            "w-full justify-between font-normal h-9",
-            !value && "text-muted-foreground",
-          )}
-        >
-          <span className="truncate">{value || placeholder}</span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="p-0 w-[--radix-popover-trigger-width] min-w-[260px]"
-        align="start"
-        onOpenAutoFocus={(e) => {
-          e.preventDefault();
-          setTimeout(() => inputRef.current?.focus(), 0);
-        }}
-      >
-        <div className="p-2 border-b border-border">
-          <Input
-            ref={inputRef}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar ou digitar para adicionar…"
-            className="h-8"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                const term = search.trim();
-                if (!term) return;
-                const match = data.find((o) => normalize(o.nome) === normalize(term));
-                if (match) selectNome(match.nome);
-                else handleAdd();
-              } else if (e.key === "Escape") {
-                setOpen(false);
-              }
-            }}
-          />
-        </div>
-        <div className="max-h-64 overflow-y-auto py-1">
-          <button
-            type="button"
-            onClick={() => selectNome("")}
-            className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent text-muted-foreground"
-          >
-            — Nenhum —
-          </button>
-          {filtered.map((o) => {
-            const selected = value === o.nome;
-            return (
-              <div key={o.id} className="group flex items-center hover:bg-accent">
-                <button
-                  type="button"
-                  onClick={() => selectNome(o.nome)}
-                  className="flex-1 text-left px-3 py-1.5 text-sm flex items-center gap-2"
-                >
-                  <Check className={cn("h-3.5 w-3.5", selected ? "opacity-100" : "opacity-0")} />
-                  <span className="truncate">{o.nome}</span>
-                </button>
-                <button
-                  type="button"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (confirm(`Remover "${o.nome}"?`)) del.mutate(o.id);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 px-2 text-destructive"
-                  aria-label="Remover"
-                  title="Remover"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            );
-          })}
-          {filtered.length === 0 && exactExists && (
-            <div className="px-3 py-2 text-xs text-muted-foreground">Nenhum resultado.</div>
-          )}
-        </div>
-        {!exactExists && search.trim() && (
-          <div className="p-2 border-t border-border">
-            <Button
-              type="button"
-              size="sm"
-              className="w-full justify-start"
-              onClick={handleAdd}
-              disabled={add.isPending}
-            >
-              <Plus className="h-4 w-4 mr-2" /> Adicionar “{search.trim()}”
-            </Button>
-          </div>
+    <div ref={containerRef} className="relative">
+      <Button
+        type="button"
+        variant="outline"
+        role="combobox"
+        aria-expanded={open}
+        className={cn(
+          "w-full justify-between font-normal h-9",
+          !value && "text-muted-foreground",
         )}
-      </PopoverContent>
-    </Popover>
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="truncate">{value || placeholder}</span>
+        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+      </Button>
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-1 w-full min-w-[260px] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md">
+          <div className="flex items-center border-b px-3">
+            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+            <Input
+              ref={inputRef}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setOpen(false);
+                } else if (e.key === "Enter") {
+                  e.preventDefault();
+                  const term = search.trim();
+                  if (!term) return;
+                  const match = data.find((o) => normalize(o.nome) === normalize(term));
+                  if (match) selectNome(match.nome);
+                  else handleAdd();
+                }
+              }}
+              placeholder="Buscar ou digitar para adicionar…"
+              className="h-10 border-0 bg-transparent px-0 py-3 shadow-none focus-visible:ring-0"
+            />
+          </div>
+          <div className="max-h-64 overflow-y-auto py-1">
+            <button
+              type="button"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                selectNome("");
+              }}
+              className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent text-muted-foreground"
+            >
+              — Nenhum —
+            </button>
+            {filtered.map((o) => {
+              const selected = value === o.nome;
+              return (
+                <div key={o.id} className="group flex items-center hover:bg-accent">
+                  <button
+                    type="button"
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      selectNome(o.nome);
+                    }}
+                    className="flex-1 text-left px-3 py-1.5 text-sm flex items-center gap-2"
+                  >
+                    <Check className={cn("h-3.5 w-3.5", selected ? "opacity-100" : "opacity-0")} />
+                    <span className="truncate">{o.nome}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (confirm(`Remover "${o.nome}"?`)) del.mutate(o.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 px-2 text-destructive"
+                    aria-label="Remover"
+                    title="Remover"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+            {filtered.length === 0 && exactExists && (
+              <div className="px-3 py-2 text-xs text-muted-foreground">Nenhum resultado.</div>
+            )}
+          </div>
+          {!exactExists && search.trim() && (
+            <div className="p-2 border-t border-border">
+              <Button
+                type="button"
+                size="sm"
+                className="w-full justify-start"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  handleAdd();
+                }}
+                disabled={add.isPending}
+              >
+                <Plus className="h-4 w-4 mr-2" /> Adicionar “{search.trim()}”
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
