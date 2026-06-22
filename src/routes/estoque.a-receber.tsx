@@ -211,10 +211,11 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
 
   const finalizar = useMutation({
     mutationFn: async () => {
-      if (!fornecedor.trim()) throw new Error("Informe o fornecedor");
-      if (!responsavel.trim()) throw new Error("Informe o responsável pelo recebimento");
+      if (!fornecedorId) throw new Error("Selecione o fornecedor");
       if (!empresa) throw new Error("Selecione a empresa");
       if (!dataMovimento) throw new Error("Informe a data do recebimento");
+
+      const fornecedorNome = fornecedores.find((f: any) => f.id === fornecedorId)?.nome ?? "";
 
       // Revalida status atual da compra antes de qualquer escrita
       const { data: statusRow, error: statusErr } = await sb
