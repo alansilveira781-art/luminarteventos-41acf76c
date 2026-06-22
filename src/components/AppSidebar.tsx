@@ -37,6 +37,8 @@ import {
   Boxes,
   FileSignature,
   DollarSign,
+  Target,
+
 
 } from "lucide-react";
 import logo from "@/assets/luminart-logo-white.png";
