@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
 export type VendaRow = {
+  id?: string;
   dataRegistro: string | null; // ISO yyyy-mm-dd
   ano: number | null;
   mes: string | null;

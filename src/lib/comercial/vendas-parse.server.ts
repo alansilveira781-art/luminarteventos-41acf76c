@@ -168,6 +168,7 @@ export function vendaRowToDb(r: VendaRow, source: "dropbox" | "upload") {
 
 export function dbRowToVenda(d: Record<string, unknown>): VendaRow {
   return {
+    id: (d.id as string) ?? undefined,
     dataRegistro: (d.data_registro as string) ?? null,
     ano: (d.ano as number) ?? null,
     mes: (d.mes as string) ?? null,

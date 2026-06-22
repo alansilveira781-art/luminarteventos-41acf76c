@@ -1,27 +1,49 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { PageHeader } from "@/components/PageHeader";
+import { MoneyInput } from "@/components/MoneyInput";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
-  AlertTriangle, CloudDownload, Download, Loader2, RefreshCw, ShieldAlert, Upload,
+  AlertTriangle, Download, Loader2, Pencil, Plus, RefreshCw, ShieldAlert, Trash2,
 } from "lucide-react";
-import {
-  listVendasDb, getLastSync, syncVendasFromDropbox, syncVendasFromUpload,
-} from "@/lib/comercial/vendas-db.functions";
+import { listVendasDb } from "@/lib/comercial/vendas-db.functions";
 import type { VendaRow } from "@/lib/comercial/vendas.functions";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  PeriodoFilter, filterByPeriodo, periodoFromPreset,
+  type Periodo, type PeriodoPreset,
+} from "@/components/PeriodoFilter";
+import { useBulkSelection } from "@/hooks/useBulkSelection";
+import { BulkActionsBar } from "@/components/BulkActionsBar";
+import {
+  BulkEditDialog, normalizeBulkPatch, type BulkField,
+} from "@/components/BulkEditDialog";
 
 export const Route = createFileRoute("/comercial/vendas")({
   component: VendasPage,
 });
+
+const MESES_PT = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+
+const CLASSIFICACOES = ["Cenografia", "Social", "Stand", "Corporativo"];
+const CONSULTORES_DEFAULT = ["Rômulo", "Pádua"];
+const EMPRESAS = ["Planejados", "Eventos"];
 
 const brl = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -33,9 +55,31 @@ function formatDate(iso: string | null) {
   return `${d}/${m}/${y}`;
 }
 
-function formatWhen(iso: string | null | undefined) {
-  if (!iso) return "—";
-  try { return new Date(iso).toLocaleString("pt-BR"); } catch { return "—"; }
+function mesNomeFrom(iso: string | null): string | null {
+  if (!iso) return null;
+  const m = Number(iso.slice(5, 7));
+  return m ? (MESES_PT[m - 1] ?? null) : null;
+}
+function anoFrom(iso: string | null): number | null {
+  if (!iso) return null;
+  const y = Number(iso.slice(0, 4));
+  return Number.isFinite(y) ? y : null;
+}
+function trimestreFrom(iso: string | null): 1 | 2 | 3 | 4 | null {
+  if (!iso) return null;
+  const m = Number(iso.slice(5, 7));
+  if (!m) return null;
+  if (m <= 3) return 1;
+  if (m <= 6) return 2;
+  if (m <= 9) return 3;
+  return 4;
+}
+
+function todayIso(): string {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
 }
 
 const PAGE_SIZE = 50;
@@ -46,21 +90,109 @@ function unique<T>(arr: (T | null | undefined)[]): T[] {
   return [...s];
 }
 
+type FormState = {
+  data_registro: string;
+  tipo: string;
+  nome_evento: string;
+  local: string;
+  cidade: string;
+  estado: string;
+  classificacao: string;
+  consultor: string;
+  cerimonial: string;
+  decorador: string;
+  empresa: string;
+  valor_proposta: number;
+  desconto: number;
+  valor_final: number;
+  valor_bv: number;
+};
+
+function emptyForm(): FormState {
+  return {
+    data_registro: todayIso(),
+    tipo: "",
+    nome_evento: "",
+    local: "",
+    cidade: "",
+    estado: "",
+    classificacao: "",
+    consultor: "",
+    cerimonial: "",
+    decorador: "",
+    empresa: "",
+    valor_proposta: 0,
+    desconto: 0,
+    valor_final: 0,
+    valor_bv: 0,
+  };
+}
+
+function formFromRow(r: VendaRow): FormState {
+  return {
+    data_registro: r.dataRegistro ?? todayIso(),
+    tipo: r.tipo ?? "",
+    nome_evento: r.nomeEvento ?? "",
+    local: r.local ?? "",
+    cidade: r.cidade ?? "",
+    estado: r.estado ?? "",
+    classificacao: r.classificacao ?? "",
+    consultor: r.consultor ?? "",
+    cerimonial: r.cerimonial ?? "",
+    decorador: r.decorador ?? "",
+    empresa: r.empresa ?? "",
+    valor_proposta: r.valorProposta || 0,
+    desconto: r.desconto || 0,
+    valor_final: r.valorFinal || 0,
+    valor_bv: r.valorBV || 0,
+  };
+}
+
+function buildDbPayload(f: FormState) {
+  const data = f.data_registro || null;
+  return {
+    data_registro: data,
+    tipo: f.tipo || null,
+    nome_evento: f.nome_evento || null,
+    local: f.local || null,
+    cidade: f.cidade || null,
+    estado: f.estado || null,
+    classificacao: f.classificacao || null,
+    consultor: f.consultor || null,
+    cerimonial: f.cerimonial || null,
+    decorador: f.decorador || null,
+    empresa: f.empresa || null,
+    valor_proposta: f.valor_proposta || 0,
+    desconto: f.desconto || 0,
+    valor_final: f.valor_final || 0,
+    valor_bv: f.valor_bv || 0,
+    ano: anoFrom(data),
+    mes: mesNomeFrom(data),
+    mes_evento: mesNomeFrom(data),
+    ano_evento: anoFrom(data),
+    trimestre_evento: trimestreFrom(data),
+  };
+}
+
 function VendasPage() {
   const { isAdmin, isModuleAdmin, loading: authLoading } = useAuth();
   const canView = isAdmin || isModuleAdmin("comercial");
 
   const qc = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [syncing, setSyncing] = useState(false);
 
   const [empresa, setEmpresa] = useState<string>("Todos");
-  const [ano, setAno] = useState<string>("Todos");
-  const [mes, setMes] = useState<string>("Todos");
   const [consultor, setConsultor] = useState<string>("Todos");
   const [classificacao, setClassificacao] = useState<string>("Todos");
   const [busca, setBusca] = useState<string>("");
   const [page, setPage] = useState(1);
+
+  const [periodoPreset, setPeriodoPreset] = useState<PeriodoPreset>("mes");
+  const [periodo, setPeriodo] = useState<Periodo>(() => periodoFromPreset("mes"));
+
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<VendaRow | null>(null);
+  const [form, setForm] = useState<FormState>(emptyForm());
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["comercial-vendas-db"],
@@ -68,48 +200,19 @@ function VendasPage() {
     staleTime: 5 * 60 * 1000,
     enabled: canView,
   });
-  const { data: lastSync } = useQuery({
-    queryKey: ["comercial-vendas-last-sync"],
-    queryFn: () => getLastSync(),
-    staleTime: 30 * 1000,
-    enabled: canView,
-  });
 
   const rows = data?.rows ?? [];
 
-  const MESES = [
-    "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
-    "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro",
-  ];
-  function anoDoRegistro(r: VendaRow): number | null {
-    const y = r.dataRegistro?.slice(0, 4);
-    const n = y ? Number(y) : NaN;
-    return Number.isFinite(n) ? n : null;
-  }
-  function mesDoRegistro(r: VendaRow): string | null {
-    const m = r.dataRegistro?.slice(5, 7);
-    const i = m ? Number(m) : NaN;
-    return Number.isFinite(i) && i >= 1 && i <= 12 ? MESES[i - 1] : null;
-  }
-
-  const opts = useMemo(() => {
-    return {
-      empresas: unique(rows.map((r) => r.empresa)).sort(),
-      anos: unique(rows.map(anoDoRegistro))
-        .filter((v): v is number => typeof v === "number")
-        .sort((a, b) => b - a),
-      meses: MESES.filter((m) => rows.some((r) => mesDoRegistro(r) === m)),
-      consultores: unique(rows.map((r) => r.consultor)).sort(),
-      classificacoes: unique(rows.map((r) => r.classificacao)).sort(),
-    };
-  }, [rows]);
+  const opts = useMemo(() => ({
+    empresas: unique(rows.map((r) => r.empresa)).sort(),
+    consultores: unique(rows.map((r) => r.consultor)).sort(),
+    classificacoes: unique(rows.map((r) => r.classificacao)).sort(),
+  }), [rows]);
 
   const filtered = useMemo(() => {
     const q = busca.trim().toLowerCase();
-    return rows.filter((r) => {
+    let list = rows.filter((r) => {
       if (empresa !== "Todos" && (r.empresa ?? "") !== empresa) return false;
-      if (ano !== "Todos" && String(anoDoRegistro(r) ?? "") !== ano) return false;
-      if (mes !== "Todos" && (mesDoRegistro(r) ?? "") !== mes) return false;
       if (consultor !== "Todos" && (r.consultor ?? "") !== consultor) return false;
       if (classificacao !== "Todos" && (r.classificacao ?? "") !== classificacao) return false;
       if (q) {
@@ -118,7 +221,9 @@ function VendasPage() {
       }
       return true;
     });
-  }, [rows, empresa, ano, mes, consultor, classificacao, busca]);
+    list = filterByPeriodo(list, periodo, (r) => r.dataRegistro);
+    return list;
+  }, [rows, empresa, consultor, classificacao, busca, periodo]);
 
   const sorted = useMemo(
     () => [...filtered].sort((a, b) => (b.dataRegistro ?? "").localeCompare(a.dataRegistro ?? "")),
@@ -130,69 +235,95 @@ function VendasPage() {
   const totalValor = useMemo(() => sorted.reduce((s, r) => s + (r.valorFinal || 0), 0), [sorted]);
   const totalBV = useMemo(() => sorted.reduce((s, r) => s + (r.valorBV || 0), 0), [sorted]);
 
+  useEffect(() => { setPage(1); }, [empresa, consultor, classificacao, busca, periodo]);
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const curPage = Math.min(page, totalPages);
   const pageRows = sorted.slice((curPage - 1) * PAGE_SIZE, curPage * PAGE_SIZE);
+  const pageRowsWithId = pageRows.filter((r): r is VendaRow & { id: string } => !!r.id);
 
-  async function refreshAll() {
-    await Promise.all([
-      qc.invalidateQueries({ queryKey: ["comercial-vendas-db"] }),
-      qc.invalidateQueries({ queryKey: ["comercial-vendas-last-sync"] }),
-    ]);
+  const sel = useBulkSelection(pageRowsWithId);
+
+  function openNew() {
+    setEditing(null);
+    setForm(emptyForm());
+    setFormOpen(true);
+  }
+  function openEdit(r: VendaRow) {
+    if (!r.id) return;
+    setEditing(r);
+    setForm(formFromRow(r));
+    setFormOpen(true);
   }
 
-  async function handleSyncDropbox() {
-    setSyncing(true);
-    const t = toast.loading("Sincronizando com Dropbox...");
-    try {
-      const r = await syncVendasFromDropbox();
-      if (r.ok) {
-        toast.success(
-          `Sincronizado: ${r.rows_total} linhas (novas: ${r.rows_inserted}, atualizadas: ${r.rows_updated})`,
-          { id: t },
-        );
-        await refreshAll();
+  const saveMut = useMutation({
+    mutationFn: async () => {
+      const payload = buildDbPayload(form);
+      if (editing?.id) {
+        const { error } = await supabase
+          .from("comercial_vendas")
+          .update(payload)
+          .eq("id", editing.id);
+        if (error) throw error;
       } else {
-        toast.error(r.error ?? "Falha ao sincronizar", { id: t });
+        const { error } = await supabase
+          .from("comercial_vendas")
+          .insert({ ...payload, source: "manual" });
+        if (error) throw error;
       }
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Erro inesperado", { id: t });
-    } finally {
-      setSyncing(false);
-    }
+    },
+    onSuccess: () => {
+      toast.success(editing ? "Venda atualizada" : "Venda cadastrada");
+      qc.invalidateQueries({ queryKey: ["comercial-vendas-db"] });
+      setFormOpen(false);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao salvar"),
+  });
+
+  const delMut = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase.from("comercial_vendas").delete().in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Venda(s) excluída(s)");
+      qc.invalidateQueries({ queryKey: ["comercial-vendas-db"] });
+      sel.clear();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao excluir"),
+  });
+
+  const bulkMut = useMutation({
+    mutationFn: async (patch: Record<string, any>) => {
+      const ids = Array.from(sel.selected);
+      if (!ids.length) return;
+      const norm = normalizeBulkPatch(patch);
+      const { error } = await supabase
+        .from("comercial_vendas")
+        .update(norm as any)
+        .in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Vendas atualizadas");
+      qc.invalidateQueries({ queryKey: ["comercial-vendas-db"] });
+      setBulkOpen(false);
+      sel.clear();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao atualizar"),
+  });
+
+  function handleBulkDelete() {
+    const ids = Array.from(sel.selected);
+    if (!ids.length) return;
+    if (!confirm(`Excluir ${ids.length} venda(s)? Esta ação não pode ser desfeita.`)) return;
+    delMut.mutate(ids);
   }
 
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setSyncing(true);
-    const t = toast.loading(`Importando ${file.name}...`);
-    try {
-      const buf = await file.arrayBuffer();
-      let bin = "";
-      const view = new Uint8Array(buf);
-      const CHUNK = 0x8000;
-      for (let i = 0; i < view.length; i += CHUNK) {
-        bin += String.fromCharCode.apply(null, Array.from(view.subarray(i, i + CHUNK)));
-      }
-      const base64 = btoa(bin);
-      const r = await syncVendasFromUpload({ data: { base64 } });
-      if (r.ok) {
-        toast.success(
-          `Importado: ${r.rows_total} linhas (novas: ${r.rows_inserted}, atualizadas: ${r.rows_updated})`,
-          { id: t },
-        );
-        await refreshAll();
-      } else {
-        toast.error(r.error ?? "Falha ao importar", { id: t });
-      }
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Erro inesperado", { id: t });
-    } finally {
-      setSyncing(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
+  function handleDeleteOne(r: VendaRow) {
+    if (!r.id) return;
+    if (!confirm("Excluir esta venda? Esta ação não pode ser desfeita.")) return;
+    delMut.mutate([r.id]);
   }
 
   function exportCsv() {
@@ -218,16 +349,35 @@ function VendasPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `vendas-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `vendas-${todayIso()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
 
-
   function resetFiltros() {
-    setEmpresa("Todos"); setAno("Todos"); setMes("Todos");
-    setConsultor("Todos"); setClassificacao("Todos"); setBusca(""); setPage(1);
+    setEmpresa("Todos"); setConsultor("Todos"); setClassificacao("Todos");
+    setBusca(""); setPage(1);
+    setPeriodoPreset("mes"); setPeriodo(periodoFromPreset("mes"));
   }
+
+  const BULK_FIELDS: BulkField[] = [
+    { key: "tipo", label: "Tipo", type: "text" },
+    {
+      key: "classificacao", label: "Classificação", type: "select", allowClear: true,
+      options: CLASSIFICACOES.map((v) => ({ value: v, label: v })),
+    },
+    { key: "consultor", label: "Consultor", type: "text" },
+    { key: "cerimonial", label: "Cerimonial", type: "text" },
+    { key: "decorador", label: "Decorador", type: "text" },
+    {
+      key: "empresa", label: "Empresa", type: "select", allowClear: true,
+      options: EMPRESAS.map((v) => ({ value: v, label: v })),
+    },
+    { key: "valor_proposta", label: "Valor da Proposta", type: "money" },
+    { key: "desconto", label: "Desconto", type: "money" },
+    { key: "valor_final", label: "Valor Final", type: "money" },
+    { key: "valor_bv", label: "Valor BV", type: "money" },
+  ];
 
   if (authLoading) {
     return (
@@ -255,49 +405,54 @@ function VendasPage() {
     );
   }
 
+  const valorFinalDivergente =
+    form.valor_final > 0 &&
+    Math.abs((form.valor_proposta - form.desconto) - form.valor_final) > 0.01;
+
   return (
     <div className="p-4 sm:p-6 space-y-4">
       <PageHeader
         title="Vendas"
-        description={`Vendas fechadas · Última sincronização: ${formatWhen(lastSync?.finished_at ?? lastSync?.started_at)}`}
+        description="Cadastro e gestão de vendas"
         actions={
           <div className="flex flex-wrap gap-2">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls"
-              className="hidden"
-              onChange={handleUpload}
-            />
             <Button variant="outline" size="sm" onClick={exportCsv} disabled={!sorted.length}>
               <Download className="h-4 w-4 mr-2" /> Exportar CSV
             </Button>
-            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={syncing}>
-              <Upload className="h-4 w-4 mr-2" /> Importar .xlsx
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleSyncDropbox} disabled={syncing}>
-              <CloudDownload className={`h-4 w-4 mr-2 ${syncing ? "animate-pulse" : ""}`} /> Sincronizar agora
-            </Button>
-            <Button variant="outline" size="sm" onClick={refreshAll} disabled={isLoading}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => qc.invalidateQueries({ queryKey: ["comercial-vendas-db"] })}
+              disabled={isLoading}
+            >
               <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} /> Atualizar
+            </Button>
+            <Button size="sm" onClick={openNew}>
+              <Plus className="h-4 w-4 mr-2" /> Nova venda
             </Button>
           </div>
         }
       />
 
       <Card className="p-4">
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-          <FiltroSelect label="Empresa" value={empresa} onChange={(v) => { setEmpresa(v); setPage(1); }} options={opts.empresas} />
-          <FiltroSelect label="Ano" value={ano} onChange={(v) => { setAno(v); setPage(1); }} options={opts.anos.map(String)} />
-          <FiltroSelect label="Mês" value={mes} onChange={(v) => { setMes(v); setPage(1); }} options={opts.meses} />
-          <FiltroSelect label="Consultor" value={consultor} onChange={(v) => { setConsultor(v); setPage(1); }} options={opts.consultores} />
-          <FiltroSelect label="Classificação" value={classificacao} onChange={(v) => { setClassificacao(v); setPage(1); }} options={opts.classificacoes} />
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+          <FiltroSelect label="Empresa" value={empresa} onChange={setEmpresa} options={opts.empresas} />
+          <FiltroSelect label="Consultor" value={consultor} onChange={setConsultor} options={opts.consultores} />
+          <FiltroSelect label="Classificação" value={classificacao} onChange={setClassificacao} options={opts.classificacoes} />
           <div className="space-y-1">
             <Label className="text-[11px] uppercase">Buscar</Label>
             <Input
               placeholder="Evento, local, cidade..."
               value={busca}
-              onChange={(e) => { setBusca(e.target.value); setPage(1); }}
+              onChange={(e) => setBusca(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] uppercase">Período</Label>
+            <PeriodoFilter
+              preset={periodoPreset}
+              periodo={periodo}
+              onChange={(p, per) => { setPeriodoPreset(p); setPeriodo(per); }}
             />
           </div>
         </div>
@@ -306,6 +461,18 @@ function VendasPage() {
           <button className="underline hover:text-foreground" onClick={resetFiltros}>Limpar filtros</button>
         </div>
       </Card>
+
+      <BulkActionsBar
+        count={sel.count}
+        onEdit={() => setBulkOpen(true)}
+        onClear={sel.clear}
+        label="venda(s) selecionada(s)"
+        extraActions={
+          <Button variant="destructive" size="sm" onClick={handleBulkDelete} disabled={delMut.isPending}>
+            <Trash2 className="h-4 w-4 mr-1" /> Excluir selecionadas
+          </Button>
+        }
+      />
 
       {isLoading && (
         <Card className="p-8 flex items-center justify-center text-muted-foreground gap-2">
@@ -329,6 +496,9 @@ function VendasPage() {
             <table className="w-full text-sm">
               <thead className="bg-muted/40">
                 <tr className="text-left">
+                  <th className="px-3 py-2 w-8">
+                    <Checkbox checked={sel.allSelected} onCheckedChange={() => sel.toggleAll()} />
+                  </th>
                   <Th>Data de Registro</Th>
                   <Th>Tipo</Th>
                   <Th>Nome do Evento</Th>
@@ -344,43 +514,69 @@ function VendasPage() {
                   <Th className="text-right">Desconto</Th>
                   <Th className="text-right">Valor Final</Th>
                   <Th className="text-right">Valor BV</Th>
+                  <th className="px-3 py-2 w-20" />
                 </tr>
               </thead>
               <tbody>
                 {pageRows.length === 0 && (
                   <tr>
-                    <td colSpan={15} className="px-3 py-8 text-center text-muted-foreground">
+                    <td colSpan={17} className="px-3 py-8 text-center text-muted-foreground">
                       Nenhum registro encontrado com os filtros atuais.
                     </td>
                   </tr>
                 )}
-                {pageRows.map((r, i) => (
-                  <tr key={i} className="border-t border-border/50 hover:bg-muted/30">
-                    <Td>{formatDate(r.dataRegistro)}</Td>
-                    <Td>{r.tipo ?? "—"}</Td>
-                    <Td className="font-medium">{r.nomeEvento ?? "—"}</Td>
-                    <Td>{r.local ?? "—"}</Td>
-                    <Td>{r.cidade ?? "—"}</Td>
-                    <Td>{r.estado ?? "—"}</Td>
-                    <Td>{r.classificacao ?? "—"}</Td>
-                    <Td>{r.consultor ?? "—"}</Td>
-                    <Td>{r.cerimonial ?? "—"}</Td>
-                    <Td>{r.decorador ?? "—"}</Td>
-                    <Td>{r.empresa ?? "—"}</Td>
-                    <Td className="text-right">{brl(r.valorProposta || 0)}</Td>
-                    <Td className="text-right">{brl(r.desconto || 0)}</Td>
-                    <Td className="text-right font-semibold">{brl(r.valorFinal || 0)}</Td>
-                    <Td className="text-right">{brl(r.valorBV || 0)}</Td>
-                  </tr>
-                ))}
+                {pageRows.map((r) => {
+                  const id = r.id;
+                  const checked = id ? sel.selected.has(id) : false;
+                  return (
+                    <tr key={id ?? `${r.dataRegistro}-${r.nomeEvento}`} className="border-t border-border/50 hover:bg-muted/30">
+                      <td className="px-3 py-2">
+                        {id && (
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={() => sel.toggle(id)}
+                          />
+                        )}
+                      </td>
+                      <Td>{formatDate(r.dataRegistro)}</Td>
+                      <Td>{r.tipo ?? "—"}</Td>
+                      <Td className="font-medium">{r.nomeEvento ?? "—"}</Td>
+                      <Td>{r.local ?? "—"}</Td>
+                      <Td>{r.cidade ?? "—"}</Td>
+                      <Td>{r.estado ?? "—"}</Td>
+                      <Td>{r.classificacao ?? "—"}</Td>
+                      <Td>{r.consultor ?? "—"}</Td>
+                      <Td>{r.cerimonial ?? "—"}</Td>
+                      <Td>{r.decorador ?? "—"}</Td>
+                      <Td>{r.empresa ?? "—"}</Td>
+                      <Td className="text-right">{brl(r.valorProposta || 0)}</Td>
+                      <Td className="text-right">{brl(r.desconto || 0)}</Td>
+                      <Td className="text-right font-semibold">{brl(r.valorFinal || 0)}</Td>
+                      <Td className="text-right">{brl(r.valorBV || 0)}</Td>
+                      <td className="px-3 py-2 text-right whitespace-nowrap">
+                        {id && (
+                          <>
+                            <Button variant="ghost" size="icon" onClick={() => openEdit(r)} title="Editar">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteOne(r)} title="Excluir">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
               <tfoot className="bg-muted/30 border-t-2 border-border">
                 <tr>
-                  <Td colSpan={11} className="font-semibold">Totais ({sorted.length.toLocaleString("pt-BR")} registros)</Td>
+                  <Td colSpan={12} className="font-semibold">Totais ({sorted.length.toLocaleString("pt-BR")} registros)</Td>
                   <Td className="text-right font-semibold">{brl(totalProposta)}</Td>
                   <Td className="text-right font-semibold">{brl(totalDesc)}</Td>
                   <Td className="text-right font-semibold">{brl(totalValor)}</Td>
                   <Td className="text-right font-semibold">{brl(totalBV)}</Td>
+                  <Td />
                 </tr>
               </tfoot>
             </table>
@@ -399,7 +595,141 @@ function VendasPage() {
           </div>
         </Card>
       )}
+
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{editing ? "Editar venda" : "Nova venda"}</DialogTitle>
+          </DialogHeader>
+          <form
+            className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+            onSubmit={(e) => { e.preventDefault(); saveMut.mutate(); }}
+          >
+            <Field label="Data de Registro">
+              <Input type="date" value={form.data_registro}
+                onChange={(e) => setForm({ ...form, data_registro: e.target.value })} required />
+            </Field>
+            <Field label="Tipo">
+              <Input value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })} />
+            </Field>
+            <Field label="Empresa">
+              <SelectFree value={form.empresa} options={EMPRESAS}
+                onChange={(v) => setForm({ ...form, empresa: v })} />
+            </Field>
+            <Field label="Nome do Evento" className="sm:col-span-2 lg:col-span-3">
+              <Input value={form.nome_evento}
+                onChange={(e) => setForm({ ...form, nome_evento: e.target.value })} required />
+            </Field>
+            <Field label="Local">
+              <Input value={form.local} onChange={(e) => setForm({ ...form, local: e.target.value })} />
+            </Field>
+            <Field label="Cidade">
+              <Input value={form.cidade} onChange={(e) => setForm({ ...form, cidade: e.target.value })} />
+            </Field>
+            <Field label="Estado">
+              <Input value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })} />
+            </Field>
+            <Field label="Classificação">
+              <SelectFree value={form.classificacao} options={CLASSIFICACOES}
+                onChange={(v) => setForm({ ...form, classificacao: v })} />
+            </Field>
+            <Field label="Consultor">
+              <SelectFree value={form.consultor} options={CONSULTORES_DEFAULT}
+                onChange={(v) => setForm({ ...form, consultor: v })} />
+            </Field>
+            <Field label="Cerimonial">
+              <Input value={form.cerimonial}
+                onChange={(e) => setForm({ ...form, cerimonial: e.target.value })} />
+            </Field>
+            <Field label="Decorador">
+              <Input value={form.decorador}
+                onChange={(e) => setForm({ ...form, decorador: e.target.value })} />
+            </Field>
+            <Field label="Valor da Proposta">
+              <MoneyInput value={form.valor_proposta}
+                onChange={(n) => setForm({ ...form, valor_proposta: n })} />
+            </Field>
+            <Field label="Desconto">
+              <MoneyInput value={form.desconto}
+                onChange={(n) => setForm({ ...form, desconto: n })} />
+            </Field>
+            <Field label="Valor Final">
+              <MoneyInput value={form.valor_final}
+                onChange={(n) => setForm({ ...form, valor_final: n })} />
+            </Field>
+            <Field label="Valor BV">
+              <MoneyInput value={form.valor_bv}
+                onChange={(n) => setForm({ ...form, valor_bv: n })} />
+            </Field>
+            {valorFinalDivergente && (
+              <div className="sm:col-span-2 lg:col-span-3 text-xs text-amber-600 flex items-center gap-1">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Atenção: Proposta − Desconto ({brl(form.valor_proposta - form.desconto)}) é diferente do Valor Final.
+              </div>
+            )}
+            <div className="sm:col-span-2 lg:col-span-3 flex justify-end gap-2 pt-2 border-t border-border">
+              <Button type="button" variant="ghost" onClick={() => setFormOpen(false)}>Cancelar</Button>
+              <Button type="submit" disabled={saveMut.isPending}>
+                {saveMut.isPending ? "Salvando..." : editing ? "Salvar alterações" : "Cadastrar venda"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <BulkEditDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        count={sel.count}
+        fields={BULK_FIELDS}
+        submitting={bulkMut.isPending}
+        onSubmit={(patch) => bulkMut.mutate(patch)}
+        title="Editar vendas em massa"
+      />
     </div>
+  );
+}
+
+function Field({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`space-y-1 ${className}`}>
+      <Label className="text-[11px] uppercase">{label}</Label>
+      {children}
+    </div>
+  );
+}
+
+function SelectFree({
+  value, options, onChange,
+}: { value: string; options: string[]; onChange: (v: string) => void }) {
+  const [custom, setCustom] = useState(value !== "" && !options.includes(value));
+  useEffect(() => {
+    if (value !== "" && !options.includes(value)) setCustom(true);
+  }, [value, options]);
+  if (custom) {
+    return (
+      <div className="flex gap-1">
+        <Input value={value} onChange={(e) => onChange(e.target.value)} />
+        <Button type="button" variant="ghost" size="sm" onClick={() => { setCustom(false); onChange(""); }}>↺</Button>
+      </div>
+    );
+  }
+  return (
+    <Select
+      value={value || "__none__"}
+      onValueChange={(v) => {
+        if (v === "__other__") { setCustom(true); onChange(""); return; }
+        if (v === "__none__") { onChange(""); return; }
+        onChange(v);
+      }}
+    >
+      <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="__none__">—</SelectItem>
+        {options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+        <SelectItem value="__other__">Outro...</SelectItem>
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -430,6 +760,7 @@ function FiltroSelect({
 function Th({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <th className={`px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground ${className}`}>{children}</th>;
 }
+
 function Td({ children, className = "", colSpan }: { children?: React.ReactNode; className?: string; colSpan?: number }) {
-  return <td colSpan={colSpan} className={`px-3 py-2 align-top ${className}`}>{children}</td>;
+  return <td colSpan={colSpan} className={`px-3 py-2 align-middle ${className}`}>{children}</td>;
 }
