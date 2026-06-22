@@ -208,12 +208,27 @@ function Dashboard() {
   const baixo = itens?.filter((i) => i.status === "baixo_estoque").length ?? 0;
   const sem = itens?.filter((i) => i.status === "sem_estoque").length ?? 0;
   const manut = itens?.filter((i) => i.status === "em_manutencao").length ?? 0;
-  const entradasMes = movsMes?.filter((m) => m.tipo === "entrada" && !isAjusteMovimentacao(m)).length ?? 0;
-  const saidasMes = movsMes?.filter((m) => m.tipo === "saida" && !isAjusteMovimentacao(m)).length ?? 0;
-  const devolucoesMes = movsMes?.filter((m) => m.tipo === "devolucao").length ?? 0;
+  // Conta requisições (grupos) por tipo no período: linhas com mesmo requisicao_numero
+  // contam como 1; linhas sem requisicao_numero contam individualmente.
+  const countRequisicoes = (tipo: "entrada" | "saida" | "devolucao", aplicarFiltroAjuste: boolean) => {
+    const set = new Set<string>();
+    for (const m of movsMes ?? []) {
+      if (m.tipo !== tipo) continue;
+      if (aplicarFiltroAjuste && isAjusteMovimentacao(m)) continue;
+      const key = (m as any).requisicao_numero != null
+        ? `req-${(m as any).requisicao_numero}`
+        : `solo-${m.id}`;
+      set.add(key);
+    }
+    return set.size;
+  };
+  const entradasMes = countRequisicoes("entrada", true);
+  const saidasMes = countRequisicoes("saida", true);
+  const devolucoesMes = countRequisicoes("devolucao", false);
   const saidasAbertas = recentes?.filter(
     (m) => m.tipo === "saida" && (m.saida_status === "aberta" || m.saida_status === "parcialmente_devolvida"),
   ).length ?? 0;
+
 
   const baixoItens = itens?.filter((i) => i.status === "baixo_estoque" || i.status === "sem_estoque").slice(0, 6) ?? [];
 
