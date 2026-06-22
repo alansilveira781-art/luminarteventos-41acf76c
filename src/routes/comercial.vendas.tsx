@@ -32,6 +32,7 @@ import {
   BulkEditDialog, normalizeBulkPatch, type BulkField,
 } from "@/components/BulkEditDialog";
 import { useSort, SortableTh } from "@/components/SortableTh";
+import { useVendedores, useCerimoniais, useDecoradores } from "@/lib/comercial/cadastros";
 
 
 export const Route = createFileRoute("/comercial/vendas")({
