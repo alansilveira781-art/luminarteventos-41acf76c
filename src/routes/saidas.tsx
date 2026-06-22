@@ -405,6 +405,14 @@ function SaidasPage() {
   });
 
 
+  function handleBulkDelete() {
+    const ids = Array.from(sel.selected);
+    const rows = grupos.filter((g: any) => ids.includes(g.id));
+    if (!rows.length) return;
+    if (!confirm(`Excluir ${rows.length} saída(s)? O estoque será revertido e devoluções vinculadas serão apagadas.`)) return;
+    bulkDelMut.mutate(rows);
+  }
+
   return (
     <>
       <PageHeader
