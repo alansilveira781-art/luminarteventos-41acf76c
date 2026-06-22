@@ -26,6 +26,7 @@ export type VendaRow = {
   percentual: number;
   valorFinal: number;
   valorBV: number;
+  valorComissao: number;
   comissaoGestor: number;
   tipoComissao: string | null;
   comissaoConsultor: number; // sometimes bool; converted to numeric flag
