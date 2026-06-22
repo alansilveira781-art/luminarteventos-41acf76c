@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Boxes, DollarSign, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
+import { Boxes, DollarSign, ArrowDownToLine, ArrowUpFromLine, AlertTriangle } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell, Legend,
@@ -9,6 +9,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const Route = createFileRoute("/patrimonio/dashboard")({ component: PatrimonioDashboard });
@@ -49,6 +50,38 @@ function PatrimonioDashboard() {
       return data ?? [];
     },
   });
+
+  // Empréstimos em aberto com previsão de devolução
+  const { data: saidasAbertas } = useQuery({
+    queryKey: ["pat_saidas_abertas_alertas"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pat_movimentacoes")
+        .select("id,item_id,quantidade,saida_status,data_prevista_devolucao,responsavel,evento_projeto")
+        .eq("tipo", "saida")
+        .in("saida_status", ["aberta", "parcialmente_devolvida"])
+        .not("data_prevista_devolucao", "is", null);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: devolvidoPorOrigem } = useQuery({
+    queryKey: ["pat_devolvido_por_origem_alertas"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("pat_movimentacoes")
+        .select("saida_origem_id,quantidade")
+        .eq("tipo", "devolucao")
+        .not("saida_origem_id", "is", null);
+      const m = new Map<string, number>();
+      (data ?? []).forEach((r: any) => {
+        m.set(r.saida_origem_id, (m.get(r.saida_origem_id) ?? 0) + Number(r.quantidade));
+      });
+      return m;
+    },
+  });
+
 
   const stats = useMemo(() => {
     const list = itens ?? [];
@@ -104,9 +137,114 @@ function PatrimonioDashboard() {
     return (itens ?? []).filter((i) => i.categoria === catSelecionada);
   }, [itens, catSelecionada]);
 
+  const alertas = useMemo(() => {
+    const itemMap = new Map<string, any>();
+    (itens ?? []).forEach((i: any) => itemMap.set(i.id, i));
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const lista: Array<{
+      id: string; nome: string; cod: string | null; qtd: number;
+      responsavel: string | null; evento: string | null;
+      previsao: string; previsaoDate: Date; diffDias: number;
+      bucket: "vencido" | "ate3" | "ate7";
+    }> = [];
+    (saidasAbertas ?? []).forEach((s: any) => {
+      const jaDev = devolvidoPorOrigem?.get(s.id) ?? 0;
+      const restante = Math.max(0, Number(s.quantidade) - jaDev);
+      if (restante <= 0) return;
+      const prev = new Date(String(s.data_prevista_devolucao) + "T00:00");
+      const diffDias = Math.round((prev.getTime() - hoje.getTime()) / 86400000);
+      let bucket: "vencido" | "ate3" | "ate7" | null = null;
+      if (diffDias < 0) bucket = "vencido";
+      else if (diffDias <= 3) bucket = "ate3";
+      else if (diffDias <= 7) bucket = "ate7";
+      if (!bucket) return;
+      const it = s.item_id ? itemMap.get(s.item_id) : null;
+      lista.push({
+        id: s.id,
+        nome: it?.nome ?? "(item removido)",
+        cod: it?.cod ?? it?.id_item ?? null,
+        qtd: restante,
+        responsavel: s.responsavel ?? null,
+        evento: s.evento_projeto ?? null,
+        previsao: s.data_prevista_devolucao,
+        previsaoDate: prev,
+        diffDias,
+        bucket,
+      });
+    });
+    lista.sort((a, b) => a.previsaoDate.getTime() - b.previsaoDate.getTime());
+    const cont = {
+      vencido: lista.filter((l) => l.bucket === "vencido").length,
+      ate3: lista.filter((l) => l.bucket === "ate3").length,
+      ate7: lista.filter((l) => l.bucket === "ate7").length,
+    };
+    return { lista, cont };
+  }, [saidasAbertas, devolvidoPorOrigem, itens]);
+
   return (
     <>
       <PageHeader title="Dashboard do Patrimônio" description="Visão geral do inventário e movimentações" />
+
+      {alertas.lista.length > 0 && (
+        <Card className="p-4 mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+            <h3 className="font-semibold text-sm">Alertas de devolução</h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+            <AlertaCount label="Vencidos" value={alertas.cont.vencido} className="border-destructive/40 bg-destructive/10 text-destructive" />
+            <AlertaCount label="Vence em ≤3 dias" value={alertas.cont.ate3} className="border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400" />
+            <AlertaCount label="Vence em ≤7 dias" value={alertas.cont.ate7} className="border-yellow-500/40 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400" />
+          </div>
+          <div className="overflow-auto max-h-[360px] border rounded-md">
+            <table className="w-full text-xs">
+              <thead className="bg-card sticky top-0 z-10 shadow-[0_1px_0_0_hsl(var(--border))]">
+                <tr className="text-left">
+                  <th className="px-2 py-2">Item</th>
+                  <th className="px-2 py-2 text-right w-24">Qtd em aberto</th>
+                  <th className="px-2 py-2">Responsável</th>
+                  <th className="px-2 py-2">Evento/Projeto</th>
+                  <th className="px-2 py-2 w-32">Previsão</th>
+                  <th className="px-2 py-2 w-40">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {alertas.lista.map((l) => {
+                  const prevFmt = l.previsaoDate.toLocaleDateString("pt-BR");
+                  let badgeClass = "";
+                  let statusTxt = "";
+                  if (l.bucket === "vencido") {
+                    badgeClass = "bg-destructive text-destructive-foreground hover:bg-destructive";
+                    const dias = Math.abs(l.diffDias);
+                    statusTxt = `Venceu há ${dias} dia${dias === 1 ? "" : "s"}`;
+                  } else if (l.bucket === "ate3") {
+                    badgeClass = "bg-amber-500 text-white hover:bg-amber-500";
+                    statusTxt = l.diffDias === 0 ? "Vence hoje" : `Vence em ${l.diffDias} dia${l.diffDias === 1 ? "" : "s"}`;
+                  } else {
+                    badgeClass = "bg-yellow-500 text-white hover:bg-yellow-500";
+                    statusTxt = `Vence em ${l.diffDias} dias`;
+                  }
+                  return (
+                    <tr key={l.id} className="border-t border-border hover:bg-muted/30">
+                      <td className="px-2 py-1.5 font-medium">
+                        {l.nome}
+                        {l.cod && <span className="ml-1 text-muted-foreground font-mono text-[11px]">({l.cod})</span>}
+                      </td>
+                      <td className="px-2 py-1.5 text-right">{l.qtd}</td>
+                      <td className="px-2 py-1.5">{l.responsavel ?? "—"}</td>
+                      <td className="px-2 py-1.5">{l.evento ?? "—"}</td>
+                      <td className="px-2 py-1.5">{prevFmt}</td>
+                      <td className="px-2 py-1.5"><Badge className={badgeClass}>{statusTxt}</Badge></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
         <StatCard icon={Boxes} label="Itens cadastrados" value={stats.totalItens.toLocaleString("pt-BR")} color="text-blue-600" />
@@ -245,6 +383,15 @@ function PatrimonioDashboard() {
         )}
       </Card>
     </>
+  );
+}
+
+function AlertaCount({ label, value, className }: { label: string; value: number; className: string }) {
+  return (
+    <div className={`rounded-md border px-3 py-2 ${className}`}>
+      <div className="text-[11px] uppercase tracking-wide opacity-80">{label}</div>
+      <div className="text-2xl font-semibold leading-tight">{value}</div>
+    </div>
   );
 }
 
