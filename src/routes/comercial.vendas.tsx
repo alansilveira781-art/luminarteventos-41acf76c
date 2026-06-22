@@ -77,13 +77,28 @@ function VendasPage() {
 
   const rows = data?.rows ?? [];
 
+  const MESES = [
+    "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+    "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro",
+  ];
+  function anoDoRegistro(r: VendaRow): number | null {
+    const y = r.dataRegistro?.slice(0, 4);
+    const n = y ? Number(y) : NaN;
+    return Number.isFinite(n) ? n : null;
+  }
+  function mesDoRegistro(r: VendaRow): string | null {
+    const m = r.dataRegistro?.slice(5, 7);
+    const i = m ? Number(m) : NaN;
+    return Number.isFinite(i) && i >= 1 && i <= 12 ? MESES[i - 1] : null;
+  }
+
   const opts = useMemo(() => {
     return {
       empresas: unique(rows.map((r) => r.empresa)).sort(),
-      anos: unique(rows.map((r) => r.anoEvento ?? r.ano))
+      anos: unique(rows.map(anoDoRegistro))
         .filter((v): v is number => typeof v === "number")
         .sort((a, b) => b - a),
-      meses: unique(rows.map((r) => r.mesEvento ?? r.mes)).sort(),
+      meses: MESES.filter((m) => rows.some((r) => mesDoRegistro(r) === m)),
       consultores: unique(rows.map((r) => r.consultor)).sort(),
       classificacoes: unique(rows.map((r) => r.classificacao)).sort(),
     };
@@ -93,19 +108,12 @@ function VendasPage() {
     const q = busca.trim().toLowerCase();
     return rows.filter((r) => {
       if (empresa !== "Todos" && (r.empresa ?? "") !== empresa) return false;
-      if (ano !== "Todos") {
-        const a = r.anoEvento ?? r.ano;
-        if (String(a ?? "") !== ano) return false;
-      }
-      if (mes !== "Todos") {
-        const m1 = (r.mesEvento ?? "").toLowerCase();
-        const m2 = (r.mes ?? "").toLowerCase();
-        if (m1 !== mes.toLowerCase() && m2 !== mes.toLowerCase()) return false;
-      }
+      if (ano !== "Todos" && String(anoDoRegistro(r) ?? "") !== ano) return false;
+      if (mes !== "Todos" && (mesDoRegistro(r) ?? "") !== mes) return false;
       if (consultor !== "Todos" && (r.consultor ?? "") !== consultor) return false;
       if (classificacao !== "Todos" && (r.classificacao ?? "") !== classificacao) return false;
       if (q) {
-        const blob = `${r.nomeEvento ?? ""} ${r.local ?? ""} ${r.cidade ?? ""} ${r.salao ?? ""}`.toLowerCase();
+        const blob = `${r.nomeEvento ?? ""} ${r.local ?? ""} ${r.cidade ?? ""} ${r.estado ?? ""}`.toLowerCase();
         if (!blob.includes(q)) return false;
       }
       return true;
@@ -113,12 +121,15 @@ function VendasPage() {
   }, [rows, empresa, ano, mes, consultor, classificacao, busca]);
 
   const sorted = useMemo(
-    () => [...filtered].sort((a, b) => (b.dataEvento ?? "").localeCompare(a.dataEvento ?? "")),
+    () => [...filtered].sort((a, b) => (b.dataRegistro ?? "").localeCompare(a.dataRegistro ?? "")),
     [filtered],
   );
 
-  const totalValor = useMemo(() => sorted.reduce((s, r) => s + (r.valorFinal || 0), 0), [sorted]);
+  const totalProposta = useMemo(() => sorted.reduce((s, r) => s + (r.valorProposta || 0), 0), [sorted]);
   const totalDesc = useMemo(() => sorted.reduce((s, r) => s + (r.desconto || 0), 0), [sorted]);
+  const totalValor = useMemo(() => sorted.reduce((s, r) => s + (r.valorFinal || 0), 0), [sorted]);
+  const totalBV = useMemo(() => sorted.reduce((s, r) => s + (r.valorBV || 0), 0), [sorted]);
+
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const curPage = Math.min(page, totalPages);
