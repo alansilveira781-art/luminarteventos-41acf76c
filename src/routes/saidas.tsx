@@ -171,6 +171,33 @@ function SaidasPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const bulkDelMut = useMutation({
+    mutationFn: async (grupos: any[]) => {
+      const ids: string[] = [];
+      for (const g of grupos) {
+        const linhas: any[] = g.linhas ?? [g];
+        // Apagar devoluções vinculadas primeiro
+        for (const m of linhas) {
+          await supabase.from("movimentacoes").delete().eq("saida_origem_id", m.id);
+        }
+        ids.push(...linhas.map((l) => l.id));
+      }
+      if (!ids.length) return;
+      const { error } = await supabase.from("movimentacoes").delete().in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["saidas"] });
+      qc.invalidateQueries({ queryKey: ["itens"] });
+      qc.invalidateQueries({ queryKey: ["itens-select"] });
+      qc.invalidateQueries({ queryKey: ["itens-select-saida"] });
+      toast.success("Saídas excluídas");
+      sel.clear();
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+
   const { data: saidas } = useQuery({
     queryKey: ["saidas"],
     queryFn: async () => {
