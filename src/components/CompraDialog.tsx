@@ -449,7 +449,10 @@ export function CompraDialog({
             {compraId && (
               <Button
                 variant="destructive"
+                disabled={!canEdit}
+                title={editBlockedMsg ?? undefined}
                 onClick={async () => {
+                  if (!canEdit) { toast.error(editBlockedMsg ?? ""); return; }
                   if (!confirm("Tem certeza que deseja excluir esta compra? Esta ação não pode ser desfeita.")) return;
                   try {
                     await sb.from("compra_itens").delete().eq("compra_id", compraId);
@@ -462,7 +465,12 @@ export function CompraDialog({
                     qc.invalidateQueries({ queryKey: ["compras-receber"] });
                     onOpenChange(false);
                   } catch (e: any) {
-                    toast.error(e.message ?? "Erro ao excluir");
+                    const msg = e?.message ?? "";
+                    if (/row-level security|permission denied|policy/i.test(msg) || e?.code === "42501") {
+                      toast.error(editBlockedMsg ?? "Sem permissão para excluir este card.");
+                    } else {
+                      toast.error(msg || "Erro ao excluir");
+                    }
                   }
                 }}
               >
