@@ -10,10 +10,10 @@ export function GaugeRealVsMeta({ valor, meta }: { valor: number; meta: number }
   const pct = meta > 0 ? Math.max(0, Math.min(100, (valor / meta) * 100)) : 0;
   const data = [{ name: "real", value: pct, fill: "hsl(var(--primary))" }];
   return (
-    <Card className="p-4 h-full flex flex-col">
+    <Card className="p-4 flex flex-col">
       <div className="text-sm font-medium text-foreground/80 mb-2">Real. VS Meta</div>
-      <div className="flex-1 relative min-h-[180px]">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="relative" style={{ height: 180 }}>
+        <ResponsiveContainer width="100%" height={180}>
           <RadialBarChart
             innerRadius="70%"
             outerRadius="100%"
