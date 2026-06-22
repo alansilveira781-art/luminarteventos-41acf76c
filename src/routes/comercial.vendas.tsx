@@ -432,19 +432,8 @@ function VendasPage() {
         }
       />
 
-      <Card className="p-4">
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-          <FiltroSelect label="Empresa" value={empresa} onChange={setEmpresa} options={opts.empresas} />
-          <FiltroSelect label="Consultor" value={consultor} onChange={setConsultor} options={opts.consultores} />
-          <FiltroSelect label="Classificação" value={classificacao} onChange={setClassificacao} options={opts.classificacoes} />
-          <div className="space-y-1">
-            <Label className="text-[11px] uppercase">Buscar</Label>
-            <Input
-              placeholder="Evento, local, cidade..."
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-            />
-          </div>
+      <Card className="p-4 space-y-3">
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1">
             <Label className="text-[11px] uppercase">Período</Label>
             <PeriodoFilter
@@ -453,7 +442,19 @@ function VendasPage() {
               onChange={(p, per) => { setPeriodoPreset(p); setPeriodo(per); }}
             />
           </div>
+          <FiltroSelect label="Empresa" value={empresa} onChange={setEmpresa} options={opts.empresas} />
+          <FiltroSelect label="Consultor" value={consultor} onChange={setConsultor} options={opts.consultores} />
+          <FiltroSelect label="Classificação" value={classificacao} onChange={setClassificacao} options={opts.classificacoes} />
         </div>
+        <div className="space-y-1">
+          <Label className="text-[11px] uppercase">Buscar</Label>
+          <Input
+            placeholder="Evento, local, cidade..."
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+          />
+        </div>
+
         <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
           <span>{sorted.length.toLocaleString("pt-BR")} registros</span>
           <button className="underline hover:text-foreground" onClick={resetFiltros}>Limpar filtros</button>
