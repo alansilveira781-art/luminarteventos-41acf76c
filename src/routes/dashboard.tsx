@@ -214,6 +214,7 @@ function Dashboard() {
       m.set(k, { mes: format(subMonths(hoje, i), "MMM/yy"), entradas: 0, saidas: 0 });
     }
     for (const mov of movs12m ?? []) {
+      if (isAjusteMovimentacao(mov)) continue;
       const k = format(new Date(mov.data_movimento), "yyyy-MM");
       const cur = m.get(k);
       if (!cur) continue;
