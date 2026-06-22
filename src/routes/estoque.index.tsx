@@ -207,7 +207,7 @@ function EstoquePage() {
       });
     }
     return arr;
-  }, [itens, q, hideZero, sort, periodo]);
+  }, [itens, qd, hideZero, sort, periodo]);
 
   useEffect(() => { setPage(1); }, [q, hideZero, sort, periodo]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
