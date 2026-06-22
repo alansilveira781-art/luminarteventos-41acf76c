@@ -226,7 +226,7 @@ function Dashboard() {
   const saidasMes = countRequisicoes("saida", true);
   const devolucoesMes = countRequisicoes("devolucao", false);
   const saidasAbertas = recentes?.filter(
-    (m) => m.tipo === "saida" && (m.saida_status === "aberta" || m.saida_status === "parcialmente_devolvida"),
+    (m) => m.tipo === "saida" && !isAjusteMovimentacao(m) && (m.saida_status === "aberta" || m.saida_status === "parcialmente_devolvida"),
   ).length ?? 0;
 
 

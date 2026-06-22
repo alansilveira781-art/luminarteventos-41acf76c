@@ -42,20 +42,8 @@ const AJUSTE_EGESTOR_PREFIXO = "Ajuste por conferência Egestor";
  */
 export function isAjusteMovimentacao(m: any): boolean {
   if (!m) return false;
+  if (m.tipo !== "entrada" && m.tipo !== "saida") return false;
   const obs = String(m.observacoes ?? "").trim();
   const finalidade = String(m.finalidade ?? "").trim();
-  const obsIsAjuste = obs.startsWith(AJUSTE_EGESTOR_PREFIXO);
-  const finalidadeIsAjuste = finalidade.startsWith(AJUSTE_EGESTOR_PREFIXO);
-
-  if (m.tipo === "entrada") {
-    return obsIsAjuste;
-  }
-
-  if (m.tipo === "saida") {
-    if (obsIsAjuste) return true;
-    if (finalidadeIsAjuste) return true;
-    return false;
-  }
-
-  return false;
+  return obs.startsWith(AJUSTE_EGESTOR_PREFIXO) || finalidade.startsWith(AJUSTE_EGESTOR_PREFIXO);
 }
