@@ -1,7 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useState, useMemo, useEffect } from "react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import {
+  setEstoqueItensSuppressed,
+  onEstoqueItensPending,
+} from "@/lib/estoque-realtime-control";
+
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -86,9 +91,28 @@ function EstoquePage() {
       }
       return all;
     },
-    staleTime: 0,
-    refetchOnMount: "always",
+    staleTime: 30_000,
+    placeholderData: keepPreviousData,
   });
+
+  // Suprime invalidação automática de ["itens"] durante a conferência
+  // (campo de busca com texto ou modal de conferência aberto) e mostra
+  // banner não-bloqueante quando há atualizações pendentes.
+  const [pendingUpdate, setPendingUpdate] = useState(false);
+  const conferindoAtivo = qd.trim().length > 0 || conferindo;
+  useEffect(() => {
+    setEstoqueItensSuppressed(conferindoAtivo);
+    if (!conferindoAtivo) setPendingUpdate(false);
+    return () => setEstoqueItensSuppressed(false);
+  }, [conferindoAtivo]);
+  useEffect(() => {
+    return onEstoqueItensPending(() => setPendingUpdate(true));
+  }, []);
+  function aplicarAtualizacoes() {
+    setPendingUpdate(false);
+    qc.invalidateQueries({ queryKey: ["itens"] });
+  }
+
 
   const mut = useMutation({
     mutationFn: async (payload: any) => {
@@ -183,9 +207,9 @@ function EstoquePage() {
       });
     }
     return arr;
-  }, [itens, q, hideZero, sort, periodo]);
+  }, [itens, qd, hideZero, sort, periodo]);
 
-  useEffect(() => { setPage(1); }, [q, hideZero, sort, periodo]);
+  useEffect(() => { setPage(1); }, [qd, hideZero, sort, periodo]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageItems = useMemo(() => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [filtered, page]);
 
@@ -282,6 +306,17 @@ function EstoquePage() {
             : `Exibindo ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, filtered.length)} de ${filtered.length}${itens && filtered.length !== itens.length ? ` (total ${itens.length})` : ""}`}
         </div>
       </Card>
+
+      {pendingUpdate && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
+          <span>Há atualizações no estoque.</span>
+          <Button size="sm" variant="outline" onClick={aplicarAtualizacoes}>
+            Atualizar agora
+          </Button>
+        </div>
+      )}
+
+
 
       {isAdmin && (
         <BulkActionsBar
