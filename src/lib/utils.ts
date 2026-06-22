@@ -33,11 +33,12 @@ export function matchTokens(haystack: unknown, query: string): boolean {
 const AJUSTE_EGESTOR_PREFIXO = "Ajuste por conferência Egestor";
 
 /**
- * Identifica movimentações de ajuste de estoque que devem ser ocultadas das listas
- * de Entradas e Saídas, sem afetar o cálculo de saldo. Entradas de ajuste usam
- * entrada_tipo = "ajuste" ou observação da conferência Egestor. Saídas de ajuste
- * usam observação/finalidade da conferência Egestor, ou saida_tipo "outros" com
- * observação de ajuste Egestor.
+ * Identifica movimentações de ajuste geradas automaticamente pela conferência
+ * Egestor, que devem ser ocultadas nas listas de Entradas e Saídas e nos
+ * agregados do Dashboard, sem afetar o cálculo de saldo. O discriminador é a
+ * observação/finalidade que começa com o prefixo da conferência Egestor —
+ * ajustes manuais com entrada_tipo/saida_tipo = "ajuste" mas sem esse prefixo
+ * continuam visíveis.
  */
 export function isAjusteMovimentacao(m: any): boolean {
   if (!m) return false;
@@ -47,15 +48,12 @@ export function isAjusteMovimentacao(m: any): boolean {
   const finalidadeIsAjuste = finalidade.startsWith(AJUSTE_EGESTOR_PREFIXO);
 
   if (m.tipo === "entrada") {
-    if (m.entrada_tipo === "ajuste") return true;
-    if (obsIsAjuste) return true;
-    return false;
+    return obsIsAjuste;
   }
 
   if (m.tipo === "saida") {
     if (obsIsAjuste) return true;
     if (finalidadeIsAjuste) return true;
-    if (m.saida_tipo === "outros" && obsIsAjuste) return true;
     return false;
   }
 
