@@ -1,6 +1,11 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  isEstoqueItensSuppressed,
+  notifyEstoqueItensPending,
+} from "@/lib/estoque-realtime-control";
+
 
 /**
  * Subscreve às mudanças em `itens`, `movimentacoes`, `movimentacao_itens` e
