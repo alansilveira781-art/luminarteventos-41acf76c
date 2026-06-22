@@ -194,7 +194,14 @@ export function CompraDialog({
       qc.invalidateQueries({ queryKey: ["compras-receber"] });
       onOpenChange(false);
     },
-    onError: (e: any) => toast.error(describeSupabaseError(e)),
+    onError: (e: any) => {
+      const msg = describeSupabaseError(e) || "";
+      if (/row-level security|permission denied|policy/i.test(msg) || e?.code === "42501") {
+        toast.error(editBlockedMsg ?? "Apenas o responsável, o criador do card ou um admin pode editá-lo.");
+      } else {
+        toast.error(msg || "Erro ao salvar");
+      }
+    },
   });
 
   function addItem() { setItens((p) => [...p, { descricao: "", quantidade: 1 }]); }
