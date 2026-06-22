@@ -7,7 +7,6 @@ export type ListVendasDbResult = {
   error?: string;
 };
 
-
 const PAGE = 1000;
 
 export const listVendasDb = createServerFn({ method: "GET" }).handler(
@@ -17,7 +16,6 @@ export const listVendasDb = createServerFn({ method: "GET" }).handler(
       const { dbRowToVenda } = await import("./vendas-parse.server");
       const all: VendaRow[] = [];
       let from = 0;
-      // paginate
       while (true) {
         const { data, error } = await supabaseAdmin
           .from("comercial_vendas")
@@ -36,17 +34,3 @@ export const listVendasDb = createServerFn({ method: "GET" }).handler(
     }
   },
 );
-
-export const getLastSync = createServerFn({ method: "GET" }).handler(
-  async (): Promise<LastSync> => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data } = await supabaseAdmin
-      .from("comercial_vendas_sync")
-      .select("*")
-      .order("started_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    return (data as LastSync) ?? null;
-  },
-);
-
