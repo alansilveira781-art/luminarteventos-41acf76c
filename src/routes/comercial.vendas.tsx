@@ -329,52 +329,58 @@ function VendasPage() {
             <table className="w-full text-sm">
               <thead className="bg-muted/40">
                 <tr className="text-left">
-                  <Th>Data Evento</Th>
+                  <Th>Data de Registro</Th>
+                  <Th>Tipo</Th>
                   <Th>Nome do Evento</Th>
-                  <Th>Empresa</Th>
-                  <Th>Local/Cidade</Th>
+                  <Th>Local</Th>
+                  <Th>Cidade</Th>
+                  <Th>Estado</Th>
+                  <Th>Classificação</Th>
                   <Th>Consultor</Th>
                   <Th>Cerimonial</Th>
                   <Th>Decorador</Th>
-                  <Th>Classificação</Th>
-                  <Th className="text-right">Qtde</Th>
+                  <Th>Empresa</Th>
+                  <Th className="text-right">Valor da Proposta</Th>
                   <Th className="text-right">Desconto</Th>
                   <Th className="text-right">Valor Final</Th>
+                  <Th className="text-right">Valor BV</Th>
                 </tr>
               </thead>
               <tbody>
                 {pageRows.length === 0 && (
                   <tr>
-                    <td colSpan={11} className="px-3 py-8 text-center text-muted-foreground">
+                    <td colSpan={15} className="px-3 py-8 text-center text-muted-foreground">
                       Nenhum registro encontrado com os filtros atuais.
                     </td>
                   </tr>
                 )}
                 {pageRows.map((r, i) => (
                   <tr key={i} className="border-t border-border/50 hover:bg-muted/30">
-                    <Td>{formatDate(r.dataEvento)}</Td>
+                    <Td>{formatDate(r.dataRegistro)}</Td>
+                    <Td>{r.tipo ?? "—"}</Td>
                     <Td className="font-medium">{r.nomeEvento ?? "—"}</Td>
-                    <Td>{r.empresa ?? "—"}</Td>
-                    <Td>
-                      <div>{r.local ?? "—"}</div>
-                      {r.cidade && <div className="text-xs text-muted-foreground">{r.cidade}{r.estado ? ` / ${r.estado}` : ""}</div>}
-                    </Td>
+                    <Td>{r.local ?? "—"}</Td>
+                    <Td>{r.cidade ?? "—"}</Td>
+                    <Td>{r.estado ?? "—"}</Td>
+                    <Td>{r.classificacao ?? "—"}</Td>
                     <Td>{r.consultor ?? "—"}</Td>
                     <Td>{r.cerimonial ?? "—"}</Td>
                     <Td>{r.decorador ?? "—"}</Td>
-                    <Td>{r.classificacao ?? "—"}</Td>
-                    <Td className="text-right">{(r.quantidade || 0).toLocaleString("pt-BR")}</Td>
+                    <Td>{r.empresa ?? "—"}</Td>
+                    <Td className="text-right">{brl(r.valorProposta || 0)}</Td>
                     <Td className="text-right">{brl(r.desconto || 0)}</Td>
                     <Td className="text-right font-semibold">{brl(r.valorFinal || 0)}</Td>
+                    <Td className="text-right">{brl(r.valorBV || 0)}</Td>
                   </tr>
                 ))}
               </tbody>
               <tfoot className="bg-muted/30 border-t-2 border-border">
                 <tr>
-                  <Td colSpan={8} className="font-semibold">Totais ({sorted.length.toLocaleString("pt-BR")} registros)</Td>
-                  <Td className="text-right" />
+                  <Td colSpan={11} className="font-semibold">Totais ({sorted.length.toLocaleString("pt-BR")} registros)</Td>
+                  <Td className="text-right font-semibold">{brl(totalProposta)}</Td>
                   <Td className="text-right font-semibold">{brl(totalDesc)}</Td>
                   <Td className="text-right font-semibold">{brl(totalValor)}</Td>
+                  <Td className="text-right font-semibold">{brl(totalBV)}</Td>
                 </tr>
               </tfoot>
             </table>
