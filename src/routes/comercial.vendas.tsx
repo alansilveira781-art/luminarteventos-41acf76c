@@ -447,10 +447,6 @@ function VendasPage() {
     );
   }
 
-  const valorFinalDivergente =
-    form.valor_final > 0 &&
-    Math.abs((form.valor_proposta - form.desconto) - form.valor_final) > 0.01;
-
   return (
     <div className="p-4 sm:p-6 space-y-4">
       <PageHeader
@@ -461,10 +457,6 @@ function VendasPage() {
             <Button variant="outline" size="sm" onClick={exportCsv} disabled={!sorted.length}>
               <Download className="h-4 w-4 mr-2" /> Exportar CSV
             </Button>
-            <Button size="sm" onClick={openNew}>
-              <Plus className="h-4 w-4 mr-2" /> Nova venda
-            </Button>
-
             <Button size="sm" onClick={openNew}>
               <Plus className="h-4 w-4 mr-2" /> Nova venda
             </Button>
