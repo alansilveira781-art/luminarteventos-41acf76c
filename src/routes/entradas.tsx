@@ -165,8 +165,9 @@ function EntradasPage() {
         .from("movimentacoes")
         .select("*, item:itens(nome,codigo,unidade), fornecedor:fornecedores(nome,documento)")
         .eq("tipo", "entrada")
+        .not("observacoes", "ilike", "Ajuste por conferência Egestor%")
         .order("data_movimento", { ascending: false })
-        .limit(500);
+        .limit(2000);
       if (error) throw error;
       return data;
     },
