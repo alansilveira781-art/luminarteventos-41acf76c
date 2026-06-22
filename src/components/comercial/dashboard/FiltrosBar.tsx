@@ -45,11 +45,17 @@ export function FiltrosBar({
 
   const set = <K extends keyof Filtros>(k: K, v: Filtros[K]) => onChange({ ...filtros, [k]: v });
 
+  // Defensivo: se o valor atual não está nas opções, mostra "Todos"
+  const safeStr = (v: string | number, opts: string[]) =>
+    v === "Todos" || opts.includes(String(v)) ? String(v) : "Todos";
+  const safeAno = (v: number | "Todos", opts: number[]) =>
+    v === "Todos" || opts.includes(v as number) ? String(v) : "Todos";
+
   return (
     <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
       {active.includes("empresa") && (
         <Field label="Empresa">
-          <Select value={String(filtros.empresa)} onValueChange={(v) => set("empresa", v as Filtros["empresa"])}>
+          <Select value={safeStr(filtros.empresa, empresas)} onValueChange={(v) => set("empresa", v as Filtros["empresa"])}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="Todos">Todos</SelectItem>
@@ -60,7 +66,7 @@ export function FiltrosBar({
       )}
       {active.includes("ano") && (
         <Field label="Ano">
-          <Select value={String(filtros.ano)} onValueChange={(v) => set("ano", v === "Todos" ? "Todos" : Number(v))}>
+          <Select value={safeAno(filtros.ano, anos)} onValueChange={(v) => set("ano", v === "Todos" ? "Todos" : Number(v))}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="Todos">Todos</SelectItem>
@@ -93,7 +99,7 @@ export function FiltrosBar({
       )}
       {active.includes("consultor") && (
         <Field label="Consultor">
-          <Select value={String(filtros.consultor)} onValueChange={(v) => set("consultor", v as Filtros["consultor"])}>
+          <Select value={safeStr(filtros.consultor, consultores)} onValueChange={(v) => set("consultor", v as Filtros["consultor"])}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="Todos">Todos</SelectItem>
@@ -104,7 +110,7 @@ export function FiltrosBar({
       )}
       {active.includes("classificacao") && (
         <Field label="Classificação">
-          <Select value={String(filtros.classificacao)} onValueChange={(v) => set("classificacao", v as Filtros["classificacao"])}>
+          <Select value={safeStr(filtros.classificacao, classificacoes)} onValueChange={(v) => set("classificacao", v as Filtros["classificacao"])}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="Todos">Todos</SelectItem>
