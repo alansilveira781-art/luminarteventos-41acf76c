@@ -3,8 +3,17 @@ import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 
 export type SortState = { key: string; dir: "desc" | "asc" } | null;
 
-export function useSort() {
-  const [sort, setSort] = useState<SortState>(null);
+function compareValues(va: any, vb: any): number {
+  const na = typeof va === "number" ? va : Number(va);
+  const nb = typeof vb === "number" ? vb : Number(vb);
+  if (!isNaN(na) && !isNaN(nb) && (typeof va !== "string" || typeof vb !== "string")) {
+    return na - nb;
+  }
+  return String(va ?? "").localeCompare(String(vb ?? ""), "pt-BR", { numeric: true });
+}
+
+export function useSort(initial?: SortState) {
+  const [sort, setSort] = useState<SortState>(initial ?? null);
   function toggleSort(key: string) {
     setSort((cur) => {
       if (!cur || cur.key !== key) return { key, dir: "desc" };
@@ -16,15 +25,16 @@ export function useSort() {
     if (!sort) return arr;
     const { key, dir } = sort;
     return [...arr].sort((a, b) => {
-      const va = getValue ? getValue(a, key) : a[key];
-      const vb = getValue ? getValue(b, key) : b[key];
-      const na = typeof va === "number" ? va : Number(va);
-      const nb = typeof vb === "number" ? vb : Number(vb);
-      let cmp: number;
-      if (!isNaN(na) && !isNaN(nb) && (typeof va !== "string" || typeof vb !== "string")) {
-        cmp = na - nb;
-      } else {
-        cmp = String(va ?? "").localeCompare(String(vb ?? ""), "pt-BR", { numeric: true });
+      const cmp = compareValues(
+        getValue ? getValue(a, key) : a[key],
+        getValue ? getValue(b, key) : b[key]
+      );
+      if (cmp === 0 && key !== "data_movimento") {
+        const dateCmp = compareValues(
+          getValue ? getValue(a, "data_movimento") : a["data_movimento"],
+          getValue ? getValue(b, "data_movimento") : b["data_movimento"]
+        );
+        return -dateCmp;
       }
       return dir === "desc" ? -cmp : cmp;
     });
