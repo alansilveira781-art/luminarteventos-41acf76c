@@ -65,8 +65,9 @@ function SaidasPage() {
   const editMut = useMutation({
     mutationFn: async (p: { original: any; patch: any }) => {
       const { original, patch } = p;
+      const round2 = (n: any) => Math.round((Number(n) || 0) * 100) / 100;
       const newItemId = patch.item_id ?? original.item_id;
-      const newQtd = Number(patch.quantidade ?? original.quantidade);
+      const newQtd = round2(patch.quantidade ?? original.quantidade);
       // Validar estoque (considerando reversão do registro atual)
       const { data: itAtual } = await supabase
         .from("itens")
@@ -75,9 +76,9 @@ function SaidasPage() {
         .single();
       if (itAtual) {
         const disponivelApos = newItemId === original.item_id
-          ? Number(itAtual.quantidade_atual) + Number(original.quantidade)
-          : Number(itAtual.quantidade_atual);
-        if (newQtd > disponivelApos) {
+          ? round2(round2(itAtual.quantidade_atual) + round2(original.quantidade))
+          : round2(itAtual.quantidade_atual);
+        if (round2(newQtd) > round2(disponivelApos)) {
           throw new Error(`Estoque insuficiente para ${itAtual.nome}. Disponível: ${disponivelApos} ${itAtual.unidade}`);
         }
       }
@@ -108,16 +109,18 @@ function SaidasPage() {
         if (dev && dev.length) throw new Error("Esta requisição já tem devoluções vinculadas. Exclua as devoluções antes de editar.");
       }
       // Validar estoque considerando reversão das antigas
+      const round2 = (n: any) => Math.round((Number(n) || 0) * 100) / 100;
       const itemIds = Array.from(new Set([...old.map((o) => o.item_id), ...p.linhas.map((l) => l.item_id)]));
       const { data: itensCur } = await supabase.from("itens").select("id,nome,unidade,quantidade_atual").in("id", itemIds);
       const stockMap = new Map<string, { nome: string; unidade: string; qtd: number }>();
-      for (const i of itensCur ?? []) stockMap.set(i.id, { nome: i.nome, unidade: i.unidade, qtd: Number(i.quantidade_atual) });
-      for (const m of old) { const s = stockMap.get(m.item_id); if (s) s.qtd += Number(m.quantidade); }
+      for (const i of itensCur ?? []) stockMap.set(i.id, { nome: i.nome, unidade: i.unidade, qtd: round2(i.quantidade_atual) });
+      for (const m of old) { const s = stockMap.get(m.item_id); if (s) s.qtd = round2(s.qtd + round2(m.quantidade)); }
       for (const l of p.linhas) {
         const s = stockMap.get(l.item_id);
         if (!s) throw new Error("Item inválido");
-        if (l.quantidade > s.qtd) throw new Error(`Estoque insuficiente para ${s.nome}. Disponível: ${s.qtd} ${s.unidade}`);
-        s.qtd -= l.quantidade;
+        const q = round2(l.quantidade);
+        if (q > round2(s.qtd)) throw new Error(`Estoque insuficiente para ${s.nome}. Disponível: ${s.qtd} ${s.unidade}`);
+        s.qtd = round2(s.qtd - q);
       }
       // Apagar antigas (triggers devolvem o estoque)
       const oldIds = old.map((o) => o.id);
@@ -224,11 +227,13 @@ function SaidasPage() {
     mutationFn: async (p: { meta: any; linhas: Array<{ item_id: string; quantidade: number }> }) => {
       await ensureValidSession();
       // Validar estoque por item
+      const round2 = (n: any) => Math.round((Number(n) || 0) * 100) / 100;
       for (const l of p.linhas) {
         const it = (itens ?? []).find((x: any) => x.id === l.item_id);
         if (!it) throw new Error("Item inválido");
-        if (l.quantidade > Number(it.quantidade_atual)) {
-          throw new Error(`Estoque insuficiente para ${it.nome}. Disponível: ${it.quantidade_atual} ${it.unidade}`);
+        const disponivel = round2(it.quantidade_atual);
+        if (round2(l.quantidade) > disponivel) {
+          throw new Error(`Estoque insuficiente para ${it.nome}. Disponível: ${disponivel} ${it.unidade}`);
         }
       }
       const { data: numData, error: numErr } = await supabase.rpc("next_requisicao_numero" as any);
