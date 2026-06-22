@@ -84,6 +84,8 @@ export function SelectCreatable({
     return data.filter((o) => normalize(o.nome).includes(term));
   }, [data, search]);
 
+  const trimmedSearch = search.trim();
+
   const exactExists = useMemo(() => {
     const term = normalize(search).trim();
     if (!term) return true;
@@ -205,19 +207,36 @@ export function SelectCreatable({
             )}
           </div>
 
-          {search.trim() && !exactExists && (
-            <div className="border-t bg-popover p-2">
+          {!exactExists && (
+            <div className="shrink-0 border-t bg-popover p-2">
               <Button
                 type="button"
                 size="sm"
                 className="w-full justify-start"
                 onPointerDown={(e) => {
                   e.preventDefault();
-                  handleAdd();
+                  if (trimmedSearch) handleAdd();
+                  else inputRef.current?.focus();
                 }}
                 disabled={add.isPending}
               >
-                <Plus className="mr-2 h-4 w-4" /> Adicionar “{search.trim()}”
+                <Plus className="mr-2 h-4 w-4" /> Adicionar “{trimmedSearch}”
+              </Button>
+            </div>
+          )}
+          {!trimmedSearch && (
+            <div className="shrink-0 border-t bg-popover p-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="w-full justify-start text-muted-foreground"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  inputRef.current?.focus();
+                }}
+              >
+                <Plus className="mr-2 h-4 w-4" /> Digite para adicionar novo
               </Button>
             </div>
           )}
