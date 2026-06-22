@@ -481,7 +481,7 @@ export function CompraDialog({
           <div className="flex flex-wrap gap-2">
             {(() => {
               if (!compraId || !onAdvance) return null;
-              const canMove = canMoveCompra(form, user?.id, isModuleAdmin("compras"));
+              const canMove = canMoveCompra(form as any, user?.id, isAdmin);
               const blocked = canMove ? null : moveBlockedMessage(form);
               if (form.status === "pendente_aprovacao") {
                 return (
