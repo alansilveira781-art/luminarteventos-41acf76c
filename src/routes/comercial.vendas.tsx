@@ -300,7 +300,7 @@ function VendasPage() {
 
   const saveMut = useMutation({
     mutationFn: async () => {
-      const payload = buildDbPayload(form);
+      const payload = buildDbPayload(form, derived);
       if (editing?.id) {
         const { error } = await supabase
           .from("comercial_vendas")
