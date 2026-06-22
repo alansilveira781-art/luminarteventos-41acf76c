@@ -17,7 +17,7 @@ import { MoneyInput } from "@/components/MoneyInput";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
-  AlertTriangle, Download, Loader2, Pencil, Plus, RefreshCw, ShieldAlert, Trash2,
+  AlertTriangle, Download, Loader2, Pencil, Plus, ShieldAlert, Trash2,
 } from "lucide-react";
 import { listVendasDb } from "@/lib/comercial/vendas-db.functions";
 import type { VendaRow } from "@/lib/comercial/vendas.functions";
@@ -31,6 +31,8 @@ import { BulkActionsBar } from "@/components/BulkActionsBar";
 import {
   BulkEditDialog, normalizeBulkPatch, type BulkField,
 } from "@/components/BulkEditDialog";
+import { useSort, SortableTh } from "@/components/SortableTh";
+
 
 export const Route = createFileRoute("/comercial/vendas")({
   component: VendasPage,
