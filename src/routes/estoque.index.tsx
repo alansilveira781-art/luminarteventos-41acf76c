@@ -1,7 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useState, useMemo, useEffect } from "react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import {
+  setEstoqueItensSuppressed,
+  onEstoqueItensPending,
+} from "@/lib/estoque-realtime-control";
+
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
