@@ -75,7 +75,7 @@ function ComprasKanban() {
     queryFn: async () => {
       const { data, error } = await sb
         .from("compras")
-        .select("id,numero,status,titulo,solicitante,solicitante_id,fornecedor,comprador,data_solicitacao,data_compra,valor_total,responsavel_id,responsavel_nome,tipo_compra")
+        .select("id,numero,status,titulo,solicitante,solicitante_id,fornecedor,comprador,data_solicitacao,data_compra,valor_total,responsavel_id,responsavel_nome,tipo_compra,created_by")
 
         .order("created_at", { ascending: false });
       if (error) throw error;
