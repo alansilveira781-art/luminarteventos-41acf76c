@@ -527,7 +527,11 @@ export function CompraDialog({
 
             })()}
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button onClick={() => save.mutate()} disabled={save.isPending}>
+            <Button
+              onClick={() => save.mutate()}
+              disabled={save.isPending || !canEdit}
+              title={editBlockedMsg ?? undefined}
+            >
               {save.isPending ? "Salvando…" : "Salvar"}
             </Button>
           </div>
