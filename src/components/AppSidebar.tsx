@@ -74,6 +74,7 @@ const allItems: NavItem[] = [
   { title: "Validações", url: "/comercial/validacoes", icon: ClipboardCheck, group: "Comercial", module: "comercial", moduleAdminOnly: "comercial" },
   { title: "Clientes", url: "/comercial/clientes", icon: Users2, group: "Comercial", module: "comercial" },
   { title: "Catálogo", url: "/comercial/catalogo", icon: BookOpen, group: "Comercial", module: "comercial" },
+  { title: "Metas", url: "/comercial/metas", icon: Target, group: "Comercial", module: "comercial", moduleAdminOnly: "comercial" },
   { title: "Configurações", url: "/comercial/configuracoes", icon: Settings, group: "Comercial", module: "comercial", moduleAdminOnly: "comercial" },
   { title: "Dashboard", url: "/contabil", icon: BarChart3, group: "Contábil", module: "contabil" },
   { title: "Notas fiscais", url: "/contabil/notas", icon: FileText, group: "Contábil", module: "contabil" },
