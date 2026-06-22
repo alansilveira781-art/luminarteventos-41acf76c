@@ -18,6 +18,7 @@ import { ItemSearchSelect } from "@/components/ItemSearchSelect";
 import { EMPRESAS } from "@/lib/empresas";
 import { toBRTInputDateTime, fromBRTInputDateTime } from "@/lib/datetime";
 import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
+import { EntitySearchSelect } from "@/components/EntitySearchSelect";
 
 const sb = supabase as any;
 
@@ -162,11 +163,16 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
     staleTime: 0,
   });
 
+  const { data: fornecedores = [] } = useQuery({
+    queryKey: ["fornecedores-select"],
+    queryFn: async () =>
+      (await sb.from("fornecedores").select("*").eq("status", "ativo").order("nome")).data ?? [],
+  });
+
   const [linhaExtras, setLinhaExtras] = useState<Record<string, LinhaExtra>>({});
   const [itemMap, setItemMap] = useState<Record<string, string>>({});
-  const [fornecedor, setFornecedor] = useState("");
+  const [fornecedorId, setFornecedorId] = useState("");
   const [notaFiscal, setNotaFiscal] = useState("");
-  const [responsavel, setResponsavel] = useState("");
   const [empresa, setEmpresa] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [dataMovimento, setDataMovimento] = useState(() => toBRTInputDateTime());
@@ -175,9 +181,8 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
 
   if (compra && !prefilled) {
     setPrefilled(true);
-    if (compra.fornecedor) setFornecedor(compra.fornecedor);
+    if (compra.fornecedor_id) setFornecedorId(compra.fornecedor_id);
     if (compra.documento) setNotaFiscal(compra.documento);
-    if (compra.comprador) setResponsavel(compra.comprador);
     if (compra.empresa) setEmpresa(compra.empresa);
     if (compra.observacoes) setObservacoes(compra.observacoes);
   }
@@ -206,10 +211,11 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
 
   const finalizar = useMutation({
     mutationFn: async () => {
-      if (!fornecedor.trim()) throw new Error("Informe o fornecedor");
-      if (!responsavel.trim()) throw new Error("Informe o responsável pelo recebimento");
+      if (!fornecedorId) throw new Error("Selecione o fornecedor");
       if (!empresa) throw new Error("Selecione a empresa");
       if (!dataMovimento) throw new Error("Informe a data do recebimento");
+
+      const fornecedorNome = fornecedores.find((f: any) => f.id === fornecedorId)?.nome ?? "";
 
       // Revalida status atual da compra antes de qualquer escrita
       const { data: statusRow, error: statusErr } = await sb
@@ -256,13 +262,13 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
           outros_custos: Number(out.toFixed(4)),
           empresa,
           data_movimento: dataIso,
-          fornecedor_id: compra?.fornecedor_id ?? null,
+          fornecedor_id: fornecedorId || null,
           nota_fiscal: notaFiscal || null,
-          responsavel_recebimento: responsavel,
-          responsavel_lancamento: responsavel,
+          responsavel_recebimento: compra?.comprador ?? null,
+          responsavel_lancamento: compra?.comprador ?? null,
           observacoes:
             (observacoes ? observacoes + " — " : "") +
-            `Recebimento da compra ${compraId}${fornecedor ? ` - Fornecedor: ${fornecedor}` : ""}`,
+            `Recebimento da compra ${compraId}${fornecedorNome ? ` - Fornecedor: ${fornecedorNome}` : ""}`,
         }).select("id");
         if (error) throw error;
 
@@ -274,7 +280,7 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
         }).eq("id", it.id);
       }
       const { error } = await sb.from("compras")
-        .update({ status: "finalizado", fornecedor, documento: notaFiscal || null })
+        .update({ status: "finalizado", fornecedor: fornecedorNome || null, fornecedor_id: fornecedorId || null, documento: notaFiscal || null })
         .eq("id", compraId);
       if (error) throw error;
     },
@@ -334,15 +340,17 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
           </div>
           <div>
             <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Fornecedor*</label>
-            <Input value={fornecedor} onChange={(e) => setFornecedor(e.target.value)} placeholder="Fornecedor" />
+            <EntitySearchSelect
+              options={fornecedores as any}
+              value={fornecedorId}
+              onChange={(v) => setFornecedorId(v)}
+              placeholder="Selecione…"
+              searchPlaceholder="Buscar fornecedor…"
+            />
           </div>
           <div>
             <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Nota Fiscal</label>
             <Input value={notaFiscal} onChange={(e) => setNotaFiscal(e.target.value)} placeholder="Nº NF" />
-          </div>
-          <div>
-            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Responsável*</label>
-            <Input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} placeholder="Quem recebeu" />
           </div>
           <div className="sm:col-span-3">
             <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Observações</label>
