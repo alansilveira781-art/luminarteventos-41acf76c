@@ -17,7 +17,7 @@ import { MoneyInput } from "@/components/MoneyInput";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
-  AlertTriangle, Download, Loader2, Pencil, Plus, RefreshCw, ShieldAlert, Trash2,
+  AlertTriangle, Download, Loader2, Pencil, Plus, ShieldAlert, Trash2,
 } from "lucide-react";
 import { listVendasDb } from "@/lib/comercial/vendas-db.functions";
 import type { VendaRow } from "@/lib/comercial/vendas.functions";
@@ -31,6 +31,8 @@ import { BulkActionsBar } from "@/components/BulkActionsBar";
 import {
   BulkEditDialog, normalizeBulkPatch, type BulkField,
 } from "@/components/BulkEditDialog";
+import { useSort, SortableTh } from "@/components/SortableTh";
+
 
 export const Route = createFileRoute("/comercial/vendas")({
   component: VendasPage,
@@ -225,10 +227,34 @@ function VendasPage() {
     return list;
   }, [rows, empresa, consultor, classificacao, busca, periodo]);
 
-  const sorted = useMemo(
-    () => [...filtered].sort((a, b) => (b.dataRegistro ?? "").localeCompare(a.dataRegistro ?? "")),
-    [filtered],
-  );
+  const { sort, toggleSort, applySort } = useSort();
+
+  const sorted = useMemo(() => {
+    if (sort) {
+      return applySort(filtered as any, (r: any, key: string) => {
+        switch (key) {
+          case "data_registro": return r.dataRegistro ?? "";
+          case "tipo": return r.tipo ?? "";
+          case "nome_evento": return r.nomeEvento ?? "";
+          case "local": return r.local ?? "";
+          case "cidade": return r.cidade ?? "";
+          case "estado": return r.estado ?? "";
+          case "classificacao": return r.classificacao ?? "";
+          case "consultor": return r.consultor ?? "";
+          case "cerimonial": return r.cerimonial ?? "";
+          case "decorador": return r.decorador ?? "";
+          case "empresa": return r.empresa ?? "";
+          case "valor_proposta": return r.valorProposta || 0;
+          case "desconto": return r.desconto || 0;
+          case "valor_final": return r.valorFinal || 0;
+          case "valor_bv": return r.valorBV || 0;
+          default: return r[key];
+        }
+      }) as VendaRow[];
+    }
+    return [...filtered].sort((a, b) => (b.dataRegistro ?? "").localeCompare(a.dataRegistro ?? ""));
+  }, [filtered, sort, applySort]);
+
 
   const totalProposta = useMemo(() => sorted.reduce((s, r) => s + (r.valorProposta || 0), 0), [sorted]);
   const totalDesc = useMemo(() => sorted.reduce((s, r) => s + (r.desconto || 0), 0), [sorted]);
@@ -419,14 +445,10 @@ function VendasPage() {
             <Button variant="outline" size="sm" onClick={exportCsv} disabled={!sorted.length}>
               <Download className="h-4 w-4 mr-2" /> Exportar CSV
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => qc.invalidateQueries({ queryKey: ["comercial-vendas-db"] })}
-              disabled={isLoading}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} /> Atualizar
+            <Button size="sm" onClick={openNew}>
+              <Plus className="h-4 w-4 mr-2" /> Nova venda
             </Button>
+
             <Button size="sm" onClick={openNew}>
               <Plus className="h-4 w-4 mr-2" /> Nova venda
             </Button>
@@ -434,19 +456,8 @@ function VendasPage() {
         }
       />
 
-      <Card className="p-4">
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-          <FiltroSelect label="Empresa" value={empresa} onChange={setEmpresa} options={opts.empresas} />
-          <FiltroSelect label="Consultor" value={consultor} onChange={setConsultor} options={opts.consultores} />
-          <FiltroSelect label="Classificação" value={classificacao} onChange={setClassificacao} options={opts.classificacoes} />
-          <div className="space-y-1">
-            <Label className="text-[11px] uppercase">Buscar</Label>
-            <Input
-              placeholder="Evento, local, cidade..."
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-            />
-          </div>
+      <Card className="p-4 space-y-3">
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1">
             <Label className="text-[11px] uppercase">Período</Label>
             <PeriodoFilter
@@ -455,7 +466,19 @@ function VendasPage() {
               onChange={(p, per) => { setPeriodoPreset(p); setPeriodo(per); }}
             />
           </div>
+          <FiltroSelect label="Empresa" value={empresa} onChange={setEmpresa} options={opts.empresas} />
+          <FiltroSelect label="Consultor" value={consultor} onChange={setConsultor} options={opts.consultores} />
+          <FiltroSelect label="Classificação" value={classificacao} onChange={setClassificacao} options={opts.classificacoes} />
         </div>
+        <div className="space-y-1">
+          <Label className="text-[11px] uppercase">Buscar</Label>
+          <Input
+            placeholder="Evento, local, cidade..."
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+          />
+        </div>
+
         <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
           <span>{sorted.length.toLocaleString("pt-BR")} registros</span>
           <button className="underline hover:text-foreground" onClick={resetFiltros}>Limpar filtros</button>
@@ -499,21 +522,22 @@ function VendasPage() {
                   <th className="px-3 py-2 w-8">
                     <Checkbox checked={sel.allSelected} onCheckedChange={() => sel.toggleAll()} />
                   </th>
-                  <Th>Data de Registro</Th>
-                  <Th>Tipo</Th>
-                  <Th>Nome do Evento</Th>
-                  <Th>Local</Th>
-                  <Th>Cidade</Th>
-                  <Th>Estado</Th>
-                  <Th>Classificação</Th>
-                  <Th>Consultor</Th>
-                  <Th>Cerimonial</Th>
-                  <Th>Decorador</Th>
-                  <Th>Empresa</Th>
-                  <Th className="text-right">Valor da Proposta</Th>
-                  <Th className="text-right">Desconto</Th>
-                  <Th className="text-right">Valor Final</Th>
-                  <Th className="text-right">Valor BV</Th>
+                  <SortableTh sort={sort} onToggle={toggleSort} k="data_registro" label="Data de Registro" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="tipo" label="Tipo" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="nome_evento" label="Nome do Evento" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="local" label="Local" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="cidade" label="Cidade" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="estado" label="Estado" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="classificacao" label="Classificação" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="consultor" label="Consultor" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="cerimonial" label="Cerimonial" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="decorador" label="Decorador" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="empresa" label="Empresa" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="valor_proposta" label="Valor da Proposta" align="right" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="desconto" label="Desconto" align="right" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="valor_final" label="Valor Final" align="right" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+                  <SortableTh sort={sort} onToggle={toggleSort} k="valor_bv" label="Valor BV" align="right" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+
                   <th className="px-3 py-2 w-20" />
                 </tr>
               </thead>

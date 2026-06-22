@@ -158,15 +158,15 @@ export function AlertaEstoqueCard() {
               <th className="px-2 py-1 text-left">Categoria</th>
               <th className="px-2 py-1 text-right">Atual</th>
               <th className="px-2 py-1 text-right">Mínimo</th>
-              <th className="px-2 py-1 text-right">Saídas</th>
               <th className="px-2 py-1 text-left">Status</th>
               <th className="px-2 py-1"></th>
             </tr>
+
           </thead>
           <tbody>
             {filtradosOrdenados.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-2 py-6 text-center text-xs text-muted-foreground">
+                <td colSpan={6} className="px-2 py-6 text-center text-xs text-muted-foreground">
                   Nenhum item encontrado para "{query}".
                 </td>
               </tr>
@@ -179,7 +179,7 @@ export function AlertaEstoqueCard() {
                 <td className="px-2 py-1.5 text-xs">{i.categoria ?? "—"}</td>
                 <td className="px-2 py-1.5 text-right tabular-nums">{Number(i.quantidade_atual)} {i.unidade}</td>
                 <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">{Number(i.quantidade_minima)}</td>
-                <td className="px-2 py-1.5 text-right tabular-nums">{(saidasPorItem.get(i.id) ?? 0).toLocaleString("pt-BR")}</td>
+
                 <td className="px-2 py-1.5">
                   {i.status === "sem_estoque" ? (
                     <Badge variant="destructive" className="gap-1"><PackageX className="h-3 w-3" /> Sem estoque</Badge>
