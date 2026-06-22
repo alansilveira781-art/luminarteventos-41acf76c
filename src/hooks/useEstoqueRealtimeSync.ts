@@ -17,7 +17,11 @@ export function useEstoqueRealtimeSync() {
   const qc = useQueryClient();
 
   useEffect(() => {
-    const onItens = () => {
+    const invalidateItens = () => {
+      if (isEstoqueItensSuppressed()) {
+        notifyEstoqueItensPending();
+        return;
+      }
       qc.invalidateQueries({ queryKey: ["itens"] });
       qc.invalidateQueries({ queryKey: ["item"] });
       qc.invalidateQueries({ queryKey: ["item-info"] });
@@ -28,25 +32,22 @@ export function useEstoqueRealtimeSync() {
       qc.invalidateQueries({ queryKey: ["dashboard-itens"] });
       qc.invalidateQueries({ queryKey: ["alerta-estoque"] });
     };
+    const onItens = () => {
+      invalidateItens();
+    };
     const onMovimentacoes = () => {
-      qc.invalidateQueries({ queryKey: ["itens"] });
-      qc.invalidateQueries({ queryKey: ["item"] });
-      qc.invalidateQueries({ queryKey: ["item-info"] });
+      invalidateItens();
       qc.invalidateQueries({ queryKey: ["item-movs"] });
       qc.invalidateQueries({ queryKey: ["entradas"] });
       qc.invalidateQueries({ queryKey: ["saidas"] });
       qc.invalidateQueries({ queryKey: ["devolucoes"] });
       qc.invalidateQueries({ queryKey: ["saidas-abertas"] });
       qc.invalidateQueries({ queryKey: ["devolvido-por-origem"] });
-      qc.invalidateQueries({ queryKey: ["itens-select"] });
-      qc.invalidateQueries({ queryKey: ["itens-select-saida"] });
-      qc.invalidateQueries({ queryKey: ["itens-busca"] });
-      qc.invalidateQueries({ queryKey: ["dashboard-itens"] });
       qc.invalidateQueries({ queryKey: ["dashboard-movs"] });
       qc.invalidateQueries({ queryKey: ["compras-receber"] });
-      qc.invalidateQueries({ queryKey: ["alerta-estoque"] });
       qc.invalidateQueries({ queryKey: ["alerta-estoque-saidas"] });
     };
+
     const onCompras = () => {
       qc.invalidateQueries({ queryKey: ["compras"] });
       qc.invalidateQueries({ queryKey: ["compras-receber"] });
