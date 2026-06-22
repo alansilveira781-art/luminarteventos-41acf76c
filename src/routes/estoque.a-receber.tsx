@@ -18,6 +18,7 @@ import { ItemSearchSelect } from "@/components/ItemSearchSelect";
 import { EMPRESAS } from "@/lib/empresas";
 import { toBRTInputDateTime, fromBRTInputDateTime } from "@/lib/datetime";
 import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
+import { EntitySearchSelect } from "@/components/EntitySearchSelect";
 
 const sb = supabase as any;
 
