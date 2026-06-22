@@ -166,7 +166,7 @@ function Dashboard() {
       const ini = startOfMonth(subMonths(new Date(), 11));
       const { data, error } = await supabase
         .from("movimentacoes")
-        .select("tipo,quantidade,data_movimento")
+        .select("tipo,quantidade,data_movimento,entrada_tipo,saida_tipo,observacoes,finalidade")
         .gte("data_movimento", ini.toISOString())
         .limit(20000);
       if (error) throw error;
