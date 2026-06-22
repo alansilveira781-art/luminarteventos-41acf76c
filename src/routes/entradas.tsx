@@ -61,7 +61,7 @@ function EntradasPage() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
   const [filterEvento, setFilterEvento] = useState<string>("__all");
-  const { sort, toggleSort, applySort } = useSort();
+  const { sort, toggleSort, applySort } = useSort({ key: "data_movimento", dir: "desc" });
 
   // Edição de linha única: deletar a antiga e inserir a nova
   // (triggers do banco fazem a reversão e a reaplicação no estoque).
