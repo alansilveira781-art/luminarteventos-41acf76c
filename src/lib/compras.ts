@@ -98,7 +98,7 @@ export function canMoveCompra(
     if (targetStatus && !PEDRO_ALLOWED_STATUSES.includes(targetStatus)) return false;
     return true;
   }
-  return canEditCompra(compra, userId, isAdmin);
+  return canEditCompra(compra, userId, isAdmin, userEmail);
 }
 
 export function moveBlockedMessage(compra: { responsavel_nome?: string | null }): string {
