@@ -73,8 +73,11 @@ export function canEditCompra(
   compra: { responsavel_id?: string | null; created_by?: string | null },
   userId: string | undefined | null,
   isAdmin: boolean,
+  userEmail?: string | undefined | null,
 ): boolean {
   if (isAdmin) return true;
+  const isPedro = !!userEmail && userEmail.trim().toLowerCase() === PEDRO_EMAIL;
+  if (isPedro) return true;
   if (!userId) return false;
   if (compra.responsavel_id && compra.responsavel_id === userId) return true;
   if (compra.created_by && compra.created_by === userId) return true;
