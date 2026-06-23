@@ -33,14 +33,6 @@ export function useDashboard(): Ctx {
   };
 }
 
-const TABS = [
-  { to: "/comercial/dashboard/painel", label: "Painel de Vendas" },
-  { to: "/comercial/dashboard/relatorios", label: "Relatórios de Vendas" },
-  { to: "/comercial/dashboard/vendedores", label: "Vendedores" },
-  { to: "/comercial/dashboard/indicadores", label: "Indicadores" },
-  { to: "/comercial/dashboard/propostas", label: "Propostas" },
-  
-] as const;
 
 function DashboardLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
