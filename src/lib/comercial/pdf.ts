@@ -197,6 +197,7 @@ async function drawCover(
 
   // Bloco de campos centralizado
   const fields: [string, string][] = [
+    ...((p.evento.nome || "").trim() ? ([["Nome do Evento:", p.evento.nome]] as [string, string][]) : []),
     ["Cliente:", p.cliente.nome || "—"],
     ["Local do Evento:", p.evento.local || "—"],
     ["Período:", fmtPeriodo(p.evento.dataInicio, p.evento.dataFim)],
