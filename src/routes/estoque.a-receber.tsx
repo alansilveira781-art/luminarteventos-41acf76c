@@ -321,7 +321,23 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Validar recebimento</DialogTitle>
+          <DialogTitle>
+            Validar recebimento
+            {compra?.numero != null && (
+              <span className="ml-2 text-xs font-mono text-muted-foreground">COMPRA-{compra.numero}</span>
+            )}
+          </DialogTitle>
+        </DialogHeader>
+
+        {(compra?.numero != null || compra?.solicitante) && (
+          <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
+            {compra?.numero != null && <span className="font-mono">COMPRA-{compra.numero}</span>}
+            {compra?.solicitante && <span>Solicitante: <span className="text-foreground font-medium">{compra.solicitante}</span></span>}
+          </div>
+        )}
+        <DialogHeader className="hidden">
+          <DialogTitle>noop</DialogTitle>
+
         </DialogHeader>
 
         {statusBlocked && (
