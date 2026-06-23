@@ -60,10 +60,11 @@ function AReceberPage() {
     queryFn: async () => {
       const { data, error } = await sb
         .from("compras")
-        .select("id,titulo,fornecedor,fornecedor_id,comprador,data_compra,valor_total,tipo_compra,documento")
+        .select("id,numero,titulo,solicitante,fornecedor,fornecedor_id,comprador,data_compra,valor_total,tipo_compra,documento")
         .eq("status", "a_receber")
         .eq("tipo_compra", "mercadoria")
         .order("data_compra", { ascending: true });
+
       if (error) throw error;
       return data as CompraRow[];
     },
