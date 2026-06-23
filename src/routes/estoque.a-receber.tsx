@@ -85,8 +85,14 @@ function AReceberPage() {
         )}
         {compras.map((c) => (
           <Card key={c.id} className="p-4 space-y-2">
-            <div className="font-medium">{c.titulo || c.fornecedor || "Compra"}</div>
+            <div className="flex items-start justify-between gap-2">
+              <div className="font-medium">{c.titulo || c.fornecedor || "Compra"}</div>
+              <div className="text-[11px] font-mono text-muted-foreground shrink-0">
+                {c.numero != null ? `COMPRA-${c.numero}` : "—"}
+              </div>
+            </div>
             <div className="text-xs text-muted-foreground space-y-0.5">
+              {c.solicitante && <div>Solicitante: {c.solicitante}</div>}
               {c.fornecedor && <div>Fornecedor: {c.fornecedor}</div>}
               {c.comprador && <div>Comprador: {c.comprador}</div>}
               {c.data_compra && <div>Compra: {new Date(c.data_compra).toLocaleDateString("pt-BR")}</div>}
@@ -100,6 +106,7 @@ function AReceberPage() {
               <PackageCheck className="h-4 w-4 mr-1" /> Validar recebimento
             </Button>
           </Card>
+
         ))}
       </div>
 
