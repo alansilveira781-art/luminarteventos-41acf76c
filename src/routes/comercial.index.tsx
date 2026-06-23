@@ -182,6 +182,17 @@ function QuadroVendas() {
     setPendingMove({ id, status });
   }
 
+  const wizardDefaults = useMemo(() => {
+    const c = cards.find((x) => x.id === wizardCardId);
+    if (!c) return undefined;
+    return {
+      clienteNome: c.clienteNome,
+      eventoNome: c.eventoNome,
+      eventoDataInicio: c.eventoDataInicio,
+      eventoDataFim: c.eventoDataFim,
+      responsavel: c.responsavel,
+    };
+  }, [wizardCardId, cards]);
 
   return (
     <>
@@ -339,18 +350,7 @@ function QuadroVendas() {
         open={wizardOpen}
         onOpenChange={(v) => { setWizardOpen(v); if (!v) setWizardCardId(null); }}
         cardId={wizardCardId}
-        defaults={(() => {
-          const c = cards.find((x) => x.id === wizardCardId);
-          if (!c) return undefined;
-          const cli = c.clienteId ? null : null;
-          return {
-            clienteNome: c.clienteNome,
-            eventoNome: c.eventoNome,
-            eventoDataInicio: c.eventoDataInicio,
-            eventoDataFim: c.eventoDataFim,
-            responsavel: c.responsavel,
-          };
-        })()}
+        defaults={wizardDefaults}
       />
     </>
   );

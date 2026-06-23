@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -111,8 +111,16 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
   const [novoConsultorOpen, setNovoConsultorOpen] = useState(false);
   const [novoConsultor, setNovoConsultor] = useState("");
 
+  const initialized = useRef(false);
+
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      initialized.current = false;
+      return;
+    }
+    if (initialized.current) return;
+    initialized.current = true;
+
     setStep(0);
     if (proposta) {
       setCliente(proposta.cliente);
@@ -140,7 +148,8 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
       setResumo({ margem: 0, validade: "" });
       setResponsavel(defaults?.responsavel ?? "");
     }
-  }, [open, proposta, defaults]);
+     
+  }, [open]);
 
   const subtotalAmbientes = useMemo(
     () => ambientes.reduce((s, a) => s + ambienteSubtotal(a), 0),
