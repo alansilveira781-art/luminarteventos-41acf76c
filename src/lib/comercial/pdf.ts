@@ -3,7 +3,7 @@ import logoUrl from "@/assets/luminart-logo.png";
 import type { Proposta, DescricaoItem, Ambiente } from "./types";
 import {
   ambienteSubtotal,
-  descricaoSubtotal,
+  
   descricaoMedidaLabel,
   propostaCustos,
   propostaTotal,
@@ -71,12 +71,8 @@ async function loadImage(
 
 function descricaoLinha(d: DescricaoItem): string {
   const medida = descricaoMedidaLabel(d);
-  const unitSuffix =
-    d.tipoMedida === "area" ? "/m²" : d.tipoMedida === "linear" ? "/m" : "";
-  const unit = `${brl(d.valorUnitario)}${unitSuffix}`;
-  const total = brl(descricaoSubtotal(d));
   const desc = d.descricao || "—";
-  return `- ${desc}  (${medida}  ·  ${unit}  =  ${total})`;
+  return `- ${desc}  (${medida})`;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -201,6 +197,7 @@ async function drawCover(
 
   // Bloco de campos centralizado
   const fields: [string, string][] = [
+    ...((p.evento.nome || "").trim() ? ([["Nome do Evento:", p.evento.nome]] as [string, string][]) : []),
     ["Cliente:", p.cliente.nome || "—"],
     ["Local do Evento:", p.evento.local || "—"],
     ["Período:", fmtPeriodo(p.evento.dataInicio, p.evento.dataFim)],

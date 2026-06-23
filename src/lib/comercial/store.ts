@@ -128,7 +128,7 @@ function propostaFromDb(r: any): Proposta {
     cardId: r.card_id ?? null,
     clienteId: r.cliente_id ?? "",
     cliente: r.cliente ?? { nome: "", telefone: "", email: "" },
-    evento: r.evento ?? { tipo: "", dataInicio: "", dataFim: "", local: "", cidade: "", observacoes: "" },
+    evento: { nome: "", tipo: "", dataInicio: "", dataFim: "", local: "", cidade: "", observacoes: "", ...(r.evento ?? {}) },
     ambientes: r.ambientes ?? [],
     custos: r.custos ?? { frete: 0, montagem: 0, desmontagem: 0, outros: [] },
     resumo: r.resumo ?? { margem: 0, validade: "" },

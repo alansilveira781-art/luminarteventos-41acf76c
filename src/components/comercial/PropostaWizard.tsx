@@ -97,6 +97,7 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta,
   const [step, setStep] = useState(0);
   const [cliente, setCliente] = useState({ nome: "", telefone: "", email: "" });
   const [evento, setEvento] = useState<Proposta["evento"]>({
+    nome: "",
     tipo: "",
     dataInicio: "",
     dataFim: "",
@@ -126,7 +127,7 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta,
     setStep(0);
     if (proposta) {
       setCliente(proposta.cliente);
-      setEvento(proposta.evento);
+      setEvento({ ...proposta.evento, nome: proposta.evento?.nome ?? "" });
       setAmbientes(proposta.ambientes?.length ? proposta.ambientes : [newAmbiente("Ambiente principal")]);
       setCustos(proposta.custos);
       setResumo({ margem: proposta.resumo.margem || 0, validade: proposta.resumo.validade || "", desconto: Number(proposta.resumo.desconto || 0) });
@@ -138,6 +139,7 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta,
         email: defaults?.clienteEmail ?? "",
       });
       setEvento({
+        nome: defaults?.eventoNome ?? "",
         tipo: "",
         dataInicio: defaults?.eventoDataInicio ?? "",
         dataFim: defaults?.eventoDataFim ?? defaults?.eventoDataInicio ?? "",
@@ -332,6 +334,10 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta,
 
           {step === 1 && (
             <div className="grid gap-3 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <Label>Nome do Evento</Label>
+                <Input value={evento.nome} onChange={(e) => setEvento({ ...evento, nome: e.target.value })} />
+              </div>
               <div>
                 <Label>Tipo de evento *</Label>
                 <Select value={evento.tipo || undefined} onValueChange={(v) => setEvento({ ...evento, tipo: v as any })}>

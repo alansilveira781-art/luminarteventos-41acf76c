@@ -102,6 +102,7 @@ export type Proposta = {
   clienteId: string;
   cliente: { nome: string; telefone: string; email: string };
   evento: {
+    nome: string;
     tipo: TipoEvento | "";
     dataInicio: string;
     dataFim: string;
