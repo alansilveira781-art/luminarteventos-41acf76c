@@ -49,9 +49,11 @@ type Props = {
     responsavel?: string;
   };
   proposta?: Proposta | null;
+  editarLimitado?: boolean;
 };
 
 const STEPS = ["Cliente", "Evento", "Ambientes e Itens", "Custos", "Resumo"];
+const STEPS_EDITAVEIS = [0, 1, 3, 4] as const;
 const NEW_CONSULTOR = "__novo__";
 const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
@@ -90,7 +92,7 @@ function newAmbiente(nome = ""): Ambiente {
   return { id: uid(), nome, imagens: [], itens: [newItem()] };
 }
 
-export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta }: Props) {
+export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta, editarLimitado }: Props) {
   const { consultores } = useComercial();
   const [step, setStep] = useState(0);
   const [cliente, setCliente] = useState({ nome: "", telefone: "", email: "" });
@@ -106,7 +108,7 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
   const [custos, setCustos] = useState<{ frete: number; montagem: number; desmontagem: number; outros: CustoExtra[] }>({
     frete: 0, montagem: 0, desmontagem: 0, outros: [],
   });
-  const [resumo, setResumo] = useState({ margem: 0, validade: "" });
+  const [resumo, setResumo] = useState<{ margem: number; validade: string; desconto: number }>({ margem: 0, validade: "", desconto: 0 });
   const [responsavel, setResponsavel] = useState("");
   const [novoConsultorOpen, setNovoConsultorOpen] = useState(false);
   const [novoConsultor, setNovoConsultor] = useState("");
@@ -127,7 +129,7 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
       setEvento(proposta.evento);
       setAmbientes(proposta.ambientes?.length ? proposta.ambientes : [newAmbiente("Ambiente principal")]);
       setCustos(proposta.custos);
-      setResumo(proposta.resumo);
+      setResumo({ margem: proposta.resumo.margem || 0, validade: proposta.resumo.validade || "", desconto: Number(proposta.resumo.desconto || 0) });
       setResponsavel(proposta.responsavel);
     } else {
       setCliente({
@@ -145,7 +147,7 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
       });
       setAmbientes([newAmbiente("Ambiente principal")]);
       setCustos({ frete: 0, montagem: 0, desmontagem: 0, outros: [] });
-      setResumo({ margem: 0, validade: "" });
+      setResumo({ margem: 0, validade: "", desconto: 0 });
       setResponsavel(defaults?.responsavel ?? "");
     }
      
