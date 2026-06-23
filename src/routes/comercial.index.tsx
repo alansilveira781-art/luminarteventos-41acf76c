@@ -56,6 +56,7 @@ function QuadroVendas() {
   const [wizardCardId, setWizardCardId] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardProposta, setWizardProposta] = useState<Proposta | null>(null);
+  const [wizardEditarLimitado, setWizardEditarLimitado] = useState(false);
   const { user } = useAuth();
   const [contratoDefaults, setContratoDefaults] = useState<NovoContratoDefaults | null>(null);
   const [contratoCardId, setContratoCardId] = useState<string | null>(null);
@@ -311,6 +312,13 @@ function QuadroVendas() {
           setWizardProposta(p);
           setWizardOpen(true);
         }}
+        onEditarLimitado={(p) => {
+          setDetalhesCard(null);
+          setWizardProposta(p);
+          setWizardCardId(p.cardId ?? null);
+          setWizardEditarLimitado(true);
+          setWizardOpen(true);
+        }}
       />
 
       <AvancarCardDialog
@@ -348,9 +356,18 @@ function QuadroVendas() {
 
       <PropostaWizard
         open={wizardOpen}
-        onOpenChange={(v) => { setWizardOpen(v); if (!v) setWizardCardId(null); }}
+        onOpenChange={(v) => {
+          setWizardOpen(v);
+          if (!v) {
+            setWizardCardId(null);
+            setWizardProposta(null);
+            setWizardEditarLimitado(false);
+          }
+        }}
         cardId={wizardCardId}
         defaults={wizardDefaults}
+        proposta={wizardProposta}
+        editarLimitado={wizardEditarLimitado}
       />
     </>
   );

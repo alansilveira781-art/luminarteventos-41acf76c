@@ -49,9 +49,11 @@ type Props = {
     responsavel?: string;
   };
   proposta?: Proposta | null;
+  editarLimitado?: boolean;
 };
 
 const STEPS = ["Cliente", "Evento", "Ambientes e Itens", "Custos", "Resumo"];
+const STEPS_EDITAVEIS = [0, 1, 3, 4] as const;
 const NEW_CONSULTOR = "__novo__";
 const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
@@ -90,7 +92,7 @@ function newAmbiente(nome = ""): Ambiente {
   return { id: uid(), nome, imagens: [], itens: [newItem()] };
 }
 
-export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta }: Props) {
+export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta, editarLimitado }: Props) {
   const { consultores } = useComercial();
   const [step, setStep] = useState(0);
   const [cliente, setCliente] = useState({ nome: "", telefone: "", email: "" });
@@ -106,7 +108,7 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
   const [custos, setCustos] = useState<{ frete: number; montagem: number; desmontagem: number; outros: CustoExtra[] }>({
     frete: 0, montagem: 0, desmontagem: 0, outros: [],
   });
-  const [resumo, setResumo] = useState({ margem: 0, validade: "" });
+  const [resumo, setResumo] = useState<{ margem: number; validade: string; desconto: number }>({ margem: 0, validade: "", desconto: 0 });
   const [responsavel, setResponsavel] = useState("");
   const [novoConsultorOpen, setNovoConsultorOpen] = useState(false);
   const [novoConsultor, setNovoConsultor] = useState("");
@@ -127,7 +129,7 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
       setEvento(proposta.evento);
       setAmbientes(proposta.ambientes?.length ? proposta.ambientes : [newAmbiente("Ambiente principal")]);
       setCustos(proposta.custos);
-      setResumo(proposta.resumo);
+      setResumo({ margem: proposta.resumo.margem || 0, validade: proposta.resumo.validade || "", desconto: Number(proposta.resumo.desconto || 0) });
       setResponsavel(proposta.responsavel);
     } else {
       setCliente({
@@ -145,7 +147,7 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
       });
       setAmbientes([newAmbiente("Ambiente principal")]);
       setCustos({ frete: 0, montagem: 0, desmontagem: 0, outros: [] });
-      setResumo({ margem: 0, validade: "" });
+      setResumo({ margem: 0, validade: "", desconto: 0 });
       setResponsavel(defaults?.responsavel ?? "");
     }
      
@@ -200,6 +202,38 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
     }
     onOpenChange(false);
   }
+
+  async function finishEdit() {
+    if (!proposta) return;
+    if (!cliente.nome.trim()) return toast.error("Informe o cliente");
+    const c = upsertCliente(cliente);
+    updateProposta(proposta.id, {
+      cliente, evento, custos, resumo, clienteId: c.id,
+    });
+    toast.success("Proposta atualizada");
+    onOpenChange(false);
+  }
+
+  function goPrev() {
+    if (editarLimitado) {
+      const idx = STEPS_EDITAVEIS.indexOf(step as any);
+      if (idx > 0) setStep(STEPS_EDITAVEIS[idx - 1]);
+      return;
+    }
+    setStep(Math.max(0, step - 1));
+  }
+  function goNext() {
+    if (editarLimitado) {
+      const idx = STEPS_EDITAVEIS.indexOf(step as any);
+      if (idx >= 0 && idx < STEPS_EDITAVEIS.length - 1) setStep(STEPS_EDITAVEIS[idx + 1]);
+      return;
+    }
+    setStep(Math.min(STEPS.length - 1, step + 1));
+  }
+  const isFirstStep = editarLimitado ? step === STEPS_EDITAVEIS[0] : step === 0;
+  const isLastStep = editarLimitado
+    ? step === STEPS_EDITAVEIS[STEPS_EDITAVEIS.length - 1]
+    : step === STEPS.length - 1;
 
   function onConsultorChange(v: string) {
     if (v === NEW_CONSULTOR) {
@@ -264,13 +298,19 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
 
           <div className="mb-2">
             <div className="flex justify-between text-xs text-muted-foreground mb-1">
-              {STEPS.map((s, i) => (
-                <span key={s} className={i === step ? "text-foreground font-medium" : ""}>
-                  {i + 1}. {s}
+              {(editarLimitado ? STEPS_EDITAVEIS.map((i) => ({ i, label: STEPS[i] })) : STEPS.map((label, i) => ({ i, label }))).map(({ i, label }, pos, arr) => (
+                <span key={i} className={i === step ? "text-foreground font-medium" : ""}>
+                  {pos + 1}. {label}
                 </span>
               ))}
             </div>
-            <Progress value={((step + 1) / STEPS.length) * 100} />
+            <Progress
+              value={
+                editarLimitado
+                  ? ((STEPS_EDITAVEIS.indexOf(step as any) + 1) / STEPS_EDITAVEIS.length) * 100
+                  : ((step + 1) / STEPS.length) * 100
+              }
+            />
           </div>
 
           {step === 0 && (
@@ -325,7 +365,7 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
             </div>
           )}
 
-          {step === 2 && (
+          {step === 2 && !editarLimitado && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <p className="text-xs text-muted-foreground">
@@ -490,11 +530,18 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
                 <Row label="Subtotal dos ambientes" value={brl(subtotalAmbientes)} />
                 <Row label="Total dos custos adicionais" value={brl(totalCustos)} />
                 <Row label="Total final" value={brl(totalFinal)} bold />
+                {(resumo.desconto || 0) > 0 && (
+                  <>
+                    <Row label="Desconto" value={`- ${brl(resumo.desconto || 0)}`} className="text-rose-600" />
+                    <Row label="Total com desconto" value={brl(Math.max(0, totalFinal - (resumo.desconto || 0)))} bold />
+                  </>
+                )}
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-3">
                 <div><Label>Margem estimada (%)</Label><NumberInput step="0.1" value={resumo.margem} onChange={(n) => setResumo({ ...resumo, margem: n })} /></div>
                 <div><Label>Validade da proposta</Label><Input type="date" value={resumo.validade} onChange={(e) => setResumo({ ...resumo, validade: e.target.value })} /></div>
-                <div className="sm:col-span-2">
+                <div><Label>Desconto (R$)</Label><MoneyInput value={resumo.desconto || 0} onChange={(n) => setResumo({ ...resumo, desconto: n })} /></div>
+                <div className="sm:col-span-3">
                   <Label>Consultor(a) responsável</Label>
                   <Select value={responsavel || undefined} onValueChange={onConsultorChange}>
                     <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
@@ -511,13 +558,15 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta 
           )}
 
           <DialogFooter className="gap-2 mt-4">
-            <Button variant="outline" disabled={step === 0} onClick={() => setStep(step - 1)}>
+            <Button variant="outline" disabled={isFirstStep} onClick={goPrev}>
               <ChevronLeft className="h-4 w-4 mr-1" /> Voltar
             </Button>
-            {step < STEPS.length - 1 ? (
-              <Button disabled={!canNext()} onClick={() => setStep(step + 1)}>
+            {!isLastStep ? (
+              <Button disabled={!canNext()} onClick={goNext}>
                 Próximo <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
+            ) : editarLimitado ? (
+              <Button onClick={finishEdit}>Salvar</Button>
             ) : (
               <Button onClick={finish}>Enviar para validação</Button>
             )}
@@ -692,9 +741,9 @@ function CatalogoCombobox({
   );
 }
 
-function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+function Row({ label, value, bold, className }: { label: string; value: string; bold?: boolean; className?: string }) {
   return (
-    <div className={`flex justify-between p-3 ${bold ? "text-base font-semibold" : "text-sm"}`}>
+    <div className={`flex justify-between p-3 ${bold ? "text-base font-semibold" : "text-sm"} ${className ?? ""}`}>
       <span>{label}</span>
       <span>{value}</span>
     </div>

@@ -111,7 +111,7 @@ export type Proposta = {
   };
   ambientes: Ambiente[];
   custos: { frete: number; montagem: number; desmontagem: number; outros: CustoExtra[] };
-  resumo: { margem: number; validade: string };
+  resumo: { margem: number; validade: string; desconto?: number };
   responsavel: string;
   status: PropostaStatus;
   createdAt: string;
@@ -187,5 +187,7 @@ export function propostaCustos(p: Proposta) {
   );
 }
 export function propostaTotal(p: Proposta) {
-  return propostaSubtotalAmbientes(p) + propostaCustos(p);
+  const desconto = Number(p.resumo?.desconto || 0);
+  return propostaSubtotalAmbientes(p) + propostaCustos(p) - desconto;
 }
+
