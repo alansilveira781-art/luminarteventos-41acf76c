@@ -134,12 +134,12 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
     queryFn: async () => {
       const { data, error } = await sb
         .from("compras")
-        .select("id,fornecedor,fornecedor_id,documento,comprador,status,empresa,observacoes")
+        .select("id,numero,solicitante,fornecedor,fornecedor_id,documento,comprador,status,empresa,observacoes")
         .eq("id", compraId)
         .maybeSingle();
       if (error) throw error;
       if (!data) throw new Error("Compra não encontrada");
-      return data as { id: string; fornecedor: string | null; fornecedor_id: string | null; documento: string | null; comprador: string | null; status: string; empresa: string | null; observacoes: string | null };
+      return data as { id: string; numero: number | null; solicitante: string | null; fornecedor: string | null; fornecedor_id: string | null; documento: string | null; comprador: string | null; status: string; empresa: string | null; observacoes: string | null };
     },
   });
 
@@ -147,6 +147,7 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
     queryKey: ["compra-itens", compraId],
     queryFn: async () => {
       const { data, error } = await sb.from("compra_itens").select("*").eq("compra_id", compraId);
+
       if (error) throw error;
       return data as CompraItemRow[];
     },
