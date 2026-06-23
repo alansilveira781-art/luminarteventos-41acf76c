@@ -190,3 +190,4 @@ export function propostaTotal(p: Proposta) {
   const desconto = Number(p.resumo?.desconto || 0);
   return propostaSubtotalAmbientes(p) + propostaCustos(p) - desconto;
 }
+
