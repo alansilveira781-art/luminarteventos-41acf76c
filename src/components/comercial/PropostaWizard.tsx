@@ -127,7 +127,7 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta,
     setStep(0);
     if (proposta) {
       setCliente(proposta.cliente);
-      setEvento(proposta.evento);
+      setEvento({ nome: "", ...proposta.evento, nome: proposta.evento?.nome ?? "" });
       setAmbientes(proposta.ambientes?.length ? proposta.ambientes : [newAmbiente("Ambiente principal")]);
       setCustos(proposta.custos);
       setResumo({ margem: proposta.resumo.margem || 0, validade: proposta.resumo.validade || "", desconto: Number(proposta.resumo.desconto || 0) });
