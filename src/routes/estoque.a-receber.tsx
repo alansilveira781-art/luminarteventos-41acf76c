@@ -335,10 +335,8 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
             {compra?.solicitante && <span>Solicitante: <span className="text-foreground font-medium">{compra.solicitante}</span></span>}
           </div>
         )}
-        <DialogHeader className="hidden">
-          <DialogTitle>noop</DialogTitle>
 
-        </DialogHeader>
+
 
         {statusBlocked && (
           <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
