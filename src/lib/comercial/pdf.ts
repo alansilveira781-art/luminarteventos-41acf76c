@@ -71,12 +71,8 @@ async function loadImage(
 
 function descricaoLinha(d: DescricaoItem): string {
   const medida = descricaoMedidaLabel(d);
-  const unitSuffix =
-    d.tipoMedida === "area" ? "/m²" : d.tipoMedida === "linear" ? "/m" : "";
-  const unit = `${brl(d.valorUnitario)}${unitSuffix}`;
-  const total = brl(descricaoSubtotal(d));
   const desc = d.descricao || "—";
-  return `- ${desc}  (${medida}  ·  ${unit}  =  ${total})`;
+  return `- ${desc}  (${medida})`;
 }
 
 // ─────────────────────────────────────────────────────────────
