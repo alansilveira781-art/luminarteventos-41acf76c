@@ -48,7 +48,7 @@ function DashboardLayout() {
   const [filtros, setFiltros] = usePersistedState<Filtros>("comercial.dashboard.filtros.v4", filtrosIniciais);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["comercial-vendas-db"],
+    queryKey: ["comercial-vendas-db", "dashboard"],
     queryFn: () => listVendasDb(),
     staleTime: 30 * 1000,
   });
