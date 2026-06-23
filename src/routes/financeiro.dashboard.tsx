@@ -116,7 +116,7 @@ function FinanceiroDashboard() {
       map.set(k, (map.get(k) ?? 0) + Number(c.valor_total || 0));
     });
     return Array.from(map.entries()).map(([nome, valor]) => ({
-      nome: labels[nome] ?? nome,
+      nome: labels[nome] ?? TIPO_DEMANDA_LEGACY_LABELS[nome] ?? nome,
       valor: Math.round(valor * 100) / 100,
     }));
   }, [demandas]);
