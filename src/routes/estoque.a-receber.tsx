@@ -28,7 +28,9 @@ export const Route = createFileRoute("/estoque/a-receber")({
 
 type CompraRow = {
   id: string;
+  numero: number | null;
   titulo: string | null;
+  solicitante: string | null;
   fornecedor: string | null;
   comprador: string | null;
   data_compra: string | null;
@@ -45,7 +47,9 @@ type CompraItemRow = {
   valor_unitario: number | null;
   recebido: boolean;
   quantidade_recebida: number;
+  evento_projeto: string | null;
 };
+
 
 function AReceberPage() {
   const qc = useQueryClient();
@@ -56,10 +60,11 @@ function AReceberPage() {
     queryFn: async () => {
       const { data, error } = await sb
         .from("compras")
-        .select("id,titulo,fornecedor,fornecedor_id,comprador,data_compra,valor_total,tipo_compra,documento")
+        .select("id,numero,titulo,solicitante,fornecedor,fornecedor_id,comprador,data_compra,valor_total,tipo_compra,documento")
         .eq("status", "a_receber")
         .eq("tipo_compra", "mercadoria")
         .order("data_compra", { ascending: true });
+
       if (error) throw error;
       return data as CompraRow[];
     },
@@ -80,8 +85,14 @@ function AReceberPage() {
         )}
         {compras.map((c) => (
           <Card key={c.id} className="p-4 space-y-2">
-            <div className="font-medium">{c.titulo || c.fornecedor || "Compra"}</div>
+            <div className="flex items-start justify-between gap-2">
+              <div className="font-medium">{c.titulo || c.fornecedor || "Compra"}</div>
+              <div className="text-[11px] font-mono text-muted-foreground shrink-0">
+                {c.numero != null ? `COMPRA-${c.numero}` : "—"}
+              </div>
+            </div>
             <div className="text-xs text-muted-foreground space-y-0.5">
+              {c.solicitante && <div>Solicitante: {c.solicitante}</div>}
               {c.fornecedor && <div>Fornecedor: {c.fornecedor}</div>}
               {c.comprador && <div>Comprador: {c.comprador}</div>}
               {c.data_compra && <div>Compra: {new Date(c.data_compra).toLocaleDateString("pt-BR")}</div>}
@@ -95,6 +106,7 @@ function AReceberPage() {
               <PackageCheck className="h-4 w-4 mr-1" /> Validar recebimento
             </Button>
           </Card>
+
         ))}
       </div>
 
@@ -122,12 +134,12 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
     queryFn: async () => {
       const { data, error } = await sb
         .from("compras")
-        .select("id,fornecedor,fornecedor_id,documento,comprador,status,empresa,observacoes")
+        .select("id,numero,solicitante,fornecedor,fornecedor_id,documento,comprador,status,empresa,observacoes")
         .eq("id", compraId)
         .maybeSingle();
       if (error) throw error;
       if (!data) throw new Error("Compra não encontrada");
-      return data as { id: string; fornecedor: string | null; fornecedor_id: string | null; documento: string | null; comprador: string | null; status: string; empresa: string | null; observacoes: string | null };
+      return data as { id: string; numero: number | null; solicitante: string | null; fornecedor: string | null; fornecedor_id: string | null; documento: string | null; comprador: string | null; status: string; empresa: string | null; observacoes: string | null };
     },
   });
 
@@ -135,6 +147,7 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
     queryKey: ["compra-itens", compraId],
     queryFn: async () => {
       const { data, error } = await sb.from("compra_itens").select("*").eq("compra_id", compraId);
+
       if (error) throw error;
       return data as CompraItemRow[];
     },
@@ -268,7 +281,9 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
           responsavel_lancamento: compra?.comprador ?? null,
           observacoes:
             (observacoes ? observacoes + " — " : "") +
-            `Recebimento da compra ${compraId}${fornecedorNome ? ` - Fornecedor: ${fornecedorNome}` : ""}`,
+            `Recebimento da compra ${compra?.numero != null ? `COMPRA-${compra.numero}` : compraId}${fornecedorNome ? ` - Fornecedor: ${fornecedorNome}` : ""}` +
+            (it.evento_projeto ? ` — EVENTO/PROJETO: ${it.evento_projeto}` : ""),
+
         }).select("id");
         if (error) throw error;
 
@@ -306,8 +321,22 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Validar recebimento</DialogTitle>
+          <DialogTitle>
+            Validar recebimento
+            {compra?.numero != null && (
+              <span className="ml-2 text-xs font-mono text-muted-foreground">COMPRA-{compra.numero}</span>
+            )}
+          </DialogTitle>
         </DialogHeader>
+
+        {(compra?.numero != null || compra?.solicitante) && (
+          <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
+            {compra?.numero != null && <span className="font-mono">COMPRA-{compra.numero}</span>}
+            {compra?.solicitante && <span>Solicitante: <span className="text-foreground font-medium">{compra.solicitante}</span></span>}
+          </div>
+        )}
+
+
 
         {statusBlocked && (
           <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
@@ -374,6 +403,10 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
                 <div className="text-xs text-muted-foreground">
                   Pedido: {Number(it.quantidade)} {it.unidade ?? ""}
                 </div>
+                {it.evento_projeto && (
+                  <div className="text-xs"><span className="text-muted-foreground">EVENTO/PROJETO:</span> <span className="font-medium">{it.evento_projeto}</span></div>
+                )}
+
 
                 <div className="flex flex-wrap gap-2">
                   <div className="w-[90px]">
