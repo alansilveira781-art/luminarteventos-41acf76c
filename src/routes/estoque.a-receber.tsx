@@ -403,6 +403,10 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
                 <div className="text-xs text-muted-foreground">
                   Pedido: {Number(it.quantidade)} {it.unidade ?? ""}
                 </div>
+                {it.evento_projeto && (
+                  <div className="text-xs"><span className="text-muted-foreground">EVENTO/PROJETO:</span> <span className="font-medium">{it.evento_projeto}</span></div>
+                )}
+
 
                 <div className="flex flex-wrap gap-2">
                   <div className="w-[90px]">
