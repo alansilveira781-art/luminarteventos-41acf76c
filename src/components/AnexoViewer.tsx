@@ -5,7 +5,23 @@ import { Download, FileIcon, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const PdfPreview = lazy(() => import("./PdfPreview"));
+const PdfPreview = lazy(() =>
+  import("./PdfPreview").catch((err) => {
+    const msg = String(err?.message ?? err);
+    const isChunkError =
+      msg.includes("Failed to fetch dynamically imported module") ||
+      msg.includes("Importing a module script failed");
+    if (
+      isChunkError &&
+      typeof window !== "undefined" &&
+      !sessionStorage.getItem("pdfpreview-reloaded")
+    ) {
+      sessionStorage.setItem("pdfpreview-reloaded", "1");
+      window.location.reload();
+    }
+    throw err;
+  }),
+);
 
 export type AnexoViewerProps = {
   bucket: string;

@@ -1,47 +1,45 @@
-## Objetivo
+# Corrigir erro ao abrir anexos PDF
 
-Unificar **Reformas** e **Construções** em uma única opção **Reformas & Construções** em todos os pontos onde aparecem (formulário de Demanda no quadro do Financeiro e site público `/solicitar`). Manter **Fardamento** como opção separada.
+## Diagnóstico
 
-## Mudança
+O erro `Failed to fetch dynamically imported module: .../PdfPreview-DCz-NIjR.js` acontece porque o `PdfPreview.tsx` é carregado via `lazy(() => import(...))` em `src/components/AnexoViewer.tsx`. Depois de um novo deploy, o nome do chunk muda (hash novo) e abas antigas que ainda estão abertas tentam buscar o chunk antigo, que já não existe no CDN — então o `import()` falha e o ErrorBoundary mostra "Something went wrong".
 
-Em `src/lib/demandas.ts`, substituir as duas entradas:
+Não é um bug do PDF em si: é um problema clássico de chunk obsoleto pós-deploy. Afeta qualquer anexo aberto pelo `AnexoViewer` (não só na aba Rotinas Financeiras), mas só dispara quando o tipo é PDF, porque é o único caminho que faz lazy-load.
+
+## Solução
+
+Tornar o lazy-load resiliente: se o `import()` falhar (chunk não encontrado após deploy), recarregar a página automaticamente uma única vez para puxar o bundle atualizado.
+
+### Mudança em `src/components/AnexoViewer.tsx`
+
+Trocar:
 
 ```ts
-{ value: "reformas", label: "Reformas" },
-{ value: "construcoes", label: "Construções" },
+const PdfPreview = lazy(() => import("./PdfPreview"));
 ```
 
-por uma única:
+por um wrapper que tenta novamente e, se persistir o erro de fetch de módulo, força um reload controlado (com flag em `sessionStorage` para evitar loop infinito):
 
 ```ts
-{ value: "reformas_construcoes", label: "Reformas & Construções" },
+const PdfPreview = lazy(() =>
+  import("./PdfPreview").catch((err) => {
+    const msg = String(err?.message ?? err);
+    const isChunkError =
+      msg.includes("Failed to fetch dynamically imported module") ||
+      msg.includes("Importing a module script failed");
+    if (isChunkError && !sessionStorage.getItem("pdfpreview-reloaded")) {
+      sessionStorage.setItem("pdfpreview-reloaded", "1");
+      window.location.reload();
+    }
+    throw err;
+  })
+);
 ```
 
-Lista final do `TIPO_DEMANDA_OPTIONS` (6 itens, nessa ordem):
+A flag é limpa naturalmente quando a aba é fechada (sessionStorage). Se o reload resolver, o usuário nem percebe; se não resolver (erro real), o ErrorBoundary continua aparecendo sem entrar em loop.
 
-1. Estacionamento
-2. Alimentação
-3. Manutenção do Galpão
-4. Manutenção de Veículos
-5. Fardamento
-6. Reformas & Construções
+## Fora do escopo
 
-## Impacto
-
-Como `TIPO_DEMANDA_OPTIONS` é a única fonte usada por:
-
-- `src/components/DemandaDialog.tsx` (form do quadro de Despesas/Demandas)
-- `src/routes/solicitar.tsx` (site público)
-- `src/routes/financeiro.dashboard.tsx` (mapa de labels para o dashboard)
-
-a alteração em um único arquivo cobre os três lugares automaticamente.
-
-## Compatibilidade com dados antigos
-
-Demandas já salvas com `tipo_demanda = "reformas"` ou `"construcoes"` continuam no banco intactas (nenhuma migração). Para que essas demandas antigas ainda exibam um rótulo legível no dashboard, adiciono um fallback no `TIPO_DEMANDA_LABEL` (mapa derivado) que reconhece os valores legados `reformas` e `construcoes` e devolve `"Reformas & Construções"`. No `<Select>` do form, demandas antigas com esses valores aparecerão sem seleção visível até o usuário escolher a nova opção combinada — comportamento aceitável e sem perda de dado.
-
-## Não fazer
-
-- Não alterar `Fardamento` nem os outros 4 tipos.
-- Não rodar migração nem reescrever registros existentes.
-- Não mexer em permissões, no módulo de Compras, ou em qualquer outra lógica.
+- Não mexer no `PdfPreview.tsx` em si.
+- Não mexer na lógica de Rotinas Financeiras / despesas — o erro é global do viewer de anexos.
+- Não mudar config do Vite/chunking.
