@@ -1,0 +1,1 @@
+ALTER TABLE public.comercial_vendas DROP CONSTRAINT IF EXISTS comercial_vendas_chave_unica;
