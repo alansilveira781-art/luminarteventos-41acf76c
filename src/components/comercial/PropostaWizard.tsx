@@ -97,6 +97,7 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta,
   const [step, setStep] = useState(0);
   const [cliente, setCliente] = useState({ nome: "", telefone: "", email: "" });
   const [evento, setEvento] = useState<Proposta["evento"]>({
+    nome: "",
     tipo: "",
     dataInicio: "",
     dataFim: "",
