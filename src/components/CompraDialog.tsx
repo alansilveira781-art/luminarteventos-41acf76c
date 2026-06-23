@@ -505,7 +505,7 @@ export function CompraDialog({
                 break;
               }
               if (!nextLabel) return null;
-              const canMove = canMoveCompra(form as any, user?.id, isAdmin, user?.email, nextKey);
+              const canMove = canMoveCompra(form as any, user?.id, isAdmin, user?.email, nextKey ?? undefined);
               const missingTipo = nextKey === "a_receber" && !form.tipo_compra;
               const disabled = !canMove || missingTipo;
               const title = canMove
