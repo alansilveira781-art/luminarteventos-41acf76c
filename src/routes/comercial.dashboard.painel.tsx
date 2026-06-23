@@ -110,6 +110,8 @@ function PainelPage() {
 
   const realizado = k.vendasTotais;
 
+  const semDadosFiltrados = rows.length > 0 && filtered.length === 0;
+
   return (
     <div className="space-y-4">
       <Card className="p-4">
@@ -119,7 +121,18 @@ function PainelPage() {
           onChange={setFiltros}
           fields={["empresa", "ano", "mes"]}
         />
+        <div className="mt-2 text-xs text-muted-foreground">
+          {rows.length.toLocaleString("pt-BR")} vendas carregadas
+          {" · "}
+          {filtered.length.toLocaleString("pt-BR")} no filtro atual
+        </div>
       </Card>
+
+      {semDadosFiltrados && (
+        <Card className="p-4 text-sm border-amber-500/40 bg-amber-500/5">
+          Nenhuma venda atende aos filtros selecionados. Ajuste Empresa, Ano ou Mês para visualizar os dados.
+        </Card>
+      )}
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard titulo="Vendas Totais" Icon={DollarSign}
@@ -131,6 +144,7 @@ function PainelPage() {
         <KpiCard titulo="Ticket Médio" Icon={Receipt}
           valor={k.ticketMedio} anterior={k.ticketAnterior} pct={k.pctTicket} />
       </div>
+
 
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-4">
