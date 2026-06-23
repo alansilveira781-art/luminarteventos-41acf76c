@@ -25,8 +25,7 @@ export const TIPO_DEMANDA_OPTIONS = [
   { value: "manutencao_galpao", label: "Manutenção do Galpão" },
   { value: "manutencao_veiculos", label: "Manutenção de Veículos" },
   { value: "fardamento", label: "Fardamento" },
-  { value: "reformas", label: "Reformas" },
-  { value: "construcoes", label: "Construções" },
+  { value: "reformas_construcoes", label: "Reformas & Construções" },
 ] as const;
 
 export type TipoDemanda = typeof TIPO_DEMANDA_OPTIONS[number]["value"];
