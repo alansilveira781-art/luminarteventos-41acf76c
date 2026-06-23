@@ -481,14 +481,14 @@ export function CompraDialog({
           <div className="flex flex-wrap gap-2">
             {(() => {
               if (!compraId || !onAdvance) return null;
-              const canMove = canMoveCompra(form as any, user?.id, isAdmin, user?.email);
-              const blocked = canMove ? null : moveBlockedMessage(form);
+              const blocked = moveBlockedMessage(form);
               if (form.status === "pendente_aprovacao") {
+                const canMove = canMoveCompra(form as any, user?.id, isAdmin, user?.email, "aprovada");
                 return (
                   <Button
                     onClick={() => canMove && onAdvance({ ...form, id: compraId }, { approve: true })}
                     disabled={!canMove}
-                    title={blocked ?? undefined}
+                    title={canMove ? undefined : blocked}
                     className="bg-success text-success-foreground hover:bg-success/90"
                   >
                     <CheckCircle2 className="h-4 w-4 mr-1" /> Aprovar compra
@@ -505,9 +505,12 @@ export function CompraDialog({
                 break;
               }
               if (!nextLabel) return null;
+              const canMove = canMoveCompra(form as any, user?.id, isAdmin, user?.email, nextKey ?? undefined);
               const missingTipo = nextKey === "a_receber" && !form.tipo_compra;
               const disabled = !canMove || missingTipo;
-              const title = blocked ?? (missingTipo ? "Defina o tipo da compra antes de avançar para Compras a Receber." : undefined);
+              const title = canMove
+                ? (missingTipo ? "Defina o tipo da compra antes de avançar para Compras a Receber." : undefined)
+                : blocked;
               return (
                 <Button
                   variant="secondary"

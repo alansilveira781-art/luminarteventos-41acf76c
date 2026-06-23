@@ -201,7 +201,7 @@ function ComprasKanban() {
     const status = overId as CompraStatus;
     const compra = compras.find((c) => c.id === id);
     if (!compra) return;
-    if (!canMoveCompra(compra, user?.id, isAdmin, user?.email)) {
+    if (!canMoveCompra(compra, user?.id, isAdmin, user?.email, status)) {
       toast.error(moveBlockedMessage(compra));
       return;
     }
