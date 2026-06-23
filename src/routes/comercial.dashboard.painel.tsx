@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { useDashboard } from "./comercial.dashboard";
@@ -37,6 +37,42 @@ type MetaRow = { ano: number; mes: number; classificacao: string; valor_meta: nu
 
 function PainelPage() {
   const { rows, filtered, previous, filtros, setFiltros } = useDashboard();
+
+  // O Painel só expõe Empresa/Ano/Mês. Reseta filtros invisíveis (consultor,
+  // classificação, trimestre) que possam ter sido deixados ativos por outras abas
+  // e que zerariam a página sem qualquer pista visual ao usuário.
+  useEffect(() => {
+    if (
+      filtros.consultor !== "Todos" ||
+      filtros.classificacao !== "Todos" ||
+      filtros.trimestre !== "Todos"
+    ) {
+      setFiltros({
+        ...filtros,
+        consultor: "Todos",
+        classificacao: "Todos",
+        trimestre: "Todos",
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Se nenhum ano estiver selecionado, seleciona o ano corrente quando houver
+  // dados nele; caso contrário, o layout pai já faz fallback para o último ano.
+  useEffect(() => {
+    if (!rows.length) return;
+    if (filtros.ano !== "Todos") return;
+    const anoAtual = new Date().getFullYear();
+    const temAnoAtual = rows.some((r) => {
+      const a =
+        (r.anoEvento && r.anoEvento > 1900 ? r.anoEvento : null) ??
+        (r.ano && r.ano > 1900 ? r.ano : null);
+      return a === anoAtual;
+    });
+    if (temAnoAtual) setFiltros({ ...filtros, ano: anoAtual });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows.length]);
+
   const k = useMemo(() => kpis(filtered, previous), [filtered, previous]);
 
   const evolVendas = useMemo(() => evolucaoTrimestre(filtered), [filtered]);
