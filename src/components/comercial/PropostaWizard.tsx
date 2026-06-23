@@ -203,6 +203,38 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta,
     onOpenChange(false);
   }
 
+  async function finishEdit() {
+    if (!proposta) return;
+    if (!cliente.nome.trim()) return toast.error("Informe o cliente");
+    const c = upsertCliente(cliente);
+    updateProposta(proposta.id, {
+      cliente, evento, custos, resumo, clienteId: c.id,
+    });
+    toast.success("Proposta atualizada");
+    onOpenChange(false);
+  }
+
+  function goPrev() {
+    if (editarLimitado) {
+      const idx = STEPS_EDITAVEIS.indexOf(step as any);
+      if (idx > 0) setStep(STEPS_EDITAVEIS[idx - 1]);
+      return;
+    }
+    setStep(Math.max(0, step - 1));
+  }
+  function goNext() {
+    if (editarLimitado) {
+      const idx = STEPS_EDITAVEIS.indexOf(step as any);
+      if (idx >= 0 && idx < STEPS_EDITAVEIS.length - 1) setStep(STEPS_EDITAVEIS[idx + 1]);
+      return;
+    }
+    setStep(Math.min(STEPS.length - 1, step + 1));
+  }
+  const isFirstStep = editarLimitado ? step === STEPS_EDITAVEIS[0] : step === 0;
+  const isLastStep = editarLimitado
+    ? step === STEPS_EDITAVEIS[STEPS_EDITAVEIS.length - 1]
+    : step === STEPS.length - 1;
+
   function onConsultorChange(v: string) {
     if (v === NEW_CONSULTOR) {
       setNovoConsultor("");
