@@ -312,6 +312,13 @@ function QuadroVendas() {
           setWizardProposta(p);
           setWizardOpen(true);
         }}
+        onEditarLimitado={(p) => {
+          setDetalhesCard(null);
+          setWizardProposta(p);
+          setWizardCardId(p.cardId ?? null);
+          setWizardEditarLimitado(true);
+          setWizardOpen(true);
+        }}
       />
 
       <AvancarCardDialog
@@ -349,9 +356,18 @@ function QuadroVendas() {
 
       <PropostaWizard
         open={wizardOpen}
-        onOpenChange={(v) => { setWizardOpen(v); if (!v) setWizardCardId(null); }}
+        onOpenChange={(v) => {
+          setWizardOpen(v);
+          if (!v) {
+            setWizardCardId(null);
+            setWizardProposta(null);
+            setWizardEditarLimitado(false);
+          }
+        }}
         cardId={wizardCardId}
         defaults={wizardDefaults}
+        proposta={wizardProposta}
+        editarLimitado={wizardEditarLimitado}
       />
     </>
   );
