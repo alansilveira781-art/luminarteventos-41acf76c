@@ -1,7 +1,7 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Printer, GitBranch, Trash2 } from "lucide-react";
+import { Printer, GitBranch, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { CARD_STATUSES, type ComercialCard, PROPOSTA_STATUS_LABEL, propostaTotal, type Proposta } from "@/lib/comercial/types";
 import { useComercial, criarNovaVersaoProposta, getPropostasDoCard, getRootPropostaId, deleteProposta } from "@/lib/comercial/store";
@@ -21,8 +21,8 @@ const fmtPeriodo = (ini: string, fim: string) => {
 };
 
 export function DetalhesDrawer({
-  open, onOpenChange, card, onEditProposta,
-}: { open: boolean; onOpenChange: (v: boolean) => void; card: ComercialCard | null; onEditProposta?: (p: Proposta) => void }) {
+  open, onOpenChange, card, onEditProposta, onEditarLimitado,
+}: { open: boolean; onOpenChange: (v: boolean) => void; card: ComercialCard | null; onEditProposta?: (p: Proposta) => void; onEditarLimitado?: (p: Proposta) => void }) {
   // Subscribe to store so versions/cards atualizam em tempo real
   useComercial();
   if (!card) return null;
@@ -124,6 +124,15 @@ export function DetalhesDrawer({
                               <span className="text-muted-foreground">
                                 {brl(propostaTotal(v))}
                               </span>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6"
+                                title="Editar"
+                                onClick={() => onEditarLimitado?.(v)}
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
                               <Button
                                 size="icon"
                                 variant="ghost"
