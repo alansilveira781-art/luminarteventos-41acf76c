@@ -25,8 +25,14 @@ export const TIPO_DEMANDA_OPTIONS = [
   { value: "manutencao_galpao", label: "Manutenção do Galpão" },
   { value: "manutencao_veiculos", label: "Manutenção de Veículos" },
   { value: "fardamento", label: "Fardamento" },
-  { value: "reformas", label: "Reformas" },
-  { value: "construcoes", label: "Construções" },
+  { value: "reformas_construcoes", label: "Reformas & Construções" },
 ] as const;
+
+// Valores legados que foram unificados em "reformas_construcoes" — usados só
+// para rotular registros antigos no dashboard. Não aparecem no <Select>.
+export const TIPO_DEMANDA_LEGACY_LABELS: Record<string, string> = {
+  reformas: "Reformas & Construções",
+  construcoes: "Reformas & Construções",
+};
 
 export type TipoDemanda = typeof TIPO_DEMANDA_OPTIONS[number]["value"];

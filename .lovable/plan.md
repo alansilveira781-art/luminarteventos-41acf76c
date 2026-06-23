@@ -1,23 +1,47 @@
 ## Objetivo
-No módulo Estoque → aba "A receber", exibir o número da compra (COMPRA-XX) no card e trazer informações de solicitante e evento/projeto ao abrir o "Validar recebimento".
 
-## Mudanças (todas em `src/routes/estoque.a-receber.tsx`)
+Unificar **Reformas** e **Construções** em uma única opção **Reformas & Construções** em todos os pontos onde aparecem (formulário de Demanda no quadro do Financeiro e site público `/solicitar`). Manter **Fardamento** como opção separada.
 
-### 1. Card da lista (canto superior direito: COMPRA-XX)
-- Adicionar `numero` e `solicitante` ao type `CompraRow` e ao `.select(...)` da query `compras-receber`.
-- Mudar o cabeçalho do `Card` para um flex row: título à esquerda, badge `COMPRA-{numero}` (ou `—`) à direita, em estilo discreto (mono, `text-xs text-muted-foreground`), igual ao usado no quadro de Compras (`src/routes/compras.index.tsx`).
+## Mudança
 
-### 2. Dialog "Validar recebimento" — campo Solicitante (informativo)
-- Adicionar `numero` e `solicitante` ao `.select(...)` da query `compra-receber-info` e ao tipo retornado.
-- Mostrar no topo do dialog (junto aos dados gerais, antes do bloco de inputs) uma linha informativa apenas-leitura:
-  - `COMPRA-{numero}` · `Solicitante: {solicitante ?? "—"}`
-- Também atualizar o `DialogTitle` para incluir o número: `Validar recebimento — COMPRA-{numero}`.
+Em `src/lib/demandas.ts`, substituir as duas entradas:
 
-### 3. Evento/Projeto por item → Observações da movimentação
-- Adicionar `evento_projeto` à seleção em `compra_itens` (query `compra-itens`) e ao type `CompraItemRow`.
-- Mostrar `EVENTO/PROJETO: {evento_projeto}` como linha informativa dentro do card de cada item no dialog (abaixo de "Pedido: …"), só quando preenchido.
-- Na criação de cada `movimentacoes` no `finalizar`, concatenar ao campo `observacoes` o sufixo ` — EVENTO/PROJETO: {evento_projeto}` quando o item tiver esse valor. Cada movimentação registra o evento do seu próprio item.
+```ts
+{ value: "reformas", label: "Reformas" },
+{ value: "construcoes", label: "Construções" },
+```
 
-## Fora de escopo
-- Não alterar schema, RLS, permissões, nem o fluxo de finalização da compra.
-- Não mexer no módulo Compras nem em outras telas.
+por uma única:
+
+```ts
+{ value: "reformas_construcoes", label: "Reformas & Construções" },
+```
+
+Lista final do `TIPO_DEMANDA_OPTIONS` (6 itens, nessa ordem):
+
+1. Estacionamento
+2. Alimentação
+3. Manutenção do Galpão
+4. Manutenção de Veículos
+5. Fardamento
+6. Reformas & Construções
+
+## Impacto
+
+Como `TIPO_DEMANDA_OPTIONS` é a única fonte usada por:
+
+- `src/components/DemandaDialog.tsx` (form do quadro de Despesas/Demandas)
+- `src/routes/solicitar.tsx` (site público)
+- `src/routes/financeiro.dashboard.tsx` (mapa de labels para o dashboard)
+
+a alteração em um único arquivo cobre os três lugares automaticamente.
+
+## Compatibilidade com dados antigos
+
+Demandas já salvas com `tipo_demanda = "reformas"` ou `"construcoes"` continuam no banco intactas (nenhuma migração). Para que essas demandas antigas ainda exibam um rótulo legível no dashboard, adiciono um fallback no `TIPO_DEMANDA_LABEL` (mapa derivado) que reconhece os valores legados `reformas` e `construcoes` e devolve `"Reformas & Construções"`. No `<Select>` do form, demandas antigas com esses valores aparecerão sem seleção visível até o usuário escolher a nova opção combinada — comportamento aceitável e sem perda de dado.
+
+## Não fazer
+
+- Não alterar `Fardamento` nem os outros 4 tipos.
+- Não rodar migração nem reescrever registros existentes.
+- Não mexer em permissões, no módulo de Compras, ou em qualquer outra lógica.

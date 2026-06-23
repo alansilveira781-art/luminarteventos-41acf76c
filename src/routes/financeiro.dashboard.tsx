@@ -10,7 +10,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, CartesianGrid,
 } from "recharts";
-import { DEMANDA_STATUSES, TIPO_DEMANDA_OPTIONS } from "@/lib/demandas";
+import { DEMANDA_STATUSES, TIPO_DEMANDA_OPTIONS, TIPO_DEMANDA_LEGACY_LABELS } from "@/lib/demandas";
 import { UberDashboard } from "@/components/financeiro/UberDashboard";
 import { ContaAzulDashboard } from "@/components/financeiro/ContaAzulDashboard";
 import { grupoDoPlanoNome, buildPrefixIndex, DRE_STRUCTURE, type DreGroupId } from "@/lib/conta-azul/dre";
@@ -116,7 +116,7 @@ function FinanceiroDashboard() {
       map.set(k, (map.get(k) ?? 0) + Number(c.valor_total || 0));
     });
     return Array.from(map.entries()).map(([nome, valor]) => ({
-      nome: labels[nome] ?? nome,
+      nome: labels[nome] ?? TIPO_DEMANDA_LEGACY_LABELS[nome] ?? nome,
       valor: Math.round(valor * 100) / 100,
     }));
   }, [demandas]);
