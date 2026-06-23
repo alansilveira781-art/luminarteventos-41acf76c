@@ -28,7 +28,9 @@ export const Route = createFileRoute("/estoque/a-receber")({
 
 type CompraRow = {
   id: string;
+  numero: number | null;
   titulo: string | null;
+  solicitante: string | null;
   fornecedor: string | null;
   comprador: string | null;
   data_compra: string | null;
@@ -45,7 +47,9 @@ type CompraItemRow = {
   valor_unitario: number | null;
   recebido: boolean;
   quantidade_recebida: number;
+  evento_projeto: string | null;
 };
+
 
 function AReceberPage() {
   const qc = useQueryClient();
