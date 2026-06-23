@@ -365,7 +365,7 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta,
             </div>
           )}
 
-          {step === 2 && (
+          {step === 2 && !editarLimitado && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <p className="text-xs text-muted-foreground">
@@ -530,11 +530,18 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta,
                 <Row label="Subtotal dos ambientes" value={brl(subtotalAmbientes)} />
                 <Row label="Total dos custos adicionais" value={brl(totalCustos)} />
                 <Row label="Total final" value={brl(totalFinal)} bold />
+                {(resumo.desconto || 0) > 0 && (
+                  <>
+                    <Row label="Desconto" value={`- ${brl(resumo.desconto || 0)}`} className="text-rose-600" />
+                    <Row label="Total com desconto" value={brl(Math.max(0, totalFinal - (resumo.desconto || 0)))} bold />
+                  </>
+                )}
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-3">
                 <div><Label>Margem estimada (%)</Label><NumberInput step="0.1" value={resumo.margem} onChange={(n) => setResumo({ ...resumo, margem: n })} /></div>
                 <div><Label>Validade da proposta</Label><Input type="date" value={resumo.validade} onChange={(e) => setResumo({ ...resumo, validade: e.target.value })} /></div>
-                <div className="sm:col-span-2">
+                <div><Label>Desconto (R$)</Label><MoneyInput value={resumo.desconto || 0} onChange={(n) => setResumo({ ...resumo, desconto: n })} /></div>
+                <div className="sm:col-span-3">
                   <Label>Consultor(a) responsável</Label>
                   <Select value={responsavel || undefined} onValueChange={onConsultorChange}>
                     <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
@@ -551,13 +558,15 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta,
           )}
 
           <DialogFooter className="gap-2 mt-4">
-            <Button variant="outline" disabled={step === 0} onClick={() => setStep(step - 1)}>
+            <Button variant="outline" disabled={isFirstStep} onClick={goPrev}>
               <ChevronLeft className="h-4 w-4 mr-1" /> Voltar
             </Button>
-            {step < STEPS.length - 1 ? (
-              <Button disabled={!canNext()} onClick={() => setStep(step + 1)}>
+            {!isLastStep ? (
+              <Button disabled={!canNext()} onClick={goNext}>
                 Próximo <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
+            ) : editarLimitado ? (
+              <Button onClick={finishEdit}>Salvar</Button>
             ) : (
               <Button onClick={finish}>Enviar para validação</Button>
             )}
