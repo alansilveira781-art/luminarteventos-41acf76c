@@ -38,9 +38,9 @@ type MetaRow = { ano: number; mes: number; classificacao: string; valor_meta: nu
 function PainelPage() {
   const { rows, filtered, previous, filtros, setFiltros } = useDashboard();
 
-  // O Painel só expõe Empresa/Ano/Mês. Reseta filtros invisíveis (consultor,
-  // classificação, trimestre) que possam ter sido deixados ativos por outras abas
-  // e que zerariam a página sem qualquer pista visual ao usuário.
+  // O Painel só expõe Empresa/Ano/Mês. Reseta filtros invisíveis sempre que
+  // estiverem ativos (inclusive após hidratação tardia do localStorage),
+  // evitando "tudo zerado" por filtro escondido vindo de outra aba.
   useEffect(() => {
     if (
       filtros.consultor !== "Todos" ||
@@ -55,23 +55,30 @@ function PainelPage() {
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [filtros.consultor, filtros.classificacao, filtros.trimestre]);
 
-  // Se nenhum ano estiver selecionado, seleciona o ano corrente quando houver
-  // dados nele; caso contrário, o layout pai já faz fallback para o último ano.
+  // Garante um ano válido com dados. Se "Todos", seleciona o ano corrente
+  // quando houver dados; senão cai para o ano mais recente com vendas.
   useEffect(() => {
     if (!rows.length) return;
-    if (filtros.ano !== "Todos") return;
-    const anoAtual = new Date().getFullYear();
-    const temAnoAtual = rows.some((r) => {
+    const anosComDados = new Set<number>();
+    for (const r of rows) {
       const a =
         (r.anoEvento && r.anoEvento > 1900 ? r.anoEvento : null) ??
         (r.ano && r.ano > 1900 ? r.ano : null);
-      return a === anoAtual;
-    });
-    if (temAnoAtual) setFiltros({ ...filtros, ano: anoAtual });
+      if (a) anosComDados.add(a);
+    }
+    if (anosComDados.size === 0) return;
+    const anoAtual = new Date().getFullYear();
+    const ultimo = [...anosComDados].sort((a, b) => b - a)[0];
+    if (filtros.ano === "Todos") {
+      const alvo = anosComDados.has(anoAtual) ? anoAtual : ultimo;
+      setFiltros({ ...filtros, ano: alvo });
+    } else if (!anosComDados.has(filtros.ano as number)) {
+      setFiltros({ ...filtros, ano: ultimo });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows.length]);
+  }, [rows.length, filtros.ano]);
 
   const k = useMemo(() => kpis(filtered, previous), [filtered, previous]);
 
@@ -103,6 +110,8 @@ function PainelPage() {
 
   const realizado = k.vendasTotais;
 
+  const semDadosFiltrados = rows.length > 0 && filtered.length === 0;
+
   return (
     <div className="space-y-4">
       <Card className="p-4">
@@ -112,7 +121,18 @@ function PainelPage() {
           onChange={setFiltros}
           fields={["empresa", "ano", "mes"]}
         />
+        <div className="mt-2 text-xs text-muted-foreground">
+          {rows.length.toLocaleString("pt-BR")} vendas carregadas
+          {" · "}
+          {filtered.length.toLocaleString("pt-BR")} no filtro atual
+        </div>
       </Card>
+
+      {semDadosFiltrados && (
+        <Card className="p-4 text-sm border-amber-500/40 bg-amber-500/5">
+          Nenhuma venda atende aos filtros selecionados. Ajuste Empresa, Ano ou Mês para visualizar os dados.
+        </Card>
+      )}
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard titulo="Vendas Totais" Icon={DollarSign}
@@ -124,6 +144,7 @@ function PainelPage() {
         <KpiCard titulo="Ticket Médio" Icon={Receipt}
           valor={k.ticketMedio} anterior={k.ticketAnterior} pct={k.pctTicket} />
       </div>
+
 
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-4">
