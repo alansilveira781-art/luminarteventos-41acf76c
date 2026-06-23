@@ -139,6 +139,7 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta,
         email: defaults?.clienteEmail ?? "",
       });
       setEvento({
+        nome: defaults?.eventoNome ?? "",
         tipo: "",
         dataInicio: defaults?.eventoDataInicio ?? "",
         dataFim: defaults?.eventoDataFim ?? defaults?.eventoDataInicio ?? "",
