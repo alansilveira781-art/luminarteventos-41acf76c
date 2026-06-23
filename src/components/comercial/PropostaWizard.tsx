@@ -334,6 +334,10 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta,
 
           {step === 1 && (
             <div className="grid gap-3 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <Label>Nome do Evento</Label>
+                <Input value={evento.nome} onChange={(e) => setEvento({ ...evento, nome: e.target.value })} />
+              </div>
               <div>
                 <Label>Tipo de evento *</Label>
                 <Select value={evento.tipo || undefined} onValueChange={(v) => setEvento({ ...evento, tipo: v as any })}>
