@@ -56,6 +56,7 @@ function QuadroVendas() {
   const [wizardCardId, setWizardCardId] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardProposta, setWizardProposta] = useState<Proposta | null>(null);
+  const [wizardEditarLimitado, setWizardEditarLimitado] = useState(false);
   const { user } = useAuth();
   const [contratoDefaults, setContratoDefaults] = useState<NovoContratoDefaults | null>(null);
   const [contratoCardId, setContratoCardId] = useState<string | null>(null);
