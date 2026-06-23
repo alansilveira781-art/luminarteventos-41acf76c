@@ -298,13 +298,19 @@ export function PropostaWizard({ open, onOpenChange, cardId, defaults, proposta,
 
           <div className="mb-2">
             <div className="flex justify-between text-xs text-muted-foreground mb-1">
-              {STEPS.map((s, i) => (
-                <span key={s} className={i === step ? "text-foreground font-medium" : ""}>
-                  {i + 1}. {s}
+              {(editarLimitado ? STEPS_EDITAVEIS.map((i) => ({ i, label: STEPS[i] })) : STEPS.map((label, i) => ({ i, label }))).map(({ i, label }, pos, arr) => (
+                <span key={i} className={i === step ? "text-foreground font-medium" : ""}>
+                  {pos + 1}. {label}
                 </span>
               ))}
             </div>
-            <Progress value={((step + 1) / STEPS.length) * 100} />
+            <Progress
+              value={
+                editarLimitado
+                  ? ((STEPS_EDITAVEIS.indexOf(step as any) + 1) / STEPS_EDITAVEIS.length) * 100
+                  : ((step + 1) / STEPS.length) * 100
+              }
+            />
           </div>
 
           {step === 0 && (
