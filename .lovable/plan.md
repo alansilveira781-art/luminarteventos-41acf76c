@@ -1,33 +1,82 @@
-## Diagnóstico
+## Problema
+Ao criar uma proposta no Quadro de Vendas, o `PropostaWizard` volta para a etapa 1 e perde os dados preenchidos quando o usuário dá Alt+Tab ou interage com a tela. A causa raiz é:
 
-- A consulta do dashboard está paginando corretamente: busca lotes de 1.000 registros até acabar.
-- Hoje existem **1.050 vendas** em `comercial_vendas`, então o painel deveria formar as análises com todos esses registros.
-- Distribuição atual por ano-base:
-  - 2026: 83 vendas / R$ 6,89 Mi
-  - 2025: 169 vendas / R$ 9,49 Mi
-  - 2024: 273 vendas / R$ 7,49 Mi
-  - 2023: 229 vendas / R$ 5,06 Mi
-  - 2022: 227 vendas / R$ 3,97 Mi
-  - 1900: 69 vendas / R$ 1,78 Mi
-- O motivo mais provável do painel continuar zerado é que filtros salvos no navegador ainda são carregados depois da tela montar. O reset atual roda só uma vez, antes do valor salvo ser hidratado, então filtros invisíveis podem voltar e zerar tudo.
+1. `src/routes/comercial.index.tsx` passa a prop `defaults` ao `PropostaWizard` através de uma IIFE que cria um objeto novo a cada render do pai.
+2. O `useEffect` de reset dentro de `PropostaWizard` depende de `defaults`, então cada re-render do pai dispara o effect e executa `setStep(0)`, resetando o formulário.
 
-## Plano de correção
+## Solução
 
-1. **Corrigir a normalização dos filtros do Painel de Vendas**
-  - Ajustar `src/routes/comercial.dashboard.painel.tsx` para resetar `consultor`, `classificacao` e `trimestre` sempre que eles voltarem do estado persistido.
-  - Manter apenas os filtros visíveis do painel: Empresa, Ano e Mês.
-2. **Garantir um ano válido com dados**
-  - Se `Ano = Todos`, selecionar automaticamente o ano mais recente com dados válidos.
-  - Se o ano salvo não existir mais nos dados, cair para o ano mais recente com vendas.
-3. **Adicionar um resumo operacional discreto no topo**
-  - Mostrar quantas vendas foram carregadas no total e quantas estão sendo usadas após os filtros.
-  - Exemplo: `1.050 vendas carregadas · 83 no filtro atual`.
-  - Isso responde diretamente se a paginação está puxando tudo e facilita diagnóstico futuro.
-4. **Evitar a tela “tudo zerado” sem explicação**
-  - Se houver registros carregados, mas nenhum passar pelos filtros, exibir mensagem clara para limpar/ajustar filtros em vez de cards zerados sem contexto.
-5. **Validar no preview**
-  - Abrir `/comercial/dashboard/painel` e confirmar que os KPIs aparecem com valores reais e que o contador mostra a quantidade de registros considerada.
-6. **Dupla conferência**
-  - Verificar se estão aparecendo os filtros corretamente, principalmente de ano e empresa;
-  - Verificar se está pegando as informações da tabela correta comercial_vendas;
-  - Olhar se e validar se tem algum bug de informação dentro dessa tabela;
+### Correção 1 — Memoizar defaults no pai
+No arquivo `src/routes/comercial.index.tsx`:
+- Garantir que `useMemo` esteja importado de `react` (já está, mas confirmar).
+- Antes do JSX que renderiza `<PropostaWizard />`, criar uma variável `wizardDefaults` com `useMemo` que computa o objeto apenas quando `wizardCardId` ou `cards` mudarem.
+- Substituir o `defaults={(() => { ... })()}` inline por `defaults={wizardDefaults}`.
+
+```typescript
+const wizardDefaults = useMemo(() => {
+  const c = cards.find((x) => x.id === wizardCardId);
+  if (!c) return undefined;
+  return {
+    clienteNome: c.clienteNome,
+    eventoNome: c.eventoNome,
+    eventoDataInicio: c.eventoDataInicio,
+    eventoDataFim: c.eventoDataFim,
+    responsavel: c.responsavel,
+  };
+}, [wizardCardId, cards]);
+```
+
+### Correção 2 — Blindar o effect de reset no wizard
+No arquivo `src/components/comercial/PropostaWizard.tsx`:
+- Adicionar `useRef` ao import do React.
+- Criar um ref `const initialized = useRef(false);` dentro do componente.
+- Alterar o `useEffect` de reset para rodar apenas na transição de `open` de `false` para `true` e quando `initialized.current === false`.
+- Ao abrir, executar a inicialização normalmente (`setStep(0)` e todos os setters) e marcar `initialized.current = true`.
+- Ao fechar (`open === false`), resetar `initialized.current = false`.
+- Manter a dependência do effect como `[open]` apenas, removendo `proposta` e `defaults` do array.
+
+```typescript
+const initialized = useRef(false);
+
+useEffect(() => {
+  if (!open) {
+    initialized.current = false;
+    return;
+  }
+  if (initialized.current) return;
+  initialized.current = true;
+
+  setStep(0);
+  if (proposta) {
+    setCliente(proposta.cliente);
+    setEvento(proposta.evento);
+    setAmbientes(proposta.ambientes?.length ? proposta.ambientes : [newAmbiente("Ambiente principal")]);
+    setCustos(proposta.custos);
+    setResumo(proposta.resumo);
+    setResponsavel(proposta.responsavel);
+  } else {
+    setCliente({
+      nome: defaults?.clienteNome ?? "",
+      telefone: defaults?.clienteTelefone ?? "",
+      email: defaults?.clienteEmail ?? "",
+    });
+    setEvento({
+      tipo: "",
+      dataInicio: defaults?.eventoDataInicio ?? "",
+      dataFim: defaults?.eventoDataFim ?? defaults?.eventoDataInicio ?? "",
+      local: defaults?.eventoNome ?? "",
+      cidade: "",
+      observacoes: "",
+    });
+    setAmbientes([newAmbiente("Ambiente principal")]);
+    setCustos({ frete: 0, montagem: 0, desmontagem: 0, outros: [] });
+    setResumo({ margem: 0, validade: "" });
+    setResponsavel(defaults?.responsavel ?? "");
+  }
+}, [open]);
+```
+
+## Escopo
+- Apenas os arquivos `src/routes/comercial.index.tsx` e `src/components/comercial/PropostaWizard.tsx` serão alterados.
+- Nenhuma outra lógica será modificada: navegação entre etapas, validações (`canNext`), cálculos (`subtotalAmbientes`, `totalFinal`) e salvamento permanecem idênticos.
+- Após a aprovação, será executado `bunx tsc --noEmit` para validação de tipos.
