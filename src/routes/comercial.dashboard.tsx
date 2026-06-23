@@ -1,4 +1,4 @@
-import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { createContext, useContext, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
@@ -33,18 +33,10 @@ export function useDashboard(): Ctx {
   };
 }
 
-const TABS = [
-  { to: "/comercial/dashboard/painel", label: "Painel de Vendas" },
-  { to: "/comercial/dashboard/relatorios", label: "Relatórios de Vendas" },
-  { to: "/comercial/dashboard/vendedores", label: "Vendedores" },
-  { to: "/comercial/dashboard/indicadores", label: "Indicadores" },
-  { to: "/comercial/dashboard/propostas", label: "Propostas" },
-  
-] as const;
 
 function DashboardLayout() {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const qc = useQueryClient();
+
   const [filtros, setFiltros] = usePersistedState<Filtros>("comercial.dashboard.filtros.v4", filtrosIniciais);
 
   const { data, isLoading, error } = useQuery({
@@ -96,24 +88,7 @@ function DashboardLayout() {
       />
 
 
-      <div className="flex flex-wrap gap-1 border-b border-border">
-        {TABS.map((t) => {
-          const active = pathname === t.to || pathname.startsWith(t.to + "/");
-          return (
-            <Link
-              key={t.to}
-              to={t.to}
-              className={`px-4 py-2 -mb-px text-sm font-medium border-b-2 transition-colors ${
-                active
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {t.label}
-            </Link>
-          );
-        })}
-      </div>
+
 
       {isLoading && (
         <Card className="p-8 flex items-center justify-center text-muted-foreground gap-2">
