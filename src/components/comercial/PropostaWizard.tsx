@@ -741,9 +741,9 @@ function CatalogoCombobox({
   );
 }
 
-function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+function Row({ label, value, bold, className }: { label: string; value: string; bold?: boolean; className?: string }) {
   return (
-    <div className={`flex justify-between p-3 ${bold ? "text-base font-semibold" : "text-sm"}`}>
+    <div className={`flex justify-between p-3 ${bold ? "text-base font-semibold" : "text-sm"} ${className ?? ""}`}>
       <span>{label}</span>
       <span>{value}</span>
     </div>
