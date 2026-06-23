@@ -137,7 +137,7 @@ function DashboardLayout() {
         >
           {rows.length === 0 ? (
             <Card className="p-6 text-sm text-muted-foreground">
-              Nenhuma venda cadastrada ainda. Vá para a aba <strong>Vendas</strong> e cadastre a primeira.
+              Nenhuma venda foi carregada. Se você já cadastrou vendas, isso pode indicar um problema de permissão (RLS) ou de carregamento. Verifique os logs ou contate o suporte.
             </Card>
           ) : (
             <Outlet />
