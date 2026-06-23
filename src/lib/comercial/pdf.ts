@@ -3,7 +3,7 @@ import logoUrl from "@/assets/luminart-logo.png";
 import type { Proposta, DescricaoItem, Ambiente } from "./types";
 import {
   ambienteSubtotal,
-  descricaoSubtotal,
+  
   descricaoMedidaLabel,
   propostaCustos,
   propostaTotal,
