@@ -198,7 +198,14 @@ function ComprasKanban() {
     const id = String(e.active.id);
     const overId = e.over?.id ? String(e.over.id) : null;
     if (!overId) return;
-    const status = overId as CompraStatus;
+    let status: CompraStatus | undefined;
+    if (COMPRA_STATUSES.some((s) => s.key === overId)) {
+      status = overId as CompraStatus;
+    } else {
+      const overCompra = compras.find((c) => c.id === overId);
+      status = overCompra?.status;
+    }
+    if (!status) return;
     const compra = compras.find((c) => c.id === id);
     if (!compra) return;
     if (!canMoveCompra(compra, user?.id, isAdmin, user?.email, status, compra.status)) {
