@@ -9,8 +9,40 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Settings2, UserPlus } from "lucide-react";
+import { Settings2, UserPlus, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
+
+function PasswordInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <Input
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="pr-10"
+      />
+      <button
+        type="button"
+        onClick={() => setShow((s) => !s)}
+        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+        tabIndex={-1}
+        aria-label={show ? "Ocultar senha" : "Mostrar senha"}
+      >
+        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/admin/usuarios")({
   component: UsuariosPage,
@@ -175,7 +207,7 @@ function CreateUser({ onClose }: { onClose: () => void }) {
         <div className="space-y-3">
           <div><Label>Nome</Label><Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} /></div>
           <div><Label>E-mail</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-          <div><Label>Senha</Label><Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
+          <div><Label>Senha</Label><PasswordInput value={password} onChange={setPassword} /></div>
           <label className="flex items-center gap-2 cursor-pointer">
             <Checkbox checked={isAdmin} onCheckedChange={(v) => setIsAdmin(!!v)} />
             <span className="text-sm font-medium">Administrador (acessa tudo)</span>
@@ -254,7 +286,7 @@ function EditAccess({ user, onClose }: { user: any; onClose: () => void }) {
             <div className="text-xs uppercase text-muted-foreground">Conta</div>
             <div><Label>Nome</Label><Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} /></div>
             <div><Label>E-mail</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-            <div><Label>Nova senha</Label><Input type="password" placeholder="Deixe em branco para manter" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
+            <div><Label>Nova senha</Label><PasswordInput value={password} onChange={setPassword} placeholder="Deixe em branco para manter" /></div>
             <Button size="sm" variant="outline" onClick={() => updateAccount.mutate()} disabled={updateAccount.isPending}>
               Atualizar conta
             </Button>
