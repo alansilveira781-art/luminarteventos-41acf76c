@@ -101,11 +101,19 @@ export function canMoveCompra(
   isAdmin: boolean,
   userEmail?: string | undefined | null,
   targetStatus?: CompraStatus,
+  currentStatus?: CompraStatus,
 ): boolean {
   const isPedro = !!userEmail && userEmail.trim().toLowerCase() === PEDRO_EMAIL;
   if (isPedro) {
-    if (targetStatus && !PEDRO_ALLOWED_STATUSES.includes(targetStatus)) return false;
-    return true;
+    if (!targetStatus) {
+      // chamada genérica (ex.: habilitar arraste): permite se o card está em um status de origem permitido
+      if (!currentStatus) return true;
+      return PEDRO_ALLOWED_SOURCES.includes(currentStatus);
+    }
+    if (!currentStatus) {
+      return PEDRO_ALLOWED_MOVES.some(([, to]) => to === targetStatus);
+    }
+    return PEDRO_ALLOWED_MOVES.some(([from, to]) => from === currentStatus && to === targetStatus);
   }
   return canEditCompra(compra, userId, isAdmin, userEmail);
 }
