@@ -219,9 +219,6 @@ function CreateUser({ onClose }: { onClose: () => void }) {
     onSuccess: () => { toast.success("Usuário criado"); onClose(); },
     onError: (e: any) => toast.error(e?.message ?? "Falha ao criar usuário"),
   });
-    onSuccess: () => { toast.success("Usuário criado"); onClose(); },
-    onError: (e: any) => toast.error(e.message ?? "Falha ao criar usuário"),
-  });
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
