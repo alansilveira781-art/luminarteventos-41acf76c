@@ -43,6 +43,30 @@ function PasswordInput({
     </div>
   );
 }
+async function invokeAdminFn(name: string, body: any) {
+  // Garante token fresco antes de chamar edge function (evita 401 por sessão expirada).
+  const { data: sess } = await supabase.auth.getSession();
+  if (!sess.session) {
+    await supabase.auth.refreshSession();
+  } else {
+    const expiresAt = (sess.session.expires_at ?? 0) * 1000;
+    if (expiresAt - Date.now() < 60_000) {
+      await supabase.auth.refreshSession();
+    }
+  }
+  const { data: fresh } = await supabase.auth.getSession();
+  if (!fresh.session) {
+    throw new Error("Sua sessão expirou. Faça login novamente.");
+  }
+  const { data, error } = await supabase.functions.invoke(name, {
+    body,
+    headers: { Authorization: `Bearer ${fresh.session.access_token}` },
+  });
+  if (error) throw error;
+  if ((data as any)?.error) throw new Error((data as any).error);
+  return data;
+}
+
 
 export const Route = createFileRoute("/admin/usuarios")({
   component: UsuariosPage,
@@ -183,19 +207,18 @@ function CreateUser({ onClose }: { onClose: () => void }) {
 
   const create = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke("admin-create-user", {
-        body: {
-          email,
-          password,
-          display_name: displayName,
-          is_admin: isAdmin,
-          modulo_ids: mods.map((m) => m.modulo_id),
-          modulo_admin_ids: mods.filter((m) => m.is_admin).map((m) => m.modulo_id),
-        },
+      await invokeAdminFn("admin-create-user", {
+        email,
+        password,
+        display_name: displayName,
+        is_admin: isAdmin,
+        modulo_ids: mods.map((m) => m.modulo_id),
+        modulo_admin_ids: mods.filter((m) => m.is_admin).map((m) => m.modulo_id),
       });
-      if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
     },
+    onSuccess: () => { toast.success("Usuário criado"); onClose(); },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao criar usuário"),
+  });
     onSuccess: () => { toast.success("Usuário criado"); onClose(); },
     onError: (e: any) => toast.error(e.message ?? "Falha ao criar usuário"),
   });
@@ -241,16 +264,14 @@ function EditAccess({ user, onClose }: { user: any; onClose: () => void }) {
       if (email && email !== user.email) payload.email = email;
       if (password) payload.password = password;
       if (Object.keys(payload).length === 1) return;
-      const { data, error } = await supabase.functions.invoke("admin-update-user", { body: payload });
-      if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
+      await invokeAdminFn("admin-update-user", payload);
     },
     onSuccess: () => {
       toast.success("Dados atualizados");
       setPassword("");
       qc.invalidateQueries({ queryKey: ["admin-users"] });
     },
-    onError: (e: any) => toast.error(e.message ?? "Falha ao atualizar"),
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao atualizar"),
   });
 
   const { data: modulos } = useQuery({
