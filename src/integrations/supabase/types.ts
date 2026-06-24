@@ -1167,6 +1167,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           data_compra: string | null
+          data_servico: string | null
           data_solicitacao: string
           documento: string | null
           fornecedor: string | null
@@ -1193,6 +1194,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           data_compra?: string | null
+          data_servico?: string | null
           data_solicitacao?: string
           documento?: string | null
           fornecedor?: string | null
@@ -1219,6 +1221,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           data_compra?: string | null
+          data_servico?: string | null
           data_solicitacao?: string
           documento?: string | null
           fornecedor?: string | null
