@@ -77,6 +77,7 @@ export function canEditCompra(
   userEmail?: string | undefined | null,
 ): boolean {
   if (isAdmin) return true;
+  if (userId && userId === NATANAEL_USER_ID) return true; // Natanael tem acesso total no módulo Compras
   const isPedro = !!userEmail && userEmail.trim().toLowerCase() === PEDRO_EMAIL;
   if (isPedro) return true;
   if (!userId) return false;
