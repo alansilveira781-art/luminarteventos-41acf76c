@@ -61,6 +61,7 @@ export function canNatanaelMoveTo(
   targetStatus: CompraStatus,
 ): boolean {
   if (isAdmin) return true;
+  if (userId && userId === NATANAEL_USER_ID) return true; // Natanael tem acesso total
   if (!userId || userId !== NATANAEL_USER_ID) return true; // regra só se aplica ao Natanael
   const ambos = isNatanaelSolicitante(compra) && isNatanaelComprador(compra);
   if (ambos) return true;
