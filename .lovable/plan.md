@@ -1,37 +1,20 @@
-## Objetivo
+## Problema
 
-Ajustar as permissões do Pedro no módulo Compras:
+O Natanael consegue arrastar o card no Quadro de Compras, mas ele "volta para o lugar de origem" segundos depois. Isto acontece porque o front-end permite o movimento (ele tem acesso liberado em `canMoveCompra` / `canEditCompra`), mas a regra de segurança do banco (RLS) da tabela `compras` **não inclui o Natanael** entre quem pode atualizar um card. Hoje só podem atualizar: o responsável do card, o criador, um usuário fixo específico, admins globais ou admins do módulo Compras/Estoque. O Natanael não é admin nem admin de módulo, então o update falha no servidor e o app desfaz o movimento (rollback otimista) → o card volta.
 
-- **Editar**: pode editar qualquer informação do card em qualquer status (já está assim, vou apenas confirmar).
-- **Mover**: pode mover apenas nestes dois sentidos:
-  - `Solicitação de Compra` → `Análise de Compra`
-  - `Análise de Compra` → `Pendente Aprovação`
-- Qualquer outro movimento (voltar status, pular etapas, mover depois de Pendente Aprovação) fica bloqueado com mensagem.
+## Correção
 
-## Mudanças
+Ajustar as políticas de UPDATE e DELETE da tabela `compras` para também liberar o Natanael (user_id `fd75a882-75fe-4e5b-935b-d650f050d6be`), do mesmo jeito que já está liberado o outro usuário fixo. Nenhuma outra regra muda — continua valendo responsável / criador / admins.
 
-### 1. `src/lib/compras.ts`
-Reescrever `canMoveCompra` para o Pedro validar o par (status atual → status alvo), não apenas o alvo:
+### Detalhes técnicos
 
-- Aceita também o `currentStatus` como parâmetro.
-- Para Pedro, só permite os pares exatos:
-  - `solicitacao → analise`
-  - `analise → pendente_aprovacao`
-- Demais usuários: comportamento atual (delega para `canEditCompra`).
-- `canEditCompra` continua retornando `true` para Pedro em qualquer status.
+Migration única reescrevendo as duas policies existentes:
 
-Atualizar a assinatura para receber `currentStatus` (opcional) — quando não informado (ex.: cálculo de "pode arrastar em geral"), libera o Pedro para os status de origem permitidos (`solicitacao` ou `analise`).
+- `compras_update_owner_or_admin` → adicionar `OR auth.uid() = 'fd75a882-75fe-4e5b-935b-d650f050d6be'::uuid` em `USING` e `WITH CHECK`.
+- `compras_delete_owner_or_admin` → adicionar a mesma condição em `USING`.
 
-Adicionar helper `pedroMoveBlockedMessage()` com texto explicativo: "Pedro só pode mover de Solicitação → Análise e de Análise → Pendente Aprovação."
+Sem mudanças em código front-end: a lógica de permissão já trata o Natanael corretamente; o que falta é apenas o espelho disso no banco.
 
-### 2. `src/routes/compras.index.tsx`
-- Passar `compra.status` (status atual) para `canMoveCompra` no `onDragEnd` e ao calcular `canMove` por card.
-- Quando o movimento for bloqueado especificamente para o Pedro, exibir a mensagem específica via `toast.error`.
+## Verificação
 
-Nenhuma mudança em banco/RLS — Pedro já tem `UPDATE` liberado pela policy aplicada anteriormente; a restrição de quais movimentos são permitidos fica no frontend (consistente com a lógica atual para outros papéis).
-
-## Resultado esperado
-
-- Pedro abre e edita qualquer card em qualquer coluna.
-- Pedro arrasta apenas Solicitação → Análise e Análise → Pendente Aprovação.
-- Tentativas de outros movimentos mostram toast explicativo e o card volta à coluna original.
+Após aplicar: logar como Natanael, arrastar um card entre colunas permitidas — deve persistir e continuar no destino após recarregar a página.
