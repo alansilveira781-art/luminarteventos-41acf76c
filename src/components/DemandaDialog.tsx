@@ -233,7 +233,7 @@ export function DemandaDialog({
               <FormField label="Data da solicitação">
                 <Input type="date" value={form.data_solicitacao ?? ""} onChange={(e) => setForm({ ...form, data_solicitacao: e.target.value })} />
               </FormField>
-              <FormField label="Data da compra">
+              <FormField label="Data da compra/serviço">
                 <Input type="date" value={form.data_compra ?? ""} onChange={(e) => setForm({ ...form, data_compra: e.target.value })} />
               </FormField>
               <FormField label="Parcelamento">
