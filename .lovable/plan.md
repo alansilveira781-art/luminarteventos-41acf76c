@@ -1,25 +1,34 @@
-## Problema
+## 1) Olhinho nos campos de senha (admin de usuários)
 
-Natanael não consegue arrastar cards no Quadro de Compras. Duas regras em `src/lib/compras.ts` o bloqueiam:
+Arquivo: `src/routes/admin.usuarios.tsx`
 
-1. `canMoveCompra` → exige que ele seja `responsavel_id` ou `created_by` do card (cards criados por outros ficam travados).
-2. `canNatanaelMoveTo` → silenciosamente impede que ele passe de "Pendente Aprovação" se não for solicitante E comprador.
+- Adicionar um botão com ícone `Eye` / `EyeOff` (lucide-react) dentro dos campos de senha:
+  - Diálogo **Novo usuário** → campo "Senha".
+  - Diálogo **Editar usuário** → campo "Nova senha".
+- Estado local `showPassword` por diálogo alterna o `type` do `<Input>` entre `password` e `text`.
+- O olhinho mostra apenas o que está sendo digitado no momento. Senhas já salvas continuam invisíveis — elas ficam criptografadas no banco e não há como recuperá-las (limitação de segurança do sistema de autenticação). Para "ver" a senha de alguém, o admin precisa definir uma nova ali no formulário.
 
-## Solução (cirúrgica, só frontend)
+Sem mudanças de backend.
 
-Tratar o user id do Natanael (`fd75a882-75fe-4e5b-935b-d650f050d6be`, já constante em `NATANAEL_USER_ID`) como admin do módulo Compras nas funções de permissão.
+## 2) Pedro consegue mover cards de Compras
 
-### Mudanças em `src/lib/compras.ts`
+**Diagnóstico:** o código do frontend já libera o Pedro (`pedro123jrsergio@gmail.com`) para mover cards entre **Solicitação de Compra → Análise de Compra → Pendente Aprovação**. O problema é no **banco de dados**: a regra de segurança da tabela `compras` (RLS) só permite atualizar um card se o usuário for `responsavel_id`, `created_by` ou admin do módulo. Pedro não é nenhum dos três na maioria dos cards, então o banco rejeita a movimentação silenciosamente.
 
-- `canNatanaelMoveTo`: retornar `true` direto quando `userId === NATANAEL_USER_ID` (remove o limite até "Pendente Aprovação").
-- `canEditCompra`: retornar `true` quando `userId === NATANAEL_USER_ID`, antes da checagem de responsável/criador.
-- `canMoveCompra`: idem — retornar `true` para o Natanael antes de cair em `canEditCompra`.
+**Correção (migração SQL):** ajustar as políticas de `UPDATE` e `DELETE` da tabela `public.compras` para incluir uma exceção pelo `user_id` do Pedro (`9465f822-0273-4235-ba24-148cb1bf2c4b`).
 
-Resultado: Natanael passa a poder editar e arrastar qualquer card entre qualquer coluna do quadro, igual a um admin. Nenhum outro usuário é afetado. As regras do Pedro e o fluxo padrão de notificações/`status_defaults` continuam intactos.
+```text
+UPDATE policy compras_update_owner_or_admin:
+  permitir quando auth.uid() = '9465f822-...-148cb1bf2c4b' (Pedro)
+  além das condições existentes (responsável, criador, admin).
 
-### Verificação
+DELETE policy compras_delete_owner_or_admin:
+  mesma exceção para Pedro.
+```
 
-- Build/typecheck automático.
-- Conferir no preview, logado como Natanael, que ele arrasta um card criado por outra pessoa entre colunas, inclusive passando de "Pendente Aprovação" para "Aprovada / Em Andamento / Finalizado".
+A regra do frontend continua impondo que Pedro só pode mover entre as 3 colunas iniciais (`Solicitação`, `Análise`, `Pendente Aprovação`) — isso não muda. O ajuste no banco apenas destrava o `UPDATE` para que a movimentação permitida pelo frontend efetivamente persista.
 
-Sem migrações, sem mudanças de schema, sem alterar RLS.
+## Resumo do que muda
+
+- **Frontend:** olhinho mostrar/ocultar nos 2 campos de senha do admin.
+- **Banco:** migração que adiciona o id do Pedro nas políticas de update/delete de `compras`.
+- **Sem mudanças** nas regras do Natanael, nas demais permissões, ou no fluxo de notificações.
