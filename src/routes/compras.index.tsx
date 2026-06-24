@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, ChevronRight } from "lucide-react";
 import { CompraDialog } from "@/components/CompraDialog";
-import { COMPRA_STATUSES, canMoveCompra, canNatanaelMoveTo, moveBlockedMessage, type CompraStatus } from "@/lib/compras";
+import { COMPRA_STATUSES, canMoveCompra, canNatanaelMoveTo, moveBlockedMessage, PEDRO_EMAIL, PEDRO_MOVE_BLOCKED_MSG, type CompraStatus } from "@/lib/compras";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   DndContext,
@@ -201,8 +201,9 @@ function ComprasKanban() {
     const status = overId as CompraStatus;
     const compra = compras.find((c) => c.id === id);
     if (!compra) return;
-    if (!canMoveCompra(compra, user?.id, isAdmin, user?.email, status)) {
-      toast.error(moveBlockedMessage(compra));
+    if (!canMoveCompra(compra, user?.id, isAdmin, user?.email, status, compra.status)) {
+      const isPedro = !!user?.email && user.email.trim().toLowerCase() === PEDRO_EMAIL;
+      toast.error(isPedro ? PEDRO_MOVE_BLOCKED_MSG : moveBlockedMessage(compra));
       return;
     }
     await advanceToStatus(compra, status);
@@ -287,7 +288,7 @@ function ComprasKanban() {
             <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={byStatus[s.key]?.length ?? 0}>
               {(byStatus[s.key] ?? []).map((c) => {
                 const next = nextStatus(c.status);
-                const canMove = canMoveCompra(c, user?.id, isAdmin, user?.email);
+                const canMove = canMoveCompra(c, user?.id, isAdmin, user?.email, next ?? undefined, c.status);
                 return (
                   <Card
                     key={c.id}
