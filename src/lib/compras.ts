@@ -35,9 +35,16 @@ export const STATUS_LABEL: Record<CompraStatus, string> = COMPRA_STATUSES.reduce
 export const NATANAEL_USER_ID = "fd75a882-75fe-4e5b-935b-d650f050d6be";
 const NATANAEL_NOME = "Natanael";
 
-// Email do Pedro: pode editar cards e mover apenas entre as colunas permitidas
+// Email do Pedro: pode editar qualquer card, mas só pode mover nestes pares (origem → destino)
 export const PEDRO_EMAIL = "pedro123jrsergio@gmail.com";
-export const PEDRO_ALLOWED_STATUSES: CompraStatus[] = ["solicitacao", "analise", "pendente_aprovacao"];
+export const PEDRO_ALLOWED_MOVES: Array<[CompraStatus, CompraStatus]> = [
+  ["solicitacao", "analise"],
+  ["analise", "pendente_aprovacao"],
+];
+const PEDRO_ALLOWED_SOURCES: CompraStatus[] = PEDRO_ALLOWED_MOVES.map(([from]) => from);
+
+export const PEDRO_MOVE_BLOCKED_MSG =
+  "Pedro só pode mover cards de Solicitação → Análise e de Análise → Pendente Aprovação.";
 
 function isNatanaelSolicitante(compra: { solicitante?: string | null; solicitante_id?: string | null }): boolean {
   if (compra.solicitante_id && compra.solicitante_id === NATANAEL_USER_ID) return true;
