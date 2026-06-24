@@ -41,6 +41,7 @@ type Compra = {
   comprador: string | null;
   data_solicitacao: string | null;
   data_compra: string | null;
+  data_servico: string | null;
   valor_total: number | null;
   responsavel_id: string | null;
   responsavel_nome: string | null;
@@ -75,7 +76,7 @@ function ComprasKanban() {
     queryFn: async () => {
       const { data, error } = await sb
         .from("compras")
-        .select("id,numero,status,titulo,solicitante,solicitante_id,fornecedor,comprador,data_solicitacao,data_compra,valor_total,responsavel_id,responsavel_nome,tipo_compra,created_by")
+        .select("id,numero,status,titulo,solicitante,solicitante_id,fornecedor,comprador,data_solicitacao,data_compra,data_servico,valor_total,responsavel_id,responsavel_nome,tipo_compra,created_by")
 
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -438,7 +439,11 @@ function Card({
               </div>
             )}
 
-            <div>{compra.data_compra ? `Comprada: ${formatDate(compra.data_compra)}` : "Não comprado"}</div>
+            {compra.tipo_compra === "servico" ? (
+              <div>{compra.data_servico ? `Serviço: ${formatDate(compra.data_servico)}` : "Sem data de serviço"}</div>
+            ) : (
+              <div>{compra.data_compra ? `Comprada: ${formatDate(compra.data_compra)}` : "Não comprado"}</div>
+            )}
             {compra.valor_total != null && (
               <div className="font-medium text-foreground">
                 {Number(compra.valor_total).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}

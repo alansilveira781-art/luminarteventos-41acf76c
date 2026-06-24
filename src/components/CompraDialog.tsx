@@ -50,6 +50,7 @@ export type Compra = {
   comprador?: string | null;
   data_solicitacao?: string | null;
   data_compra?: string | null;
+  data_servico?: string | null;
   parcelamento?: string | null;
   condicao_pagamento?: string | null;
   valor_total?: number | null;
@@ -298,9 +299,15 @@ export function CompraDialog({
               <FormField label="Data da solicitação">
                 <Input type="date" value={form.data_solicitacao ?? ""} onChange={(e) => setForm({ ...form, data_solicitacao: e.target.value })} />
               </FormField>
-              <FormField label="Data da compra">
-                <Input type="date" value={form.data_compra ?? ""} onChange={(e) => setForm({ ...form, data_compra: e.target.value })} />
-              </FormField>
+              {form.tipo_compra === "servico" ? (
+                <FormField label="Data do serviço">
+                  <Input type="date" value={form.data_servico ?? ""} onChange={(e) => setForm({ ...form, data_servico: e.target.value })} />
+                </FormField>
+              ) : (
+                <FormField label="Data da compra">
+                  <Input type="date" value={form.data_compra ?? ""} onChange={(e) => setForm({ ...form, data_compra: e.target.value })} />
+                </FormField>
+              )}
               <FormField label="Parcelamento">
                 <SelectCreatable table="parcelamentos" value={form.parcelamento}
                   onChange={(v) => setForm({ ...form, parcelamento: v })} />
