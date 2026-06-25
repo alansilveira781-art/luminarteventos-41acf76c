@@ -1,42 +1,34 @@
-## Quadro de Despesas — Botão Avançar + Aprovar/Reprovar
+# Separar Módulo "Despesas" e criar novo módulo "Financeiro"
 
-Replicar no Quadro de Despesas o mesmo padrão de avanço já existente no Quadro de Compras, e adicionar botão "Reprovar" também em Compras.
+Dividir o módulo atual em dois: **Despesas** (mantém slug `financeiro`, rotas `/financeiro/*`) com apenas Quadro + Dashboard de Despesas + Configurações; e novo módulo **Financeiro** (slug `financeiro_op`, rotas `/financeiro-op/*`) contendo Rotinas Financeiras, Conta Azul e um Dashboard com abas Conta Azul + Uber.
 
-### Arquivos a alterar (4)
+## Passos
 
-**1. `src/components/DemandaDialog.tsx`**
-- Exportar tipo `DemandaAdvanceOpts = { approve?: boolean; deny?: boolean }`.
-- Adicionar prop opcional `onAdvance?(demanda, opts?)`.
-- Adicionar imports `ChevronRight, CheckCircle2, XCircle` do lucide-react.
-- No `DialogFooter`, antes do botão "Cancelar", injetar lógica:
-  - Se `status === "pendente_aprovacao"` → botões **Aprovar demanda** (verde) e **Reprovar demanda** (vermelho/destructive).
-  - Caso contrário → botão **Avançar para "<próximo>"** (pula `negada`, ignora terminal).
-- Preservar botões "Excluir", "Cancelar" e "Salvar".
+1. **`src/routes/financeiro.dashboard.tsx`** — Remover `Tabs`, `UberDashboard`, `ContaAzulDashboard` e `validateSearch`. Manter apenas o conteúdo atual da aba "Despesas" (KPIs, gráficos e DRE de demandas).
 
-**2. `src/routes/financeiro.index.tsx`** (Quadro de Despesas)
-- Imports: `ChevronRight`, `AvancarCardDialog`, `notifyResponsavel`, tipo `DemandaAdvanceOpts`.
-- Estado `pendingMove` para fluxo de seleção de responsável quando não há default.
-- Helpers `nextStatus(s)` (pula `negada`) e `advanceToStatus(demanda, status, opts)` que:
-  - Usa responsável default do `statusDefaults` quando existir (move + notifica).
-  - Se `opts.force` (aprovar/reprovar), move direto sem exigir responsável.
-  - Senão, abre `AvancarCardDialog` para escolher responsável.
-- Atualizar render do kanban: cada `Card` recebe `nextStatusLabel` e `onAdvance` (quando há próximo status).
-- Passar `onAdvance` ao `DemandaDialog`, derivando target por `opts.approve`/`opts.deny`/sequencial.
-- Renderizar `AvancarCardDialog` controlado por `pendingMove`.
-- Componente `Card`: adicionar botão `ChevronRight` à direita (com `stopPropagation`), e nova linha `Resp.: …` quando houver `responsavel_nome`.
+2. **`src/routes/financeiro-op.tsx`** (novo) — Layout guard que valida `hasModule("financeiro_op")` e renderiza `<Outlet />`.
 
-**3. `src/components/CompraDialog.tsx`** (bônus)
-- Adicionar `XCircle` ao import lucide-react.
-- Estender `AdvanceOpts` com `deny?: boolean`.
-- No status `pendente_aprovacao`, exibir **Aprovar compra** + **Reprovar compra** (lado a lado), ambos validados por `canMoveCompra` para os destinos `aprovada`/`negada`.
+3. **`src/routes/financeiro-op.index.tsx`** (novo) — `<Navigate to="/financeiro-op/dashboard" />`.
 
-**4. `src/routes/compras.index.tsx`**
-- No `onAdvance` passado ao `CompraDialog`, tratar `opts.deny` → `target = "negada"` com `force: true` e toast "Compra reprovada.".
+4. **`src/routes/financeiro-op.dashboard.tsx`** (novo) — Dashboard com abas `contaazul` (default) e `uber`, com filtros de data para Uber, usando os componentes existentes.
 
-### Não tocar
-- `src/lib/demandas.ts`, `src/lib/compras.ts` (regras), banco/migrations, drag-and-drop, demais módulos, botão Excluir.
+5. **`src/routes/financeiro-op.rotinas.tsx`** (novo) — Cópia integral de `financeiro.rotinas.tsx` trocando apenas o path do `createFileRoute` para `/financeiro-op/rotinas`.
 
-### Notas técnicas
-- Reuso de `AvancarCardDialog` e `notifyResponsavel` mantém paridade com Compras.
-- Status `negada` é alcançável apenas via botão "Reprovar"; o avanço sequencial sempre pula `negada`.
-- Permissões: Despesas continuam abertas (qualquer autenticado pode avançar); Compras seguem usando `canMoveCompra`.
+6. **`src/routes/financeiro-op.conta-azul.tsx`** (novo) — Cópia integral de `financeiro.conta-azul.tsx` trocando apenas o path para `/financeiro-op/conta-azul`.
+
+7. **`src/components/AppSidebar.tsx`**:
+   - Remover "Rotinas Financeiras" e "Conta Azul" do grupo Despesas.
+   - Adicionar grupo "Financeiro" com Dashboard / Rotinas / Conta Azul apontando para `/financeiro-op/*` e `module: "financeiro_op"`.
+   - Inserir `"Financeiro"` no array `groups` após `"Despesas"`.
+   - Adicionar `FINANCEIRO_OP_ROUTES` e o branch correspondente em `getContext`, ampliando o tipo de retorno.
+   - Em `useNavItems`, filtrar `module === "financeiro_op"` por contexto + acesso.
+
+8. **`src/routes/index.tsx`** — Adicionar `financeiro_op: "DollarSign"` ao `iconFor`.
+
+9. **Migration Supabase** — `INSERT` em `public.modulos` para registrar `financeiro_op` (nome "Financeiro", rota `/financeiro-op`, ícone `DollarSign`, ativo) com `ON CONFLICT DO NOTHING`.
+
+## Observações técnicas
+
+- O novo módulo reutiliza as mesmas tabelas (`demandas`, `ca_*`, `uber_*`) — sem mudanças de RLS.
+- Permissões: usuários precisarão ser vinculados manualmente ao módulo `financeiro_op` em `user_modulos` (admins têm acesso automático).
+- `financeiro.tsx` (layout guard atual), `financeiro.index.tsx`, `financeiro.configuracoes.tsx`, `financeiro.rotinas.tsx` e `financeiro.conta-azul.tsx` permanecem intactos para não quebrar referências/links existentes — apenas saem da sidebar do módulo Despesas.
