@@ -1,34 +1,47 @@
-# Separar Módulo "Despesas" e criar novo módulo "Financeiro"
+Criar uma migration SQL para adicionar políticas de leitura (SELECT) nas tabelas do estoque para usuários do módulo Compras, permitindo que o AlertaEstoqueCard do dashboard de Compras exiba os alertas de estoque.
 
-Dividir o módulo atual em dois: **Despesas** (mantém slug `financeiro`, rotas `/financeiro/*`) com apenas Quadro + Dashboard de Despesas + Configurações; e novo módulo **Financeiro** (slug `financeiro_op`, rotas `/financeiro-op/*`) contendo Rotinas Financeiras, Conta Azul e um Dashboard com abas Conta Azul + Uber.
+Alterações
 
-## Passos
+- Adicionar a migration SQL com três políticas de SELECT:
+  - public.itens → "compras read itens"
+  - public.movimentacoes → "compras read movimentacoes"
+  - public.movimentacao_itens → "compras read movimentacao_itens"
+- Cada política verifica se o usuário autenticado tem acesso ao módulo "compras" via public.has_module_access(auth.uid(), 'compras').
+- As políticas existentes do módulo estoque não serão alteradas nem removidas.
+- Não serão adicionadas políticas de INSERT, UPDATE ou DELETE para compras nessas tabelas.
+- Nenhum arquivo .tsx será alterado.
 
-1. **`src/routes/financeiro.dashboard.tsx`** — Remover `Tabs`, `UberDashboard`, `ContaAzulDashboard` e `validateSearch`. Manter apenas o conteúdo atual da aba "Despesas" (KPIs, gráficos e DRE de demandas).
+Detalhes técnicos
 
-2. **`src/routes/financeiro-op.tsx`** (novo) — Layout guard que valida `hasModule("financeiro_op")` e renderiza `<Outlet />`.
+- Usar a ferramenta supabase--migration para executar a migration no banco.
+- SQL a ser executado:
 
-3. **`src/routes/financeiro-op.index.tsx`** (novo) — `<Navigate to="/financeiro-op/dashboard" />`.
+```sql
+-- Permite que usuários do módulo "compras" leiam itens, movimentacoes e
+-- movimentacao_itens para exibir os alertas de estoque no dashboard de Compras.
+-- As políticas de escrita continuam restritas ao módulo "estoque".
 
-4. **`src/routes/financeiro-op.dashboard.tsx`** (novo) — Dashboard com abas `contaazul` (default) e `uber`, com filtros de data para Uber, usando os componentes existentes.
+CREATE POLICY "compras read itens"
+  ON public.itens
+  FOR SELECT
+  TO authenticated
+  USING (public.has_module_access(auth.uid(), 'compras'));
 
-5. **`src/routes/financeiro-op.rotinas.tsx`** (novo) — Cópia integral de `financeiro.rotinas.tsx` trocando apenas o path do `createFileRoute` para `/financeiro-op/rotinas`.
+CREATE POLICY "compras read movimentacoes"
+  ON public.movimentacoes
+  FOR SELECT
+  TO authenticated
+  USING (public.has_module_access(auth.uid(), 'compras'));
 
-6. **`src/routes/financeiro-op.conta-azul.tsx`** (novo) — Cópia integral de `financeiro.conta-azul.tsx` trocando apenas o path para `/financeiro-op/conta-azul`.
+CREATE POLICY "compras read movimentacao_itens"
+  ON public.movimentacao_itens
+  FOR SELECT
+  TO authenticated
+  USING (public.has_module_access(auth.uid(), 'compras'));
+```
 
-7. **`src/components/AppSidebar.tsx`**:
-   - Remover "Rotinas Financeiras" e "Conta Azul" do grupo Despesas.
-   - Adicionar grupo "Financeiro" com Dashboard / Rotinas / Conta Azul apontando para `/financeiro-op/*` e `module: "financeiro_op"`.
-   - Inserir `"Financeiro"` no array `groups` após `"Despesas"`.
-   - Adicionar `FINANCEIRO_OP_ROUTES` e o branch correspondente em `getContext`, ampliando o tipo de retorno.
-   - Em `useNavItems`, filtrar `module === "financeiro_op"` por contexto + acesso.
+Critérios de aceite
 
-8. **`src/routes/index.tsx`** — Adicionar `financeiro_op: "DollarSign"` ao `iconFor`.
-
-9. **Migration Supabase** — `INSERT` em `public.modulos` para registrar `financeiro_op` (nome "Financeiro", rota `/financeiro-op`, ícone `DollarSign`, ativo) com `ON CONFLICT DO NOTHING`.
-
-## Observações técnicas
-
-- O novo módulo reutiliza as mesmas tabelas (`demandas`, `ca_*`, `uber_*`) — sem mudanças de RLS.
-- Permissões: usuários precisarão ser vinculados manualmente ao módulo `financeiro_op` em `user_modulos` (admins têm acesso automático).
-- `financeiro.tsx` (layout guard atual), `financeiro.index.tsx`, `financeiro.configuracoes.tsx`, `financeiro.rotinas.tsx` e `financeiro.conta-azul.tsx` permanecem intactos para não quebrar referências/links existentes — apenas saem da sidebar do módulo Despesas.
+- Usuários com acesso ao módulo Compras (e sem acesso ao módulo Estoque) passam a visualizar os alertas de estoque no dashboard de Compras.
+- Usuários do módulo Estoque continuam com acesso inalterado.
+- Não há mudanças de permissão de escrita para compras nas tabelas de estoque.
