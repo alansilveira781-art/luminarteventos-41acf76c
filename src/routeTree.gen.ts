@@ -18,6 +18,7 @@ import { Route as PatrimonioRouteImport } from './routes/patrimonio'
 import { Route as NotificacoesRouteImport } from './routes/notificacoes'
 import { Route as JuridicoRouteImport } from './routes/juridico'
 import { Route as FornecedoresRouteImport } from './routes/fornecedores'
+import { Route as FinanceiroOpRouteImport } from './routes/financeiro-op'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as EntradasRouteImport } from './routes/entradas'
 import { Route as DevolucoesRouteImport } from './routes/devolucoes'
@@ -32,6 +33,7 @@ import { Route as RhIndexRouteImport } from './routes/rh.index'
 import { Route as PatrimonioIndexRouteImport } from './routes/patrimonio.index'
 import { Route as JuridicoIndexRouteImport } from './routes/juridico.index'
 import { Route as FinanceiroIndexRouteImport } from './routes/financeiro.index'
+import { Route as FinanceiroOpIndexRouteImport } from './routes/financeiro-op.index'
 import { Route as EstoqueIndexRouteImport } from './routes/estoque.index'
 import { Route as ContabilIndexRouteImport } from './routes/contabil.index'
 import { Route as ComprasIndexRouteImport } from './routes/compras.index'
@@ -46,6 +48,9 @@ import { Route as FinanceiroRotinasRouteImport } from './routes/financeiro.rotin
 import { Route as FinanceiroDashboardRouteImport } from './routes/financeiro.dashboard'
 import { Route as FinanceiroContaAzulRouteImport } from './routes/financeiro.conta-azul'
 import { Route as FinanceiroConfiguracoesRouteImport } from './routes/financeiro.configuracoes'
+import { Route as FinanceiroOpRotinasRouteImport } from './routes/financeiro-op.rotinas'
+import { Route as FinanceiroOpDashboardRouteImport } from './routes/financeiro-op.dashboard'
+import { Route as FinanceiroOpContaAzulRouteImport } from './routes/financeiro-op.conta-azul'
 import { Route as EstoqueAReceberRouteImport } from './routes/estoque.a-receber'
 import { Route as EstoqueItemIdRouteImport } from './routes/estoque.$itemId'
 import { Route as ContabilRecebimentosRouteImport } from './routes/contabil.recebimentos'
@@ -128,6 +133,11 @@ const FornecedoresRoute = FornecedoresRouteImport.update({
   path: '/fornecedores',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FinanceiroOpRoute = FinanceiroOpRouteImport.update({
+  id: '/financeiro-op',
+  path: '/financeiro-op',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FinanceiroRoute = FinanceiroRouteImport.update({
   id: '/financeiro',
   path: '/financeiro',
@@ -198,6 +208,11 @@ const FinanceiroIndexRoute = FinanceiroIndexRouteImport.update({
   path: '/',
   getParentRoute: () => FinanceiroRoute,
 } as any)
+const FinanceiroOpIndexRoute = FinanceiroOpIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => FinanceiroOpRoute,
+} as any)
 const EstoqueIndexRoute = EstoqueIndexRouteImport.update({
   id: '/estoque/',
   path: '/estoque/',
@@ -267,6 +282,21 @@ const FinanceiroConfiguracoesRoute = FinanceiroConfiguracoesRouteImport.update({
   id: '/configuracoes',
   path: '/configuracoes',
   getParentRoute: () => FinanceiroRoute,
+} as any)
+const FinanceiroOpRotinasRoute = FinanceiroOpRotinasRouteImport.update({
+  id: '/rotinas',
+  path: '/rotinas',
+  getParentRoute: () => FinanceiroOpRoute,
+} as any)
+const FinanceiroOpDashboardRoute = FinanceiroOpDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => FinanceiroOpRoute,
+} as any)
+const FinanceiroOpContaAzulRoute = FinanceiroOpContaAzulRouteImport.update({
+  id: '/conta-azul',
+  path: '/conta-azul',
+  getParentRoute: () => FinanceiroOpRoute,
 } as any)
 const EstoqueAReceberRoute = EstoqueAReceberRouteImport.update({
   id: '/estoque/a-receber',
@@ -469,6 +499,7 @@ export interface FileRoutesByFullPath {
   '/devolucoes': typeof DevolucoesRoute
   '/entradas': typeof EntradasRoute
   '/financeiro': typeof FinanceiroRouteWithChildren
+  '/financeiro-op': typeof FinanceiroOpRouteWithChildren
   '/fornecedores': typeof FornecedoresRoute
   '/juridico': typeof JuridicoRouteWithChildren
   '/notificacoes': typeof NotificacoesRoute
@@ -497,6 +528,9 @@ export interface FileRoutesByFullPath {
   '/contabil/recebimentos': typeof ContabilRecebimentosRoute
   '/estoque/$itemId': typeof EstoqueItemIdRoute
   '/estoque/a-receber': typeof EstoqueAReceberRoute
+  '/financeiro-op/conta-azul': typeof FinanceiroOpContaAzulRoute
+  '/financeiro-op/dashboard': typeof FinanceiroOpDashboardRoute
+  '/financeiro-op/rotinas': typeof FinanceiroOpRotinasRoute
   '/financeiro/configuracoes': typeof FinanceiroConfiguracoesRoute
   '/financeiro/conta-azul': typeof FinanceiroContaAzulRoute
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
@@ -511,6 +545,7 @@ export interface FileRoutesByFullPath {
   '/compras/': typeof ComprasIndexRoute
   '/contabil/': typeof ContabilIndexRoute
   '/estoque/': typeof EstoqueIndexRoute
+  '/financeiro-op/': typeof FinanceiroOpIndexRoute
   '/financeiro/': typeof FinanceiroIndexRoute
   '/juridico/': typeof JuridicoIndexRoute
   '/patrimonio/': typeof PatrimonioIndexRoute
@@ -563,6 +598,9 @@ export interface FileRoutesByTo {
   '/contabil/recebimentos': typeof ContabilRecebimentosRoute
   '/estoque/$itemId': typeof EstoqueItemIdRoute
   '/estoque/a-receber': typeof EstoqueAReceberRoute
+  '/financeiro-op/conta-azul': typeof FinanceiroOpContaAzulRoute
+  '/financeiro-op/dashboard': typeof FinanceiroOpDashboardRoute
+  '/financeiro-op/rotinas': typeof FinanceiroOpRotinasRoute
   '/financeiro/configuracoes': typeof FinanceiroConfiguracoesRoute
   '/financeiro/conta-azul': typeof FinanceiroContaAzulRoute
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
@@ -577,6 +615,7 @@ export interface FileRoutesByTo {
   '/compras': typeof ComprasIndexRoute
   '/contabil': typeof ContabilIndexRoute
   '/estoque': typeof EstoqueIndexRoute
+  '/financeiro-op': typeof FinanceiroOpIndexRoute
   '/financeiro': typeof FinanceiroIndexRoute
   '/juridico': typeof JuridicoIndexRoute
   '/patrimonio': typeof PatrimonioIndexRoute
@@ -611,6 +650,7 @@ export interface FileRoutesById {
   '/devolucoes': typeof DevolucoesRoute
   '/entradas': typeof EntradasRoute
   '/financeiro': typeof FinanceiroRouteWithChildren
+  '/financeiro-op': typeof FinanceiroOpRouteWithChildren
   '/fornecedores': typeof FornecedoresRoute
   '/juridico': typeof JuridicoRouteWithChildren
   '/notificacoes': typeof NotificacoesRoute
@@ -639,6 +679,9 @@ export interface FileRoutesById {
   '/contabil/recebimentos': typeof ContabilRecebimentosRoute
   '/estoque/$itemId': typeof EstoqueItemIdRoute
   '/estoque/a-receber': typeof EstoqueAReceberRoute
+  '/financeiro-op/conta-azul': typeof FinanceiroOpContaAzulRoute
+  '/financeiro-op/dashboard': typeof FinanceiroOpDashboardRoute
+  '/financeiro-op/rotinas': typeof FinanceiroOpRotinasRoute
   '/financeiro/configuracoes': typeof FinanceiroConfiguracoesRoute
   '/financeiro/conta-azul': typeof FinanceiroContaAzulRoute
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
@@ -653,6 +696,7 @@ export interface FileRoutesById {
   '/compras/': typeof ComprasIndexRoute
   '/contabil/': typeof ContabilIndexRoute
   '/estoque/': typeof EstoqueIndexRoute
+  '/financeiro-op/': typeof FinanceiroOpIndexRoute
   '/financeiro/': typeof FinanceiroIndexRoute
   '/juridico/': typeof JuridicoIndexRoute
   '/patrimonio/': typeof PatrimonioIndexRoute
@@ -688,6 +732,7 @@ export interface FileRouteTypes {
     | '/devolucoes'
     | '/entradas'
     | '/financeiro'
+    | '/financeiro-op'
     | '/fornecedores'
     | '/juridico'
     | '/notificacoes'
@@ -716,6 +761,9 @@ export interface FileRouteTypes {
     | '/contabil/recebimentos'
     | '/estoque/$itemId'
     | '/estoque/a-receber'
+    | '/financeiro-op/conta-azul'
+    | '/financeiro-op/dashboard'
+    | '/financeiro-op/rotinas'
     | '/financeiro/configuracoes'
     | '/financeiro/conta-azul'
     | '/financeiro/dashboard'
@@ -730,6 +778,7 @@ export interface FileRouteTypes {
     | '/compras/'
     | '/contabil/'
     | '/estoque/'
+    | '/financeiro-op/'
     | '/financeiro/'
     | '/juridico/'
     | '/patrimonio/'
@@ -782,6 +831,9 @@ export interface FileRouteTypes {
     | '/contabil/recebimentos'
     | '/estoque/$itemId'
     | '/estoque/a-receber'
+    | '/financeiro-op/conta-azul'
+    | '/financeiro-op/dashboard'
+    | '/financeiro-op/rotinas'
     | '/financeiro/configuracoes'
     | '/financeiro/conta-azul'
     | '/financeiro/dashboard'
@@ -796,6 +848,7 @@ export interface FileRouteTypes {
     | '/compras'
     | '/contabil'
     | '/estoque'
+    | '/financeiro-op'
     | '/financeiro'
     | '/juridico'
     | '/patrimonio'
@@ -829,6 +882,7 @@ export interface FileRouteTypes {
     | '/devolucoes'
     | '/entradas'
     | '/financeiro'
+    | '/financeiro-op'
     | '/fornecedores'
     | '/juridico'
     | '/notificacoes'
@@ -857,6 +911,9 @@ export interface FileRouteTypes {
     | '/contabil/recebimentos'
     | '/estoque/$itemId'
     | '/estoque/a-receber'
+    | '/financeiro-op/conta-azul'
+    | '/financeiro-op/dashboard'
+    | '/financeiro-op/rotinas'
     | '/financeiro/configuracoes'
     | '/financeiro/conta-azul'
     | '/financeiro/dashboard'
@@ -871,6 +928,7 @@ export interface FileRouteTypes {
     | '/compras/'
     | '/contabil/'
     | '/estoque/'
+    | '/financeiro-op/'
     | '/financeiro/'
     | '/juridico/'
     | '/patrimonio/'
@@ -905,6 +963,7 @@ export interface RootRouteChildren {
   DevolucoesRoute: typeof DevolucoesRoute
   EntradasRoute: typeof EntradasRoute
   FinanceiroRoute: typeof FinanceiroRouteWithChildren
+  FinanceiroOpRoute: typeof FinanceiroOpRouteWithChildren
   FornecedoresRoute: typeof FornecedoresRoute
   JuridicoRoute: typeof JuridicoRouteWithChildren
   NotificacoesRoute: typeof NotificacoesRoute
@@ -993,6 +1052,13 @@ declare module '@tanstack/react-router' {
       path: '/fornecedores'
       fullPath: '/fornecedores'
       preLoaderRoute: typeof FornecedoresRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/financeiro-op': {
+      id: '/financeiro-op'
+      path: '/financeiro-op'
+      fullPath: '/financeiro-op'
+      preLoaderRoute: typeof FinanceiroOpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/financeiro': {
@@ -1093,6 +1159,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FinanceiroIndexRouteImport
       parentRoute: typeof FinanceiroRoute
     }
+    '/financeiro-op/': {
+      id: '/financeiro-op/'
+      path: '/'
+      fullPath: '/financeiro-op/'
+      preLoaderRoute: typeof FinanceiroOpIndexRouteImport
+      parentRoute: typeof FinanceiroOpRoute
+    }
     '/estoque/': {
       id: '/estoque/'
       path: '/estoque'
@@ -1190,6 +1263,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/financeiro/configuracoes'
       preLoaderRoute: typeof FinanceiroConfiguracoesRouteImport
       parentRoute: typeof FinanceiroRoute
+    }
+    '/financeiro-op/rotinas': {
+      id: '/financeiro-op/rotinas'
+      path: '/rotinas'
+      fullPath: '/financeiro-op/rotinas'
+      preLoaderRoute: typeof FinanceiroOpRotinasRouteImport
+      parentRoute: typeof FinanceiroOpRoute
+    }
+    '/financeiro-op/dashboard': {
+      id: '/financeiro-op/dashboard'
+      path: '/dashboard'
+      fullPath: '/financeiro-op/dashboard'
+      preLoaderRoute: typeof FinanceiroOpDashboardRouteImport
+      parentRoute: typeof FinanceiroOpRoute
+    }
+    '/financeiro-op/conta-azul': {
+      id: '/financeiro-op/conta-azul'
+      path: '/conta-azul'
+      fullPath: '/financeiro-op/conta-azul'
+      preLoaderRoute: typeof FinanceiroOpContaAzulRouteImport
+      parentRoute: typeof FinanceiroOpRoute
     }
     '/estoque/a-receber': {
       id: '/estoque/a-receber'
@@ -1566,6 +1660,24 @@ const FinanceiroRouteWithChildren = FinanceiroRoute._addFileChildren(
   FinanceiroRouteChildren,
 )
 
+interface FinanceiroOpRouteChildren {
+  FinanceiroOpContaAzulRoute: typeof FinanceiroOpContaAzulRoute
+  FinanceiroOpDashboardRoute: typeof FinanceiroOpDashboardRoute
+  FinanceiroOpRotinasRoute: typeof FinanceiroOpRotinasRoute
+  FinanceiroOpIndexRoute: typeof FinanceiroOpIndexRoute
+}
+
+const FinanceiroOpRouteChildren: FinanceiroOpRouteChildren = {
+  FinanceiroOpContaAzulRoute: FinanceiroOpContaAzulRoute,
+  FinanceiroOpDashboardRoute: FinanceiroOpDashboardRoute,
+  FinanceiroOpRotinasRoute: FinanceiroOpRotinasRoute,
+  FinanceiroOpIndexRoute: FinanceiroOpIndexRoute,
+}
+
+const FinanceiroOpRouteWithChildren = FinanceiroOpRoute._addFileChildren(
+  FinanceiroOpRouteChildren,
+)
+
 interface JuridicoRouteChildren {
   JuridicoModelosRoute: typeof JuridicoModelosRoute
   JuridicoIndexRoute: typeof JuridicoIndexRoute
@@ -1621,6 +1733,7 @@ const rootRouteChildren: RootRouteChildren = {
   DevolucoesRoute: DevolucoesRoute,
   EntradasRoute: EntradasRoute,
   FinanceiroRoute: FinanceiroRouteWithChildren,
+  FinanceiroOpRoute: FinanceiroOpRouteWithChildren,
   FornecedoresRoute: FornecedoresRoute,
   JuridicoRoute: JuridicoRouteWithChildren,
   NotificacoesRoute: NotificacoesRoute,
