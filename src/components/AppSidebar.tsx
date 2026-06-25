@@ -64,9 +64,10 @@ const allItems: NavItem[] = [
   { title: "Configurações", url: "/compras/configuracoes", icon: Settings, group: "Compras", module: "compras", moduleAdminOnly: "compras" },
   { title: "Dashboard", url: "/financeiro/dashboard", icon: BarChart3, group: "Despesas", module: "financeiro" },
   { title: "Quadro de Despesas", url: "/financeiro", icon: KanbanSquare, group: "Despesas", module: "financeiro" },
-  { title: "Rotinas Financeiras", url: "/financeiro/rotinas", icon: ClipboardCheck, group: "Despesas", module: "financeiro" },
-  { title: "Conta Azul", url: "/financeiro/conta-azul", icon: Link2, group: "Despesas", module: "financeiro" },
   { title: "Configurações", url: "/financeiro/configuracoes", icon: Settings, group: "Despesas", module: "financeiro", moduleAdminOnly: "financeiro" },
+  { title: "Dashboard", url: "/financeiro-op/dashboard", icon: BarChart3, group: "Financeiro", module: "financeiro_op" },
+  { title: "Rotinas Financeiras", url: "/financeiro-op/rotinas", icon: ClipboardCheck, group: "Financeiro", module: "financeiro_op" },
+  { title: "Conta Azul", url: "/financeiro-op/conta-azul", icon: Link2, group: "Financeiro", module: "financeiro_op" },
   { title: "Dashboard", url: "/comercial/dashboard", icon: BarChart3, group: "Comercial", module: "comercial" },
   { title: "Quadro de Vendas", url: "/comercial", icon: KanbanSquare, group: "Comercial", module: "comercial" },
   { title: "Vendas", url: "/comercial/vendas", icon: DollarSign, group: "Comercial", module: "comercial", moduleAdminOnly: "comercial" },
@@ -92,12 +93,13 @@ const allItems: NavItem[] = [
   { title: "Administração", url: "/admin", icon: Shield, group: "Administração", adminOnly: true },
 ];
 
-const groups = ["Visão geral", "Estoque", "Compras", "Despesas", "Comercial", "Contábil", "Jurídico", "Patrimônio", "Recursos Humanos", "Administração"];
+const groups = ["Visão geral", "Estoque", "Compras", "Despesas", "Financeiro", "Comercial", "Contábil", "Jurídico", "Patrimônio", "Recursos Humanos", "Administração"];
 
 
 const ESTOQUE_ROUTES = ["/dashboard", "/estoque", "/solicitantes", "/fornecedores", "/entradas", "/saidas", "/devolucoes", "/relatorios"];
 const COMPRAS_ROUTES = ["/compras"];
 const FINANCEIRO_ROUTES = ["/financeiro"];
+const FINANCEIRO_OP_ROUTES = ["/financeiro-op"];
 const COMERCIAL_ROUTES = ["/comercial"];
 const CONTABIL_ROUTES = ["/contabil"];
 const JURIDICO_ROUTES = ["/juridico"];
@@ -115,13 +117,14 @@ function isActiveUrl(pathname: string, url: string, allUrls: string[] = []) {
   return pathname.startsWith(url + "/");
 }
 
-function getContext(pathname: string): "home" | "estoque" | "compras" | "financeiro" | "comercial" | "contabil" | "juridico" | "patrimonio" | "rh" | "admin" {
+function getContext(pathname: string): "home" | "estoque" | "compras" | "financeiro" | "financeiro_op" | "comercial" | "contabil" | "juridico" | "patrimonio" | "rh" | "admin" {
   if (pathname.startsWith("/admin")) return "admin";
   if (RH_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) return "rh";
   if (PATRIMONIO_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) return "patrimonio";
   if (JURIDICO_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) return "juridico";
   if (CONTABIL_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) return "contabil";
   if (COMERCIAL_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) return "comercial";
+  if (FINANCEIRO_OP_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) return "financeiro_op";
   if (FINANCEIRO_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) return "financeiro";
   if (COMPRAS_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) return "compras";
   if (ESTOQUE_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) return "estoque";
@@ -140,6 +143,7 @@ function useNavItems(pathname: string) {
     if (i.module === "estoque") return ctx === "estoque" && (isAdmin || hasModule("estoque"));
     if (i.module === "compras") return ctx === "compras" && (isAdmin || hasModule("compras"));
     if (i.module === "financeiro") return ctx === "financeiro" && (isAdmin || hasModule("financeiro"));
+    if (i.module === "financeiro_op") return ctx === "financeiro_op" && (isAdmin || hasModule("financeiro_op"));
     if (i.module === "comercial") return ctx === "comercial" && (isAdmin || hasModule("comercial"));
     if (i.module === "contabil") return ctx === "contabil" && (isAdmin || hasModule("contabil"));
     if (i.module === "juridico") return ctx === "juridico" && (isAdmin || hasModule("juridico"));
