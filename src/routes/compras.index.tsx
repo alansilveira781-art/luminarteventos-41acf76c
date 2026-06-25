@@ -328,11 +328,15 @@ function ComprasKanban() {
         compraId={editId}
         defaultStatus={defaultStatus}
         onAdvance={async (compraData, opts) => {
-          const target = opts?.approve ? "aprovada" : nextStatus(compraData.status);
+          const target = opts?.deny ? "negada" : opts?.approve ? "aprovada" : nextStatus(compraData.status);
           if (!target) return;
           await advanceToStatus(compraData as unknown as Compra, target, {
-            force: !!opts?.approve,
-            toastMsg: opts?.approve ? "Compra aprovada." : undefined,
+            force: !!(opts?.approve || opts?.deny),
+            toastMsg: opts?.approve
+              ? "Compra aprovada."
+              : opts?.deny
+              ? "Compra reprovada."
+              : undefined,
           });
           setOpen(false);
         }}

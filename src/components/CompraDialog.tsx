@@ -11,7 +11,7 @@ import { FormField, FormSection } from "@/components/FormSection";
 import { ItemSearchSelect } from "@/components/ItemSearchSelect";
 import { SelectCreatable } from "@/components/SelectCreatable";
 import { MentionInput, renderCommentText } from "@/components/MentionInput";
-import { Plus, Trash2, Upload, Download, FileIcon, ChevronRight, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, Upload, Download, FileIcon, ChevronRight, CheckCircle2, XCircle } from "lucide-react";
 import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
@@ -62,7 +62,7 @@ export type Compra = {
   created_by?: string | null;
 };
 
-export type AdvanceOpts = { approve?: boolean };
+export type AdvanceOpts = { approve?: boolean; deny?: boolean };
 
 export function CompraDialog({
   open,
@@ -491,15 +491,26 @@ export function CompraDialog({
               const blocked = moveBlockedMessage(form);
               if (form.status === "pendente_aprovacao") {
                 const canMove = canMoveCompra(form as any, user?.id, isAdmin, user?.email, "aprovada");
+                const canDeny = canMoveCompra(form as any, user?.id, isAdmin, user?.email, "negada");
                 return (
-                  <Button
-                    onClick={() => canMove && onAdvance({ ...form, id: compraId }, { approve: true })}
-                    disabled={!canMove}
-                    title={canMove ? undefined : blocked}
-                    className="bg-success text-success-foreground hover:bg-success/90"
-                  >
-                    <CheckCircle2 className="h-4 w-4 mr-1" /> Aprovar compra
-                  </Button>
+                  <>
+                    <Button
+                      onClick={() => canMove && onAdvance({ ...form, id: compraId }, { approve: true })}
+                      disabled={!canMove}
+                      title={canMove ? undefined : blocked}
+                      className="bg-success text-success-foreground hover:bg-success/90"
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-1" /> Aprovar compra
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => canDeny && onAdvance({ ...form, id: compraId }, { deny: true })}
+                      disabled={!canDeny}
+                      title={canDeny ? undefined : blocked}
+                    >
+                      <XCircle className="h-4 w-4 mr-1" /> Reprovar compra
+                    </Button>
+                  </>
                 );
               }
               const idx = COMPRA_STATUSES.findIndex((s) => s.key === form.status);
