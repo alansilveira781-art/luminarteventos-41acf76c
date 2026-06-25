@@ -5,8 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, ChevronRight } from "lucide-react";
 import { DemandaDialog } from "@/components/DemandaDialog";
+import { AvancarCardDialog } from "@/components/AvancarCardDialog";
+import { notifyResponsavel } from "@/lib/notify";
 import { DEMANDA_STATUSES, type DemandaStatus } from "@/lib/demandas";
 import {
   DndContext,
@@ -46,6 +48,7 @@ function DemandasKanban() {
   const [editId, setEditId] = useState<string | null>(null);
   const [defaultStatus, setDefaultStatus] = useState<DemandaStatus>("solicitacao");
   const [q, setQ] = useState("");
+  const [pendingMove, setPendingMove] = useState<{ id: string; status: DemandaStatus; titulo: string } | null>(null);
 
   const { data: demandas = [] } = useQuery({
     queryKey: ["demandas"],
@@ -114,20 +117,68 @@ function DemandasKanban() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
+  function nextStatus(s: DemandaStatus): DemandaStatus | null {
+    const idx = DEMANDA_STATUSES.findIndex((x) => x.key === s);
+    if (idx < 0) return null;
+    for (let i = idx + 1; i < DEMANDA_STATUSES.length; i++) {
+      const k = DEMANDA_STATUSES[i].key;
+      if (k === "negada") continue;
+      return k;
+    }
+    return null;
+  }
+
+  async function advanceToStatus(
+    demanda: Demanda,
+    status: DemandaStatus,
+    opts?: { force?: boolean; toastMsg?: string },
+  ) {
+    if (demanda.status === status) return;
+    const id = demanda.id;
+    const statusLabel = DEMANDA_STATUSES.find((s) => s.key === status)?.label || status;
+    const titulo = demanda.titulo || demanda.fornecedor || `Demanda ${demanda.numero ?? ""}`;
+
+    const def = statusDefaults.find((d) => d.status === status && d.responsavel_id);
+    if (def?.responsavel_id) {
+      moveStatus.mutate({
+        id,
+        status,
+        responsavelId: def.responsavel_id,
+        responsavelNome: def.responsavel_nome,
+      });
+      notifyResponsavel({
+        userId: def.responsavel_id,
+        titulo: `Despesa: ${statusLabel}`,
+        mensagem: titulo,
+        link: `/financeiro?id=${id}`,
+        tipo: "compra_responsavel",
+      }).catch(() => {});
+      toast.success(opts?.toastMsg ?? `Card movido. ${def.responsavel_nome ?? "Responsável"} foi notificado.`);
+      return;
+    }
+    if (opts?.force) {
+      moveStatus.mutate({ id, status });
+      toast.success(opts.toastMsg ?? "Card movido.");
+      return;
+    }
+    setPendingMove({ id, status, titulo });
+  }
+
   function onDragEnd(e: DragEndEvent) {
     const id = String(e.active.id);
     const overId = e.over?.id ? String(e.over.id) : null;
     if (!overId) return;
-    const status = overId as DemandaStatus;
+    let status: DemandaStatus | undefined;
+    if (DEMANDA_STATUSES.some((s) => s.key === overId)) {
+      status = overId as DemandaStatus;
+    } else {
+      const overDemanda = demandas.find((c) => c.id === overId);
+      status = overDemanda?.status;
+    }
+    if (!status) return;
     const d = demandas.find((c) => c.id === id);
     if (!d || d.status === status) return;
-    const def = statusDefaults.find((x) => x.status === status && x.responsavel_id);
-    if (def?.responsavel_id) {
-      moveStatus.mutate({ id, status, responsavelId: def.responsavel_id, responsavelNome: def.responsavel_nome });
-      toast.success(`Card movido. ${def.responsavel_nome ?? "Responsável"} atribuído.`);
-    } else {
-      moveStatus.mutate({ id, status });
-    }
+    advanceToStatus(d, status);
   }
 
   return (
@@ -187,9 +238,18 @@ function DemandasKanban() {
         <div className="flex gap-3 overflow-x-auto overflow-y-hidden pb-4 items-stretch h-[calc(100dvh-200px)] min-h-[420px]">
           {DEMANDA_STATUSES.map((s) => (
             <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={byStatus[s.key]?.length ?? 0}>
-              {(byStatus[s.key] ?? []).map((c) => (
-                <Card key={c.id} demanda={c} onOpen={() => { setEditId(c.id); setOpen(true); }} />
-              ))}
+              {(byStatus[s.key] ?? []).map((c) => {
+                const next = nextStatus(c.status);
+                return (
+                  <Card
+                    key={c.id}
+                    demanda={c}
+                    onOpen={() => { setEditId(c.id); setOpen(true); }}
+                    nextStatusLabel={next ? (DEMANDA_STATUSES.find((x) => x.key === next)?.label ?? null) : null}
+                    onAdvance={next ? () => advanceToStatus(c, next) : undefined}
+                  />
+                );
+              })}
               <button
                 type="button"
                 onClick={() => { setEditId(null); setDefaultStatus(s.key); setOpen(true); }}
@@ -203,7 +263,50 @@ function DemandasKanban() {
       </DndContext>
       )}
 
-      <DemandaDialog open={open} onOpenChange={setOpen} demandaId={editId} defaultStatus={defaultStatus} />
+      <DemandaDialog
+        open={open}
+        onOpenChange={setOpen}
+        demandaId={editId}
+        defaultStatus={defaultStatus}
+        onAdvance={async (demandaData, opts) => {
+          const target = opts?.deny
+            ? "negada"
+            : opts?.approve
+            ? "aprovada"
+            : nextStatus(demandaData.status as DemandaStatus);
+          if (!target) return;
+          await advanceToStatus(demandaData as unknown as Demanda, target as DemandaStatus, {
+            force: !!(opts?.approve || opts?.deny),
+            toastMsg: opts?.approve
+              ? "Demanda aprovada."
+              : opts?.deny
+              ? "Demanda reprovada."
+              : undefined,
+          });
+          setOpen(false);
+        }}
+      />
+
+      <AvancarCardDialog
+        open={!!pendingMove}
+        onOpenChange={(v) => { if (!v) setPendingMove(null); }}
+        statusLabel={pendingMove ? (DEMANDA_STATUSES.find((s) => s.key === pendingMove.status)?.label || "") : ""}
+        onConfirm={async ({ responsavelId, responsavelNome, observacao }) => {
+          if (!pendingMove) return;
+          const { id, status, titulo } = pendingMove;
+          const statusLabel = DEMANDA_STATUSES.find((s) => s.key === status)?.label || status;
+          moveStatus.mutate({ id, status, responsavelId, responsavelNome });
+          notifyResponsavel({
+            userId: responsavelId,
+            titulo: `Despesa: ${statusLabel}`,
+            mensagem: `${titulo}${observacao ? ` — ${observacao}` : ""}`,
+            link: `/financeiro?id=${id}`,
+            tipo: "compra_responsavel",
+          }).catch(() => {});
+          toast.success(`Card movido. ${responsavelNome} foi notificado.`);
+          setPendingMove(null);
+        }}
+      />
     </>
   );
 }
@@ -229,7 +332,14 @@ function Column({
   );
 }
 
-function Card({ demanda, onOpen }: { demanda: Demanda; onOpen: () => void }) {
+function Card({
+  demanda, onOpen, onAdvance, nextStatusLabel,
+}: {
+  demanda: Demanda;
+  onOpen: () => void;
+  onAdvance?: () => void;
+  nextStatusLabel?: string | null;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: demanda.id });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
   return (
@@ -263,6 +373,7 @@ function Card({ demanda, onOpen }: { demanda: Demanda; onOpen: () => void }) {
           <div className="mt-1.5 space-y-0.5 text-[11px] text-muted-foreground">
             {demanda.solicitante && <div>Solic.: {demanda.solicitante}</div>}
             {demanda.comprador && <div>Comprador: {demanda.comprador}</div>}
+            {demanda.responsavel_nome && <div>Resp.: {demanda.responsavel_nome}</div>}
             <div>{demanda.data_compra ? `Compra/Serviço: ${formatDate(demanda.data_compra)}` : "Não comprado"}</div>
             {demanda.valor_total != null && (
               <div className="font-medium text-foreground">
@@ -271,6 +382,17 @@ function Card({ demanda, onOpen }: { demanda: Demanda; onOpen: () => void }) {
             )}
           </div>
         </button>
+        {onAdvance && nextStatusLabel && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onAdvance(); }}
+            className="shrink-0 p-0.5 text-muted-foreground hover:text-primary transition-colors"
+            title={`Avançar para "${nextStatusLabel}"`}
+            aria-label={`Avançar para ${nextStatusLabel}`}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        )}
       </div>
     </div>
   );
