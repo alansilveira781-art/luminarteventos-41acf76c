@@ -84,7 +84,7 @@ function Hub() {
 }
 
 function iconFor(slug: string) {
-  const map: Record<string, string> = { estoque: "Package", compras: "ShoppingCart", financeiro: "Wallet" };
+  const map: Record<string, string> = { estoque: "Package", compras: "ShoppingCart", financeiro: "Wallet", financeiro_op: "DollarSign" };
   return map[slug] ?? "Boxes";
 }
 
