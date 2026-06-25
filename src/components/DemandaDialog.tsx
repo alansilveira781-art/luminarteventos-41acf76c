@@ -12,7 +12,7 @@ import { SelectCreatable } from "@/components/SelectCreatable";
 import { DbComboboxCreatable } from "@/components/DbComboboxCreatable";
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { MentionInput, renderCommentText } from "@/components/MentionInput";
-import { Trash2, Upload, Download, FileIcon } from "lucide-react";
+import { Trash2, Upload, Download, FileIcon, ChevronRight, CheckCircle2, XCircle } from "lucide-react";
 import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
@@ -46,16 +46,20 @@ export type Demanda = {
   categoria_external_id?: string | null;
 };
 
+export type DemandaAdvanceOpts = { approve?: boolean; deny?: boolean };
+
 export function DemandaDialog({
   open,
   onOpenChange,
   demandaId,
   defaultStatus = "solicitacao",
+  onAdvance,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   demandaId?: string | null;
   defaultStatus?: DemandaStatus;
+  onAdvance?: (demanda: Demanda & { id: string }, opts?: DemandaAdvanceOpts) => void | Promise<void>;
 }) {
   const qc = useQueryClient();
   const { user } = useAuth();
@@ -339,7 +343,46 @@ export function DemandaDialog({
               </Button>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {(() => {
+              if (!demandaId || !onAdvance) return null;
+              if (form.status === "pendente_aprovacao") {
+                return (
+                  <>
+                    <Button
+                      onClick={() => onAdvance({ ...form, id: demandaId }, { approve: true })}
+                      className="bg-success text-success-foreground hover:bg-success/90"
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-1" /> Aprovar demanda
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => onAdvance({ ...form, id: demandaId }, { deny: true })}
+                    >
+                      <XCircle className="h-4 w-4 mr-1" /> Reprovar demanda
+                    </Button>
+                  </>
+                );
+              }
+              const idx = DEMANDA_STATUSES.findIndex((s) => s.key === form.status);
+              let nextKey: DemandaStatus | null = null;
+              let nextLabel: string | null = null;
+              for (let i = idx + 1; i < DEMANDA_STATUSES.length; i++) {
+                if (DEMANDA_STATUSES[i].key === "negada") continue;
+                nextKey = DEMANDA_STATUSES[i].key;
+                nextLabel = DEMANDA_STATUSES[i].label;
+                break;
+              }
+              if (!nextLabel || !nextKey) return null;
+              return (
+                <Button
+                  variant="secondary"
+                  onClick={() => onAdvance({ ...form, id: demandaId })}
+                >
+                  Avançar para "{nextLabel}" <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              );
+            })()}
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button onClick={() => save.mutate()} disabled={save.isPending}>
               {save.isPending ? "Salvando…" : "Salvar"}
