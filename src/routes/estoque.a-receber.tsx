@@ -191,6 +191,8 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
   const [dataMovimento, setDataMovimento] = useState(() => toBRTInputDateTime());
   const [prefilled, setPrefilled] = useState(false);
   const [previewAnexo, setPreviewAnexo] = useState<any | null>(null);
+  const [devolverOpen, setDevolverOpen] = useState(false);
+  const [motivoDevolucao, setMotivoDevolucao] = useState("");
 
   if (compra && !prefilled) {
     setPrefilled(true);
