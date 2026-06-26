@@ -372,14 +372,40 @@ function CalendarioRotinas({ rotinas, onEdit }: { rotinas: Rotina[]; onEdit: (r:
 
 const MAICON_USER_ID = "7df29f9f-beb0-4710-9036-17996e9cbd82";
 
+async function copyToClipboard(text: string): Promise<boolean> {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // fallback abaixo
+    }
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.cssText = "position:fixed;top:0;left:0;opacity:0;pointer-events:none";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 async function shareWithMaicon(rotina: Rotina) {
   const url = `${window.location.origin}/financeiro/rotinas?rotina=${rotina.id}`;
-  try {
-    await navigator.clipboard.writeText(url);
+
+  const copied = await copyToClipboard(url);
+  if (copied) {
     toast.success("Link copiado para a área de transferência");
-  } catch {
-    toast.warning("Não foi possível copiar o link automaticamente");
+  } else {
+    toast.info(`Copie o link manualmente: ${url}`, { duration: 8000 });
   }
+
   try {
     const { error } = await supabase.from("notificacoes").insert({
       user_id: MAICON_USER_ID,
@@ -391,9 +417,10 @@ async function shareWithMaicon(rotina: Rotina) {
     if (error) throw error;
     toast.success("Maicon foi notificado");
   } catch (e: any) {
-    toast.error(`Falha ao notificar: ${e.message ?? e}`);
+    toast.error(`Falha ao notificar Maicon: ${e.message ?? e}`);
   }
 }
+
 
 function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: () => void }) {
   const qc = useQueryClient();
