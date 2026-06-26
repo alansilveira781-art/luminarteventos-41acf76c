@@ -312,6 +312,45 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
     onError: (e: any) => toast.error(e.message ?? "Erro ao finalizar"),
   });
 
+  const devolver = useMutation({
+    mutationFn: async () => {
+      if (!motivoDevolucao.trim()) throw new Error("Informe o motivo da devolução");
+
+      const { data: statusRow, error: statusErr } = await sb
+        .from("compras")
+        .select("status")
+        .eq("id", compraId)
+        .maybeSingle();
+      if (statusErr) throw statusErr;
+      if (!statusRow) throw new Error("Compra não encontrada");
+      if (statusRow.status !== "a_receber") {
+        throw new Error(`Esta compra não está mais em 'A Receber' (status: ${statusRow.status}).`);
+      }
+
+      const { error: updateErr } = await sb
+        .from("compras")
+        .update({ status: "em_andamento" })
+        .eq("id", compraId);
+      if (updateErr) throw updateErr;
+
+      const { data: { user } } = await supabase.auth.getUser();
+      await sb.from("compra_comentarios").insert({
+        compra_id: compraId,
+        user_id: user?.id ?? null,
+        user_nome: user?.user_metadata?.full_name ?? user?.email ?? "Estoque",
+        texto: `🔄 Devolvido para Compras Em Andamento\nMotivo: ${motivoDevolucao.trim()}`,
+      });
+    },
+    onSuccess: () => {
+      toast.success("Compra devolvida para 'Em Andamento' no Quadro de Compras");
+      qc.invalidateQueries({ queryKey: ["compras"] });
+      qc.invalidateQueries({ queryKey: ["compras-receber"] });
+      setDevolverOpen(false);
+      onClose();
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao devolver"),
+  });
+
   function fmtSize(n?: number | null) {
     if (!n) return "—";
     if (n < 1024) return `${n} B`;
