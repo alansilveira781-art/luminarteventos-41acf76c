@@ -1,47 +1,31 @@
-Criar uma migration SQL para adicionar políticas de leitura (SELECT) nas tabelas do estoque para usuários do módulo Compras, permitindo que o AlertaEstoqueCard do dashboard de Compras exiba os alertas de estoque.
+## Objetivo
+Corrigir dois problemas na aba "A Receber" do módulo Estoque:
+1. A baixa do recebimento não reflete no Quadro de Compras (RLS bloqueia UPDATE em `compras` para usuários só do módulo estoque).
+2. Não existe botão "Devolver para Compras" no `ReceberDialog`.
 
-Alterações
+## Alterações
 
-- Adicionar a migration SQL com três políticas de SELECT:
-  - public.itens → "compras read itens"
-  - public.movimentacoes → "compras read movimentacoes"
-  - public.movimentacao_itens → "compras read movimentacao_itens"
-- Cada política verifica se o usuário autenticado tem acesso ao módulo "compras" via public.has_module_access(auth.uid(), 'compras').
-- As políticas existentes do módulo estoque não serão alteradas nem removidas.
-- Não serão adicionadas políticas de INSERT, UPDATE ou DELETE para compras nessas tabelas.
-- Nenhum arquivo .tsx será alterado.
+### 1. Nova migration SQL — restaurar permissão de UPDATE
+Recriar a política `compras_update_owner_or_admin` da tabela `public.compras` para incluir novamente `is_module_admin(auth.uid(), 'estoque')`, mantendo `created_by`, `is_admin` e `is_module_admin('compras')`.
 
-Detalhes técnicos
+### 2. `src/routes/estoque.a-receber.tsx`
+Dentro do `ReceberDialog`:
+- Adicionar imports: `Undo2` em `lucide-react`.
+- Novos estados: `devolverOpen` e `motivoDevolucao`.
+- Nova mutation `devolver`:
+  - Revalida que a compra ainda está em `a_receber`.
+  - Atualiza `compras.status` para `em_andamento`.
+  - Insere registro em `compra_comentarios` com o motivo (prefixado com "🔄 Devolvido para Compras Em Andamento").
+  - Em sucesso: invalida `["compras"]` e `["compras-receber"]`, fecha dialogs, toast.
+- Atualizar `DialogFooter`:
+  - Layout em duas colunas (esquerda: "Devolver para Compras"; direita: "Cancelar" + "Finalizar recebimento").
+  - Sub-dialog inline com `Textarea` obrigatório para o motivo e botão "Confirmar devolução" (variant destructive).
 
-- Usar a ferramenta supabase--migration para executar a migration no banco.
-- SQL a ser executado:
+## Não fazer
+- Não alterar `src/routes/compras.index.tsx` nem `src/components/CompraDialog.tsx` — comentários e movimentação de coluna já ocorrem automaticamente.
+- Não criar novas tabelas (compra_comentarios já existe).
+- Não tocar em outras políticas RLS, migrations ou módulos.
 
-```sql
--- Permite que usuários do módulo "compras" leiam itens, movimentacoes e
--- movimentacao_itens para exibir os alertas de estoque no dashboard de Compras.
--- As políticas de escrita continuam restritas ao módulo "estoque".
-
-CREATE POLICY "compras read itens"
-  ON public.itens
-  FOR SELECT
-  TO authenticated
-  USING (public.has_module_access(auth.uid(), 'compras'));
-
-CREATE POLICY "compras read movimentacoes"
-  ON public.movimentacoes
-  FOR SELECT
-  TO authenticated
-  USING (public.has_module_access(auth.uid(), 'compras'));
-
-CREATE POLICY "compras read movimentacao_itens"
-  ON public.movimentacao_itens
-  FOR SELECT
-  TO authenticated
-  USING (public.has_module_access(auth.uid(), 'compras'));
-```
-
-Critérios de aceite
-
-- Usuários com acesso ao módulo Compras (e sem acesso ao módulo Estoque) passam a visualizar os alertas de estoque no dashboard de Compras.
-- Usuários do módulo Estoque continuam com acesso inalterado.
-- Não há mudanças de permissão de escrita para compras nas tabelas de estoque.
+## Critérios de aceite
+- Usuário com acesso apenas ao módulo Estoque consegue finalizar o recebimento e o card sai do Quadro de Compras (status vira `finalizado`).
+- Botão "Devolver para Compras" aparece no rodapé do ReceberDialog, exige motivo, volta o card para `em_andamento` e registra o motivo nos comentários da compra.
