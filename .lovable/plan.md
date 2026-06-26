@@ -1,31 +1,24 @@
 ## Objetivo
-Corrigir dois problemas na aba "A Receber" do módulo Estoque:
-1. A baixa do recebimento não reflete no Quadro de Compras (RLS bloqueia UPDATE em `compras` para usuários só do módulo estoque).
-2. Não existe botão "Devolver para Compras" no `ReceberDialog`.
+Corrigir o botão "Compartilhar com Maicon" em Rotinas Financeiras, que falha para usuários não-admin (Elano) por dois motivos: clipboard sem fallback e RLS bloqueando INSERT de notificação para outro `user_id`.
 
 ## Alterações
 
-### 1. Nova migration SQL — restaurar permissão de UPDATE
-Recriar a política `compras_update_owner_or_admin` da tabela `public.compras` para incluir novamente `is_module_admin(auth.uid(), 'estoque')`, mantendo `created_by`, `is_admin` e `is_module_admin('compras')`.
+### 1. Migration SQL — política de INSERT em `public.notificacoes`
+Substituir a política `"notificacoes insert own"` por uma nova `"notificacoes insert authenticated"` que permite qualquer usuário autenticado inserir notificações (inclusive para outros `user_id`). Demais políticas (SELECT/UPDATE/DELETE) permanecem inalteradas.
 
-### 2. `src/routes/estoque.a-receber.tsx`
-Dentro do `ReceberDialog`:
-- Adicionar imports: `Undo2` em `lucide-react`.
-- Novos estados: `devolverOpen` e `motivoDevolucao`.
-- Nova mutation `devolver`:
-  - Revalida que a compra ainda está em `a_receber`.
-  - Atualiza `compras.status` para `em_andamento`.
-  - Insere registro em `compra_comentarios` com o motivo (prefixado com "🔄 Devolvido para Compras Em Andamento").
-  - Em sucesso: invalida `["compras"]` e `["compras-receber"]`, fecha dialogs, toast.
-- Atualizar `DialogFooter`:
-  - Layout em duas colunas (esquerda: "Devolver para Compras"; direita: "Cancelar" + "Finalizar recebimento").
-  - Sub-dialog inline com `Textarea` obrigatório para o motivo e botão "Confirmar devolução" (variant destructive).
+### 2. `src/routes/financeiro.rotinas.tsx`
+- Adicionar helper `copyToClipboard(text)`:
+  - Tenta `navigator.clipboard.writeText` em contexto seguro.
+  - Fallback: cria `<textarea>` temporário, seleciona e usa `document.execCommand('copy')`.
+- Reescrever `shareWithMaicon`:
+  - Usa `copyToClipboard`; em caso de falha exibe `toast.info` com o link para cópia manual (duração 8s).
+  - Mantém o INSERT em `notificacoes` para o `MAICON_USER_ID` com mensagem de erro melhorada.
 
 ## Não fazer
-- Não alterar `src/routes/compras.index.tsx` nem `src/components/CompraDialog.tsx` — comentários e movimentação de coluna já ocorrem automaticamente.
-- Não criar novas tabelas (compra_comentarios já existe).
-- Não tocar em outras políticas RLS, migrations ou módulos.
+- Não alterar outras políticas RLS de `notificacoes` nem de outras tabelas.
+- Não criar Edge Functions nem mexer em arquitetura.
+- Não tocar em outros módulos ou arquivos.
 
 ## Critérios de aceite
-- Usuário com acesso apenas ao módulo Estoque consegue finalizar o recebimento e o card sai do Quadro de Compras (status vira `finalizado`).
-- Botão "Devolver para Compras" aparece no rodapé do ReceberDialog, exige motivo, volta o card para `em_andamento` e registra o motivo nos comentários da compra.
+- Elano (não-admin) consegue copiar o link e o Maicon recebe a notificação sem erro de RLS.
+- Quando o clipboard falhar, o link aparece no toast para cópia manual.
