@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { PackageCheck, Plus, FileIcon, Download, AlertTriangle } from "lucide-react";
+import { PackageCheck, Plus, FileIcon, Download, AlertTriangle, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { generateNextSku } from "@/lib/sku";
 import { MoneyInput } from "@/components/MoneyInput";
@@ -191,6 +191,8 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
   const [dataMovimento, setDataMovimento] = useState(() => toBRTInputDateTime());
   const [prefilled, setPrefilled] = useState(false);
   const [previewAnexo, setPreviewAnexo] = useState<any | null>(null);
+  const [devolverOpen, setDevolverOpen] = useState(false);
+  const [motivoDevolucao, setMotivoDevolucao] = useState("");
 
   if (compra && !prefilled) {
     setPrefilled(true);
@@ -308,6 +310,45 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
       onClose();
     },
     onError: (e: any) => toast.error(e.message ?? "Erro ao finalizar"),
+  });
+
+  const devolver = useMutation({
+    mutationFn: async () => {
+      if (!motivoDevolucao.trim()) throw new Error("Informe o motivo da devolução");
+
+      const { data: statusRow, error: statusErr } = await sb
+        .from("compras")
+        .select("status")
+        .eq("id", compraId)
+        .maybeSingle();
+      if (statusErr) throw statusErr;
+      if (!statusRow) throw new Error("Compra não encontrada");
+      if (statusRow.status !== "a_receber") {
+        throw new Error(`Esta compra não está mais em 'A Receber' (status: ${statusRow.status}).`);
+      }
+
+      const { error: updateErr } = await sb
+        .from("compras")
+        .update({ status: "em_andamento" })
+        .eq("id", compraId);
+      if (updateErr) throw updateErr;
+
+      const { data: { user } } = await supabase.auth.getUser();
+      await sb.from("compra_comentarios").insert({
+        compra_id: compraId,
+        user_id: user?.id ?? null,
+        user_nome: user?.user_metadata?.full_name ?? user?.email ?? "Estoque",
+        texto: `🔄 Devolvido para Compras Em Andamento\nMotivo: ${motivoDevolucao.trim()}`,
+      });
+    },
+    onSuccess: () => {
+      toast.success("Compra devolvida para 'Em Andamento' no Quadro de Compras");
+      qc.invalidateQueries({ queryKey: ["compras"] });
+      qc.invalidateQueries({ queryKey: ["compras-receber"] });
+      setDevolverOpen(false);
+      onClose();
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao devolver"),
   });
 
   function fmtSize(n?: number | null) {
@@ -514,15 +555,64 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+        <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-between">
           <Button
-            onClick={() => finalizar.mutate()}
-            disabled={finalizar.isPending || !!statusBlocked || linhasInvalidas}
+            variant="outline"
+            className="border-warning/60 text-warning hover:bg-warning/10"
+            onClick={() => setDevolverOpen(true)}
+            disabled={!!statusBlocked || finalizar.isPending}
           >
-            {finalizar.isPending ? "Processando…" : "Finalizar recebimento"}
+            <Undo2 className="h-4 w-4 mr-1" /> Devolver para Compras
           </Button>
+
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button
+              onClick={() => finalizar.mutate()}
+              disabled={finalizar.isPending || !!statusBlocked || linhasInvalidas}
+            >
+              {finalizar.isPending ? "Processando…" : "Finalizar recebimento"}
+            </Button>
+          </div>
         </DialogFooter>
+
+        {devolverOpen && (
+          <Dialog open onOpenChange={(v) => { if (!v) setDevolverOpen(false); }}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Devolver para Compras Em Andamento</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3 py-2">
+                <p className="text-sm text-muted-foreground">
+                  O card voltará para a coluna <strong>Compra Em Andamento</strong> no Quadro de Compras. O motivo ficará registrado nos comentários da compra.
+                </p>
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">
+                    Motivo / Causa*
+                  </label>
+                  <Textarea
+                    rows={3}
+                    value={motivoDevolucao}
+                    onChange={(e) => setMotivoDevolucao(e.target.value)}
+                    placeholder="Ex: Item com avaria, quantidade divergente, produto errado…"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDevolverOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => devolver.mutate()}
+                  disabled={devolver.isPending || !motivoDevolucao.trim()}
+                >
+                  {devolver.isPending ? "Devolvendo…" : "Confirmar devolução"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
 
         <AnexoViewer
           bucket="compra-anexos"
