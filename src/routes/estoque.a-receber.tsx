@@ -555,15 +555,64 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+        <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-between">
           <Button
-            onClick={() => finalizar.mutate()}
-            disabled={finalizar.isPending || !!statusBlocked || linhasInvalidas}
+            variant="outline"
+            className="border-warning/60 text-warning hover:bg-warning/10"
+            onClick={() => setDevolverOpen(true)}
+            disabled={!!statusBlocked || finalizar.isPending}
           >
-            {finalizar.isPending ? "Processando…" : "Finalizar recebimento"}
+            <Undo2 className="h-4 w-4 mr-1" /> Devolver para Compras
           </Button>
+
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button
+              onClick={() => finalizar.mutate()}
+              disabled={finalizar.isPending || !!statusBlocked || linhasInvalidas}
+            >
+              {finalizar.isPending ? "Processando…" : "Finalizar recebimento"}
+            </Button>
+          </div>
         </DialogFooter>
+
+        {devolverOpen && (
+          <Dialog open onOpenChange={(v) => { if (!v) setDevolverOpen(false); }}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Devolver para Compras Em Andamento</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3 py-2">
+                <p className="text-sm text-muted-foreground">
+                  O card voltará para a coluna <strong>Compra Em Andamento</strong> no Quadro de Compras. O motivo ficará registrado nos comentários da compra.
+                </p>
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">
+                    Motivo / Causa*
+                  </label>
+                  <Textarea
+                    rows={3}
+                    value={motivoDevolucao}
+                    onChange={(e) => setMotivoDevolucao(e.target.value)}
+                    placeholder="Ex: Item com avaria, quantidade divergente, produto errado…"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDevolverOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => devolver.mutate()}
+                  disabled={devolver.isPending || !motivoDevolucao.trim()}
+                >
+                  {devolver.isPending ? "Devolvendo…" : "Confirmar devolução"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
 
         <AnexoViewer
           bucket="compra-anexos"
