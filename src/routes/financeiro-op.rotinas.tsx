@@ -381,12 +381,14 @@ async function shareWithMaicon(rotina: Rotina) {
     toast.warning("Não foi possível copiar o link automaticamente");
   }
   try {
-    const { error } = await supabase.from("notificacoes").insert({
-      user_id: MAICON_USER_ID,
-      tipo: "rotina_compartilhada",
-      titulo: "Rotina compartilhada",
-      mensagem: rotina.titulo,
-      link: `/financeiro/rotinas?rotina=${rotina.id}`,
+    const { error } = await supabase.rpc("enqueue_notificacoes" as any, {
+      rows: [{
+        user_id: MAICON_USER_ID,
+        tipo: "rotina_compartilhada",
+        titulo: "Rotina compartilhada",
+        mensagem: rotina.titulo,
+        link: `/financeiro/rotinas?rotina=${rotina.id}`,
+      }],
     });
     if (error) throw error;
     toast.success("Maicon foi notificado");
