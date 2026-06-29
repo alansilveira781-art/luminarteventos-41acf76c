@@ -5,13 +5,13 @@ import type { CompraStatus } from "./compras";
 export type DemandaStatus = CompraStatus;
 
 export const DEMANDA_STATUSES: { key: DemandaStatus; label: string; color: string }[] = [
-  { key: "solicitacao", label: "Solicitação de Demanda", color: "bg-slate-500" },
+  { key: "solicitacao", label: "Solicitação de Despesa", color: "bg-slate-500" },
   { key: "analise", label: "Análise", color: "bg-blue-500" },
   { key: "pendente_aprovacao", label: "Pendente Aprovação", color: "bg-amber-500" },
-  { key: "aprovada", label: "Demanda Aprovada", color: "bg-emerald-500" },
-  { key: "em_andamento", label: "Demanda Em Andamento", color: "bg-indigo-500" },
+  { key: "aprovada", label: "Despesa Aprovada", color: "bg-emerald-500" },
+  { key: "em_andamento", label: "Despesa Em Andamento", color: "bg-indigo-500" },
   { key: "finalizado", label: "Finalizado", color: "bg-success" },
-  { key: "negada", label: "Demanda Negada", color: "bg-destructive" },
+  { key: "negada", label: "Despesa Negada", color: "bg-destructive" },
 ];
 
 export const DEMANDA_STATUS_LABEL: Record<DemandaStatus, string> = DEMANDA_STATUSES.reduce(
@@ -27,6 +27,7 @@ export const TIPO_DEMANDA_OPTIONS = [
   { value: "manutencao_maquinario", label: "Manutenção de Maquinário" },
   { value: "fardamento", label: "Fardamento" },
   { value: "reformas_construcoes", label: "Reformas & Construções" },
+  { value: "imobilizado", label: "Imobilizado" },
 ] as const;
 
 // Valores legados que foram unificados em "reformas_construcoes" — usados só

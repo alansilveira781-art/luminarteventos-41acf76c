@@ -1,24 +1,29 @@
-## Objetivo
-Corrigir o botão "Compartilhar com Maicon" em Rotinas Financeiras, que falha para usuários não-admin (Elano) por dois motivos: clipboard sem fallback e RLS bloqueando INSERT de notificação para outro `user_id`.
+## Ajustes de nomenclatura no Quadro de Despesas
 
-## Alterações
+### O que será feito
+1. Adicionar o novo tipo **"Imobilizado"** (`imobilizado`) em `src/lib/demandas.ts`, sem nenhuma alteração no banco de dados.
+2. Renomear o label do campo de **"Tipo de demanda"** para **"Tipo de Despesa"** em:
+   - `src/components/DemandaDialog.tsx`
+   - `src/routes/solicitar.tsx`
+3. Renomear os labels exibidos dos status no kanban de Despesas em `src/lib/demandas.ts`:
+   - "Solicitação de Demanda" → "Solicitação de Despesa"
+   - "Demanda Aprovada" → "Despesa Aprovada"
+   - "Demanda Em Andamento" → "Despesa Em Andamento"
+   - "Demanda Negada" → "Despesa Negada"
+4. Renomear o título do gráfico em `src/routes/financeiro.dashboard.tsx` de "Demandas por tipo (R$)" para "Despesas por tipo (R$)".
 
-### 1. Migration SQL — política de INSERT em `public.notificacoes`
-Substituir a política `"notificacoes insert own"` por uma nova `"notificacoes insert authenticated"` que permite qualquer usuário autenticado inserir notificações (inclusive para outros `user_id`). Demais políticas (SELECT/UPDATE/DELETE) permanecem inalteradas.
+### O que NÃO será alterado
+- Nenhuma migration será criada — o valor `imobilizado` será salvo como string na coluna `tipo_demanda` (texto).
+- Os valores de status no banco (`solicitacao`, `aprovada`, `em_andamento`, `negada`, etc.) permanecem iguais; apenas os labels visuais mudam.
+- `src/lib/compras.ts` (COMPRA_STATUSES) não será alterado.
+- Os módulos Compras, Estoque, Comercial, Contábil, Patrimônio e RH não serão afetados.
+- A coluna `tipo_demanda` no banco e em `src/integrations/supabase/types.ts` não será alterada.
 
-### 2. `src/routes/financeiro.rotinas.tsx`
-- Adicionar helper `copyToClipboard(text)`:
-  - Tenta `navigator.clipboard.writeText` em contexto seguro.
-  - Fallback: cria `<textarea>` temporário, seleciona e usa `document.execCommand('copy')`.
-- Reescrever `shareWithMaicon`:
-  - Usa `copyToClipboard`; em caso de falha exibe `toast.info` com o link para cópia manual (duração 8s).
-  - Mantém o INSERT em `notificacoes` para o `MAICON_USER_ID` com mensagem de erro melhorada.
+### Arquivos que serão editados
+- `src/lib/demandas.ts`
+- `src/components/DemandaDialog.tsx`
+- `src/routes/solicitar.tsx`
+- `src/routes/financeiro.dashboard.tsx`
 
-## Não fazer
-- Não alterar outras políticas RLS de `notificacoes` nem de outras tabelas.
-- Não criar Edge Functions nem mexer em arquitetura.
-- Não tocar em outros módulos ou arquivos.
-
-## Critérios de aceite
-- Elano (não-admin) consegue copiar o link e o Maicon recebe a notificação sem erro de RLS.
-- Quando o clipboard falhar, o link aparece no toast para cópia manual.
+### Validação
+- Busca de texto confirmou que não existem outras ocorrências de "Tipo de demanda" ou dos labels de status de demanda no código, garantindo que o ajuste seja completo e isolado.

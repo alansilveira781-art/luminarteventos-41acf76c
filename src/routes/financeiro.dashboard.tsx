@@ -187,7 +187,7 @@ function FinanceiroDashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Demandas por tipo (R$)">
+        <ChartCard title="Despesas por tipo (R$)">
           <ResponsiveContainer width="100%" height={260}>
             <PieChart>
               <Pie data={porTipo} dataKey="valor" nameKey="nome" outerRadius={90} label>
