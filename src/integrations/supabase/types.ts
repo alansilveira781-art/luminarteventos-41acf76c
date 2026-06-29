@@ -3043,6 +3043,7 @@ export type Database = {
         }
         Returns: string
       }
+      enqueue_notificacoes: { Args: { rows: Json }; Returns: undefined }
       get_profile_names: {
         Args: { _ids: string[] }
         Returns: {

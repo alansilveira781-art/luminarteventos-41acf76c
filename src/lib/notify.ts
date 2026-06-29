@@ -66,7 +66,7 @@ export async function notifyResponsiblesForStatus(status: CompraStatus, compraId
     mensagem: titulo,
     link: `/compras?id=${compraId}`,
   }));
-  await sb.from("notificacoes").insert(rows);
+  await sb.rpc("enqueue_notificacoes", { rows });
 }
 
 
@@ -79,7 +79,7 @@ export async function notifyMentions(userIds: string[], compraId: string, texto:
     mensagem: texto.slice(0, 140),
     link: `/compras?id=${compraId}`,
   }));
-  await sb.from("notificacoes").insert(rows);
+  await sb.rpc("enqueue_notificacoes", { rows });
 }
 
 /** Notifica um usuário específico (responsável por um card). */
@@ -91,11 +91,13 @@ export async function notifyResponsavel(params: {
   tipo?: string;
 }) {
   if (!params.userId) return;
-  await sb.from("notificacoes").insert({
-    user_id: params.userId,
-    tipo: params.tipo || "responsavel_card",
-    titulo: params.titulo,
-    mensagem: params.mensagem ?? null,
-    link: params.link ?? null,
+  await sb.rpc("enqueue_notificacoes", {
+    rows: [{
+      user_id: params.userId,
+      tipo: params.tipo || "responsavel_card",
+      titulo: params.titulo,
+      mensagem: params.mensagem ?? null,
+      link: params.link ?? null,
+    }],
   });
 }
