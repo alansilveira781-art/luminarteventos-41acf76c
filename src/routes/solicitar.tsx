@@ -305,7 +305,7 @@ function SolicitarPage() {
                 placeholder={isCompra ? "Ex.: Compra de papel A4" : "Ex.: Manutenção da frota"}
               />
             </Field>
-            <Field label={isCompra ? "Tipo de compra" : "Tipo de demanda"}>
+            <Field label={isCompra ? "Tipo de compra" : "Tipo de Despesa"}>
               <Select value={form.subtipo} onValueChange={(v) => update({ subtipo: v })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione…" />

@@ -181,7 +181,7 @@ export function DemandaDialog({
                   </SelectContent>
                 </Select>
               </FormField>
-              <FormField label="Tipo de demanda">
+              <FormField label="Tipo de Despesa">
                 <Select value={form.tipo_demanda ?? ""} onValueChange={(v) => setForm({ ...form, tipo_demanda: v })}>
                   <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
                   <SelectContent>
