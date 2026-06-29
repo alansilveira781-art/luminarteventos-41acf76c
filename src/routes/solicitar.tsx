@@ -287,8 +287,8 @@ function SolicitarPage() {
               active={form.tipo === "demanda"}
               onClick={() => update({ tipo: "demanda" })}
               icon={<Wallet className="h-7 w-7" />}
-              title="Demanda"
-              desc="Estacionamento, alimentação, manutenção, etc."
+              title="Despesa"
+              desc="Estacionamento, alimentação, manutenção, imobilizado, etc."
             />
           </div>
         </Step>
@@ -353,7 +353,7 @@ function SolicitarPage() {
                   <span className="text-sm">
                     <span className="font-medium">É um reembolso?</span>
                     <span className="block text-xs text-muted-foreground">
-                      Marque se esta demanda é um reembolso a alguém da equipe.
+                      Marque se esta despesa é um reembolso a alguém da equipe.
                     </span>
                   </span>
                 </label>
@@ -448,7 +448,7 @@ function SolicitarPage() {
       {step === 2 && (
         <Step
           title="Detalhes da solicitação"
-          subtitle={isCompra ? "Liste os itens e quem está solicitando." : "Descreva a demanda e quem está solicitando."}
+          subtitle={isCompra ? "Liste os itens e quem está solicitando." : "Descreva a despesa e quem está solicitando."}
         >
           <div className="space-y-5">
             <Field label="Seu nome *">
@@ -556,13 +556,13 @@ function SolicitarPage() {
               </div>
             ) : (
               <>
-                <Field label="Descreva sua demanda *">
+                <Field label="Descreva sua despesa *">
                   <Textarea
                     rows={6}
                     value={form.descricao}
                     maxLength={4000}
                     onChange={(e) => update({ descricao: e.target.value })}
-                    placeholder="Detalhe a demanda, prazos, locais, observações…"
+                    placeholder="Detalhe a despesa, prazos, locais, observações…"
                   />
                   <p className="text-[11px] text-muted-foreground mt-1">
                     {form.descricao.length}/4000
@@ -624,7 +624,7 @@ function SolicitarPage() {
       {step === 3 && (
         <Step title="Confira antes de enviar" subtitle="Revise os dados da solicitação.">
           <div className="rounded-lg border border-border divide-y divide-border text-sm">
-            <Row k="Tipo" v={isCompra ? "Compra" : "Demanda"} />
+            <Row k="Tipo" v={isCompra ? "Compra" : "Despesa"} />
             <Row k="Título" v={form.titulo} />
             {form.subtipo && <Row k="Categoria" v={labelOf(form.tipo!, form.subtipo)} />}
             {form.fornecedor && <Row k="Fornecedor" v={form.fornecedor} />}
