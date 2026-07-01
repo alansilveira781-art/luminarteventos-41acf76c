@@ -1,49 +1,27 @@
-# Dashboard Comercial não mostra vendas — parecer e plano
+## Objetivo
+Fazer com que o Dashboard Comercial (`/comercial/dashboard`) exiba o **Painel de Vendas** no formato exato da imagem enviada, como conteúdo padrão da rota.
 
-## Parecer (o que está acontecendo)
+## Situação atual
+- A rota `/comercial/dashboard/painel` (`src/routes/comercial.dashboard.painel.tsx`) já contém todo o painel exatamente como o mockup: 4 KPIs (Vendas Totais, Quantidade, Desconto, Ticket Médio) com "Período Anterior" + "% LY", Evolução por Trimestre, Ranking Consultores, Valor por Classificação, Ticket Médio com eixo duplo e Gauge Real vs Meta.
+- A rota index (`/comercial/dashboard/`) hoje mostra apenas um card de "Vendas Totais" como stub — é o que o usuário está vendo agora.
+- A sidebar aponta para `/comercial/dashboard`, então o usuário cai no stub.
 
-Confirmado por reprodução com Playwright autenticado no ambiente real:
+## Mudança
+Substituir o conteúdo do arquivo `src/routes/comercial.dashboard.index.tsx` pelo mesmo componente/layout do Painel de Vendas (aproveitando `kpis`, `evolucaoTrimestre`, `evolucaoTicketTrimestre`, `rankingConsultor`, `valorPorClassificacao`, `GaugeRealVsMeta`, `KpiCard`, `FiltrosBar` — tudo já existente).
 
-- O banco tem **1.001 vendas** e as RLS estão OK (checa `has_module_access(auth.uid(), 'comercial')`).
-- A server function `listVendasDb` **está sendo chamada e responde com todas as vendas** (payload de ~1MB contendo o array `rows`).
-- A aba **/comercial/vendas funciona** (mesmo `listVendasDb`, mesma query key raiz).
-- Só **/comercial/dashboard** exibe `0 vendas carregadas · 0 no filtro atual`, mesmo com a resposta chegando com sucesso, sem erros de console e sem `data.error`.
+Assim, ao entrar em **Comercial → Dashboard**, o usuário verá diretamente o Painel de Vendas com:
+- Filtros no topo: Empresa, Ano, Mês
+- 4 KPI cards (valor + Período Anterior + % LY)
+- Evolução de Vendas [Trimestre] (linha)
+- Evolução do Ticket Médio [Trimestre] (linha com eixo duplo Ticket × Quantidade)
+- Ranking Consultores (barras horizontais)
+- Valor Final por Classificação (barras horizontais)
+- Real vs Meta (gauge semicircular)
 
-### Causa raiz
+Nenhum componente novo será criado; nenhum cálculo é alterado.
 
-O `DashboardCtx` (React Context) é **criado e exportado dentro de um arquivo de rota** (`src/routes/comercial.dashboard.tsx`) e **consumido por outro arquivo de rota irmão** (`src/routes/comercial.dashboard.index.tsx`) via `import { useDashboard } from "./comercial.dashboard"`.
+## Observação
+A rota antiga `/comercial/dashboard/painel` continua existindo. Posso removê-la depois se você quiser, mas não é necessário para atender ao pedido.
 
-Com o code-splitting do TanStack Start, cada arquivo de rota vira um chunk separado. Nesse cenário, o módulo `comercial.dashboard.tsx` acaba sendo avaliado em duas instâncias (uma para o layout, outra puxada pelo import do filho), o que cria **dois `createContext` distintos**. Resultado:
-
-- O layout preenche o `Provider` de um Context A com `rows` cheio.
-- O `useDashboard()` do `index` lê de um Context B (nunca “providado”), cai no fallback `return { rows: [], ... }` e mostra `0`.
-
-Isso é consistente com o comportamento observado: sem erro no console, resposta HTTP com todas as linhas, mas UI zerada só na página que consome via contexto.
-
-## Plano de correção
-
-Extrair o Context para um arquivo comum, fora de `src/routes/`.
-
-### 1. Criar `src/lib/comercial/dashboard-context.ts`
-- Mover para lá:
-  - `type Ctx`
-  - `DashboardCtx = createContext<Ctx | null>(null)`
-  - `useDashboard()` (com o mesmo fallback atual)
-  - Reexportar `filtrosIniciais` daqui se preciso, ou continuar importando de `vendas-metrics`.
-
-### 2. Ajustar `src/routes/comercial.dashboard.tsx`
-- Remover a criação local do `DashboardCtx` e `useDashboard`.
-- Importar `DashboardCtx` de `@/lib/comercial/dashboard-context`.
-- Manter todo o resto (query, realtime, effect de correção de ano, Provider e Outlet) igual.
-
-### 3. Ajustar `src/routes/comercial.dashboard.index.tsx`
-- Trocar `import { useDashboard } from "./comercial.dashboard"` por `import { useDashboard } from "@/lib/comercial/dashboard-context"`.
-
-### 4. Validar
-- Rodar novamente o Playwright autenticado em `/comercial/dashboard` e confirmar:
-  - `1.001 vendas carregadas · 1.001 no filtro atual`
-  - Card “Vendas Totais” com valor > 0
-- Confirmar que `/comercial/vendas` continua funcionando.
-
-### Observação
-Nenhuma mudança de schema, RLS ou lógica de negócio é necessária — é apenas um refactor de onde o Context vive. As outras subrotas do dashboard (`painel`, `vendedores`, `propostas`, `indicadores`, `relatorios`) que também consomem `useDashboard` passam a funcionar corretamente pelo mesmo motivo.
+## Confirmar
+Ok fazer com que o Dashboard Comercial padrão já abra nesse Painel de Vendas?
