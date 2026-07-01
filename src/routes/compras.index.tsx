@@ -388,7 +388,11 @@ function ComprasKanban() {
           if (!pendingMove) return;
           const { id, status, titulo } = pendingMove;
           const statusLabel = COMPRA_STATUSES.find((s) => s.key === status)?.label || status;
-          moveStatus.mutate({ id, status, responsavelId, responsavelNome });
+          try {
+            await moveStatus.mutateAsync({ id, status, responsavelId, responsavelNome });
+          } catch {
+            return;
+          }
           notifyResponsavel({
             userId: responsavelId,
             titulo: `Compra: ${statusLabel}`,
