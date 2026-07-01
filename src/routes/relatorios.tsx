@@ -175,6 +175,28 @@ function RelatoriosPage() {
           <FormField label="Data final">
             <Input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} disabled={!meta.needsPeriod} />
           </FormField>
+          <FormField label="Item" wide>
+            <Select value={itemId} onValueChange={setItemId}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <div className="p-2 sticky top-0 bg-popover z-10 border-b">
+                  <Input
+                    placeholder="Buscar por nome ou código…"
+                    value={buscaItem}
+                    onChange={(e) => setBuscaItem(e.target.value)}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    className="h-8"
+                  />
+                </div>
+                <SelectItem value="todos">Todos os itens</SelectItem>
+                {itensFiltrados.map((i) => (
+                  <SelectItem key={i.id} value={i.id}>
+                    {i.codigo ? `${i.codigo} — ` : ""}{i.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
         </FormSection>
         <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
           <FileText className="h-3 w-3" /> {meta.description}
