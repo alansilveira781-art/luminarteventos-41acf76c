@@ -267,6 +267,7 @@ export function CompraDialog({
   function removeItem(idx: number) { setItens((p) => p.filter((_, i) => i !== idx)); }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         {(form as any).numero != null && (
