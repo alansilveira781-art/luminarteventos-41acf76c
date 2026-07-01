@@ -249,6 +249,14 @@ function DashboardHome() {
         >
           Vendedores
         </Button>
+        <Button
+          type="button"
+          variant={secao === "indicadores" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setSecao("indicadores")}
+        >
+          Indicadores
+        </Button>
       </div>
 
       {secao === "painel" && (
