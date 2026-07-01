@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
@@ -49,6 +49,32 @@ function DemandasKanban() {
   const [defaultStatus, setDefaultStatus] = useState<DemandaStatus>("solicitacao");
   const [q, setQ] = useState("");
   const [pendingMove, setPendingMove] = useState<{ id: string; status: DemandaStatus; titulo: string } | null>(null);
+
+  // Abre o card automaticamente quando a URL tem ?id=...
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("id");
+    if (id) { setEditId(id); setOpen(true); }
+  }, []);
+
+  function abrirCard(id: string) {
+    setEditId(id);
+    setOpen(true);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("id", id);
+      window.history.replaceState({}, "", url.toString());
+    }
+  }
+  function limparUrlCard() {
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("id");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }
+
 
   const { data: demandas = [] } = useQuery({
     queryKey: ["demandas"],
