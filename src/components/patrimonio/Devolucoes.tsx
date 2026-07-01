@@ -444,9 +444,26 @@ function DevolucaoForm({ saidas, devolvidoPorOrigem, itemMap, onSubmit, submitti
         <div className="col-span-2"><Label>Observações</Label><Textarea rows={2} value={meta.observacoes} onChange={(e) => setM("observacoes", e.target.value)} /></div>
       </div>
 
-      <DialogFooter>
+      <DialogFooter className="gap-2 sm:justify-between">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={!grupo}
+          onClick={() => {
+            if (!grupo) return;
+            imprimirFormularioDevolucao({
+              grupo,
+              gruposVisuais,
+              qtdsGrupo,
+              meta,
+            });
+          }}
+        >
+          <Printer className="h-4 w-4 mr-1" /> Imprimir formulário
+        </Button>
         <Button type="submit" disabled={submitting || !grupo}>{submitting ? "Salvando…" : "Registrar devolução"}</Button>
       </DialogFooter>
+
     </form>
   );
 }
