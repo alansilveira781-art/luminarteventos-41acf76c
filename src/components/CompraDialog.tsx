@@ -605,7 +605,7 @@ export function CompraDialog({
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Esta ação não pode ser desfeita. Informe o motivo — ele ficará registrado no histórico de exclusões.
+              Esta ação não pode ser desfeita. Informe o motivo da exclusão.
             </p>
             <div>
               <label className="text-xs font-medium">Motivo da exclusão *</label>
