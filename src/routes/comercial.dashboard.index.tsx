@@ -549,6 +549,6 @@ function DashboardHome() {
         </div>
       </div>
       )}
-
+    </div>
   );
 }
