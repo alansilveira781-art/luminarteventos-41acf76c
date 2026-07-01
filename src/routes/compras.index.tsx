@@ -213,9 +213,17 @@ function ComprasKanban() {
     if (!status) return;
     const compra = compras.find((c) => c.id === id);
     if (!compra) return;
-    if (!canMoveCompra(compra, user?.id, isAdmin, user?.email, status, compra.status)) {
+    if (!canMoveCompra(compra, user?.id, isAdmin, user?.email, status, compra.status, responsavelDoStatus(status))) {
       const isPedro = !!user?.email && user.email.trim().toLowerCase() === PEDRO_EMAIL;
-      toast.error(isPedro ? PEDRO_MOVE_BLOCKED_MSG : moveBlockedMessage(compra));
+      const respId = responsavelDoStatus(status);
+      const respNome = statusDefaults.find((d) => d.status === status)?.responsavel_nome;
+      toast.error(
+        isPedro
+          ? PEDRO_MOVE_BLOCKED_MSG
+          : respId
+          ? `Apenas ${respNome ?? "o responsável definido"} (ou um admin) pode mover o card para "${COMPRA_STATUSES.find((s) => s.key === status)?.label ?? status}".`
+          : moveBlockedMessage(compra),
+      );
       return;
     }
     await advanceToStatus(compra, status);
