@@ -16,6 +16,7 @@ import {
   ArrowUpFromLine,
   Undo2,
   ListChecks,
+  CheckCircle2,
 } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { isAjusteMovimentacao } from "@/lib/utils";
