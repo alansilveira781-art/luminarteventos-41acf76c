@@ -157,6 +157,26 @@ function DashboardHome() {
         </Card>
       )}
 
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant={secao === "painel" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setSecao("painel")}
+        >
+          Painel de Vendas
+        </Button>
+        <Button
+          type="button"
+          variant={secao === "relatorio" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setSecao("relatorio")}
+        >
+          Relatório de Vendas
+        </Button>
+      </div>
+
+      {secao === "painel" && (
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard titulo="Vendas Totais" Icon={DollarSign}
           valor={k.vendasTotais} anterior={k.vendasAnterior} pct={k.pctVendas} />
