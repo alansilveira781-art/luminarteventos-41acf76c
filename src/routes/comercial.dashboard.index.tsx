@@ -9,6 +9,7 @@ import { GaugeRealVsMeta } from "@/components/comercial/dashboard/GaugeRealVsMet
 import {
   kpis, evolucaoTrimestre, evolucaoTicketTrimestre,
   rankingConsultor, valorPorClassificacao,
+  comissoesPorVendedor, rankingCerimonial, rankingDecorador,
 } from "@/lib/comercial/vendas-metrics";
 import { supabase } from "@/integrations/supabase/client";
 import { DollarSign, ShoppingCart, Percent, Receipt } from "lucide-react";
@@ -16,6 +17,9 @@ import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, LabelList,
   BarChart, Bar, Legend,
 } from "recharts";
+import {
+  Table, TableHeader, TableBody, TableFooter, TableRow, TableHead, TableCell,
+} from "@/components/ui/table";
 
 export const Route = createFileRoute("/comercial/dashboard/")({
   component: DashboardHome,
@@ -80,6 +84,29 @@ function DashboardHome() {
   const evolTicket = useMemo(() => evolucaoTicketTrimestre(filtered), [filtered]);
   const ranking = useMemo(() => rankingConsultor(filtered).slice(0, 8), [filtered]);
   const porClass = useMemo(() => valorPorClassificacao(filtered), [filtered]);
+  const comissoes = useMemo(() => comissoesPorVendedor(filtered), [filtered]);
+  const rankCerim = useMemo(() => rankingCerimonial(filtered), [filtered]);
+  const rankDecor = useMemo(() => rankingDecorador(filtered), [filtered]);
+
+  const linhasRelatorio = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const da = a.dataEvento || a.dataRegistro || "";
+      const db = b.dataEvento || b.dataRegistro || "";
+      return db.localeCompare(da);
+    });
+  }, [filtered]);
+  const totalRelatorio = useMemo(
+    () => linhasRelatorio.reduce((s, r) => s + (r.valorFinal || 0), 0),
+    [linhasRelatorio],
+  );
+  const fmtDataBR = (iso: string | null | undefined) => {
+    if (!iso) return "-";
+    const [y, m, d] = iso.slice(0, 10).split("-");
+    if (!y || !m || !d) return iso;
+    return `${d}/${m}/${y}`;
+  };
+  const fmtBRL = (v: number) =>
+    v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
 
   const metaAno = filtros.ano === "Todos" ? null : (filtros.ano as number);
   const { data: metas = [] } = useQuery({
@@ -210,6 +237,120 @@ function DashboardHome() {
             <div style={{ height: Math.max(180, porClass.length * 40) }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={porClass} layout="vertical" margin={{ top: 4, right: 60, left: 10, bottom: 0 }}>
+                  <XAxis type="number" hide />
+                  <YAxis type="category" dataKey="nome" width={110} stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                  <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                  <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]}>
+                    <LabelList dataKey="valor" position="right" formatter={(v: number) => brlAbrev(v)} fontSize={11} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          <GaugeRealVsMeta valor={realizado} meta={metaPeriodo} />
+        </div>
+      </div>
+
+      {/* ============ Relatórios de Vendas ============ */}
+      <div className="pt-4 border-t">
+        <h2 className="text-lg font-semibold mb-4">Relatórios de Vendas</h2>
+
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-4">
+          <KpiCard titulo="Vendas Totais" Icon={DollarSign}
+            valor={k.vendasTotais} anterior={k.vendasAnterior} pct={k.pctVendas} />
+          <KpiCard titulo="Quantidade de Vendas" Icon={ShoppingCart} isMoney={false}
+            valor={k.quantidade} anterior={k.quantidadeAnterior} pct={k.pctQuantidade} />
+          <KpiCard titulo="Desconto" Icon={Percent}
+            valor={k.desconto} anterior={k.descontoAnterior} pct={k.pctDesconto} />
+          <KpiCard titulo="Ticket Médio" Icon={Receipt}
+            valor={k.ticketMedio} anterior={k.ticketAnterior} pct={k.pctTicket} />
+        </div>
+
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
+          <Card className="p-4 lg:col-span-2">
+            <div className="text-sm font-medium text-foreground/80 mb-3">Detalhamento de Vendas</div>
+            <div className="max-h-[420px] overflow-auto rounded-md border">
+              <Table>
+                <TableHeader className="sticky top-0 bg-background z-10">
+                  <TableRow>
+                    <TableHead className="whitespace-nowrap">Data</TableHead>
+                    <TableHead className="whitespace-nowrap">Nome do Evento</TableHead>
+                    <TableHead className="whitespace-nowrap">Local</TableHead>
+                    <TableHead className="whitespace-nowrap">Consultor</TableHead>
+                    <TableHead className="whitespace-nowrap">Decorador</TableHead>
+                    <TableHead className="whitespace-nowrap">Cerimonial</TableHead>
+                    <TableHead className="whitespace-nowrap text-right">Valor Final</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {linhasRelatorio.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-muted-foreground">
+                        Nenhuma venda no filtro atual.
+                      </TableCell>
+                    </TableRow>
+                  ) : linhasRelatorio.map((r, i) => (
+                    <TableRow key={r.id ?? i}>
+                      <TableCell className="whitespace-nowrap">{fmtDataBR(r.dataEvento || r.dataRegistro)}</TableCell>
+                      <TableCell className="whitespace-nowrap">{r.nomeEvento || "-"}</TableCell>
+                      <TableCell className="whitespace-nowrap">{r.local || "-"}</TableCell>
+                      <TableCell className="whitespace-nowrap">{r.consultor || "-"}</TableCell>
+                      <TableCell className="whitespace-nowrap">{r.decorador || "-"}</TableCell>
+                      <TableCell className="whitespace-nowrap">{r.cerimonial || "-"}</TableCell>
+                      <TableCell className="whitespace-nowrap text-right tabular-nums">{fmtBRL(r.valorFinal || 0)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+                <TableFooter className="sticky bottom-0 bg-background">
+                  <TableRow>
+                    <TableCell colSpan={6} className="font-semibold">Total</TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums">{fmtBRL(totalRelatorio)}</TableCell>
+                  </TableRow>
+                </TableFooter>
+              </Table>
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <div className="text-sm font-medium text-foreground/80 mb-3">Comissões vendedores</div>
+            <div style={{ height: Math.max(180, comissoes.length * 36) }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={comissoes} layout="vertical" margin={{ top: 4, right: 80, left: 10, bottom: 0 }}>
+                  <XAxis type="number" hide />
+                  <YAxis type="category" dataKey="nome" width={110} stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                  <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                  <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]}>
+                    <LabelList dataKey="valor" position="right" formatter={(v: number) => brlAbrev(v)} fontSize={11} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </div>
+
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-3 mt-4">
+          <Card className="p-4">
+            <div className="text-sm font-medium text-foreground/80 mb-3">Ranking Cerimonial/Agência</div>
+            <div style={{ height: Math.max(180, rankCerim.length * 32) }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={rankCerim} layout="vertical" margin={{ top: 4, right: 80, left: 10, bottom: 0 }}>
+                  <XAxis type="number" hide />
+                  <YAxis type="category" dataKey="nome" width={110} stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                  <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                  <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]}>
+                    <LabelList dataKey="valor" position="right" formatter={(v: number) => brlAbrev(v)} fontSize={11} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <div className="text-sm font-medium text-foreground/80 mb-3">Ranking Decorador</div>
+            <div style={{ height: Math.max(180, rankDecor.length * 32) }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={rankDecor} layout="vertical" margin={{ top: 4, right: 80, left: 10, bottom: 0 }}>
                   <XAxis type="number" hide />
                   <YAxis type="category" dataKey="nome" width={110} stroke="hsl(var(--muted-foreground))" fontSize={11} />
                   <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
