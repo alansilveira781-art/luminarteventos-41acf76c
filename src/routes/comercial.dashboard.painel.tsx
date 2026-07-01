@@ -149,18 +149,18 @@ function PainelPage() {
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-4">
           <Card className="p-4">
-            <div className="text-sm font-medium text-foreground/80 mb-3">
+            <div className="text-sm font-medium text-foreground/80 mb-4">
               Evolução de Vendas [Trimestre]
             </div>
-            <div className="h-64">
+            <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={evolVendas} margin={{ top: 20, right: 20, left: 10, bottom: 0 }}>
+                <LineChart data={evolVendas} margin={{ top: 32, right: 32, left: 12, bottom: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="trim" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                  <YAxis tickFormatter={brlAbrev} stroke="hsl(var(--muted-foreground))" fontSize={11} width={70} />
+                  <YAxis hide domain={["dataMin - 100000", "dataMax + 100000"]} />
                   <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
-                  <Line type="monotone" dataKey="valor" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4 }}>
-                    <LabelList dataKey="valor" position="top" formatter={(v: number) => brlAbrev(v)} fontSize={11} />
+                  <Line type="monotone" dataKey="valor" stroke="#1e3a8a" strokeWidth={3} dot={{ r: 5, strokeWidth: 2, fill: "#fff" }}>
+                    <LabelList dataKey="valor" position="top" dy={-6} formatter={(v: number) => brlAbrev(v)} fontSize={11} />
                   </Line>
                 </LineChart>
               </ResponsiveContainer>
