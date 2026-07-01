@@ -173,7 +173,7 @@ function DashboardHome() {
           rows={rows}
           filtros={filtros}
           onChange={setFiltros}
-          fields={["empresa", "ano", "mes"]}
+          fields={["empresa", "ano", "mes", "trimestre", "consultor", "classificacao"]}
         />
         <div className="mt-2 text-xs text-muted-foreground">
           {rows.length.toLocaleString("pt-BR")} vendas carregadas
