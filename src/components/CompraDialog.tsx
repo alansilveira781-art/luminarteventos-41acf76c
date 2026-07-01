@@ -130,6 +130,9 @@ export function CompraDialog({
     return def?.responsavel_id ?? null;
   };
 
+  const statusRespId = responsavelDoStatus(form.status);
+  const canDelete = !compraId ? false : canDeleteCompra(form as any, user?.id, isAdmin, statusRespId);
+
   const statusMoveBlockedMessage = (target?: CompraStatus | null) => {
     if (!target) return "Movimentação não permitida para este card.";
     const targetLabel = COMPRA_STATUSES.find((s) => s.key === target)?.label ?? target;
