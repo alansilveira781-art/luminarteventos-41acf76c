@@ -16,7 +16,7 @@ import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
 import { ensureValidSession, describeSupabaseError } from "@/lib/supabase-guard";
-import { COMPRA_STATUSES, TIPO_COMPRA_OPTIONS, canMoveCompra, canEditCompra, moveBlockedMessage, nextCompraStatus, type CompraStatus } from "@/lib/compras";
+import { COMPRA_STATUSES, TIPO_COMPRA_OPTIONS, canMoveCompra, canEditCompra, canDeleteCompra, moveBlockedMessage, nextCompraStatus, type CompraStatus } from "@/lib/compras";
 import { useAuth } from "@/contexts/AuthContext";
 import { notifyResponsiblesForStatus, notifyMentions } from "@/lib/notify";
 import { CopiarLinkButton } from "@/components/CopiarLinkButton";
@@ -86,6 +86,8 @@ export function CompraDialog({
   const isAdmin = isGlobalAdmin || modulos.some((m) => m.slug === "compras" && m.is_admin);
   const canEdit = !compraId || canEditCompra(form as any, user?.id, isAdmin, user?.email);
   const editBlockedMsg = canEdit ? null : moveBlockedMessage(form as any);
+  const [excluirOpen, setExcluirOpen] = useState(false);
+  const [motivoExclusao, setMotivoExclusao] = useState("");
 
   const { data: estoqueItens = [] } = useQuery({
     queryKey: ["itens-min"],
@@ -127,6 +129,9 @@ export function CompraDialog({
     const def = statusDefaults.find((d) => d.status === status && d.responsavel_id);
     return def?.responsavel_id ?? null;
   };
+
+  const statusRespId = responsavelDoStatus(form.status);
+  const canDelete = !compraId ? false : canDeleteCompra(form as any, user?.id, isAdmin, statusRespId);
 
   const statusMoveBlockedMessage = (target?: CompraStatus | null) => {
     if (!target) return "Movimentação não permitida para este card.";
@@ -262,6 +267,7 @@ export function CompraDialog({
   function removeItem(idx: number) { setItens((p) => p.filter((_, i) => i !== idx)); }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         {(form as any).numero != null && (
@@ -493,29 +499,12 @@ export function CompraDialog({
             {compraId && (
               <Button
                 variant="destructive"
-                disabled={!canEdit}
-                title={editBlockedMsg ?? undefined}
-                onClick={async () => {
-                  if (!canEdit) { toast.error(editBlockedMsg ?? ""); return; }
-                  if (!confirm("Tem certeza que deseja excluir esta compra? Esta ação não pode ser desfeita.")) return;
-                  try {
-                    await sb.from("compra_itens").delete().eq("compra_id", compraId);
-                    await sb.from("compra_comentarios").delete().eq("compra_id", compraId);
-                    await sb.from("compra_historico").delete().eq("compra_id", compraId);
-                    const { error } = await sb.from("compras").delete().eq("id", compraId);
-                    if (error) throw error;
-                    toast.success("Compra excluída");
-                    qc.invalidateQueries({ queryKey: ["compras"] });
-                    qc.invalidateQueries({ queryKey: ["compras-receber"] });
-                    onOpenChange(false);
-                  } catch (e: any) {
-                    const msg = e?.message ?? "";
-                    if (/row-level security|permission denied|policy/i.test(msg) || e?.code === "42501") {
-                      toast.error(editBlockedMsg ?? "Sem permissão para excluir este card.");
-                    } else {
-                      toast.error(msg || "Erro ao excluir");
-                    }
-                  }
+                disabled={!canDelete}
+                title={canDelete ? undefined : "Sem permissão para excluir este card."}
+                onClick={() => {
+                  if (!canDelete) { toast.error("Sem permissão para excluir este card."); return; }
+                  setMotivoExclusao("");
+                  setExcluirOpen(true);
                 }}
               >
                 <Trash2 className="h-4 w-4 mr-1" /> Excluir
@@ -596,6 +585,77 @@ export function CompraDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {excluirOpen && compraId && (
+      <Dialog open={excluirOpen} onOpenChange={(v) => { if (!v) setExcluirOpen(false); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Excluir compra</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Esta ação não pode ser desfeita. Informe o motivo — ele ficará registrado no histórico de exclusões.
+            </p>
+            <div>
+              <label className="text-xs font-medium">Motivo da exclusão *</label>
+              <Textarea
+                autoFocus
+                value={motivoExclusao}
+                onChange={(e) => setMotivoExclusao(e.target.value)}
+                placeholder="Ex: card duplicado, criado por engano, cancelado pelo solicitante…"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExcluirOpen(false)}>Cancelar</Button>
+            <Button
+              variant="destructive"
+              disabled={!motivoExclusao.trim()}
+              onClick={async () => {
+                try {
+                  const { data: snap } = await sb.from("compras").select("*").eq("id", compraId).maybeSingle();
+                  const { error: histErr } = await sb.from("compras_exclusoes").insert({
+                    compra_id: compraId,
+                    compra_numero: snap?.numero ?? null,
+                    titulo: snap?.titulo ?? form.titulo ?? null,
+                    fornecedor: snap?.fornecedor ?? form.fornecedor ?? null,
+                    valor_total: snap?.valor_total ?? null,
+                    status_no_momento: snap?.status ?? form.status ?? null,
+                    dados_json: snap ?? null,
+                    motivo: motivoExclusao.trim(),
+                    excluido_por: user?.id ?? null,
+                    excluido_por_nome: (user as any)?.user_metadata?.full_name ?? user?.email ?? null,
+                  });
+                  if (histErr) throw histErr;
+
+                  await sb.from("compra_itens").delete().eq("compra_id", compraId);
+                  await sb.from("compra_comentarios").delete().eq("compra_id", compraId);
+                  await sb.from("compra_historico").delete().eq("compra_id", compraId);
+                  const { error } = await sb.from("compras").delete().eq("id", compraId);
+                  if (error) throw error;
+
+                  toast.success("Compra excluída e registrada no histórico.");
+                  qc.invalidateQueries({ queryKey: ["compras"] });
+                  qc.invalidateQueries({ queryKey: ["compras-receber"] });
+                  setExcluirOpen(false);
+                  onOpenChange(false);
+                } catch (e: any) {
+                  const msg = e?.message ?? "";
+                  if (/row-level security|permission denied|policy/i.test(msg) || e?.code === "42501") {
+                    toast.error("Sem permissão para excluir este card.");
+                  } else {
+                    toast.error(msg || "Erro ao excluir");
+                  }
+                }
+              }}
+            >
+              Confirmar exclusão
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )}
+    </>
   );
 }
 

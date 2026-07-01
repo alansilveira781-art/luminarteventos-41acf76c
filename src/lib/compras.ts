@@ -72,6 +72,24 @@ export function canEditCompra(
   return false;
 }
 
+/**
+ * Pode excluir a compra: admin, module_admin de compras, criador,
+ * responsável do card, ou o responsável configurado do status atual.
+ */
+export function canDeleteCompra(
+  compra: { responsavel_id?: string | null; created_by?: string | null; status?: CompraStatus },
+  userId: string | undefined | null,
+  isAdmin: boolean,
+  statusResponsavelId?: string | null,
+): boolean {
+  if (isAdmin) return true;
+  if (!userId) return false;
+  if (compra.created_by && compra.created_by === userId) return true;
+  if (compra.responsavel_id && compra.responsavel_id === userId) return true;
+  if (statusResponsavelId && statusResponsavelId === userId) return true;
+  return false;
+}
+
 export function canMoveCompra(
   compra: { responsavel_id?: string | null; created_by?: string | null },
   userId: string | undefined | null,
