@@ -7,7 +7,7 @@ import {
 import { FileText, Send, MessageSquare, CheckCircle2, XCircle, Percent, Target } from "lucide-react";
 import { KpiCard } from "@/components/comercial/dashboard/KpiCard";
 import { FiltrosBar } from "@/components/comercial/dashboard/FiltrosBar";
-import { useDashboard } from "./comercial.dashboard";
+import { useDashboard } from "@/lib/comercial/dashboard-context";
 import { useComercial } from "@/lib/comercial/store";
 import {
   aplicarFiltrosPropostas, kpisPropostas, evolucaoMensalPropostas, rankingConsultorPropostas,

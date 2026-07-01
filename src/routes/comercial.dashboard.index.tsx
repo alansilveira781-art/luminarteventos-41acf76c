@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { Card } from "@/components/ui/card";
-import { useDashboard } from "./comercial.dashboard";
+import { useDashboard } from "@/lib/comercial/dashboard-context";
 import { FiltrosBar } from "@/components/comercial/dashboard/FiltrosBar";
 import { KpiCard } from "@/components/comercial/dashboard/KpiCard";
 import { DollarSign } from "lucide-react";
