@@ -1,27 +1,52 @@
-## Objetivo
-Fazer com que o Dashboard Comercial (`/comercial/dashboard`) exiba o **Painel de Vendas** no formato exato da imagem enviada, como conteúdo padrão da rota.
+## Plano — Seção "Relatórios de Vendas"
 
-## Situação atual
-- A rota `/comercial/dashboard/painel` (`src/routes/comercial.dashboard.painel.tsx`) já contém todo o painel exatamente como o mockup: 4 KPIs (Vendas Totais, Quantidade, Desconto, Ticket Médio) com "Período Anterior" + "% LY", Evolução por Trimestre, Ranking Consultores, Valor por Classificação, Ticket Médio com eixo duplo e Gauge Real vs Meta.
-- A rota index (`/comercial/dashboard/`) hoje mostra apenas um card de "Vendas Totais" como stub — é o que o usuário está vendo agora.
-- A sidebar aponta para `/comercial/dashboard`, então o usuário cai no stub.
+Adicionar uma nova seção logo abaixo do painel atual em `src/routes/comercial.dashboard.index.tsx`, reaproveitando o contexto `useDashboard` (mesmos filtros Empresa/Ano/Mês, mesmos dados filtrados).
 
-## Mudança
-Substituir o conteúdo do arquivo `src/routes/comercial.dashboard.index.tsx` pelo mesmo componente/layout do Painel de Vendas (aproveitando `kpis`, `evolucaoTrimestre`, `evolucaoTicketTrimestre`, `rankingConsultor`, `valorPorClassificacao`, `GaugeRealVsMeta`, `KpiCard`, `FiltrosBar` — tudo já existente).
+### Layout
 
-Assim, ao entrar em **Comercial → Dashboard**, o usuário verá diretamente o Painel de Vendas com:
-- Filtros no topo: Empresa, Ano, Mês
-- 4 KPI cards (valor + Período Anterior + % LY)
-- Evolução de Vendas [Trimestre] (linha)
-- Evolução do Ticket Médio [Trimestre] (linha com eixo duplo Ticket × Quantidade)
-- Ranking Consultores (barras horizontais)
-- Valor Final por Classificação (barras horizontais)
-- Real vs Meta (gauge semicircular)
+```text
+── Relatórios de Vendas ─────────────────────────────
+[KPI Vendas Totais] [KPI Qtde] [KPI Desconto] [KPI Ticket]
 
-Nenhum componente novo será criado; nenhum cálculo é alterado.
+┌────────────────────────────────────┬──────────────────────┐
+│ Tabela detalhada (scroll x)        │ Comissões vendedores │
+│  Data | Nome do Evento | Local |   │ (barras horizontais) │
+│  Consultor | Decorador |            │                      │
+│  Cerimonial | Valor Final          │                      │
+│  ...                                │                      │
+│  Total ................ R$ X,XX Mi │                      │
+└────────────────────────────────────┴──────────────────────┘
 
-## Observação
-A rota antiga `/comercial/dashboard/painel` continua existindo. Posso removê-la depois se você quiser, mas não é necessário para atender ao pedido.
+┌──────────────────────┬──────────────────────┬─────────────┐
+│ Ranking Cerimonial   │ Ranking Decorador    │ Real. VS    │
+│ /Agência (barras h.) │ (barras horizontais) │ Meta (gauge)│
+└──────────────────────┴──────────────────────┴─────────────┘
+```
 
-## Confirmar
-Ok fazer com que o Dashboard Comercial padrão já abra nesse Painel de Vendas?
+### Conteúdo
+
+1. **Título** `<h2>` "Relatórios de Vendas" com um separador visual acima.
+
+2. **4 KPIs** — reutilizar `KpiCard` e o objeto `k = kpis(filtered, previous)` já calculado. Mesmos títulos/ícones do topo (Vendas Totais, Quantidade de Vendas, Desconto, Ticket Médio).
+
+3. **Tabela detalhada** (shadcn `Table` de `@/components/ui/table`):
+   - Colunas: Data (`dataEvento` formatado `dd/MM/yyyy`), Nome do Evento, Local, Consultor, Decorador, Cerimonial, Valor Final (BRL alinhado à direita).
+   - Ordenar por `dataEvento` desc.
+   - Wrapper `overflow-x-auto`, altura máx `~420px` com `overflow-y-auto`.
+   - `<TableFooter>` com linha "Total" e soma de `valorFinal` (BRL, colspan nas colunas anteriores).
+
+4. **Comissões vendedores** — BarChart horizontal com `comissoesPorVendedor(filtered)` (já existe em `vendas-metrics`). Formato idêntico ao Ranking Consultores do painel atual (mesmo `hsl(var(--primary))`, LabelList em BRL).
+
+5. **Ranking Cerimonial/Agência** — BarChart horizontal com `rankingCerimonial(filtered)` (`valor`).
+
+6. **Ranking Decorador** — BarChart horizontal com `rankingDecorador(filtered)` (`valor`).
+
+7. **Real. VS Meta** — reutilizar `<GaugeRealVsMeta valor={realizado} meta={metaPeriodo} />` (já calculado).
+
+### Observações técnicas
+
+- **Sem nova rota** — a seção fica no mesmo `comercial.dashboard.index.tsx`, abaixo do bloco atual. Os filtros do topo já valem para os dois blocos porque a fonte é o mesmo `filtered`.
+- **Sem alterações no banco, no contexto, ou em `vendas-metrics.ts`** — todas as funções necessárias (`comissoesPorVendedor`, `rankingCerimonial`, `rankingDecorador`) já existem.
+- **Imports novos** no arquivo: `Table, TableHeader, TableBody, TableFooter, TableRow, TableHead, TableCell` de `@/components/ui/table`; `comissoesPorVendedor, rankingCerimonial, rankingDecorador` de `vendas-metrics`.
+- **Sem títulos verticais**, seguindo padrão já estabelecido.
+- Nenhuma alteração de estilo/design tokens.
