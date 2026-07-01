@@ -501,8 +501,10 @@ export function CompraDialog({
               if (!compraId || !onAdvance) return null;
               const blocked = moveBlockedMessage(form);
               if (form.status === "pendente_aprovacao") {
-                const canMove = canMoveCompra(form as any, user?.id, isAdmin, user?.email, "aprovada");
-                const canDeny = canMoveCompra(form as any, user?.id, isAdmin, user?.email, "negada");
+                const respAprovada = statusDefaults.find((d) => d.status === "aprovada" && d.responsavel_id)?.responsavel_id ?? null;
+                const respNegada = statusDefaults.find((d) => d.status === "negada" && d.responsavel_id)?.responsavel_id ?? null;
+                const canMove = canMoveCompra(form as any, user?.id, isAdmin, user?.email, "aprovada", form.status as any, respAprovada);
+                const canDeny = canMoveCompra(form as any, user?.id, isAdmin, user?.email, "negada", form.status as any, respNegada);
                 return (
                   <>
                     <Button
