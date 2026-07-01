@@ -131,7 +131,18 @@ export function CompraDialog({
   };
 
   const statusRespId = responsavelDoStatus(form.status);
-  const canDelete = !compraId ? false : canDeleteCompra(form as any, user?.id, isAdmin, statusRespId);
+  // Permissão de exclusão é avaliada contra o status persistido (statusInicial),
+  // não contra o valor atual do dropdown no formulário — evita que mudar o Status
+  // no form desabilite o botão silenciosamente.
+  const statusRespIdPersistido = responsavelDoStatus(statusInicial);
+  const canDelete = !compraId
+    ? false
+    : canDeleteCompra(
+        { ...(form as any), status: statusInicial },
+        user?.id,
+        isAdmin,
+        statusRespIdPersistido,
+      );
 
   const statusMoveBlockedMessage = (target?: CompraStatus | null) => {
     if (!target) return "Movimentação não permitida para este card.";
