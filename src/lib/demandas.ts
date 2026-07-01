@@ -28,6 +28,8 @@ export const TIPO_DEMANDA_OPTIONS = [
   { value: "fardamento", label: "Fardamento" },
   { value: "reformas_construcoes", label: "Reformas & Construções" },
   { value: "imobilizado", label: "Imobilizado" },
+  { value: "material_limpeza", label: "Material de Limpeza" },
+  { value: "material_escritorio", label: "Material de Escritório" },
 ] as const;
 
 // Valores legados que foram unificados em "reformas_construcoes" — usados só
