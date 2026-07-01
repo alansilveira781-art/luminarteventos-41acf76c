@@ -110,6 +110,17 @@ export function CompraDialog({
     },
   });
 
+  const { data: statusDefaults = [] } = useQuery({
+    queryKey: ["compras_status_defaults"],
+    queryFn: async () => {
+      const { data } = await sb
+        .from("compras_status_defaults")
+        .select("status, responsavel_id, responsavel_nome");
+      return (data ?? []) as { status: string; responsavel_id: string | null; responsavel_nome: string | null }[];
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
   const { data: eventosData } = useQuery({
     queryKey: ["sheets-eventos"],
     queryFn: async () => await listEventos(),
