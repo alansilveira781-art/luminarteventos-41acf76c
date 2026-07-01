@@ -47,6 +47,32 @@ type Secao = "painel" | "relatorio" | "vendedores";
 function DashboardHome() {
   const { rows, filtered, previous, filtros, setFiltros } = useDashboard();
   const [secao, setSecao] = useState<Secao>("painel");
+  const [consultorSel, setConsultorSel] = useState<string | "Todos">("Todos");
+
+  const consultoresDisponiveis = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of filtered) {
+      const c = cleanText(r.consultor);
+      if (c) set.add(c);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [filtered]);
+
+  const vendedoresRows = useMemo(() => {
+    if (consultorSel === "Todos") return filtered;
+    return filtered.filter((r) => cleanText(r.consultor) === consultorSel);
+  }, [filtered, consultorSel]);
+
+  const vendedoresPrev = useMemo(() => {
+    if (consultorSel === "Todos") return previous;
+    return previous.filter((r) => cleanText(r.consultor) === consultorSel);
+  }, [previous, consultorSel]);
+
+  const kVend = useMemo(() => kpis(vendedoresRows, vendedoresPrev), [vendedoresRows, vendedoresPrev]);
+  const evolVend = useMemo(() => evolucaoTrimestre(vendedoresRows), [vendedoresRows]);
+  const tipoEvento = useMemo(() => vendasPorTipoEvento(vendedoresRows), [vendedoresRows]);
+  const cerimVend = useMemo(() => rankingCerimonial(vendedoresRows), [vendedoresRows]);
+  const decorVend = useMemo(() => rankingDecorador(vendedoresRows), [vendedoresRows]);
 
   useEffect(() => {
     if (
