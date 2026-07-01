@@ -84,6 +84,29 @@ function DashboardHome() {
   const evolTicket = useMemo(() => evolucaoTicketTrimestre(filtered), [filtered]);
   const ranking = useMemo(() => rankingConsultor(filtered).slice(0, 8), [filtered]);
   const porClass = useMemo(() => valorPorClassificacao(filtered), [filtered]);
+  const comissoes = useMemo(() => comissoesPorVendedor(filtered), [filtered]);
+  const rankCerim = useMemo(() => rankingCerimonial(filtered), [filtered]);
+  const rankDecor = useMemo(() => rankingDecorador(filtered), [filtered]);
+
+  const linhasRelatorio = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const da = a.dataEvento || a.dataRegistro || "";
+      const db = b.dataEvento || b.dataRegistro || "";
+      return db.localeCompare(da);
+    });
+  }, [filtered]);
+  const totalRelatorio = useMemo(
+    () => linhasRelatorio.reduce((s, r) => s + (r.valorFinal || 0), 0),
+    [linhasRelatorio],
+  );
+  const fmtDataBR = (iso: string | null | undefined) => {
+    if (!iso) return "-";
+    const [y, m, d] = iso.slice(0, 10).split("-");
+    if (!y || !m || !d) return iso;
+    return `${d}/${m}/${y}`;
+  };
+  const fmtBRL = (v: number) =>
+    v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
 
   const metaAno = filtros.ano === "Todos" ? null : (filtros.ano as number);
   const { data: metas = [] } = useQuery({
