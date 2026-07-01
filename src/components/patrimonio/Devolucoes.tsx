@@ -653,13 +653,59 @@ function imprimirFormularioDevolucao({
   <script>window.onload = () => { window.focus(); window.print(); };</script>
 </body></html>`;
 
-  const w = window.open("", "_blank", "width=900,height=1000");
-  if (!w) {
-    toast.error("Bloqueio de pop-up impediu a impressão. Libere pop-ups e tente novamente.");
+  // Estratégia principal: iframe oculto (evita bloqueio de pop-up do navegador/preview)
+  try {
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.setAttribute("aria-hidden", "true");
+    document.body.appendChild(iframe);
+
+    const cleanup = () => {
+      setTimeout(() => {
+        try { iframe.remove(); } catch { /* noop */ }
+      }, 500);
+    };
+
+    iframe.onload = () => {
+      const cw = iframe.contentWindow;
+      if (!cw) { cleanup(); return; }
+      try {
+        cw.focus();
+        cw.onafterprint = cleanup;
+        cw.print();
+        // fallback caso onafterprint não dispare
+        setTimeout(cleanup, 60_000);
+      } catch {
+        cleanup();
+      }
+    };
+
+    const doc = iframe.contentDocument;
+    if (!doc) throw new Error("iframe sem contentDocument");
+    // Remove o script auto-print embutido no HTML — controlamos via onload
+    const htmlSemAutoPrint = html.replace(
+      /<script>window\.onload[\s\S]*?<\/script>/,
+      "",
+    );
+    doc.open();
+    doc.write(htmlSemAutoPrint);
+    doc.close();
     return;
+  } catch {
+    // Fallback: tenta pop-up
+    const w = window.open("", "_blank", "width=900,height=1000");
+    if (!w) {
+      toast.error("Não foi possível abrir a janela de impressão. Libere pop-ups e tente novamente.");
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
   }
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
 }
 
