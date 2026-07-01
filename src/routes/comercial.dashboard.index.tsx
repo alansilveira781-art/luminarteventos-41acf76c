@@ -727,21 +727,23 @@ function DashboardHome() {
                 <div className="text-sm font-medium text-foreground/80 mb-3 italic">{title}</div>
                 <div className="h-96">
                   <ResponsiveContainer width="100%" height="100%">
-                    <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                    <PieChart margin={{ top: 24, right: 32, bottom: 24, left: 24 }}>
                       <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
                       <Legend
                         layout="vertical"
                         align="right"
                         verticalAlign="middle"
-                        wrapperStyle={{ fontSize: 12, maxWidth: "45%", lineHeight: "18px" }}
+                        wrapperStyle={{ fontSize: 12, maxWidth: "40%", lineHeight: "18px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
                       />
                       <Pie
                         data={clean}
                         dataKey="valor"
                         nameKey="nome"
-                        cx="38%"
+                        cx="35%"
                         cy="50%"
-                        outerRadius={90}
+                        outerRadius={78}
+                        paddingAngle={2}
+                        minAngle={4}
                         labelLine
                         label={({ value }: { value: number }) => {
                           const p = total ? (value / total) * 100 : 0;
@@ -756,6 +758,7 @@ function DashboardHome() {
                   </ResponsiveContainer>
                 </div>
               </Card>
+
             );
           })}
         </div>
