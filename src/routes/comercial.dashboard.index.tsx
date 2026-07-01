@@ -360,14 +360,14 @@ function DashboardHome() {
           <Card className="p-4">
             <div className="text-sm font-medium text-foreground/80 mb-3">Ranking Cerimonial/Agência</div>
             <div className="overflow-x-auto">
-              <div style={{ minWidth: Math.max(360, rankCerim.length * 80), height: 240 }}>
+              <div style={{ minWidth: Math.max(330, rankCerim.length * 58), height: 260 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={rankCerim} barSize={40} margin={{ top: 24, right: 16, left: 0, bottom: 48 }}>
-                    <XAxis dataKey="nome" stroke="hsl(var(--muted-foreground))" fontSize={11} interval={0} angle={-35} textAnchor="end" height={60} />
+                  <BarChart data={rankCerim} barSize={32} margin={{ top: 24, right: 8, left: 0, bottom: 60 }}>
+                    <XAxis dataKey="nome" stroke="hsl(var(--muted-foreground))" fontSize={10} interval={0} angle={-45} textAnchor="end" height={70} />
                     <YAxis hide />
                     <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
                     <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]}>
-                      <LabelList dataKey="valor" position="top" formatter={(v: number) => brlAbrev(v)} fontSize={11} />
+                      <LabelList dataKey="valor" position="top" formatter={(v: number) => brlAbrev(v)} fontSize={10} />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
@@ -378,14 +378,14 @@ function DashboardHome() {
           <Card className="p-4">
             <div className="text-sm font-medium text-foreground/80 mb-3">Ranking Decorador</div>
             <div className="overflow-x-auto">
-              <div style={{ minWidth: Math.max(360, rankDecor.length * 80), height: 240 }}>
+              <div style={{ minWidth: Math.max(330, rankDecor.length * 58), height: 260 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={rankDecor} barSize={40} margin={{ top: 24, right: 16, left: 0, bottom: 48 }}>
-                    <XAxis dataKey="nome" stroke="hsl(var(--muted-foreground))" fontSize={11} interval={0} angle={-35} textAnchor="end" height={60} />
+                  <BarChart data={rankDecor} barSize={32} margin={{ top: 24, right: 8, left: 0, bottom: 60 }}>
+                    <XAxis dataKey="nome" stroke="hsl(var(--muted-foreground))" fontSize={10} interval={0} angle={-45} textAnchor="end" height={70} />
                     <YAxis hide />
                     <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
                     <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]}>
-                      <LabelList dataKey="valor" position="top" formatter={(v: number) => brlAbrev(v)} fontSize={11} />
+                      <LabelList dataKey="valor" position="top" formatter={(v: number) => brlAbrev(v)} fontSize={10} />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
