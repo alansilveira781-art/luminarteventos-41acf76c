@@ -720,28 +720,35 @@ function DashboardHome() {
             { title: `Ano A — ${indAnoA}`, data: indicadores.pizzaA },
             { title: `Ano B — ${indAnoB}`, data: indicadores.pizzaB },
           ].map(({ title, data }) => {
-            const total = data.reduce((s, d) => s + d.valor, 0);
+            const clean = data.filter((d) => d.valor > 0);
+            const total = clean.reduce((s, d) => s + d.valor, 0);
             return (
               <Card key={title} className="p-4">
                 <div className="text-sm font-medium text-foreground/80 mb-3 italic">{title}</div>
-                <div className="h-80">
+                <div className="h-96">
                   <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
+                    <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
                       <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
-                      <Legend layout="vertical" align="right" verticalAlign="middle" />
+                      <Legend
+                        layout="vertical"
+                        align="right"
+                        verticalAlign="middle"
+                        wrapperStyle={{ fontSize: 12, maxWidth: "45%", lineHeight: "18px" }}
+                      />
                       <Pie
-                        data={data}
+                        data={clean}
                         dataKey="valor"
                         nameKey="nome"
-                        cx="40%"
+                        cx="38%"
                         cy="50%"
-                        outerRadius={110}
+                        outerRadius={90}
+                        labelLine
                         label={({ value }: { value: number }) => {
                           const p = total ? (value / total) * 100 : 0;
-                          return `${brlAbrev(value)} (${p.toFixed(2)}%)`;
+                          return `${brlAbrev(value)}\u00A0·\u00A0${p.toFixed(0)}%`;
                         }}
                       >
-                        {data.map((_, i) => (
+                        {clean.map((_, i) => (
                           <Cell key={i} fill={pizzaColors[i % pizzaColors.length]} />
                         ))}
                       </Pie>
@@ -752,6 +759,7 @@ function DashboardHome() {
             );
           })}
         </div>
+
       </div>
       )}
     </div>
