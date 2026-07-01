@@ -335,6 +335,19 @@ async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemId
 function formatReport(id: ReportId, rows: any[]): { headers: string[]; body: any[][]; totals: any[] | null } {
   const fmtBRL = (n: number) => `R$ ${n.toFixed(2)}`;
 
+  if (id === "ajustes") {
+    const headers = ["Data", "Tipo", "Código", "Item", "Qtd", "Un", "Observação"];
+    const body = rows.map((r) => [
+      format(new Date(r.data_movimento), "dd/MM/yyyy HH:mm"),
+      r.tipo === "entrada" ? "Entrada (ajuste)" : "Saída (ajuste)",
+      r.item?.codigo ?? "", r.item?.nome ?? "",
+      Number(r.quantidade), r.item?.unidade ?? "",
+      (r.observacoes || r.finalidade || "—"),
+    ]);
+    return { headers, body, totals: null };
+  }
+
+
   if (id === "saidas") {
     const headers = ["Data", "Código", "Item", "Qtd", "Un", "Valor unit.", "Valor total", "Solicitante", "Evento/Projeto", "Status"];
     let sumQ = 0, sumT = 0;
