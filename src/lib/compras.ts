@@ -88,15 +88,19 @@ export function canMoveCompra(
   // Admin move qualquer card para qualquer status.
   if (isAdmin) return true;
 
-  // Regra: quem "puxa" um card é o responsável pelo STATUS DE DESTINO.
-  // O responsável do status de origem NÃO precisa autorizar a saída.
-  if (targetStatus && statusResponsavelId) {
-    return !!userId && userId === statusResponsavelId;
+  // Regra: pode mover se for o responsável pelo STATUS DE ORIGEM (empurrar)
+  // OU o responsável pelo STATUS DE DESTINO (puxar).
+  if (targetStatus) {
+    const isRespDestino = !!statusResponsavelId && !!userId && userId === statusResponsavelId;
+    const isRespOrigem = !!currentStatusResponsavelId && !!userId && userId === currentStatusResponsavelId;
+    if (isRespDestino || isRespOrigem) return true;
+    // Se nenhum dos dois tem responsável configurado, cai na regra padrão de edição.
+    if (!statusResponsavelId && !currentStatusResponsavelId) {
+      return canEditCompra(compra, userId, isAdmin, userEmail);
+    }
+    return false;
   }
 
-  // Status de destino sem responsável configurado: mantém a regra padrão de edição.
-  // (parâmetro currentStatusResponsavelId é aceito para compatibilidade, mas não é mais usado)
-  void currentStatusResponsavelId;
   return canEditCompra(compra, userId, isAdmin, userEmail);
 }
 
