@@ -1,36 +1,49 @@
-## Objetivo
+# Dashboard Comercial não mostra vendas — parecer e plano
 
-Corrigir o fluxo de aprovação em Compras: (1) validar permissão dentro de `advanceToStatus` (botões Avançar/Aprovar/Reprovar), (2) só notificar após confirmação real do banco, (3) reforçar a regra no banco via trigger.
+## Parecer (o que está acontecendo)
 
-## Alterações
+Confirmado por reprodução com Playwright autenticado no ambiente real:
 
-### 1. `src/routes/compras.index.tsx`
+- O banco tem **1.001 vendas** e as RLS estão OK (checa `has_module_access(auth.uid(), 'comercial')`).
+- A server function `listVendasDb` **está sendo chamada e responde com todas as vendas** (payload de ~1MB contendo o array `rows`).
+- A aba **/comercial/vendas funciona** (mesmo `listVendasDb`, mesma query key raiz).
+- Só **/comercial/dashboard** exibe `0 vendas carregadas · 0 no filtro atual`, mesmo com a resposta chegando com sucesso, sem erros de console e sem `data.error`.
 
-**1a. Validação no início de `advanceToStatus`**
-Adicionar bloco `canMoveCompra(...)` logo após o guard `compra.status === status`, replicando exatamente a mesma mensagem de erro usada no `onDragEnd` (Pedro / responsável configurado / fallback).
+### Causa raiz
 
-**1b. Notificação só após confirmação**
-Trocar `moveStatus.mutate(...)` por `await moveStatus.mutateAsync(...)` dentro de `try/catch` nos dois caminhos de `isAdvance`:
-- caminho com responsável configurado: notifica e mostra toast só após o await
-- caminho `opts.force`: toast só após await
-- em caso de erro: `return` (o `onError` da mutation já reverte e mostra toast)
+O `DashboardCtx` (React Context) é **criado e exportado dentro de um arquivo de rota** (`src/routes/comercial.dashboard.tsx`) e **consumido por outro arquivo de rota irmão** (`src/routes/comercial.dashboard.index.tsx`) via `import { useDashboard } from "./comercial.dashboard"`.
 
-**1c. Melhorar `onError` da mutation `moveStatus`**
-Adicionar `qc.invalidateQueries({ queryKey: ["compras"] })` e trocar a mensagem para "Você não tem permissão para mover este card, ou a ação foi bloqueada."
+Com o code-splitting do TanStack Start, cada arquivo de rota vira um chunk separado. Nesse cenário, o módulo `comercial.dashboard.tsx` acaba sendo avaliado em duas instâncias (uma para o layout, outra puxada pelo import do filho), o que cria **dois `createContext` distintos**. Resultado:
 
-### 2. Migration SQL (reforço no banco)
+- O layout preenche o `Provider` de um Context A com `rows` cheio.
+- O `useDashboard()` do `index` lê de um Context B (nunca “providado”), cai no fallback `return { rows: [], ... }` e mostra `0`.
 
-Criar função `public.validate_compra_status_transition()` (SECURITY DEFINER) e trigger `BEFORE UPDATE` em `public.compras`:
-- Só age quando `NEW.status IS DISTINCT FROM OLD.status`
-- Admin ou module_admin de compras → passa direto
-- Senão, lê `responsavel_id` em `compras_status_defaults` para o status de destino
-- Se há responsável definido e `auth.uid()` não é ele → `RAISE EXCEPTION` com `insufficient_privilege`
+Isso é consistente com o comportamento observado: sem erro no console, resposta HTTP com todas as linhas, mas UI zerada só na página que consome via contexto.
 
-Complementa a RLS existente sem alterá-la. Não afeta o Pedro enquanto os status `analise`/`pendente_aprovacao` não tiverem responsável configurado.
+## Plano de correção
 
-## Não fazer
+Extrair o Context para um arquivo comum, fora de `src/routes/`.
 
-- Não mexer em `canMoveCompra`, `canEditCompra`, `PEDRO_*` ou `notifyResponsavel`
-- Não remover o optimistic update (`onMutate`)
-- Não alterar a policy RLS `compras_update_owner_or_admin`
-- Não alterar outros módulos
+### 1. Criar `src/lib/comercial/dashboard-context.ts`
+- Mover para lá:
+  - `type Ctx`
+  - `DashboardCtx = createContext<Ctx | null>(null)`
+  - `useDashboard()` (com o mesmo fallback atual)
+  - Reexportar `filtrosIniciais` daqui se preciso, ou continuar importando de `vendas-metrics`.
+
+### 2. Ajustar `src/routes/comercial.dashboard.tsx`
+- Remover a criação local do `DashboardCtx` e `useDashboard`.
+- Importar `DashboardCtx` de `@/lib/comercial/dashboard-context`.
+- Manter todo o resto (query, realtime, effect de correção de ano, Provider e Outlet) igual.
+
+### 3. Ajustar `src/routes/comercial.dashboard.index.tsx`
+- Trocar `import { useDashboard } from "./comercial.dashboard"` por `import { useDashboard } from "@/lib/comercial/dashboard-context"`.
+
+### 4. Validar
+- Rodar novamente o Playwright autenticado em `/comercial/dashboard` e confirmar:
+  - `1.001 vendas carregadas · 1.001 no filtro atual`
+  - Card “Vendas Totais” com valor > 0
+- Confirmar que `/comercial/vendas` continua funcionando.
+
+### Observação
+Nenhuma mudança de schema, RLS ou lógica de negócio é necessária — é apenas um refactor de onde o Context vive. As outras subrotas do dashboard (`painel`, `vendedores`, `propostas`, `indicadores`, `relatorios`) que também consomem `useDashboard` passam a funcionar corretamente pelo mesmo motivo.
