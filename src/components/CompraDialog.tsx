@@ -605,7 +605,7 @@ export function CompraDialog({
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Esta ação não pode ser desfeita. Informe o motivo — ele ficará registrado no histórico de exclusões.
+              Esta ação não pode ser desfeita. Informe o motivo da exclusão.
             </p>
             <div>
               <label className="text-xs font-medium">Motivo da exclusão *</label>
@@ -645,7 +645,7 @@ export function CompraDialog({
                   const { error } = await sb.from("compras").delete().eq("id", compraId);
                   if (error) throw error;
 
-                  toast.success("Compra excluída e registrada no histórico.");
+                  toast.success("Compra excluída.");
                   qc.invalidateQueries({ queryKey: ["compras"] });
                   qc.invalidateQueries({ queryKey: ["compras-receber"] });
                   setExcluirOpen(false);
