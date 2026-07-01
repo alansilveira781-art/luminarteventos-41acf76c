@@ -95,6 +95,12 @@ function ComprasKanban() {
     staleTime: 1000 * 60 * 5,
   });
 
+  const responsavelDoStatus = (status?: CompraStatus | null): string | null => {
+    if (!status) return null;
+    const def = statusDefaults.find((d) => d.status === status && d.responsavel_id);
+    return def?.responsavel_id ?? null;
+  };
+
   const filteredCompras = useMemo(() => {
     const s = qd.toLowerCase().trim();
     if (!s) return compras;
