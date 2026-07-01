@@ -1,23 +1,16 @@
-## Objetivo
+## Trocar filtros globais pelos filtros de Indicadores ao selecionar a aba
 
-Fazer com que os filtros globais do Dashboard Comercial (Empresa, Ano, Mês, Trimestre, Consultor, Classificação) realmente afetem TODAS as seções — inclusive Indicadores — e reduzir os filtros próprios da aba Indicadores para apenas os dois inputs de Ano A e Ano B.
+Quando o usuário clicar na aba **Indicadores** do Dashboard Comercial, a barra global de filtros (Empresa / Ano / Mês) some e dá lugar à barra de filtros da própria seção (Ano A, Ano B, Empresa, Trimestre, Consultor, Classificação). Nas demais abas (Painel, Relatório, Vendedores) tudo continua exatamente como está hoje.
 
-## Mudanças em `src/routes/comercial.dashboard.index.tsx`
+### Arquivo alterado
+- `src/routes/comercial.dashboard.index.tsx`
 
-1. **Remover o reset forçado dos filtros globais**
-   - Apagar o `useEffect` (linhas ~116-130) que zera `consultor`, `classificacao` e `trimestre` para "Todos" toda vez que mudam. Ele é o motivo dos filtros parecerem "fixos": qualquer seleção do usuário volta imediatamente para "Todos".
-   - Depois disso, os filtros globais renderizados pelo `FiltrosBar` passam a valer em Painel, Relatório, Vendedores e Indicadores.
+### O que muda
+1. O `<Card>` que renderiza a `FiltrosBar` global (linhas ~207–219) passa a ser renderizado apenas quando `secao !== "indicadores"`.
+2. O `<Card>` de filtros específicos da seção Indicadores (Ano A/B, Empresa, Trimestre, Consultor, Classificação — linhas ~602–656) é movido para fora do bloco `secao === "indicadores"` e passa a ser renderizado no lugar da barra global sempre que `secao === "indicadores"`. Assim ele fica visualmente no mesmo local em que a barra global aparecia (topo, acima dos botões de aba).
+3. O contador "X vendas carregadas · Y no filtro atual" continua aparecendo junto da barra global (só nas outras abas), já que nessa seção ele não faz sentido.
+4. Nenhuma alteração em lógica de cálculo, estado ou dados — apenas condicional de renderização e reposicionamento do card de filtros.
 
-2. **Simplificar filtros da aba Indicadores**
-   - Remover os states/UI locais de `indEmpresa`, `indTrimestre`, `indConsultor`, `indClassificacao` (inputs duplicados no topo da aba Indicadores).
-   - Manter apenas os dois inputs numéricos: **Ano A** e **Ano B**.
-   - Ajustar a chamada `compararAnos(rows, indAnoA, indAnoB, { ... })` para usar os valores dos filtros globais (`filtros.empresa`, `filtros.trimestre`, `filtros.consultor`, `filtros.classificacao`, `filtros.mes`) em vez dos states removidos.
-   - Como `compararAnos` já recebe `ano A` e `ano B` explicitamente, o `filtros.ano` global é ignorado nessa aba (comportamento correto).
-
-3. **Garantir Trimestre visível globalmente**
-   - Passar `showTrimestre` (ou `fields`) ao `<FiltrosBar>` do topo do dashboard para que Trimestre apareça como filtro global — hoje só Empresa/Ano/Mês/Consultor/Classificação estão no default.
-
-## Fora de escopo
-
-- Nenhuma alteração em lógica de métricas, componentes de gráfico, layout de KPIs ou grade de botões de consultor da aba Vendedores.
-- Nenhuma alteração em outras rotas ou no `FiltrosBar`.
+### Fora de escopo
+- Não altera `FiltrosBar`, `compararAnos` nem qualquer arquivo de métricas.
+- Não altera as demais seções.

@@ -80,18 +80,54 @@ function DashboardHome() {
   const anoAtual = new Date().getFullYear();
   const [indAnoA, setIndAnoA] = useState<number>(anoAtual);
   const [indAnoB, setIndAnoB] = useState<number>(anoAtual - 1);
+  const [indEmpresa, setIndEmpresa] = useState<string>("Todos");
+  const [indTrimestre, setIndTrimestre] = useState<string>("Todos");
+  const [indConsultor, setIndConsultor] = useState<string>("Todos");
+  const [indClassificacao, setIndClassificacao] = useState<string>("Todos");
+
+  const empresasAll = useMemo(() => {
+    const s = new Set<string>();
+    for (const r of rows) { const v = cleanText(r.empresa); if (v) s.add(v); }
+    return [...s].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [rows]);
+  const consultoresAll = useMemo(() => {
+    const s = new Set<string>();
+    for (const r of rows) { const v = cleanText(r.consultor); if (v) s.add(v); }
+    return [...s].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [rows]);
+  const classificacoesAll = useMemo(() => {
+    const s = new Set<string>();
+    for (const r of rows) { const v = cleanText(r.classificacao); if (v) s.add(v); }
+    return [...s].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [rows]);
 
   const indicadores = useMemo(() => {
     return compararAnos(rows, indAnoA, indAnoB, {
-      empresa: filtros.empresa,
-      mes: filtros.mes,
-      trimestre: filtros.trimestre,
-      consultor: filtros.consultor,
-      classificacao: filtros.classificacao,
+      empresa: indEmpresa === "Todos" ? "Todos" : indEmpresa,
+      mes: "Todos",
+      trimestre: indTrimestre === "Todos" ? "Todos" : (Number(indTrimestre) as 1 | 2 | 3 | 4),
+      consultor: indConsultor === "Todos" ? "Todos" : indConsultor,
+      classificacao: indClassificacao === "Todos" ? "Todos" : indClassificacao,
     });
-  }, [rows, indAnoA, indAnoB, filtros.empresa, filtros.mes, filtros.trimestre, filtros.consultor, filtros.classificacao]);
+  }, [rows, indAnoA, indAnoB, indEmpresa, indTrimestre, indConsultor, indClassificacao]);
 
   const pizzaColors = ["#0ea5e9", "#1e3a8a", "#f97316", "#7c3aed", "#ec4899", "#10b981", "#eab308"];
+
+  useEffect(() => {
+    if (
+      filtros.consultor !== "Todos" ||
+      filtros.classificacao !== "Todos" ||
+      filtros.trimestre !== "Todos"
+    ) {
+      setFiltros({
+        ...filtros,
+        consultor: "Todos",
+        classificacao: "Todos",
+        trimestre: "Todos",
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtros.consultor, filtros.classificacao, filtros.trimestre]);
 
   useEffect(() => {
     if (!rows.length) return;
@@ -168,19 +204,78 @@ function DashboardHome() {
 
   return (
     <div className="space-y-4">
-      <Card className="p-4">
-        <FiltrosBar
-          rows={rows}
-          filtros={filtros}
-          onChange={setFiltros}
-          fields={["empresa", "ano", "mes", "trimestre", "consultor", "classificacao"]}
-        />
-        <div className="mt-2 text-xs text-muted-foreground">
-          {rows.length.toLocaleString("pt-BR")} vendas carregadas
-          {" · "}
-          {filtered.length.toLocaleString("pt-BR")} no filtro atual
-        </div>
-      </Card>
+      {secao !== "indicadores" ? (
+        <Card className="p-4">
+          <FiltrosBar
+            rows={rows}
+            filtros={filtros}
+            onChange={setFiltros}
+            fields={["empresa", "ano", "mes"]}
+          />
+          <div className="mt-2 text-xs text-muted-foreground">
+            {rows.length.toLocaleString("pt-BR")} vendas carregadas
+            {" · "}
+            {filtered.length.toLocaleString("pt-BR")} no filtro atual
+          </div>
+        </Card>
+      ) : (
+        <Card className="p-4">
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Ano A</div>
+              <Input type="number" value={indAnoA} onChange={(e) => setIndAnoA(Number(e.target.value) || anoAtual)} />
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Ano B</div>
+              <Input type="number" value={indAnoB} onChange={(e) => setIndAnoB(Number(e.target.value) || anoAtual - 1)} />
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Empresa</div>
+              <Select value={indEmpresa} onValueChange={setIndEmpresa}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Todos">Todos</SelectItem>
+                  {empresasAll.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Trimestre</div>
+              <Select value={indTrimestre} onValueChange={setIndTrimestre}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Todos">Todos</SelectItem>
+                  <SelectItem value="1">1º Trim</SelectItem>
+                  <SelectItem value="2">2º Trim</SelectItem>
+                  <SelectItem value="3">3º Trim</SelectItem>
+                  <SelectItem value="4">4º Trim</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Consultor</div>
+              <Select value={indConsultor} onValueChange={setIndConsultor}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Todos">Todos</SelectItem>
+                  {consultoresAll.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Classificação</div>
+              <Select value={indClassificacao} onValueChange={setIndClassificacao}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Todos">Todos</SelectItem>
+                  {classificacoesAll.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </Card>
+      )}
+
 
       {semDadosFiltrados && (
         <Card className="p-4 text-sm border-amber-500/40 bg-amber-500/5">
@@ -563,21 +658,6 @@ function DashboardHome() {
 
       {secao === "indicadores" && (
       <div className="space-y-4">
-        <Card className="p-4">
-          <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
-            <div>
-              <div className="text-xs text-muted-foreground mb-1">Ano A</div>
-              <Input type="number" value={indAnoA} onChange={(e) => setIndAnoA(Number(e.target.value) || anoAtual)} />
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground mb-1">Ano B</div>
-              <Input type="number" value={indAnoB} onChange={(e) => setIndAnoB(Number(e.target.value) || anoAtual - 1)} />
-            </div>
-          </div>
-          <div className="mt-2 text-xs text-muted-foreground">
-            Os demais filtros (Empresa, Trimestre, Consultor, Classificação) usam os filtros globais no topo.
-          </div>
-        </Card>
 
         <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
           <Card className="p-4">
