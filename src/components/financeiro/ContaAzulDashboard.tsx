@@ -341,6 +341,9 @@ function PainelFinanceiro() {
     return out;
   }, [totais, grupos, collapsed, planoMap, rb, dreEstrutura]);
 
+  const linhaLucro = useMemo(() => linhasDre.find((r) => r.id === "LU"), [linhasDre]);
+  const linhasDreSemLucro = useMemo(() => linhasDre.filter((r) => r.id !== "LU"), [linhasDre]);
+
   const toggleGroup = (id: string) => setCollapsed((c) => ({ ...c, [id]: !c[id] }));
   const onClickCategoria = (catId: string) =>
     setCategoriaSel((cur) => (cur === catId ? null : catId));
@@ -405,7 +408,7 @@ function PainelFinanceiro() {
             <div className="text-right">%</div>
           </div>
           <div className="max-h-[600px] overflow-y-auto">
-            {linhasDre.map((row) => {
+            {linhasDreSemLucro.map((row) => {
               if (row.kind === "header") {
                 const isOpen = !collapsed[row.id];
                 return (
@@ -446,6 +449,13 @@ function PainelFinanceiro() {
               );
             })}
           </div>
+          {linhaLucro && (
+            <div className="grid grid-cols-[1fr,140px,70px] px-3 py-1.5 border-t border-border font-bold bg-muted/60 text-sm">
+              <div className="truncate">{linhaLucro.label}</div>
+              <div className={`text-right tabular-nums ${linhaLucro.valor < 0 ? "text-rose-600" : ""}`}>{fmtMoney(linhaLucro.valor)}</div>
+              <div className="text-right tabular-nums text-muted-foreground">{fmtPct(linhaLucro.pct)}</div>
+            </div>
+          )}
         </Card>
 
         {/* Lançamentos */}
@@ -763,6 +773,9 @@ function AnaliseDetalhada() {
     return out;
   }, [totais, grupos, collapsed, planoMap, rb, dreEstrutura]);
 
+  const linhaLucro = useMemo(() => linhasDre.find((r) => r.id === "LU"), [linhasDre]);
+  const linhasDreSemLucro = useMemo(() => linhasDre.filter((r) => r.id !== "LU"), [linhasDre]);
+
   const toggleGroup = (id: string) => setCollapsed((c) => ({ ...c, [id]: !c[id] }));
   const onClickCategoria = (catId: string) =>
     setCategoriaSel((cur) => (cur === catId ? null : catId));
@@ -857,7 +870,7 @@ function AnaliseDetalhada() {
             <div className="text-right">%</div>
           </div>
           <div className="max-h-[600px] overflow-y-auto">
-            {linhasDre.map((row) => {
+            {linhasDreSemLucro.map((row) => {
               if (row.kind === "header") {
                 const isOpen = !collapsed[row.id];
                 return (
@@ -898,6 +911,13 @@ function AnaliseDetalhada() {
               );
             })}
           </div>
+          {linhaLucro && (
+            <div className="grid grid-cols-[1fr,140px,70px] px-3 py-1.5 border-t border-border font-bold bg-muted/60 text-sm">
+              <div className="truncate">{linhaLucro.label}</div>
+              <div className={`text-right tabular-nums ${linhaLucro.valor < 0 ? "text-rose-600" : ""}`}>{fmtMoney(linhaLucro.valor)}</div>
+              <div className="text-right tabular-nums text-muted-foreground">{fmtPct(linhaLucro.pct)}</div>
+            </div>
+          )}
         </Card>
 
         <Card className="p-0 overflow-hidden lg:col-span-3">
