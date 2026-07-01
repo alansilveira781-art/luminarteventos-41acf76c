@@ -204,19 +204,78 @@ function DashboardHome() {
 
   return (
     <div className="space-y-4">
-      <Card className="p-4">
-        <FiltrosBar
-          rows={rows}
-          filtros={filtros}
-          onChange={setFiltros}
-          fields={["empresa", "ano", "mes"]}
-        />
-        <div className="mt-2 text-xs text-muted-foreground">
-          {rows.length.toLocaleString("pt-BR")} vendas carregadas
-          {" · "}
-          {filtered.length.toLocaleString("pt-BR")} no filtro atual
-        </div>
-      </Card>
+      {secao !== "indicadores" ? (
+        <Card className="p-4">
+          <FiltrosBar
+            rows={rows}
+            filtros={filtros}
+            onChange={setFiltros}
+            fields={["empresa", "ano", "mes"]}
+          />
+          <div className="mt-2 text-xs text-muted-foreground">
+            {rows.length.toLocaleString("pt-BR")} vendas carregadas
+            {" · "}
+            {filtered.length.toLocaleString("pt-BR")} no filtro atual
+          </div>
+        </Card>
+      ) : (
+        <Card className="p-4">
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Ano A</div>
+              <Input type="number" value={indAnoA} onChange={(e) => setIndAnoA(Number(e.target.value) || anoAtual)} />
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Ano B</div>
+              <Input type="number" value={indAnoB} onChange={(e) => setIndAnoB(Number(e.target.value) || anoAtual - 1)} />
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Empresa</div>
+              <Select value={indEmpresa} onValueChange={setIndEmpresa}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Todos">Todos</SelectItem>
+                  {empresasAll.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Trimestre</div>
+              <Select value={indTrimestre} onValueChange={setIndTrimestre}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Todos">Todos</SelectItem>
+                  <SelectItem value="1">1º Trim</SelectItem>
+                  <SelectItem value="2">2º Trim</SelectItem>
+                  <SelectItem value="3">3º Trim</SelectItem>
+                  <SelectItem value="4">4º Trim</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Consultor</div>
+              <Select value={indConsultor} onValueChange={setIndConsultor}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Todos">Todos</SelectItem>
+                  {consultoresAll.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Classificação</div>
+              <Select value={indClassificacao} onValueChange={setIndClassificacao}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Todos">Todos</SelectItem>
+                  {classificacoesAll.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </Card>
+      )}
+
 
       {semDadosFiltrados && (
         <Card className="p-4 text-sm border-amber-500/40 bg-amber-500/5">
