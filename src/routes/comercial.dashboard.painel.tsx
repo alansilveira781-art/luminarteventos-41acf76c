@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
-import { useDashboard } from "./comercial.dashboard";
+import { useDashboard } from "@/lib/comercial/dashboard-context";
 import { FiltrosBar } from "@/components/comercial/dashboard/FiltrosBar";
 import { KpiCard } from "@/components/comercial/dashboard/KpiCard";
 import { GaugeRealVsMeta } from "@/components/comercial/dashboard/GaugeRealVsMeta";
