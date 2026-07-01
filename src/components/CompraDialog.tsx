@@ -498,29 +498,12 @@ export function CompraDialog({
             {compraId && (
               <Button
                 variant="destructive"
-                disabled={!canEdit}
-                title={editBlockedMsg ?? undefined}
-                onClick={async () => {
-                  if (!canEdit) { toast.error(editBlockedMsg ?? ""); return; }
-                  if (!confirm("Tem certeza que deseja excluir esta compra? Esta ação não pode ser desfeita.")) return;
-                  try {
-                    await sb.from("compra_itens").delete().eq("compra_id", compraId);
-                    await sb.from("compra_comentarios").delete().eq("compra_id", compraId);
-                    await sb.from("compra_historico").delete().eq("compra_id", compraId);
-                    const { error } = await sb.from("compras").delete().eq("id", compraId);
-                    if (error) throw error;
-                    toast.success("Compra excluída");
-                    qc.invalidateQueries({ queryKey: ["compras"] });
-                    qc.invalidateQueries({ queryKey: ["compras-receber"] });
-                    onOpenChange(false);
-                  } catch (e: any) {
-                    const msg = e?.message ?? "";
-                    if (/row-level security|permission denied|policy/i.test(msg) || e?.code === "42501") {
-                      toast.error(editBlockedMsg ?? "Sem permissão para excluir este card.");
-                    } else {
-                      toast.error(msg || "Erro ao excluir");
-                    }
-                  }
+                disabled={!canDelete}
+                title={canDelete ? undefined : "Sem permissão para excluir este card."}
+                onClick={() => {
+                  if (!canDelete) { toast.error("Sem permissão para excluir este card."); return; }
+                  setMotivoExclusao("");
+                  setExcluirOpen(true);
                 }}
               >
                 <Trash2 className="h-4 w-4 mr-1" /> Excluir
