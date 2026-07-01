@@ -252,48 +252,61 @@ function RelatoriosPage() {
   );
 }
 
-async function loadReport(id: ReportId, dataIni: string, dataFim: string): Promise<any[]> {
+async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemId: string = "todos"): Promise<any[]> {
   const ini = new Date(dataIni).toISOString();
   const fim = new Date(`${dataFim}T23:59:59`).toISOString();
+  const filtroItem = itemId && itemId !== "todos" ? itemId : null;
 
   if (id === "saidas") {
-    const { data } = await supabase
+    let q = supabase
       .from("movimentacoes")
-      .select("data_movimento,quantidade,valor_unitario,evento_projeto,saida_status, item:itens(nome,codigo,unidade,valor_unitario), solicitante:solicitantes(nome)")
+      .select("data_movimento,quantidade,valor_unitario,evento_projeto,saida_status,saida_tipo,observacoes,finalidade,tipo, item:itens(nome,codigo,unidade,valor_unitario), solicitante:solicitantes(nome)")
       .eq("tipo", "saida")
-      .gte("data_movimento", ini).lte("data_movimento", fim)
-      .order("data_movimento", { ascending: false }).limit(5000);
-    return data ?? [];
+      .gte("data_movimento", ini).lte("data_movimento", fim);
+    if (filtroItem) q = q.eq("item_id", filtroItem);
+    const { data } = await q.order("data_movimento", { ascending: false }).limit(5000);
+    return (data ?? []).filter((m: any) => !isAjusteMovimentacao(m));
   }
   if (id === "entradas") {
-    const { data } = await supabase
+    let q = supabase
       .from("movimentacoes")
-      .select("data_movimento,quantidade,valor_unitario,nota_fiscal, item:itens(nome,codigo,unidade), fornecedor:fornecedores(nome)")
+      .select("data_movimento,quantidade,valor_unitario,nota_fiscal,entrada_tipo,observacoes,finalidade,tipo, item:itens(nome,codigo,unidade), fornecedor:fornecedores(nome)")
       .eq("tipo", "entrada")
-      .gte("data_movimento", ini).lte("data_movimento", fim)
-      .order("data_movimento", { ascending: false }).limit(5000);
-    return data ?? [];
+      .gte("data_movimento", ini).lte("data_movimento", fim);
+    if (filtroItem) q = q.eq("item_id", filtroItem);
+    const { data } = await q.order("data_movimento", { ascending: false }).limit(5000);
+    return (data ?? []).filter((m: any) => !isAjusteMovimentacao(m));
   }
   if (id === "devolucoes") {
-    const { data } = await supabase
+    let q = supabase
       .from("movimentacoes")
       .select("data_movimento,quantidade,responsavel_recebimento, item:itens(nome,codigo,unidade), solicitante:solicitantes(nome)")
       .eq("tipo", "devolucao")
-      .gte("data_movimento", ini).lte("data_movimento", fim)
-      .order("data_movimento", { ascending: false }).limit(5000);
+      .gte("data_movimento", ini).lte("data_movimento", fim);
+    if (filtroItem) q = q.eq("item_id", filtroItem);
+    const { data } = await q.order("data_movimento", { ascending: false }).limit(5000);
     return data ?? [];
   }
+  if (id === "ajustes") {
+    let q = supabase
+      .from("movimentacoes")
+      .select("data_movimento,tipo,quantidade,valor_unitario,observacoes,finalidade,entrada_tipo,saida_tipo, item:itens(nome,codigo,unidade)")
+      .in("tipo", ["entrada", "saida"])
+      .gte("data_movimento", ini).lte("data_movimento", fim);
+    if (filtroItem) q = q.eq("item_id", filtroItem);
+    const { data } = await q.order("data_movimento", { ascending: false }).limit(5000);
+    return (data ?? []).filter((m: any) => isAjusteMovimentacao(m));
+  }
   if (id === "estoque") {
-    const { data } = await supabase.from("itens").select("*").order("nome").limit(5000);
+    let q = supabase.from("itens").select("*").order("nome");
+    if (filtroItem) q = q.eq("id", filtroItem);
+    const { data } = await q.limit(5000);
     return data ?? [];
   }
   if (id === "estoque_negativo") {
-    const { data } = await supabase
-      .from("itens")
-      .select("*")
-      .lt("quantidade_atual", 0)
-      .order("quantidade_atual", { ascending: true })
-      .limit(5000);
+    let q = supabase.from("itens").select("*").lt("quantidade_atual", 0).order("quantidade_atual", { ascending: true });
+    if (filtroItem) q = q.eq("id", filtroItem);
+    const { data } = await q.limit(5000);
     return data ?? [];
   }
 
@@ -307,13 +320,14 @@ async function loadReport(id: ReportId, dataIni: string, dataFim: string): Promi
   }
   if (id === "gastos_mes" || id === "gastos_categoria" || id === "saidas_evento") {
     const tipo = id === "saidas_evento" ? "saida" : "entrada";
-    const { data } = await supabase
+    let q = supabase
       .from("movimentacoes")
-      .select("data_movimento,quantidade,valor_unitario,evento_projeto, item:itens(nome,categoria,valor_unitario)")
+      .select("data_movimento,quantidade,valor_unitario,evento_projeto,entrada_tipo,saida_tipo,observacoes,finalidade,tipo, item:itens(nome,categoria,valor_unitario)")
       .eq("tipo", tipo)
-      .gte("data_movimento", ini).lte("data_movimento", fim)
-      .limit(10000);
-    return data ?? [];
+      .gte("data_movimento", ini).lte("data_movimento", fim);
+    if (filtroItem) q = q.eq("item_id", filtroItem);
+    const { data } = await q.limit(10000);
+    return (data ?? []).filter((m: any) => !isAjusteMovimentacao(m));
   }
   return [];
 }
