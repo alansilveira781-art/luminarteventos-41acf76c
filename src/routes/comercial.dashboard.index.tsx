@@ -555,11 +555,12 @@ function DashboardHome() {
 
           <Card className="p-3">
             <div className="text-xs font-medium text-foreground/70 mb-2">Consultores</div>
-            <div className="flex flex-wrap gap-2 max-w-md">
+            <div className="grid grid-cols-3 gap-2">
               <Button
                 type="button"
                 variant={consultorSel === "Todos" ? "default" : "outline"}
                 size="sm"
+                className="w-full"
                 onClick={() => setConsultorSel("Todos")}
               >
                 Todos
@@ -570,6 +571,7 @@ function DashboardHome() {
                   type="button"
                   variant={consultorSel === c ? "default" : "outline"}
                   size="sm"
+                  className="w-full truncate"
                   onClick={() => setConsultorSel(c)}
                 >
                   {c}
@@ -727,24 +729,24 @@ function DashboardHome() {
                 <div className="text-sm font-medium text-foreground/80 mb-3 italic">{title}</div>
                 <div className="h-96">
                   <ResponsiveContainer width="100%" height="100%">
-                    <PieChart margin={{ top: 24, right: 32, bottom: 24, left: 24 }}>
+                    <PieChart margin={{ top: 40, right: 80, bottom: 40, left: 80 }}>
                       <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
                       <Legend
-                        layout="vertical"
-                        align="right"
-                        verticalAlign="middle"
-                        wrapperStyle={{ fontSize: 12, maxWidth: "40%", lineHeight: "18px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+                        layout="horizontal"
+                        align="center"
+                        verticalAlign="bottom"
+                        wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
                       />
                       <Pie
                         data={clean}
                         dataKey="valor"
                         nameKey="nome"
-                        cx="35%"
-                        cy="50%"
-                        outerRadius={78}
+                        cx="50%"
+                        cy="45%"
+                        outerRadius={70}
                         paddingAngle={2}
                         minAngle={4}
-                        labelLine
+                        labelLine={{ stroke: "hsl(var(--muted-foreground))" }}
                         label={({ value }: { value: number }) => {
                           const p = total ? (value / total) * 100 : 0;
                           return `${brlAbrev(value)}\u00A0·\u00A0${p.toFixed(0)}%`;
