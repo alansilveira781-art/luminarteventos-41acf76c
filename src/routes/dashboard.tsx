@@ -361,6 +361,7 @@ function Dashboard() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Kpi icon={Package} label="Total de itens" value={total} tone="primary" />
+        <Kpi icon={CheckCircle2} label="Disponível" value={disponivel} tone="success" />
         <Kpi icon={AlertTriangle} label="Baixo estoque" value={baixo} tone="warning" />
         <Kpi icon={XCircle} label="Sem estoque" value={sem} tone="destructive" />
         <Kpi icon={Wrench} label="Em manutenção" value={manut} tone="accent" />
