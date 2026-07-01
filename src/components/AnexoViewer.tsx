@@ -166,7 +166,9 @@ export function AnexoViewer({ bucket, anexo, open, onOpenChange }: AnexoViewerPr
           ) : kind === "pdf" ? (
             <Suspense
               fallback={
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <div className="flex-1 flex items-center justify-center min-h-[40vh]">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
               }
             >
               <PdfPreview
@@ -175,7 +177,7 @@ export function AnexoViewer({ bucket, anexo, open, onOpenChange }: AnexoViewerPr
               />
             </Suspense>
           ) : (
-            <div className="flex flex-col items-center gap-2 p-8 text-center">
+            <div className="flex-1 flex flex-col items-center justify-center gap-2 p-8 text-center min-h-[40vh]">
               <FileIcon className="h-10 w-10 text-muted-foreground" />
               <p className="text-sm font-medium">{anexo.nome}</p>
               <p className="text-xs text-muted-foreground">
@@ -183,6 +185,7 @@ export function AnexoViewer({ bucket, anexo, open, onOpenChange }: AnexoViewerPr
               </p>
             </div>
           )}
+
         </div>
 
         <div className="flex justify-end gap-2">
