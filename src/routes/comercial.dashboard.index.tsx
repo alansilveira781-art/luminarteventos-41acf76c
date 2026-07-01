@@ -33,10 +33,11 @@ const MESES = [
 
 const brlAbrev = (v: number) => {
   const n = Math.abs(v);
-  if (n >= 1_000_000) return `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} Mi`;
-  if (n >= 1_000) return `R$ ${(v / 1_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} Mil`;
-  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+  if (n >= 1_000_000) return `R$\u00A0${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}\u00A0Mi`;
+  if (n >= 1_000) return `R$\u00A0${(v / 1_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}\u00A0Mil`;
+  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).replace(/\s/g, "\u00A0");
 };
+
 
 type MetaRow = { ano: number; mes: number; classificacao: string; valor_meta: number };
 
