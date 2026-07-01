@@ -1708,6 +1708,48 @@ export type Database = {
         }
         Relationships: []
       }
+      demanda_patrimonio_registros: {
+        Row: {
+          demanda_id: string
+          id: string
+          observacoes: string | null
+          pat_item_id: string | null
+          registrado_em: string
+          registrado_por: string | null
+        }
+        Insert: {
+          demanda_id: string
+          id?: string
+          observacoes?: string | null
+          pat_item_id?: string | null
+          registrado_em?: string
+          registrado_por?: string | null
+        }
+        Update: {
+          demanda_id?: string
+          id?: string
+          observacoes?: string | null
+          pat_item_id?: string | null
+          registrado_em?: string
+          registrado_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demanda_patrimonio_registros_demanda_id_fkey"
+            columns: ["demanda_id"]
+            isOneToOne: true
+            referencedRelation: "demandas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demanda_patrimonio_registros_pat_item_id_fkey"
+            columns: ["pat_item_id"]
+            isOneToOne: false
+            referencedRelation: "pat_itens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       demandas: {
         Row: {
           categoria_external_id: string | null
