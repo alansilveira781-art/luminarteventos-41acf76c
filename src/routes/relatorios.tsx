@@ -51,12 +51,30 @@ function RelatoriosPage() {
   const [reportId, setReportId] = useState<ReportId>("saidas");
   const [dataIni, setDataIni] = useState(format(startOfMonth(subMonths(hoje, 2)), "yyyy-MM-dd"));
   const [dataFim, setDataFim] = useState(format(endOfMonth(hoje), "yyyy-MM-dd"));
+  const [itemId, setItemId] = useState("todos");
+  const [buscaItem, setBuscaItem] = useState("");
+
+  const { data: itensLista = [] } = useQuery({
+    queryKey: ["relatorios-itens-select"],
+    queryFn: async () => {
+      const { data } = await supabase.from("itens").select("id,nome,codigo").order("nome").limit(5000);
+      return (data ?? []) as { id: string; nome: string; codigo: string | null }[];
+    },
+  });
+
+  const itensFiltrados = useMemo(() => {
+    const b = buscaItem.trim().toLowerCase();
+    if (!b) return itensLista;
+    return itensLista.filter((i) =>
+      `${i.nome} ${i.codigo ?? ""}`.toLowerCase().includes(b),
+    );
+  }, [itensLista, buscaItem]);
 
   const meta = REPORTS.find((r) => r.id === reportId)!;
 
   const { data: rows, isLoading } = useQuery({
-    queryKey: ["report", reportId, dataIni, dataFim],
-    queryFn: async () => loadReport(reportId, dataIni, dataFim),
+    queryKey: ["report", reportId, dataIni, dataFim, itemId],
+    queryFn: async () => loadReport(reportId, dataIni, dataFim, itemId),
   });
 
   const { headers, body, totals } = useMemo(() => formatReport(reportId, rows ?? []), [reportId, rows]);
