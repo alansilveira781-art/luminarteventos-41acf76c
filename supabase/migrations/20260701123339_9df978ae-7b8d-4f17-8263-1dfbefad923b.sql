@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "notificacoes insert self" ON public.notificacoes;
