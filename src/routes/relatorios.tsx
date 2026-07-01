@@ -28,12 +28,14 @@ type ReportId =
   | "fornecedores"
   | "gastos_mes"
   | "gastos_categoria"
-  | "saidas_evento";
+  | "saidas_evento"
+  | "ajustes";
 
 const REPORTS: { id: ReportId; label: string; description: string; needsPeriod: boolean }[] = [
   { id: "saidas", label: "Saídas", description: "Lista de itens retirados do estoque com solicitante, evento e valor.", needsPeriod: true },
   { id: "entradas", label: "Entradas", description: "Lista de itens recebidos com fornecedor, NF e valor.", needsPeriod: true },
   { id: "devolucoes", label: "Devoluções", description: "Itens devolvidos vinculados às saídas originais.", needsPeriod: true },
+  { id: "ajustes", label: "Ajustes de estoque", description: "Movimentações de ajuste (conferência/contagem) no período.", needsPeriod: true },
   { id: "estoque", label: "Posição de estoque", description: "Quantidade atual de cada item, valor total e status.", needsPeriod: false },
   { id: "estoque_negativo", label: "Itens com estoque negativo", description: "Itens cujo saldo atual está abaixo de zero — precisam de ajuste/contagem.", needsPeriod: false },
   { id: "solicitantes", label: "Solicitantes", description: "Cadastro completo dos solicitantes ativos.", needsPeriod: false },
