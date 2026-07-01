@@ -40,8 +40,11 @@ const brlAbrev = (v: number) => {
 
 type MetaRow = { ano: number; mes: number; classificacao: string; valor_meta: number };
 
+type Secao = "painel" | "relatorio";
+
 function DashboardHome() {
   const { rows, filtered, previous, filtros, setFiltros } = useDashboard();
+  const [secao, setSecao] = useState<Secao>("painel");
 
   useEffect(() => {
     if (
