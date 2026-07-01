@@ -434,6 +434,121 @@ function DashboardHome() {
         </div>
       </div>
       )}
-    </div>
+
+      {secao === "vendedores" && (
+      <div className="space-y-4">
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-[1fr_auto]">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+            <KpiCard titulo="Vendas Totais" Icon={DollarSign}
+              valor={kVend.vendasTotais} anterior={kVend.vendasAnterior} pct={kVend.pctVendas} />
+            <KpiCard titulo="Quantidade de Vendas" Icon={ShoppingCart} isMoney={false}
+              valor={kVend.quantidade} anterior={kVend.quantidadeAnterior} pct={kVend.pctQuantidade} />
+            <KpiCard titulo="Ticket Médio" Icon={Receipt}
+              valor={kVend.ticketMedio} anterior={kVend.ticketAnterior} pct={kVend.pctTicket} />
+          </div>
+
+          <Card className="p-3">
+            <div className="text-xs font-medium text-foreground/70 mb-2">Consultores</div>
+            <div className="flex flex-wrap gap-2 max-w-md">
+              <Button
+                type="button"
+                variant={consultorSel === "Todos" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setConsultorSel("Todos")}
+              >
+                Todos
+              </Button>
+              {consultoresDisponiveis.map((c) => (
+                <Button
+                  key={c}
+                  type="button"
+                  variant={consultorSel === c ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setConsultorSel(c)}
+                >
+                  {c}
+                </Button>
+              ))}
+            </div>
+          </Card>
+        </div>
+
+        <Card className="p-4">
+          <div className="text-sm font-medium text-foreground/80 mb-4">
+            Evolução de Vendas [Trimestre]{consultorSel !== "Todos" ? ` — ${consultorSel}` : ""}
+          </div>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={evolVend} margin={{ top: 32, right: 32, left: 12, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="trim" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                <YAxis hide domain={["dataMin - 100000", "dataMax + 100000"]} />
+                <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                <Line type="monotone" dataKey="valor" stroke="#1e3a8a" strokeWidth={3} dot={{ r: 5, strokeWidth: 2, fill: "#fff" }}>
+                  <LabelList dataKey="valor" position="top" dy={-6} formatter={(v: number) => brlAbrev(v)} fontSize={11} />
+                </Line>
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
+          <Card className="p-4">
+            <div className="text-sm font-medium text-foreground/80 mb-3">Vendas por tipo de evento</div>
+            <div className="max-h-[320px] overflow-y-auto pr-2">
+              <div style={{ height: Math.max(180, tipoEvento.length * 36) }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={tipoEvento} layout="vertical" margin={{ top: 4, right: 70, left: 10, bottom: 0 }}>
+                    <XAxis type="number" hide />
+                    <YAxis type="category" dataKey="nome" width={110} stroke="hsl(var(--muted-foreground))" fontSize={11} interval={0} />
+                    <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                    <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]}>
+                      <LabelList dataKey="valor" position="right" formatter={(v: number) => brlAbrev(v)} fontSize={11} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <div className="text-sm font-medium text-foreground/80 mb-3">Vendas por Cerimonial/Agência</div>
+            <div className="max-h-[320px] overflow-y-auto pr-2">
+              <div style={{ height: Math.max(180, cerimVend.length * 36) }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={cerimVend} layout="vertical" margin={{ top: 4, right: 70, left: 10, bottom: 0 }}>
+                    <XAxis type="number" hide />
+                    <YAxis type="category" dataKey="nome" width={120} stroke="hsl(var(--muted-foreground))" fontSize={11} interval={0} />
+                    <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                    <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]}>
+                      <LabelList dataKey="valor" position="right" formatter={(v: number) => brlAbrev(v)} fontSize={11} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <div className="text-sm font-medium text-foreground/80 mb-3">Vendas por Decorador</div>
+            <div className="max-h-[320px] overflow-y-auto pr-2">
+              <div style={{ height: Math.max(180, decorVend.length * 36) }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={decorVend} layout="vertical" margin={{ top: 4, right: 70, left: 10, bottom: 0 }}>
+                    <XAxis type="number" hide />
+                    <YAxis type="category" dataKey="nome" width={120} stroke="hsl(var(--muted-foreground))" fontSize={11} interval={0} />
+                    <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                    <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]}>
+                      <LabelList dataKey="valor" position="right" formatter={(v: number) => brlAbrev(v)} fontSize={11} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
+      )}
+
   );
 }
