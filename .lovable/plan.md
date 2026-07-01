@@ -1,56 +1,25 @@
-## 1) Estoque › Devoluções — botão "Imprimir formulário" não abre
+## Onde está o botão
 
-**Diagnóstico**
-O botão já existe em `src/components/patrimonio/Devolucoes.tsx`, mas a função `imprimirFormularioDevolucao` chama `window.open("", "_blank", …)`. No preview e em várias configurações de navegador esse pop-up é bloqueado (o toast "Bloqueio de pop-up…" aparece ou nada acontece), então o formulário nunca abre.
+Você está na aba **Devoluções do módulo Estoque** (`/devolucoes`), arquivo `src/routes/devolucoes.tsx`. O botão "Imprimir formulário" que criamos anteriormente foi adicionado apenas na tela análoga de **Patrimônio** (`src/components/patrimonio/Devolucoes.tsx`) — por isso ele não aparece aqui. É uma tela diferente, com outro formulário (Responsável pela devolução / pelo recebimento / coluna "Sem devolução").
 
-**Correção**
-Trocar a estratégia por um **iframe oculto** injetado no próprio documento:
+## Plano
 
-1. Cria `<iframe style="display:none">`, escreve o mesmo HTML (cabeçalho REQ, tabela de conferência, campos Físico/Condição, assinaturas).
-2. Aguarda `onload`, chama `iframe.contentWindow.focus() + print()`.
-3. Remove o iframe após o `afterprint` (ou depois de ~1s de fallback).
-4. Mantém o pop-up como fallback apenas se o iframe falhar.
+Adicionar o mesmo botão "Imprimir formulário" no diálogo **Nova devolução** do Estoque:
 
-Assim funciona sem depender de permissão de pop-up e mantém o layout já pronto (cabeçalho, tabela Item/Especificação/Saída/Já dev./Saldo/UN/Sistema/Físico/Condição, observações e linhas de assinatura).
+1. Em `src/routes/devolucoes.tsx`:
+   - Importar `Printer` de `lucide-react`.
+   - No rodapé do form (`FormActions`, linha 595), colocar dois botões: à esquerda `Imprimir formulário` (variant outline, desabilitado enquanto não houver saída selecionada); à direita o atual `Registrar devolução`.
+   - Criar a função `imprimirFormularioDevolucao` local, usando **iframe oculto** (mesma estratégia à prova de bloqueio de pop-up que aplicamos no Patrimônio).
 
----
+2. Conteúdo do formulário impresso, alinhado ao form desta tela:
+   - Cabeçalho: título, data/hora de impressão.
+   - Dados da saída selecionada: código da requisição (REQ-XXXX), data da saída, solicitante/evento (o que estiver disponível no grupo).
+   - Dados da devolução (do form): Data, Responsável pela devolução, Responsável pelo recebimento, Observações.
+   - Tabela de itens da saída com as colunas: **Item · Saída · Já devolvido · Saldo · Devolver agora (sistema) · Físico (em branco p/ preencher) · Sem devolução (□) · Condição/Obs. (em branco)**.
+   - Linhas de assinatura: "Entregue por" e "Recebido por".
 
-## 2) Módulo Compras — cards do Natanael voltam ao status original
-
-**Diagnóstico (banco)**
-Configuração atual de `compras_status_defaults`:
-
-```text
-solicitacao         → Natanael
-analise             → Natanael
-pendente_aprovacao  → Maicon Viana
-aprovada            → Natanael
-em_andamento        → Natanael
-a_receber           → Natanael
-finalizado          → Natanael
-```
-
-Natanael **não** é admin do módulo compras (`is_admin=false`).
-
-A trigger `validate_compra_status_transition` exige que o usuário seja responsável **tanto pelo status de origem quanto pelo de destino**. Quando Maicon aprova e o card fica em `pendente_aprovacao`, o Natanael tenta puxar para `aprovada` — o destino é dele (passa), mas a origem é do Maicon (bloqueia). A UI faz update otimista → o banco rejeita → o `onError` reverte e invalida a query → **o card volta ao status anterior no refresh**. Esse é exatamente o sintoma descrito.
-
-**Correção (regra pretendida)**
-Quem "puxa" um card é o responsável pelo **status de destino**. O responsável do status de origem não precisa autorizar a saída — do contrário todo card que passa por Maicon fica preso lá.
-
-Ajustes:
-
-- **Banco** (`validate_compra_status_transition`, migração): manter só o check do destino. Admin/module-admin continuam liberados. Se o destino tem responsável configurado, apenas ele (ou admin) pode mover para lá. Remover o bloco que compara `auth.uid()` com o responsável de ORIGEM.
-- **Front** (`src/lib/compras.ts` → `canMoveCompra`): remover a mesma regra "origem exige responsável de origem" para que a UI habilite o arraste/avanço coerentemente e não mostre erro antes de tentar.
-- **Front** (`src/routes/compras.index.tsx`): remover as mensagens "Apenas X pode retirar o card de…" (a mensagem restante — "Apenas Y pode mover o card para…" — continua cobrindo o único caso que ainda é bloqueado).
-- **Pedro** continua com a whitelist atual (Solicitação → Análise → Pendente Aprovação), sem alterações.
-
-Resultado: Natanael consegue puxar cards de `pendente_aprovacao` (Maicon) para `aprovada` (dele) e o movimento persiste após refresh; Maicon continua sendo o único (fora admin) que pode enviar para `pendente_aprovacao`.
-
----
+3. Sem mudanças em lógica, banco ou permissões — apenas UI + função de impressão.
 
 ## Arquivos afetados
 
-- `src/components/patrimonio/Devolucoes.tsx` — substituir `imprimirFormularioDevolucao` (window.open → iframe).
-- `supabase/migrations/*` — nova migração ajustando `validate_compra_status_transition`.
-- `src/lib/compras.ts` — remover check de responsável de origem em `canMoveCompra`.
-- `src/routes/compras.index.tsx` — simplificar as mensagens de erro de movimentação.
+- `src/routes/devolucoes.tsx` — botão no rodapé do `DevolucaoForm` e nova função `imprimirFormularioDevolucao`.

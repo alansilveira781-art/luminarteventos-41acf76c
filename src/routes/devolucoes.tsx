@@ -12,7 +12,7 @@ import { QuantidadeInput } from "@/components/QuantidadeInput";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Trash2 } from "lucide-react";
+import { Plus, Search, Trash2, Printer } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
@@ -592,7 +592,174 @@ function DevolucaoForm({ saidas, devolvidoPorOrigem, solicitantes, onSubmit, sub
         </div>
       )}
 
-      <FormActions><Button type="submit" size="lg" disabled={submitting || !grupo}>{submitting ? "Registrando…" : "Registrar devolução"}</Button></FormActions>
+      <FormActions>
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          disabled={!grupo}
+          onClick={() => {
+            if (!grupo) return;
+            imprimirFormularioDevolucaoEstoque({ grupo, meta, qtds, semDevolucao, devolvidoPorOrigem });
+          }}
+        >
+          <Printer className="h-4 w-4 mr-1" /> Imprimir formulário
+        </Button>
+        <Button type="submit" size="lg" disabled={submitting || !grupo}>
+          {submitting ? "Registrando…" : "Registrar devolução"}
+        </Button>
+      </FormActions>
     </form>
   );
+}
+
+function imprimirFormularioDevolucaoEstoque({
+  grupo,
+  meta,
+  qtds,
+  semDevolucao,
+  devolvidoPorOrigem,
+}: {
+  grupo: { numero: number | null; data: string; solicitante: any; evento: string | null; itens: any[] };
+  meta: { data_movimento: string; responsavel_recebimento: string; responsavel_lancamento: string; observacoes: string };
+  qtds: Record<string, number>;
+  semDevolucao: Record<string, boolean>;
+  devolvidoPorOrigem: Map<string, number>;
+}) {
+  const esc = (v: unknown) =>
+    String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  const req = grupo.numero != null ? `REQ-${String(grupo.numero).padStart(4, "0")}` : "—";
+  const dataSaida = grupo.data ? new Date(grupo.data).toLocaleString("pt-BR") : "—";
+  const dataDev = meta.data_movimento
+    ? new Date(meta.data_movimento).toLocaleString("pt-BR")
+    : new Date().toLocaleString("pt-BR");
+
+  const linhas = grupo.itens
+    .map((s: any) => {
+      const jaDev = devolvidoPorOrigem.get(s.id) ?? 0;
+      const saldo = Number(s.quantidade) - jaDev;
+      const sistema = semDevolucao[s.id] ? "—" : (qtds[s.id] ? String(qtds[s.id]) : "");
+      const semMark = semDevolucao[s.id] ? "☒" : "☐";
+      return `
+        <tr>
+          <td>${esc(s.item?.codigo ?? "")}</td>
+          <td>${esc(s.item?.nome ?? "—")}</td>
+          <td class="num">${Number(s.quantidade)}</td>
+          <td class="num">${jaDev}</td>
+          <td class="num">${saldo}</td>
+          <td>${esc(s.item?.unidade ?? "")}</td>
+          <td class="num">${sistema}</td>
+          <td class="fill"></td>
+          <td class="center">${semMark}</td>
+          <td class="fill"></td>
+        </tr>`;
+    })
+    .join("");
+
+  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<title>Formulário de Devolução — ${esc(req)}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: #111; margin: 24px; font-size: 12px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color: #555; margin-bottom: 12px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; margin-bottom: 12px; }
+  .grid div { border-bottom: 1px solid #ddd; padding: 4px 0; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th, td { border: 1px solid #999; padding: 6px 6px; vertical-align: top; }
+  th { background: #f2f2f2; text-align: left; font-size: 11px; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.center { text-align: center; }
+  td.fill { min-width: 70px; height: 26px; }
+  .obs { margin-top: 16px; }
+  .obs .box { border: 1px solid #999; min-height: 60px; padding: 6px; }
+  .sig { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px; }
+  .sig .line { border-top: 1px solid #333; padding-top: 4px; text-align: center; font-size: 11px; }
+  @media print { body { margin: 12mm; } }
+</style></head>
+<body>
+  <h1>Formulário de Devolução de Estoque</h1>
+  <div class="sub">Preencha as quantidades físicas conferidas e a condição de cada item.</div>
+  <div class="grid">
+    <div><strong>Saída (REQ):</strong> ${esc(req)}</div>
+    <div><strong>Data da saída:</strong> ${esc(dataSaida)}</div>
+    <div><strong>Solicitante:</strong> ${esc(grupo.solicitante?.nome ?? "—")}</div>
+    <div><strong>Evento / Projeto:</strong> ${esc(grupo.evento ?? "—")}</div>
+    <div><strong>Data da devolução:</strong> ${esc(dataDev)}</div>
+    <div><strong>Responsável pela devolução:</strong> ${esc(meta.responsavel_lancamento || "________________________")}</div>
+    <div><strong>Responsável pelo recebimento:</strong> ${esc(meta.responsavel_recebimento || "________________________")}</div>
+    <div><strong>Impresso em:</strong> ${new Date().toLocaleString("pt-BR")}</div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:70px">Código</th>
+        <th>Item</th>
+        <th style="width:56px">Saída</th>
+        <th style="width:64px">Já dev.</th>
+        <th style="width:56px">Saldo</th>
+        <th style="width:44px">UN</th>
+        <th style="width:70px">Sistema</th>
+        <th style="width:70px">Físico</th>
+        <th style="width:60px">Sem dev.</th>
+        <th>Condição / Obs.</th>
+      </tr>
+    </thead>
+    <tbody>${linhas || `<tr><td colspan="10" style="text-align:center;color:#888">Sem itens</td></tr>`}</tbody>
+  </table>
+
+  <div class="obs">
+    <div><strong>Observações gerais:</strong></div>
+    <div class="box">${esc(meta.observacoes || "")}</div>
+  </div>
+
+  <div class="sig">
+    <div class="line">Entregue por</div>
+    <div class="line">Recebido por</div>
+  </div>
+</body></html>`;
+
+  try {
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.setAttribute("aria-hidden", "true");
+    document.body.appendChild(iframe);
+
+    const cleanup = () => {
+      setTimeout(() => { try { iframe.remove(); } catch { /* noop */ } }, 500);
+    };
+
+    iframe.onload = () => {
+      const cw = iframe.contentWindow;
+      if (!cw) { cleanup(); return; }
+      try {
+        cw.focus();
+        cw.onafterprint = cleanup;
+        cw.print();
+        setTimeout(cleanup, 60_000);
+      } catch { cleanup(); }
+    };
+
+    const doc = iframe.contentDocument;
+    if (!doc) throw new Error("iframe sem contentDocument");
+    doc.open();
+    doc.write(html);
+    doc.close();
+  } catch {
+    const w = window.open("", "_blank", "width=900,height=1000");
+    if (!w) {
+      toast.error("Não foi possível abrir a janela de impressão. Libere pop-ups e tente novamente.");
+      return;
+    }
+    w.document.open();
+    w.document.write(html + "<script>window.onload=()=>{window.focus();window.print();};<\/script>");
+    w.document.close();
+  }
 }
