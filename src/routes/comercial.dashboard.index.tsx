@@ -276,10 +276,12 @@ function DashboardHome() {
           <GaugeRealVsMeta valor={realizado} meta={metaPeriodo} />
         </div>
       </div>
+      </>
+      )}
 
-      {/* ============ Relatórios de Vendas ============ */}
-      <div className="pt-4 border-t">
-        <h2 className="text-lg font-semibold mb-4">Relatórios de Vendas</h2>
+      {secao === "relatorio" && (
+      <div>
+
 
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-4">
           <KpiCard titulo="Vendas Totais" Icon={DollarSign}
