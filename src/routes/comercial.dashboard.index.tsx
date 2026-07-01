@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { useDashboard } from "@/lib/comercial/dashboard-context";
@@ -39,8 +40,11 @@ const brlAbrev = (v: number) => {
 
 type MetaRow = { ano: number; mes: number; classificacao: string; valor_meta: number };
 
+type Secao = "painel" | "relatorio";
+
 function DashboardHome() {
   const { rows, filtered, previous, filtros, setFiltros } = useDashboard();
+  const [secao, setSecao] = useState<Secao>("painel");
 
   useEffect(() => {
     if (
@@ -153,6 +157,27 @@ function DashboardHome() {
         </Card>
       )}
 
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant={secao === "painel" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setSecao("painel")}
+        >
+          Painel de Vendas
+        </Button>
+        <Button
+          type="button"
+          variant={secao === "relatorio" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setSecao("relatorio")}
+        >
+          Relatório de Vendas
+        </Button>
+      </div>
+
+      {secao === "painel" && (
+      <>
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard titulo="Vendas Totais" Icon={DollarSign}
           valor={k.vendasTotais} anterior={k.vendasAnterior} pct={k.pctVendas} />
@@ -251,10 +276,12 @@ function DashboardHome() {
           <GaugeRealVsMeta valor={realizado} meta={metaPeriodo} />
         </div>
       </div>
+      </>
+      )}
 
-      {/* ============ Relatórios de Vendas ============ */}
-      <div className="pt-4 border-t">
-        <h2 className="text-lg font-semibold mb-4">Relatórios de Vendas</h2>
+      {secao === "relatorio" && (
+      <div>
+
 
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-4">
           <KpiCard titulo="Vendas Totais" Icon={DollarSign}
@@ -365,6 +392,7 @@ function DashboardHome() {
           <GaugeRealVsMeta valor={realizado} meta={metaPeriodo} />
         </div>
       </div>
+      )}
     </div>
   );
 }
