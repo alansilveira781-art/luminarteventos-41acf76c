@@ -285,7 +285,7 @@ export function CompraDialog({
                 <Input value={form.titulo ?? ""} onChange={(e) => setForm({ ...form, titulo: e.target.value })} placeholder="Ex.: Compra de tintas" />
               </FormField>
               <FormField label="Status">
-                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as CompraStatus })} disabled={!canEdit}>
+                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as CompraStatus })} disabled={!!compraId || !canEdit}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {statusOptions.map((s) => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}
