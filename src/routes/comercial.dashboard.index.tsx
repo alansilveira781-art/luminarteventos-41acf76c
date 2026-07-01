@@ -381,7 +381,7 @@ function DashboardHome() {
               <div style={{ minWidth: Math.max(280, rankDecor.length * 50), height: 260 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={rankDecor} barCategoryGap={2} barGap={1} barSize={28} margin={{ top: 24, right: 0, left: 0, bottom: 60 }}>
-                    <XAxis dataKey="nome" stroke="hsl(var(--muted-foreground))" fontSize={11} interval={0} angle={-60} textAnchor="end" height={75} />
+                    <XAxis dataKey="nome" stroke="hsl(var(--foreground))" fontSize={11} interval={0} angle={-60} textAnchor="end" height={75} />
                     <YAxis hide />
                     <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
                     <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]}>
