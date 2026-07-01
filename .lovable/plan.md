@@ -1,36 +1,34 @@
-## Objetivo
-Padronizar o compartilhamento por link em Compras, Despesas e Rotinas Financeiras, adicionando um botão "Copiar link" e garantindo que a URL reflita o card/rotina aberto.
+## Diagnóstico
 
-## Passos
+A funcionalidade de exclusão com motivo (diálogo + tabela `compras_exclusoes` + RLS permitindo o responsável do status) já existe. Confirmei no banco que o Natanael é responsável por 6 dos 7 status (todos, exceto `pendente_aprovacao` — do Maicon).
 
-### 1. Novo componente `src/components/CopiarLinkButton.tsx`
-Botão reutilizável que copia `window.location.origin + path` via Clipboard API com fallback `execCommand`, mostrando feedback (`toast` + ícone Check por 2s).
+O sintoma "não abre o diálogo de motivo" tem uma causa muito provável no `CompraDialog.tsx`:
 
-### 2. Compras — `src/routes/compras.index.tsx` + `src/components/CompraDialog.tsx`
-- Confirmar que os helpers `abrirCard`/`limparUrlCard` já existem (aplicados em turno anterior). Se ausentes, aplicar o padrão de sincronização de `?id=`.
-- No `DialogFooter` do `CompraDialog`, renderizar `<CopiarLinkButton path={`/compras?id=${compraId}`} />` quando `compraId` estiver definido (lado esquerdo, junto ao Excluir).
+```
+const statusRespId = responsavelDoStatus(form.status);
+const canDelete = canDeleteCompra(form as any, user?.id, isAdmin, statusRespId);
+```
 
-### 3. Despesas — `src/routes/financeiro.index.tsx` + `src/components/DemandaDialog.tsx`
-- Importar `useEffect` e adicionar:
-  - `useEffect` que lê `?id=` na montagem e chama `setEditId` + `setOpen(true)`.
-  - Helpers `abrirCard(id)` e `limparUrlCard()` usando `window.history.replaceState`.
-- Substituir os dois `onClick`/`onOpen` de abertura de card por `abrirCard(c.id)`.
-- `onOpenChange` do `DemandaDialog`: ao fechar, limpar `editId` e chamar `limparUrlCard()`.
-- Botões "Nova demanda" e "+ adicionar" chamam `limparUrlCard()` antes de abrir.
-- No `DialogFooter` do `DemandaDialog`, renderizar `<CopiarLinkButton path={`/financeiro?id=${demandaId}`} />` quando houver `demandaId`.
+O `canDelete` é calculado com base em `form.status` — o valor **atual do formulário**, não o status persistido no banco. Dois problemas decorrem disso:
 
-### 4. Rotinas Financeiras — `src/routes/financeiro.rotinas.tsx`
-- Garantir `useEffect` importado.
-- `useEffect` dependente de `rotinas`: se `?rotina=<id>` estiver presente e a rotina existir na lista, chamar `setEditing(r)`.
-- Ao lado do botão "Compartilhar com Maicon" de cada rotina, adicionar `<CopiarLinkButton path={`/financeiro/rotinas?rotina=${r.id}`} label="" variant="ghost" size="icon" />`. O `shareWithMaicon` permanece intacto.
+1. Se o Natanael abre um card em `pendente_aprovacao` (Maicon), o botão fica desabilitado — mas ele *deveria* poder excluir se fosse responsável do status real do card. (No caso `pendente_aprovacao` seguirá bloqueado — regra correta.)
+2. Se ele abre um card em qualquer status dele (ex.: `analise`) e altera o dropdown de Status no formulário para outro valor antes de clicar em Excluir, `form.status` muda e o botão desabilita silenciosamente — o clique nada faz porque `disabled` engole o evento. Esse é o cenário "não abre o diálogo".
 
-## Restrições
-- Sem `localStorage`/`sessionStorage`; apenas `window.history.replaceState`.
-- Não alterar permissões, movimentação ou lógica de notificação.
-- Não remover `shareWithMaicon`.
-- Não tocar em outros módulos.
+Além disso, `statusDefaults` é carregado via `useQuery` assíncrono; no primeiro render `statusRespId` volta `null` e o botão nasce desabilitado até a lista chegar.
 
-## Verificação
-- Abrir card em Compras/Despesas → URL ganha `?id=`; recarregar mantém o dialog aberto; botão copia link com toast.
-- Acessar `/financeiro/rotinas?rotina=<id>` → abre a rotina para edição.
-- Fechar dialog remove o parâmetro da URL sem recarregar a página.
+## Correção
+
+Ajustar apenas `src/components/CompraDialog.tsx`:
+
+1. Guardar o **status original** do card (o que veio do banco quando o diálogo abriu) em um `useRef`/estado, resetado a cada `compraId` carregado.
+2. Calcular `canDelete` usando esse status original, não `form.status`.
+3. Enquanto `statusDefaults` ainda estiver carregando (`isLoading`), tratar o botão como "carregando" (ainda desabilitado, mas com tooltip "carregando permissões…") em vez de "sem permissão", para evitar confusão.
+4. Manter todo o resto do fluxo intacto: diálogo de motivo obrigatório, snapshot em `compras_exclusoes`, limpeza de `compra_itens`/`compra_comentarios`/`compra_historico` e `DELETE` em `compras`.
+
+Nenhuma mudança de banco ou RLS é necessária — a política já permite `auth.uid() IN (responsáveis do status atual do card)`.
+
+## Validação
+
+- Natanael abre um card em status dele (ex.: Análise ou Compra Em Andamento) → botão "Excluir" habilitado → clique abre o diálogo pedindo motivo → confirmar grava em `compras_exclusoes` e apaga o card.
+- Natanael abre um card em `pendente_aprovacao` → botão continua desabilitado com tooltip "Sem permissão".
+- Mudar o dropdown Status no formulário sem salvar não afeta mais a permissão de excluir.
