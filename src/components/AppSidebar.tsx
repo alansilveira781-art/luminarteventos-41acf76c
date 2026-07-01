@@ -89,6 +89,7 @@ const allItems: NavItem[] = [
   { title: "Entradas", url: "/patrimonio/entradas", icon: ArrowDownToLine, group: "Patrimônio", module: "patrimonio" },
   { title: "Saídas", url: "/patrimonio/saidas", icon: ArrowUpFromLine, group: "Patrimônio", module: "patrimonio" },
   { title: "Devoluções", url: "/patrimonio/devolucoes", icon: Undo2, group: "Patrimônio", module: "patrimonio" },
+  { title: "A receber", url: "/patrimonio/a-receber", icon: PackageCheck, group: "Patrimônio", module: "patrimonio" },
   { title: "Recrutamento", url: "/rh", icon: UserPlus, group: "Recursos Humanos", module: "rh" },
   { title: "Administração", url: "/admin", icon: Shield, group: "Administração", adminOnly: true },
 ];
