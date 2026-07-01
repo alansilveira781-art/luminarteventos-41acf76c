@@ -1,16 +1,18 @@
-## Trocar filtros globais pelos filtros de Indicadores ao selecionar a aba
+## Ajustar enquadramento das pizzas "Ano A / Ano B" (Indicadores)
 
-Quando o usuário clicar na aba **Indicadores** do Dashboard Comercial, a barra global de filtros (Empresa / Ano / Mês) some e dá lugar à barra de filtros da própria seção (Ano A, Ano B, Empresa, Trimestre, Consultor, Classificação). Nas demais abas (Painel, Relatório, Vendedores) tudo continua exatamente como está hoje.
+Os dois gráficos de pizza estão cortando rótulos e a legenda porque o raio é grande demais para a altura do card e os labels "R$ X Mi (YY%)" saem da área visível.
 
 ### Arquivo alterado
-- `src/routes/comercial.dashboard.index.tsx`
+- `src/routes/comercial.dashboard.index.tsx` — bloco dos dois `PieChart` (linhas ~718–754).
 
-### O que muda
-1. O `<Card>` que renderiza a `FiltrosBar` global (linhas ~207–219) passa a ser renderizado apenas quando `secao !== "indicadores"`.
-2. O `<Card>` de filtros específicos da seção Indicadores (Ano A/B, Empresa, Trimestre, Consultor, Classificação — linhas ~602–656) é movido para fora do bloco `secao === "indicadores"` e passa a ser renderizado no lugar da barra global sempre que `secao === "indicadores"`. Assim ele fica visualmente no mesmo local em que a barra global aparecia (topo, acima dos botões de aba).
-3. O contador "X vendas carregadas · Y no filtro atual" continua aparecendo junto da barra global (só nas outras abas), já que nessa seção ele não faz sentido.
-4. Nenhuma alteração em lógica de cálculo, estado ou dados — apenas condicional de renderização e reposicionamento do card de filtros.
+### Ajustes visuais
+1. **Altura do card**: aumentar de `h-80` para `h-96` para dar folga vertical aos rótulos.
+2. **Pie**:
+   - `cx="38%"` e `cy="50%"` (mantém pizza à esquerda, legenda à direita).
+   - `outerRadius={90}` (reduz para caber com labels externos).
+   - `labelLine={true}` com labels externos (`R$ 2,6 Mi · 34%`) formatados em uma única linha usando espaço inquebrável.
+   - Filtrar fatias com valor `0` para não poluir.
+3. **Legend**: `align="right"` `verticalAlign="middle"` `wrapperStyle={{ fontSize: 12, maxWidth: "45%", lineHeight: "18px" }}` para as classificações longas quebrarem corretamente sem invadir a pizza.
+4. **Margem do PieChart**: `margin={{ top: 8, right: 8, bottom: 8, left: 8 }}` para o label não colar na borda do card.
 
-### Fora de escopo
-- Não altera `FiltrosBar`, `compararAnos` nem qualquer arquivo de métricas.
-- Não altera as demais seções.
+Nenhuma alteração de dados, cálculo ou estado — apenas propriedades de layout dos componentes Recharts.
