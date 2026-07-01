@@ -159,7 +159,7 @@ function ComprasKanban() {
   ) {
     if (compra.status === status) return;
 
-    if (!canMoveCompra(compra, user?.id, isAdmin, user?.email, status, compra.status, responsavelDoStatus(status))) {
+    if (!canMoveCompra(compra, user?.id, isAdmin, user?.email, status, compra.status, responsavelDoStatus(status), responsavelDoStatus(compra.status))) {
       const isPedro = !!user?.email && user.email.trim().toLowerCase() === PEDRO_EMAIL;
       const respId = responsavelDoStatus(status);
       const respNome = statusDefaults.find((d) => d.status === status)?.responsavel_nome;
@@ -237,7 +237,7 @@ function ComprasKanban() {
     if (!status) return;
     const compra = compras.find((c) => c.id === id);
     if (!compra) return;
-    if (!canMoveCompra(compra, user?.id, isAdmin, user?.email, status, compra.status, responsavelDoStatus(status))) {
+    if (!canMoveCompra(compra, user?.id, isAdmin, user?.email, status, compra.status, responsavelDoStatus(status), responsavelDoStatus(compra.status))) {
       const isPedro = !!user?.email && user.email.trim().toLowerCase() === PEDRO_EMAIL;
       const respId = responsavelDoStatus(status);
       const respNome = statusDefaults.find((d) => d.status === status)?.responsavel_nome;
@@ -332,7 +332,7 @@ function ComprasKanban() {
             <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={byStatus[s.key]?.length ?? 0}>
               {(byStatus[s.key] ?? []).map((c) => {
                 const next = nextStatus(c.status);
-                const canMove = canMoveCompra(c, user?.id, isAdmin, user?.email, next ?? undefined, c.status, responsavelDoStatus(next));
+                const canMove = canMoveCompra(c, user?.id, isAdmin, user?.email, next ?? undefined, c.status, responsavelDoStatus(next), responsavelDoStatus(c.status));
                 return (
                   <Card
                     key={c.id}
