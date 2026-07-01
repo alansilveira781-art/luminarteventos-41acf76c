@@ -1,26 +1,36 @@
 ## Objetivo
 
-Restringir a movimentação de cards de Compras: quando o status de destino tem responsável definido em Configurações, apenas esse responsável (ou admin) pode mover o card para lá. Regra do Pedro permanece intacta.
+Corrigir o fluxo de aprovação em Compras: (1) validar permissão dentro de `advanceToStatus` (botões Avançar/Aprovar/Reprovar), (2) só notificar após confirmação real do banco, (3) reforçar a regra no banco via trigger.
 
 ## Alterações
 
-### 1. `src/lib/compras.ts`
-Adicionar parâmetro opcional `statusResponsavelId` em `canMoveCompra`. Depois do bloco do Pedro:
-- Admin → sempre permite.
-- Se `targetStatus` tem `statusResponsavelId` → apenas o próprio responsável.
-- Caso contrário → fallback para `canEditCompra` (comportamento atual).
+### 1. `src/routes/compras.index.tsx`
 
-`canEditCompra` fica intacta.
+**1a. Validação no início de `advanceToStatus`**
+Adicionar bloco `canMoveCompra(...)` logo após o guard `compra.status === status`, replicando exatamente a mesma mensagem de erro usada no `onDragEnd` (Pedro / responsável configurado / fallback).
 
-### 2. `src/routes/compras.index.tsx`
-- Criar helper `responsavelDoStatus(status)` a partir de `statusDefaults`.
-- No `onDragEnd`: passar `responsavelDoStatus(status)` para `canMoveCompra` e melhorar a mensagem de toast citando o nome do responsável definido.
-- No render dos cards: passar `responsavelDoStatus(next)` na checagem que habilita o botão "Avançar".
+**1b. Notificação só após confirmação**
+Trocar `moveStatus.mutate(...)` por `await moveStatus.mutateAsync(...)` dentro de `try/catch` nos dois caminhos de `isAdvance`:
+- caminho com responsável configurado: notifica e mostra toast só após o await
+- caminho `opts.force`: toast só após await
+- em caso de erro: `return` (o `onError` da mutation já reverte e mostra toast)
 
-### 3. `src/components/CompraDialog.tsx`
-- Garantir a query `compras_status_defaults` (reaproveitar se já existir com a mesma queryKey).
-- Nos botões "Aprovar/Reprovar" de `pendente_aprovacao`: buscar responsável configurado para `aprovada` e `negada` e passar como `statusResponsavelId` nas duas chamadas de `canMoveCompra`.
+**1c. Melhorar `onError` da mutation `moveStatus`**
+Adicionar `qc.invalidateQueries({ queryKey: ["compras"] })` e trocar a mensagem para "Você não tem permissão para mover este card, ou a ação foi bloqueada."
+
+### 2. Migration SQL (reforço no banco)
+
+Criar função `public.validate_compra_status_transition()` (SECURITY DEFINER) e trigger `BEFORE UPDATE` em `public.compras`:
+- Só age quando `NEW.status IS DISTINCT FROM OLD.status`
+- Admin ou module_admin de compras → passa direto
+- Senão, lê `responsavel_id` em `compras_status_defaults` para o status de destino
+- Se há responsável definido e `auth.uid()` não é ele → `RAISE EXCEPTION` com `insufficient_privilege`
+
+Complementa a RLS existente sem alterá-la. Não afeta o Pedro enquanto os status `analise`/`pendente_aprovacao` não tiverem responsável configurado.
 
 ## Não fazer
-- Não mexer na lógica do Pedro, em `canEditCompra`, em `notifyResponsavel`, no `AvancarCardDialog` ou em outros módulos.
-- Sem alteração de banco/RLS nesta rodada (o prompt oferece reforço server-side apenas se solicitado).
+
+- Não mexer em `canMoveCompra`, `canEditCompra`, `PEDRO_*` ou `notifyResponsavel`
+- Não remover o optimistic update (`onMutate`)
+- Não alterar a policy RLS `compras_update_owner_or_admin`
+- Não alterar outros módulos

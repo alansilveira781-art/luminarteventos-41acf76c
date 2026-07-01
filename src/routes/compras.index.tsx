@@ -142,7 +142,8 @@ function ComprasKanban() {
     },
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(["compras"], ctx.prev);
-      toast.error("Não foi possível mover o card");
+      qc.invalidateQueries({ queryKey: ["compras"] });
+      toast.error("Você não tem permissão para mover este card, ou a ação foi bloqueada.");
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["compras-receber"] });
@@ -157,6 +158,21 @@ function ComprasKanban() {
     opts?: { force?: boolean; toastMsg?: string },
   ) {
     if (compra.status === status) return;
+
+    if (!canMoveCompra(compra, user?.id, isAdmin, user?.email, status, compra.status, responsavelDoStatus(status))) {
+      const isPedro = !!user?.email && user.email.trim().toLowerCase() === PEDRO_EMAIL;
+      const respId = responsavelDoStatus(status);
+      const respNome = statusDefaults.find((d) => d.status === status)?.responsavel_nome;
+      toast.error(
+        isPedro
+          ? PEDRO_MOVE_BLOCKED_MSG
+          : respId
+          ? `Apenas ${respNome ?? "o responsável definido"} (ou um admin) pode mover o card para "${COMPRA_STATUSES.find((s) => s.key === status)?.label ?? status}".`
+          : moveBlockedMessage(compra),
+      );
+      return;
+    }
+
     if (status === "a_receber" && !compra.tipo_compra) {
       toast.error("Defina o tipo da compra antes de movê-la para Compras a Receber.");
       return;
@@ -172,12 +188,16 @@ function ComprasKanban() {
     if (isAdvance) {
       const def = statusDefaults.find((d) => d.status === status && d.responsavel_id);
       if (def?.responsavel_id) {
-        moveStatus.mutate({
-          id,
-          status,
-          responsavelId: def.responsavel_id,
-          responsavelNome: def.responsavel_nome ?? undefined,
-        });
+        try {
+          await moveStatus.mutateAsync({
+            id,
+            status,
+            responsavelId: def.responsavel_id,
+            responsavelNome: def.responsavel_nome ?? undefined,
+          });
+        } catch {
+          return;
+        }
         notifyResponsavel({
           userId: def.responsavel_id,
           titulo: `Compra: ${statusLabel}`,
@@ -189,7 +209,11 @@ function ComprasKanban() {
         return;
       }
       if (opts?.force) {
-        moveStatus.mutate({ id, status });
+        try {
+          await moveStatus.mutateAsync({ id, status });
+        } catch {
+          return;
+        }
         toast.success(opts.toastMsg ?? "Card movido.");
         return;
       }
