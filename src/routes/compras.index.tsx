@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, ChevronRight } from "lucide-react";
 import { CompraDialog } from "@/components/CompraDialog";
-import { COMPRA_STATUSES, canMoveCompra, canNatanaelMoveTo, moveBlockedMessage, PEDRO_EMAIL, PEDRO_MOVE_BLOCKED_MSG, type CompraStatus } from "@/lib/compras";
+import { COMPRA_STATUSES, canMoveCompra, moveBlockedMessage, PEDRO_EMAIL, PEDRO_MOVE_BLOCKED_MSG, type CompraStatus } from "@/lib/compras";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   DndContext,
@@ -151,8 +151,6 @@ function ComprasKanban() {
     opts?: { force?: boolean; toastMsg?: string },
   ) {
     if (compra.status === status) return;
-    // Regra silenciosa do Natanael (sem notificação/toast)
-    if (!canNatanaelMoveTo(compra, user?.id, isAdmin, status)) return;
     if (status === "a_receber" && !compra.tipo_compra) {
       toast.error("Defina o tipo da compra antes de movê-la para Compras a Receber.");
       return;
