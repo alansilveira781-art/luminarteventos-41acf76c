@@ -31,10 +31,6 @@ export const STATUS_LABEL: Record<CompraStatus, string> = COMPRA_STATUSES.reduce
   {} as Record<CompraStatus, string>,
 );
 
-// User ID do Natanael (regra de movimentação interna — sem notificação)
-export const NATANAEL_USER_ID = "fd75a882-75fe-4e5b-935b-d650f050d6be";
-const NATANAEL_NOME = "Natanael";
-
 // Email do Pedro: pode editar qualquer card, mas só pode mover nestes pares (origem → destino)
 export const PEDRO_EMAIL = "pedro123jrsergio@gmail.com";
 export const PEDRO_ALLOWED_MOVES: Array<[CompraStatus, CompraStatus]> = [
@@ -46,36 +42,6 @@ const PEDRO_ALLOWED_SOURCES: CompraStatus[] = PEDRO_ALLOWED_MOVES.map(([from]) =
 export const PEDRO_MOVE_BLOCKED_MSG =
   "Pedro só pode mover cards de Solicitação → Análise e de Análise → Pendente Aprovação.";
 
-function isNatanaelSolicitante(compra: { solicitante?: string | null; solicitante_id?: string | null }): boolean {
-  if (compra.solicitante_id && compra.solicitante_id === NATANAEL_USER_ID) return true;
-  return (compra.solicitante ?? "").trim().toLowerCase() === NATANAEL_NOME.toLowerCase();
-}
-
-function isNatanaelComprador(compra: { comprador?: string | null }): boolean {
-  return (compra.comprador ?? "").trim().toLowerCase() === NATANAEL_NOME.toLowerCase();
-}
-
-/**
- * Regra extra para o Natanael (silenciosa, sem notificação):
- * - Se ele é solicitante E comprador → pode mover livremente até finalizado.
- * - Caso contrário → só pode mover até pendente_aprovacao (não além).
- * Retorna true se o movimento é permitido pela regra do Natanael (ou se a regra não se aplica).
- */
-export function canNatanaelMoveTo(
-  compra: { solicitante?: string | null; solicitante_id?: string | null; comprador?: string | null },
-  userId: string | undefined | null,
-  isAdmin: boolean,
-  targetStatus: CompraStatus,
-): boolean {
-  if (isAdmin) return true;
-  if (userId && userId === NATANAEL_USER_ID) return true; // Natanael tem acesso total
-  if (!userId || userId !== NATANAEL_USER_ID) return true; // regra só se aplica ao Natanael
-  const ambos = isNatanaelSolicitante(compra) && isNatanaelComprador(compra);
-  if (ambos) return true;
-  // Só pode mover até pendente_aprovacao
-  const allowed: CompraStatus[] = ["solicitacao", "analise", "pendente_aprovacao", "negada"];
-  return allowed.includes(targetStatus);
-}
 
 export function canEditCompra(
   compra: { responsavel_id?: string | null; created_by?: string | null },
@@ -84,7 +50,6 @@ export function canEditCompra(
   userEmail?: string | undefined | null,
 ): boolean {
   if (isAdmin) return true;
-  if (userId && userId === NATANAEL_USER_ID) return true; // Natanael tem acesso total no módulo Compras
   const isPedro = !!userEmail && userEmail.trim().toLowerCase() === PEDRO_EMAIL;
   if (isPedro) return true;
   if (!userId) return false;
