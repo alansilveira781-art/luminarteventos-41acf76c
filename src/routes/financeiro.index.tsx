@@ -213,7 +213,7 @@ function DemandasKanban() {
         title="Quadro de Despesas"
         description="Arraste os cards entre as colunas para alterar o status"
         actions={
-          <Button onClick={() => { setEditId(null); setDefaultStatus("solicitacao"); setOpen(true); }}>
+          <Button onClick={() => { setEditId(null); setDefaultStatus("solicitacao"); limparUrlCard(); setOpen(true); }}>
             <Plus className="h-4 w-4 mr-1" /> Nova demanda
           </Button>
         }
@@ -240,7 +240,7 @@ function DemandasKanban() {
               <button
                 key={c.id}
                 type="button"
-                onClick={() => { setEditId(c.id); setOpen(true); }}
+                onClick={() => abrirCard(c.id)}
                 className="w-full text-left p-3 hover:bg-muted/50 flex items-center gap-3 text-sm"
               >
                 <span className="text-[11px] font-mono text-muted-foreground w-24 shrink-0">
@@ -270,7 +270,7 @@ function DemandasKanban() {
                   <Card
                     key={c.id}
                     demanda={c}
-                    onOpen={() => { setEditId(c.id); setOpen(true); }}
+                    onOpen={() => abrirCard(c.id)}
                     nextStatusLabel={next ? (DEMANDA_STATUSES.find((x) => x.key === next)?.label ?? null) : null}
                     onAdvance={next ? () => advanceToStatus(c, next) : undefined}
                   />
@@ -278,7 +278,7 @@ function DemandasKanban() {
               })}
               <button
                 type="button"
-                onClick={() => { setEditId(null); setDefaultStatus(s.key); setOpen(true); }}
+                onClick={() => { setEditId(null); setDefaultStatus(s.key); limparUrlCard(); setOpen(true); }}
                 className="w-full text-xs text-muted-foreground hover:text-foreground py-1.5 rounded border border-dashed border-border hover:border-primary"
               >
                 + adicionar
@@ -291,7 +291,7 @@ function DemandasKanban() {
 
       <DemandaDialog
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={(v) => { setOpen(v); if (!v) { setEditId(null); limparUrlCard(); } }}
         demandaId={editId}
         defaultStatus={defaultStatus}
         onAdvance={async (demandaData, opts) => {
