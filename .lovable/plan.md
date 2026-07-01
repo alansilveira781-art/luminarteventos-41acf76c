@@ -1,25 +1,26 @@
 ## Objetivo
-Remover todo tratamento especial do usuário Natanael no módulo Compras. Ele passa a seguir as mesmas regras de qualquer usuário (responsáveis por status). A regra do Pedro permanece intacta.
 
-## Mudanças
+Restringir a movimentação de cards de Compras: quando o status de destino tem responsável definido em Configurações, apenas esse responsável (ou admin) pode mover o card para lá. Regra do Pedro permanece intacta.
+
+## Alterações
 
 ### 1. `src/lib/compras.ts`
-- Remover constantes `NATANAEL_USER_ID` e `NATANAEL_NOME`.
-- Remover funções auxiliares `isNatanaelSolicitante` e `isNatanaelComprador`.
-- Remover a função exportada `canNatanaelMoveTo` inteira.
-- Em `canEditCompra`, remover apenas a linha `if (userId && userId === NATANAEL_USER_ID) return true;` — resto permanece igual.
-- **Não tocar** em `canMoveCompra`, `PEDRO_*` ou qualquer lógica do Pedro.
+Adicionar parâmetro opcional `statusResponsavelId` em `canMoveCompra`. Depois do bloco do Pedro:
+- Admin → sempre permite.
+- Se `targetStatus` tem `statusResponsavelId` → apenas o próprio responsável.
+- Caso contrário → fallback para `canEditCompra` (comportamento atual).
+
+`canEditCompra` fica intacta.
 
 ### 2. `src/routes/compras.index.tsx`
-- Remover `canNatanaelMoveTo` do import de `@/lib/compras`.
-- Em `advanceToStatus`, remover as duas linhas:
-  ```
-  // Regra silenciosa do Natanael (sem notificação/toast)
-  if (!canNatanaelMoveTo(compra, user?.id, isAdmin, status)) return;
-  ```
+- Criar helper `responsavelDoStatus(status)` a partir de `statusDefaults`.
+- No `onDragEnd`: passar `responsavelDoStatus(status)` para `canMoveCompra` e melhorar a mensagem de toast citando o nome do responsável definido.
+- No render dos cards: passar `responsavelDoStatus(next)` na checagem que habilita o botão "Avançar".
 
-## Banco (RLS)
-Verifiquei as migrations: a migration `20260624171008` já substituiu as políticas antigas de UPDATE/DELETE em `compras`, removendo os UUIDs hardcoded (incluindo o do Natanael). As políticas atuais usam apenas `created_by`, `is_admin` e `is_module_admin('compras')`. **Nenhuma alteração no banco é necessária.** A migration antiga `20260624144423` que continha o UUID é histórica e não deve ser editada.
+### 3. `src/components/CompraDialog.tsx`
+- Garantir a query `compras_status_defaults` (reaproveitar se já existir com a mesma queryKey).
+- Nos botões "Aprovar/Reprovar" de `pendente_aprovacao`: buscar responsável configurado para `aprovada` e `negada` e passar como `statusResponsavelId` nas duas chamadas de `canMoveCompra`.
 
-## Verificação final
-Após as edições, buscar `NATANAEL`, `canNatanaelMoveTo` e `fd75a882-75fe-4e5b-935b-d650f050d6be` em `src/` para confirmar que não sobrou nenhuma referência órfã, e rodar typecheck.
+## Não fazer
+- Não mexer na lógica do Pedro, em `canEditCompra`, em `notifyResponsavel`, no `AvancarCardDialog` ou em outros módulos.
+- Sem alteração de banco/RLS nesta rodada (o prompt oferece reforço server-side apenas se solicitado).

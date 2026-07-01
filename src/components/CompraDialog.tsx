@@ -110,6 +110,17 @@ export function CompraDialog({
     },
   });
 
+  const { data: statusDefaults = [] } = useQuery({
+    queryKey: ["compras_status_defaults"],
+    queryFn: async () => {
+      const { data } = await sb
+        .from("compras_status_defaults")
+        .select("status, responsavel_id, responsavel_nome");
+      return (data ?? []) as { status: string; responsavel_id: string | null; responsavel_nome: string | null }[];
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
   const { data: eventosData } = useQuery({
     queryKey: ["sheets-eventos"],
     queryFn: async () => await listEventos(),
@@ -490,8 +501,10 @@ export function CompraDialog({
               if (!compraId || !onAdvance) return null;
               const blocked = moveBlockedMessage(form);
               if (form.status === "pendente_aprovacao") {
-                const canMove = canMoveCompra(form as any, user?.id, isAdmin, user?.email, "aprovada");
-                const canDeny = canMoveCompra(form as any, user?.id, isAdmin, user?.email, "negada");
+                const respAprovada = statusDefaults.find((d) => d.status === "aprovada" && d.responsavel_id)?.responsavel_id ?? null;
+                const respNegada = statusDefaults.find((d) => d.status === "negada" && d.responsavel_id)?.responsavel_id ?? null;
+                const canMove = canMoveCompra(form as any, user?.id, isAdmin, user?.email, "aprovada", form.status as any, respAprovada);
+                const canDeny = canMoveCompra(form as any, user?.id, isAdmin, user?.email, "negada", form.status as any, respNegada);
                 return (
                   <>
                     <Button
@@ -523,7 +536,8 @@ export function CompraDialog({
                 break;
               }
               if (!nextLabel) return null;
-              const canMove = canMoveCompra(form as any, user?.id, isAdmin, user?.email, nextKey ?? undefined);
+              const respNext = nextKey ? (statusDefaults.find((d) => d.status === nextKey && d.responsavel_id)?.responsavel_id ?? null) : null;
+              const canMove = canMoveCompra(form as any, user?.id, isAdmin, user?.email, nextKey ?? undefined, form.status as any, respNext);
               const missingTipo = nextKey === "a_receber" && !form.tipo_compra;
               const disabled = !canMove || missingTipo;
               const title = canMove
