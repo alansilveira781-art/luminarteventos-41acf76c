@@ -392,6 +392,7 @@ function DashboardHome() {
           <GaugeRealVsMeta valor={realizado} meta={metaPeriodo} />
         </div>
       </div>
+      )}
     </div>
   );
 }
