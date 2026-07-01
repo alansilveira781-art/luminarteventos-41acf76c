@@ -596,6 +596,160 @@ function DashboardHome() {
         </div>
       </div>
       )}
+
+      {secao === "indicadores" && (
+      <div className="space-y-4">
+        <Card className="p-4">
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Ano A</div>
+              <Input type="number" value={indAnoA} onChange={(e) => setIndAnoA(Number(e.target.value) || anoAtual)} />
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Ano B</div>
+              <Input type="number" value={indAnoB} onChange={(e) => setIndAnoB(Number(e.target.value) || anoAtual - 1)} />
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Empresa</div>
+              <Select value={indEmpresa} onValueChange={setIndEmpresa}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Todos">Todos</SelectItem>
+                  {empresasAll.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Trimestre</div>
+              <Select value={indTrimestre} onValueChange={setIndTrimestre}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Todos">Todos</SelectItem>
+                  <SelectItem value="1">1º Trim</SelectItem>
+                  <SelectItem value="2">2º Trim</SelectItem>
+                  <SelectItem value="3">3º Trim</SelectItem>
+                  <SelectItem value="4">4º Trim</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Consultor</div>
+              <Select value={indConsultor} onValueChange={setIndConsultor}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Todos">Todos</SelectItem>
+                  {consultoresAll.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Classificação</div>
+              <Select value={indClassificacao} onValueChange={setIndClassificacao}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Todos">Todos</SelectItem>
+                  {classificacoesAll.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </Card>
+
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+          <Card className="p-4">
+            <div className="text-sm font-medium text-foreground/80 mb-3">Ano A vs Ano B</div>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={indicadores.serie} margin={{ top: 32, right: 40, left: 12, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="trim" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                  <YAxis hide domain={["dataMin - 100000", "dataMax + 100000"]} />
+                  <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                  <Legend />
+                  <Line type="monotone" dataKey="anoA" name={`Ano A (${indAnoA})`} stroke="#0ea5e9" strokeWidth={3} dot={{ r: 5, strokeWidth: 2, fill: "#fff" }}>
+                    <LabelList dataKey="anoA" position="top" dy={-6} formatter={(v: number) => brlAbrev(v)} fontSize={11} />
+                  </Line>
+                  <Line type="monotone" dataKey="anoB" name={`Ano B (${indAnoB})`} stroke="#1e3a8a" strokeWidth={3} dot={{ r: 5, strokeWidth: 2, fill: "#fff" }}>
+                    <LabelList dataKey="anoB" position="bottom" dy={12} formatter={(v: number) => brlAbrev(v)} fontSize={11} />
+                  </Line>
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <div className="text-sm font-medium text-foreground/80 mb-3">Comparativo</div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Indicador</TableHead>
+                  <TableHead className="text-right">Ano A ({indAnoA})</TableHead>
+                  <TableHead className="text-right">Ano B ({indAnoB})</TableHead>
+                  <TableHead className="text-right">%</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {indicadores.tabela.map((r) => {
+                  const isMoney = r.ind !== "Qtde de vendas";
+                  const fmt = (n: number) => isMoney
+                    ? n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 })
+                    : n.toLocaleString("pt-BR", { maximumFractionDigits: 0 });
+                  const pctColor = r.pct >= 0 ? "text-emerald-600" : "text-red-600";
+                  return (
+                    <TableRow key={r.ind}>
+                      <TableCell className="font-medium">{r.ind}</TableCell>
+                      <TableCell className="text-right tabular-nums">{fmt(r.a)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{fmt(r.b)}</TableCell>
+                      <TableCell className={`text-right tabular-nums font-semibold ${pctColor}`}>
+                        {r.pct.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </Card>
+        </div>
+
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+          {[
+            { title: `Ano A — ${indAnoA}`, data: indicadores.pizzaA },
+            { title: `Ano B — ${indAnoB}`, data: indicadores.pizzaB },
+          ].map(({ title, data }) => {
+            const total = data.reduce((s, d) => s + d.valor, 0);
+            return (
+              <Card key={title} className="p-4">
+                <div className="text-sm font-medium text-foreground/80 mb-3 italic">{title}</div>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                      <Legend layout="vertical" align="right" verticalAlign="middle" />
+                      <Pie
+                        data={data}
+                        dataKey="valor"
+                        nameKey="nome"
+                        cx="40%"
+                        cy="50%"
+                        outerRadius={110}
+                        label={({ value }: { value: number }) => {
+                          const p = total ? (value / total) * 100 : 0;
+                          return `${brlAbrev(value)} (${p.toFixed(2)}%)`;
+                        }}
+                      >
+                        {data.map((_, i) => (
+                          <Cell key={i} fill={pizzaColors[i % pizzaColors.length]} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+      )}
     </div>
   );
 }
