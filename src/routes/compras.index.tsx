@@ -245,17 +245,23 @@ function ComprasKanban() {
     if (!compra) return;
     if (!canMoveCompra(compra, user?.id, isAdmin, user?.email, status, compra.status, responsavelDoStatus(status), responsavelDoStatus(compra.status))) {
       const isPedro = !!user?.email && user.email.trim().toLowerCase() === PEDRO_EMAIL;
-      const respId = responsavelDoStatus(status);
-      const respNome = statusDefaults.find((d) => d.status === status)?.responsavel_nome;
+      const respIdDest = responsavelDoStatus(status);
+      const respNomeDest = statusDefaults.find((d) => d.status === status)?.responsavel_nome;
+      const respIdOrig = responsavelDoStatus(compra.status);
+      const respNomeOrig = statusDefaults.find((d) => d.status === compra.status)?.responsavel_nome;
+      const blockedBySource = !!respIdOrig && user?.id !== respIdOrig && !isAdmin;
       toast.error(
         isPedro
           ? PEDRO_MOVE_BLOCKED_MSG
-          : respId
-          ? `Apenas ${respNome ?? "o responsável definido"} (ou um admin) pode mover o card para "${COMPRA_STATUSES.find((s) => s.key === status)?.label ?? status}".`
+          : blockedBySource
+          ? `Apenas ${respNomeOrig ?? "o responsável definido"} (ou um admin) pode retirar o card de "${COMPRA_STATUSES.find((s) => s.key === compra.status)?.label ?? compra.status}".`
+          : respIdDest
+          ? `Apenas ${respNomeDest ?? "o responsável definido"} (ou um admin) pode mover o card para "${COMPRA_STATUSES.find((s) => s.key === status)?.label ?? status}".`
           : moveBlockedMessage(compra),
       );
       return;
     }
+
     await advanceToStatus(compra, status);
   }
 
