@@ -86,6 +86,8 @@ export function CompraDialog({
   const isAdmin = isGlobalAdmin || modulos.some((m) => m.slug === "compras" && m.is_admin);
   const canEdit = !compraId || canEditCompra(form as any, user?.id, isAdmin, user?.email);
   const editBlockedMsg = canEdit ? null : moveBlockedMessage(form as any);
+  const [excluirOpen, setExcluirOpen] = useState(false);
+  const [motivoExclusao, setMotivoExclusao] = useState("");
 
   const { data: estoqueItens = [] } = useQuery({
     queryKey: ["itens-min"],
