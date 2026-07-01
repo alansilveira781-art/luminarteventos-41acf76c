@@ -67,6 +67,8 @@ export function canMoveCompra(
   userEmail?: string | undefined | null,
   targetStatus?: CompraStatus,
   currentStatus?: CompraStatus,
+  // Responsável definido na Configuração para o STATUS DE DESTINO (null se não houver).
+  statusResponsavelId?: string | null,
 ): boolean {
   const isPedro = !!userEmail && userEmail.trim().toLowerCase() === PEDRO_EMAIL;
   if (isPedro) {
@@ -80,6 +82,16 @@ export function canMoveCompra(
     }
     return PEDRO_ALLOWED_MOVES.some(([from, to]) => from === currentStatus && to === targetStatus);
   }
+
+  // Admin move qualquer card para qualquer status.
+  if (isAdmin) return true;
+
+  // Se o status de destino tem responsável configurado, SOMENTE ele (ou admin) pode mover para lá.
+  if (targetStatus && statusResponsavelId) {
+    return !!userId && userId === statusResponsavelId;
+  }
+
+  // Status de destino sem responsável configurado: mantém a regra padrão de edição.
   return canEditCompra(compra, userId, isAdmin, userEmail);
 }
 
