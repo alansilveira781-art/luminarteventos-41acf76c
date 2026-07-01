@@ -404,7 +404,7 @@ function PainelFinanceiro() {
             <div className="text-right">Valores</div>
             <div className="text-right">%</div>
           </div>
-          <div>
+          <div className="max-h-[600px] overflow-y-auto">
             {linhasDre.map((row) => {
               if (row.kind === "header") {
                 const isOpen = !collapsed[row.id];
@@ -856,7 +856,7 @@ function AnaliseDetalhada() {
             <div className="text-right">Valores</div>
             <div className="text-right">%</div>
           </div>
-          <div>
+          <div className="max-h-[600px] overflow-y-auto">
             {linhasDre.map((row) => {
               if (row.kind === "header") {
                 const isOpen = !collapsed[row.id];
