@@ -546,3 +546,120 @@ function SaidaCombobox({ grupos, value, onChange }: {
     </div>
   );
 }
+
+function imprimirFormularioDevolucao({
+  grupo,
+  gruposVisuais,
+  qtdsGrupo,
+  meta,
+}: {
+  grupo: { numero: number | null; data: string; responsavel: string | null; evento: string | null };
+  gruposVisuais: GrupoVisual[];
+  qtdsGrupo: Record<string, string>;
+  meta: { data_movimento: string; responsavel: string; condicao: string; observacoes: string };
+}) {
+  const esc = (v: unknown) =>
+    String(v ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+  const req = grupo.numero != null ? `REQ-${String(grupo.numero).padStart(4, "0")}` : "—";
+  const dataSaida = new Date(grupo.data).toLocaleDateString("pt-BR");
+  const dataDev = meta.data_movimento
+    ? new Date(meta.data_movimento).toLocaleString("pt-BR")
+    : new Date().toLocaleString("pt-BR");
+
+  const linhas = gruposVisuais
+    .map((gv) => {
+      const solic = qtdsGrupo[gv.key] ? Math.floor(Number(qtdsGrupo[gv.key])) : "";
+      return `
+        <tr>
+          <td>${esc(gv.nome)}</td>
+          <td class="muted">${esc(gv.especificacao)}</td>
+          <td class="num">${gv.totalSaida}</td>
+          <td class="num">${gv.totalJaDev}</td>
+          <td class="num">${gv.totalSaldo}</td>
+          <td>${esc(gv.unidade)}</td>
+          <td class="num">${solic}</td>
+          <td class="fill"></td>
+          <td class="fill"></td>
+        </tr>`;
+    })
+    .join("");
+
+  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<title>Formulário de Devolução — ${esc(req)}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: #111; margin: 24px; font-size: 12px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color: #555; margin-bottom: 12px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; margin-bottom: 12px; }
+  .grid div { border-bottom: 1px solid #ddd; padding: 4px 0; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th, td { border: 1px solid #999; padding: 6px 6px; vertical-align: top; }
+  th { background: #f2f2f2; text-align: left; font-size: 11px; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.muted { color: #666; }
+  td.fill { min-width: 80px; height: 26px; }
+  .obs { margin-top: 16px; }
+  .obs .box { border: 1px solid #999; height: 60px; }
+  .sig { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px; }
+  .sig .line { border-top: 1px solid #333; padding-top: 4px; text-align: center; font-size: 11px; }
+  @media print { body { margin: 12mm; } }
+</style></head>
+<body>
+  <h1>Formulário de Devolução de Patrimônio</h1>
+  <div class="sub">Preencha as quantidades devolvidas fisicamente e a condição de cada peça.</div>
+  <div class="grid">
+    <div><strong>Saída (REQ):</strong> ${esc(req)}</div>
+    <div><strong>Data da saída:</strong> ${esc(dataSaida)}</div>
+    <div><strong>Responsável (saída):</strong> ${esc(grupo.responsavel ?? "—")}</div>
+    <div><strong>Evento / Projeto:</strong> ${esc(grupo.evento ?? "—")}</div>
+    <div><strong>Data da devolução:</strong> ${esc(dataDev)}</div>
+    <div><strong>Recebido por:</strong> ${esc(meta.responsavel || "________________________")}</div>
+    <div><strong>Condição prevista:</strong> ${esc((meta.condicao || "").replace("_", " "))}</div>
+    <div><strong>Impresso em:</strong> ${new Date().toLocaleString("pt-BR")}</div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Especificação</th>
+        <th style="width:60px">Saída</th>
+        <th style="width:72px">Já dev.</th>
+        <th style="width:60px">Saldo</th>
+        <th style="width:44px">UN</th>
+        <th style="width:80px">Sistema</th>
+        <th style="width:80px">Físico</th>
+        <th>Condição / Obs.</th>
+      </tr>
+    </thead>
+    <tbody>${linhas || `<tr><td colspan="9" style="text-align:center;color:#888">Sem itens</td></tr>`}</tbody>
+  </table>
+
+  <div class="obs">
+    <div><strong>Observações gerais:</strong></div>
+    <div class="box">${esc(meta.observacoes || "")}</div>
+  </div>
+
+  <div class="sig">
+    <div class="line">Entregue por</div>
+    <div class="line">Recebido por</div>
+  </div>
+
+  <script>window.onload = () => { window.focus(); window.print(); };</script>
+</body></html>`;
+
+  const w = window.open("", "_blank", "width=900,height=1000");
+  if (!w) {
+    toast.error("Bloqueio de pop-up impediu a impressão. Libere pop-ups e tente novamente.");
+    return;
+  }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+}
+
