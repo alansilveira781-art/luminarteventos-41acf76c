@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, ChevronRight } from "lucide-react";
 import { CompraDialog } from "@/components/CompraDialog";
-import { COMPRA_STATUSES, canMoveCompra, moveBlockedMessage, PEDRO_EMAIL, PEDRO_MOVE_BLOCKED_MSG, type CompraStatus } from "@/lib/compras";
+import { COMPRA_STATUSES, canMoveCompra, moveBlockedMessage, nextCompraStatus, PEDRO_EMAIL, PEDRO_MOVE_BLOCKED_MSG, type CompraStatus } from "@/lib/compras";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   DndContext,
@@ -52,8 +52,8 @@ type Compra = {
 
 function ComprasKanban() {
   const qc = useQueryClient();
-  const { user, isModuleAdmin } = useAuth();
-  const isAdmin = isModuleAdmin("compras") || isModuleAdmin("estoque");
+  const { user, isAdmin: isGlobalAdmin, modulos } = useAuth();
+  const isAdmin = isGlobalAdmin || modulos.some((m) => m.slug === "compras" && m.is_admin);
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [defaultStatus, setDefaultStatus] = useState<CompraStatus>("solicitacao");
@@ -101,6 +101,15 @@ function ComprasKanban() {
     return def?.responsavel_id ?? null;
   };
 
+  const statusMoveBlockedMessage = (target?: CompraStatus | null) => {
+    if (!target) return "Movimentação não permitida para este card.";
+    const targetLabel = COMPRA_STATUSES.find((s) => s.key === target)?.label ?? target;
+    const respNomeDest = statusDefaults.find((d) => d.status === target)?.responsavel_nome;
+    return respNomeDest
+      ? `Apenas ${respNomeDest} ou o responsável pelo status atual pode mover para "${targetLabel}".`
+      : `Apenas o responsável pelo status atual pode mover para "${targetLabel}".`;
+  };
+
   const filteredCompras = useMemo(() => {
     const s = qd.toLowerCase().trim();
     if (!s) return compras;
@@ -124,12 +133,12 @@ function ComprasKanban() {
 
   const moveStatus = useMutation({
     mutationFn: async (vars: { id: string; status: CompraStatus; responsavelId?: string; responsavelNome?: string }) => {
-      const patch: any = { status: vars.status };
-      if (vars.responsavelId) {
-        patch.responsavel_id = vars.responsavelId;
-        patch.responsavel_nome = vars.responsavelNome;
-      }
-      const { error } = await sb.from("compras").update(patch).eq("id", vars.id);
+      const { error } = await sb.rpc("move_compra_status", {
+        p_id: vars.id,
+        p_status: vars.status,
+        p_responsavel_id: vars.responsavelId ?? null,
+        p_responsavel_nome: vars.responsavelNome ?? null,
+      });
       if (error) throw error;
     },
     onMutate: async ({ id, status }) => {
@@ -162,12 +171,11 @@ function ComprasKanban() {
     if (!canMoveCompra(compra, user?.id, isAdmin, user?.email, status, compra.status, responsavelDoStatus(status), responsavelDoStatus(compra.status))) {
       const isPedro = !!user?.email && user.email.trim().toLowerCase() === PEDRO_EMAIL;
       const respIdDest = responsavelDoStatus(status);
-      const respNomeDest = statusDefaults.find((d) => d.status === status)?.responsavel_nome;
       toast.error(
         isPedro
           ? PEDRO_MOVE_BLOCKED_MSG
           : respIdDest
-          ? `Apenas ${respNomeDest ?? "o responsável definido"} (ou um admin) pode mover o card para "${COMPRA_STATUSES.find((s) => s.key === status)?.label ?? status}".`
+          ? statusMoveBlockedMessage(status)
           : moveBlockedMessage(compra),
       );
       return;
@@ -241,12 +249,11 @@ function ComprasKanban() {
     if (!canMoveCompra(compra, user?.id, isAdmin, user?.email, status, compra.status, responsavelDoStatus(status), responsavelDoStatus(compra.status))) {
       const isPedro = !!user?.email && user.email.trim().toLowerCase() === PEDRO_EMAIL;
       const respIdDest = responsavelDoStatus(status);
-      const respNomeDest = statusDefaults.find((d) => d.status === status)?.responsavel_nome;
       toast.error(
         isPedro
           ? PEDRO_MOVE_BLOCKED_MSG
           : respIdDest
-          ? `Apenas ${respNomeDest ?? "o responsável definido"} (ou um admin) pode mover o card para "${COMPRA_STATUSES.find((s) => s.key === status)?.label ?? status}".`
+          ? statusMoveBlockedMessage(status)
           : moveBlockedMessage(compra),
       );
       return;
@@ -254,20 +261,6 @@ function ComprasKanban() {
 
     await advanceToStatus(compra, status);
   }
-
-  function nextStatus(s: CompraStatus): CompraStatus | null {
-    const idx = COMPRA_STATUSES.findIndex((x) => x.key === s);
-    if (idx < 0) return null;
-    // Pula "negada" no avanço sequencial; finalizado é terminal.
-    for (let i = idx + 1; i < COMPRA_STATUSES.length; i++) {
-      const k = COMPRA_STATUSES[i].key;
-      if (k === "negada") continue;
-      return k;
-    }
-    return null;
-  }
-
-
 
   return (
     <>
@@ -333,7 +326,7 @@ function ComprasKanban() {
           {COMPRA_STATUSES.map((s) => (
             <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={byStatus[s.key]?.length ?? 0}>
               {(byStatus[s.key] ?? []).map((c) => {
-                const next = nextStatus(c.status);
+                const next = nextCompraStatus(c.status);
                 const canMove = canMoveCompra(c, user?.id, isAdmin, user?.email, next ?? undefined, c.status, responsavelDoStatus(next), responsavelDoStatus(c.status));
                 return (
                   <Card
@@ -343,7 +336,7 @@ function ComprasKanban() {
                     nextStatusLabel={next ? (COMPRA_STATUSES.find((x) => x.key === next)?.label ?? null) : null}
                     onAdvance={next ? () => advanceToStatus(c, next) : undefined}
                     canMove={canMove}
-                    blockedMsg={canMove ? null : moveBlockedMessage(c)}
+                    blockedMsg={canMove ? null : statusMoveBlockedMessage(next)}
                   />
                 );
               })}
@@ -366,7 +359,7 @@ function ComprasKanban() {
         compraId={editId}
         defaultStatus={defaultStatus}
         onAdvance={async (compraData, opts) => {
-          const target = opts?.deny ? "negada" : opts?.approve ? "aprovada" : nextStatus(compraData.status);
+          const target = opts?.deny ? "negada" : opts?.approve ? "aprovada" : nextCompraStatus(compraData.status);
           if (!target) return;
           await advanceToStatus(compraData as unknown as Compra, target, {
             force: !!(opts?.approve || opts?.deny),

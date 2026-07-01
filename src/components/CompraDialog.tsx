@@ -16,7 +16,7 @@ import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
 import { ensureValidSession, describeSupabaseError } from "@/lib/supabase-guard";
-import { COMPRA_STATUSES, TIPO_COMPRA_OPTIONS, canMoveCompra, canEditCompra, moveBlockedMessage, type CompraStatus } from "@/lib/compras";
+import { COMPRA_STATUSES, TIPO_COMPRA_OPTIONS, canMoveCompra, canEditCompra, moveBlockedMessage, nextCompraStatus, type CompraStatus } from "@/lib/compras";
 import { useAuth } from "@/contexts/AuthContext";
 import { notifyResponsiblesForStatus, notifyMentions } from "@/lib/notify";
 import { listEventos } from "@/lib/sheets.functions";
@@ -78,11 +78,11 @@ export function CompraDialog({
   onAdvance?: (compra: Compra & { id: string }, opts?: AdvanceOpts) => void | Promise<void>;
 }) {
   const qc = useQueryClient();
-  const { user, isModuleAdmin } = useAuth();
+  const { user, isAdmin: isGlobalAdmin, modulos } = useAuth();
   const [form, setForm] = useState<Compra>({ status: defaultStatus });
   const [itens, setItens] = useState<CompraItem[]>([]);
   const [statusInicial, setStatusInicial] = useState<CompraStatus>(defaultStatus);
-  const isAdmin = isModuleAdmin("compras") || isModuleAdmin("estoque");
+  const isAdmin = isGlobalAdmin || modulos.some((m) => m.slug === "compras" && m.is_admin);
   const canEdit = !compraId || canEditCompra(form as any, user?.id, isAdmin, user?.email);
   const editBlockedMsg = canEdit ? null : moveBlockedMessage(form as any);
 
@@ -120,6 +120,31 @@ export function CompraDialog({
     },
     staleTime: 1000 * 60 * 5,
   });
+
+  const responsavelDoStatus = (status?: CompraStatus | null): string | null => {
+    if (!status) return null;
+    const def = statusDefaults.find((d) => d.status === status && d.responsavel_id);
+    return def?.responsavel_id ?? null;
+  };
+
+  const statusMoveBlockedMessage = (target?: CompraStatus | null) => {
+    if (!target) return "Movimentação não permitida para este card.";
+    const targetLabel = COMPRA_STATUSES.find((s) => s.key === target)?.label ?? target;
+    const respNomeDest = statusDefaults.find((d) => d.status === target)?.responsavel_nome;
+    return respNomeDest
+      ? `Apenas ${respNomeDest} ou o responsável pelo status atual pode mover para "${targetLabel}".`
+      : `Apenas o responsável pelo status atual pode mover para "${targetLabel}".`;
+  };
+
+  const statusOptions = useMemo(() => {
+    if (!compraId) return COMPRA_STATUSES;
+    const respAtual = responsavelDoStatus(statusInicial);
+    return COMPRA_STATUSES.filter((s) =>
+      s.key === statusInicial
+      || s.key === form.status
+      || canMoveCompra(form as any, user?.id, isAdmin, user?.email, s.key, statusInicial, responsavelDoStatus(s.key), respAtual),
+    );
+  }, [compraId, form, isAdmin, statusDefaults, statusInicial, user?.email, user?.id]);
 
   const { data: eventosData } = useQuery({
     queryKey: ["sheets-eventos"],
@@ -260,10 +285,10 @@ export function CompraDialog({
                 <Input value={form.titulo ?? ""} onChange={(e) => setForm({ ...form, titulo: e.target.value })} placeholder="Ex.: Compra de tintas" />
               </FormField>
               <FormField label="Status">
-                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as CompraStatus })} disabled={!canEdit}>
+                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as CompraStatus })} disabled={!!compraId || !canEdit}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {COMPRA_STATUSES.map((s) => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}
+                    {statusOptions.map((s) => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </FormField>
@@ -500,17 +525,17 @@ export function CompraDialog({
             {(() => {
               if (!compraId || !onAdvance) return null;
               const blocked = moveBlockedMessage(form);
+              const respAtual = responsavelDoStatus(form.status);
               if (form.status === "pendente_aprovacao") {
-                const respAprovada = statusDefaults.find((d) => d.status === "aprovada" && d.responsavel_id)?.responsavel_id ?? null;
-                const respNegada = statusDefaults.find((d) => d.status === "negada" && d.responsavel_id)?.responsavel_id ?? null;
-                const canMove = canMoveCompra(form as any, user?.id, isAdmin, user?.email, "aprovada", form.status as any, respAprovada);
-                const canDeny = canMoveCompra(form as any, user?.id, isAdmin, user?.email, "negada", form.status as any, respNegada);
+                const canMove = canMoveCompra(form as any, user?.id, isAdmin, user?.email, "aprovada", form.status as any, responsavelDoStatus("aprovada"), respAtual);
+                const canDeny = canMoveCompra(form as any, user?.id, isAdmin, user?.email, "negada", form.status as any, responsavelDoStatus("negada"), respAtual);
+                const approvalBlocked = respAtual ? "Apenas o responsável por Pendente Aprovação pode aprovar ou reprovar este card." : blocked;
                 return (
                   <>
                     <Button
                       onClick={() => canMove && onAdvance({ ...form, id: compraId }, { approve: true })}
                       disabled={!canMove}
-                      title={canMove ? undefined : blocked}
+                      title={canMove ? undefined : approvalBlocked}
                       className="bg-success text-success-foreground hover:bg-success/90"
                     >
                       <CheckCircle2 className="h-4 w-4 mr-1" /> Aprovar compra
@@ -519,30 +544,22 @@ export function CompraDialog({
                       variant="destructive"
                       onClick={() => canDeny && onAdvance({ ...form, id: compraId }, { deny: true })}
                       disabled={!canDeny}
-                      title={canDeny ? undefined : blocked}
+                      title={canDeny ? undefined : approvalBlocked}
                     >
                       <XCircle className="h-4 w-4 mr-1" /> Reprovar compra
                     </Button>
                   </>
                 );
               }
-              const idx = COMPRA_STATUSES.findIndex((s) => s.key === form.status);
-              let nextKey: CompraStatus | null = null;
-              let nextLabel: string | null = null;
-              for (let i = idx + 1; i < COMPRA_STATUSES.length; i++) {
-                if (COMPRA_STATUSES[i].key === "negada") continue;
-                nextKey = COMPRA_STATUSES[i].key;
-                nextLabel = COMPRA_STATUSES[i].label;
-                break;
-              }
+              const nextKey = nextCompraStatus(form.status);
+              const nextLabel = nextKey ? COMPRA_STATUSES.find((s) => s.key === nextKey)?.label ?? null : null;
               if (!nextLabel) return null;
-              const respNext = nextKey ? (statusDefaults.find((d) => d.status === nextKey && d.responsavel_id)?.responsavel_id ?? null) : null;
-              const canMove = canMoveCompra(form as any, user?.id, isAdmin, user?.email, nextKey ?? undefined, form.status as any, respNext);
+              const canMove = canMoveCompra(form as any, user?.id, isAdmin, user?.email, nextKey ?? undefined, form.status as any, responsavelDoStatus(nextKey), respAtual);
               const missingTipo = nextKey === "a_receber" && !form.tipo_compra;
               const disabled = !canMove || missingTipo;
               const title = canMove
                 ? (missingTipo ? "Defina o tipo da compra antes de avançar para Compras a Receber." : undefined)
-                : blocked;
+                : statusMoveBlockedMessage(nextKey);
               return (
                 <Button
                   variant="secondary"

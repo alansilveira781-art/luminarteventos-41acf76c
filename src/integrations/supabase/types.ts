@@ -3109,6 +3109,15 @@ export type Database = {
         Args: { _slug: string; _user_id: string }
         Returns: boolean
       }
+      move_compra_status: {
+        Args: {
+          p_id: string
+          p_responsavel_id?: string
+          p_responsavel_nome?: string
+          p_status: Database["public"]["Enums"]["compra_status"]
+        }
+        Returns: undefined
+      }
       next_pat_requisicao_numero: { Args: never; Returns: number }
       next_proposta_numero: { Args: never; Returns: number }
       next_requisicao_numero: { Args: never; Returns: number }
