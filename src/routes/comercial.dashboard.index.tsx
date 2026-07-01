@@ -202,6 +202,14 @@ function DashboardHome() {
         >
           Relatório de Vendas
         </Button>
+        <Button
+          type="button"
+          variant={secao === "vendedores" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setSecao("vendedores")}
+        >
+          Vendedores
+        </Button>
       </div>
 
       {secao === "painel" && (
