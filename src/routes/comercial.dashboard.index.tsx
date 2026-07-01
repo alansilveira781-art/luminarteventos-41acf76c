@@ -359,33 +359,37 @@ function DashboardHome() {
         <div className="grid gap-4 grid-cols-1 lg:grid-cols-3 mt-4">
           <Card className="p-4">
             <div className="text-sm font-medium text-foreground/80 mb-3">Ranking Cerimonial/Agência</div>
-            <div style={{ height: Math.max(180, rankCerim.length * 32) }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={rankCerim} layout="vertical" margin={{ top: 4, right: 80, left: 10, bottom: 0 }}>
-                  <XAxis type="number" hide />
-                  <YAxis type="category" dataKey="nome" width={110} stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
-                  <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]}>
-                    <LabelList dataKey="valor" position="right" formatter={(v: number) => brlAbrev(v)} fontSize={11} />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="overflow-x-auto">
+              <div style={{ minWidth: Math.max(360, rankCerim.length * 90), height: 220 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={rankCerim} layout="vertical" barSize={28} margin={{ top: 4, right: 80, left: 10, bottom: 0 }}>
+                    <XAxis type="number" hide />
+                    <YAxis type="category" dataKey="nome" width={110} stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                    <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                    <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]}>
+                      <LabelList dataKey="valor" position="right" formatter={(v: number) => brlAbrev(v)} fontSize={12} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </Card>
 
           <Card className="p-4">
             <div className="text-sm font-medium text-foreground/80 mb-3">Ranking Decorador</div>
-            <div style={{ height: Math.max(180, rankDecor.length * 32) }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={rankDecor} layout="vertical" margin={{ top: 4, right: 80, left: 10, bottom: 0 }}>
-                  <XAxis type="number" hide />
-                  <YAxis type="category" dataKey="nome" width={110} stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
-                  <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]}>
-                    <LabelList dataKey="valor" position="right" formatter={(v: number) => brlAbrev(v)} fontSize={11} />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="overflow-x-auto">
+              <div style={{ minWidth: Math.max(360, rankDecor.length * 90), height: 220 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={rankDecor} layout="vertical" barSize={28} margin={{ top: 4, right: 80, left: 10, bottom: 0 }}>
+                    <XAxis type="number" hide />
+                    <YAxis type="category" dataKey="nome" width={110} stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                    <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                    <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]}>
+                      <LabelList dataKey="valor" position="right" formatter={(v: number) => brlAbrev(v)} fontSize={12} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </Card>
 

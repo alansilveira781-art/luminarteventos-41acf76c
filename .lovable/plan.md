@@ -1,52 +1,21 @@
-## Plano — Seção "Relatórios de Vendas"
+Ajustar a visualização dos gráficos "Ranking Cerimonial/Agência" e "Ranking Decorador" na seção Relatório de Vendas para evitar que fiquem encolhidos quando há muitos itens.
 
-Adicionar uma nova seção logo abaixo do painel atual em `src/routes/comercial.dashboard.index.tsx`, reaproveitando o contexto `useDashboard` (mesmos filtros Empresa/Ano/Mês, mesmos dados filtrados).
+### O que será alterado
 
-### Layout
+No arquivo `src/routes/comercial.dashboard.index.tsx`, na seção `secao === "relatorio"`:
 
-```text
-── Relatórios de Vendas ─────────────────────────────
-[KPI Vendas Totais] [KPI Qtde] [KPI Desconto] [KPI Ticket]
+1. **Altura fixa por card**: Limitar a altura visível do card para comportar aproximadamente 5 itens (altura fixa ~200-240px), em vez de expandir proporcionalmente ao número de registros.
+2. **Rolagem horizontal no gráfico**: Envolver o `ResponsiveContainer` / `BarChart` de cada ranking em um container com `overflow-x-auto` e definir uma largura mínima proporcional à quantidade de itens (por exemplo, `Math.max(400, dados.length * 90)`), garantindo que o gráfico role horizontalmente quando houver mais de 5 itens.
+3. **Maior legibilidade**: Aumentar a altura das barras (`barSize` ~28-32), o espaçamento interno e a fonte dos labels/valores para que os valores de cada barra fiquem legíveis sem ficarem encolhidos.
+4. **Aplicar nos dois rankings**: Repetir a mesma estrutura para "Ranking Cerimonial/Agência" e "Ranking Decorador".
 
-┌────────────────────────────────────┬──────────────────────┐
-│ Tabela detalhada (scroll x)        │ Comissões vendedores │
-│  Data | Nome do Evento | Local |   │ (barras horizontais) │
-│  Consultor | Decorador |            │                      │
-│  Cerimonial | Valor Final          │                      │
-│  ...                                │                      │
-│  Total ................ R$ X,XX Mi │                      │
-└────────────────────────────────────┴──────────────────────┘
+### Resultado esperado
 
-┌──────────────────────┬──────────────────────┬─────────────┐
-│ Ranking Cerimonial   │ Ranking Decorador    │ Real. VS    │
-│ /Agência (barras h.) │ (barras horizontais) │ Meta (gauge)│
-└──────────────────────┴──────────────────────┴─────────────┘
-```
+- Os cards de ranking terão tamanho consistente mostrando ~5 itens de cada vez.
+- Quando houver mais de 5 itens, o gráfico permitirá rolar horizontalmente dentro do card.
+- Os valores à direita de cada barra (Σ `valor_final`) ficarão legíveis, sem sobreposição ou encolhimento.
 
-### Conteúdo
+### Verificação
 
-1. **Título** `<h2>` "Relatórios de Vendas" com um separador visual acima.
-
-2. **4 KPIs** — reutilizar `KpiCard` e o objeto `k = kpis(filtered, previous)` já calculado. Mesmos títulos/ícones do topo (Vendas Totais, Quantidade de Vendas, Desconto, Ticket Médio).
-
-3. **Tabela detalhada** (shadcn `Table` de `@/components/ui/table`):
-   - Colunas: Data (`dataEvento` formatado `dd/MM/yyyy`), Nome do Evento, Local, Consultor, Decorador, Cerimonial, Valor Final (BRL alinhado à direita).
-   - Ordenar por `dataEvento` desc.
-   - Wrapper `overflow-x-auto`, altura máx `~420px` com `overflow-y-auto`.
-   - `<TableFooter>` com linha "Total" e soma de `valorFinal` (BRL, colspan nas colunas anteriores).
-
-4. **Comissões vendedores** — BarChart horizontal com `comissoesPorVendedor(filtered)` (já existe em `vendas-metrics`). Formato idêntico ao Ranking Consultores do painel atual (mesmo `hsl(var(--primary))`, LabelList em BRL).
-
-5. **Ranking Cerimonial/Agência** — BarChart horizontal com `rankingCerimonial(filtered)` (`valor`).
-
-6. **Ranking Decorador** — BarChart horizontal com `rankingDecorador(filtered)` (`valor`).
-
-7. **Real. VS Meta** — reutilizar `<GaugeRealVsMeta valor={realizado} meta={metaPeriodo} />` (já calculado).
-
-### Observações técnicas
-
-- **Sem nova rota** — a seção fica no mesmo `comercial.dashboard.index.tsx`, abaixo do bloco atual. Os filtros do topo já valem para os dois blocos porque a fonte é o mesmo `filtered`.
-- **Sem alterações no banco, no contexto, ou em `vendas-metrics.ts`** — todas as funções necessárias (`comissoesPorVendedor`, `rankingCerimonial`, `rankingDecorador`) já existem.
-- **Imports novos** no arquivo: `Table, TableHeader, TableBody, TableFooter, TableRow, TableHead, TableCell` de `@/components/ui/table`; `comissoesPorVendedor, rankingCerimonial, rankingDecorador` de `vendas-metrics`.
-- **Sem títulos verticais**, seguindo padrão já estabelecido.
-- Nenhuma alteração de estilo/design tokens.
+- Recarregar a rota `/comercial/dashboard` e alternar para a aba "Relatório de Vendas".
+- Validar que os cards de Cerimonial/Agência e Decorador exibem scroll horizontal quando há muitos registros e que os valores são legíveis.
