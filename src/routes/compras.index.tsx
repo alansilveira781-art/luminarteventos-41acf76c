@@ -188,12 +188,16 @@ function ComprasKanban() {
     if (isAdvance) {
       const def = statusDefaults.find((d) => d.status === status && d.responsavel_id);
       if (def?.responsavel_id) {
-        moveStatus.mutate({
-          id,
-          status,
-          responsavelId: def.responsavel_id,
-          responsavelNome: def.responsavel_nome ?? undefined,
-        });
+        try {
+          await moveStatus.mutateAsync({
+            id,
+            status,
+            responsavelId: def.responsavel_id,
+            responsavelNome: def.responsavel_nome ?? undefined,
+          });
+        } catch {
+          return;
+        }
         notifyResponsavel({
           userId: def.responsavel_id,
           titulo: `Compra: ${statusLabel}`,
@@ -205,7 +209,11 @@ function ComprasKanban() {
         return;
       }
       if (opts?.force) {
-        moveStatus.mutate({ id, status });
+        try {
+          await moveStatus.mutateAsync({ id, status });
+        } catch {
+          return;
+        }
         toast.success(opts.toastMsg ?? "Card movido.");
         return;
       }
