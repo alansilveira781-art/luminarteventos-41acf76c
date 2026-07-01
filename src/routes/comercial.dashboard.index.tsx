@@ -555,11 +555,12 @@ function DashboardHome() {
 
           <Card className="p-3">
             <div className="text-xs font-medium text-foreground/70 mb-2">Consultores</div>
-            <div className="flex flex-wrap gap-2 max-w-md">
+            <div className="grid grid-cols-3 gap-2">
               <Button
                 type="button"
                 variant={consultorSel === "Todos" ? "default" : "outline"}
                 size="sm"
+                className="w-full"
                 onClick={() => setConsultorSel("Todos")}
               >
                 Todos
@@ -570,6 +571,7 @@ function DashboardHome() {
                   type="button"
                   variant={consultorSel === c ? "default" : "outline"}
                   size="sm"
+                  className="w-full truncate"
                   onClick={() => setConsultorSel(c)}
                 >
                   {c}
