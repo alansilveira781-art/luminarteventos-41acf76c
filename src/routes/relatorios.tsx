@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormField, FormSection } from "@/components/FormSection";
 import { Download, FileText, Printer } from "lucide-react";
+import { isAjusteMovimentacao } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -27,12 +28,14 @@ type ReportId =
   | "fornecedores"
   | "gastos_mes"
   | "gastos_categoria"
-  | "saidas_evento";
+  | "saidas_evento"
+  | "ajustes";
 
 const REPORTS: { id: ReportId; label: string; description: string; needsPeriod: boolean }[] = [
   { id: "saidas", label: "Saídas", description: "Lista de itens retirados do estoque com solicitante, evento e valor.", needsPeriod: true },
   { id: "entradas", label: "Entradas", description: "Lista de itens recebidos com fornecedor, NF e valor.", needsPeriod: true },
   { id: "devolucoes", label: "Devoluções", description: "Itens devolvidos vinculados às saídas originais.", needsPeriod: true },
+  { id: "ajustes", label: "Ajustes de estoque", description: "Movimentações de ajuste (conferência/contagem) no período.", needsPeriod: true },
   { id: "estoque", label: "Posição de estoque", description: "Quantidade atual de cada item, valor total e status.", needsPeriod: false },
   { id: "estoque_negativo", label: "Itens com estoque negativo", description: "Itens cujo saldo atual está abaixo de zero — precisam de ajuste/contagem.", needsPeriod: false },
   { id: "solicitantes", label: "Solicitantes", description: "Cadastro completo dos solicitantes ativos.", needsPeriod: false },
@@ -48,12 +51,30 @@ function RelatoriosPage() {
   const [reportId, setReportId] = useState<ReportId>("saidas");
   const [dataIni, setDataIni] = useState(format(startOfMonth(subMonths(hoje, 2)), "yyyy-MM-dd"));
   const [dataFim, setDataFim] = useState(format(endOfMonth(hoje), "yyyy-MM-dd"));
+  const [itemId, setItemId] = useState("todos");
+  const [buscaItem, setBuscaItem] = useState("");
+
+  const { data: itensLista = [] } = useQuery({
+    queryKey: ["relatorios-itens-select"],
+    queryFn: async () => {
+      const { data } = await supabase.from("itens").select("id,nome,codigo").order("nome").limit(5000);
+      return (data ?? []) as { id: string; nome: string; codigo: string | null }[];
+    },
+  });
+
+  const itensFiltrados = useMemo(() => {
+    const b = buscaItem.trim().toLowerCase();
+    if (!b) return itensLista;
+    return itensLista.filter((i) =>
+      `${i.nome} ${i.codigo ?? ""}`.toLowerCase().includes(b),
+    );
+  }, [itensLista, buscaItem]);
 
   const meta = REPORTS.find((r) => r.id === reportId)!;
 
   const { data: rows, isLoading } = useQuery({
-    queryKey: ["report", reportId, dataIni, dataFim],
-    queryFn: async () => loadReport(reportId, dataIni, dataFim),
+    queryKey: ["report", reportId, dataIni, dataFim, itemId],
+    queryFn: async () => loadReport(reportId, dataIni, dataFim, itemId),
   });
 
   const { headers, body, totals } = useMemo(() => formatReport(reportId, rows ?? []), [reportId, rows]);
@@ -154,6 +175,28 @@ function RelatoriosPage() {
           <FormField label="Data final">
             <Input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} disabled={!meta.needsPeriod} />
           </FormField>
+          <FormField label="Item" wide>
+            <Select value={itemId} onValueChange={setItemId}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <div className="p-2 sticky top-0 bg-popover z-10 border-b">
+                  <Input
+                    placeholder="Buscar por nome ou código…"
+                    value={buscaItem}
+                    onChange={(e) => setBuscaItem(e.target.value)}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    className="h-8"
+                  />
+                </div>
+                <SelectItem value="todos">Todos os itens</SelectItem>
+                {itensFiltrados.map((i) => (
+                  <SelectItem key={i.id} value={i.id}>
+                    {i.codigo ? `${i.codigo} — ` : ""}{i.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
         </FormSection>
         <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
           <FileText className="h-3 w-3" /> {meta.description}
@@ -209,48 +252,61 @@ function RelatoriosPage() {
   );
 }
 
-async function loadReport(id: ReportId, dataIni: string, dataFim: string): Promise<any[]> {
+async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemId: string = "todos"): Promise<any[]> {
   const ini = new Date(dataIni).toISOString();
   const fim = new Date(`${dataFim}T23:59:59`).toISOString();
+  const filtroItem = itemId && itemId !== "todos" ? itemId : null;
 
   if (id === "saidas") {
-    const { data } = await supabase
+    let q = supabase
       .from("movimentacoes")
-      .select("data_movimento,quantidade,valor_unitario,evento_projeto,saida_status, item:itens(nome,codigo,unidade,valor_unitario), solicitante:solicitantes(nome)")
+      .select("data_movimento,quantidade,valor_unitario,evento_projeto,saida_status,saida_tipo,observacoes,finalidade,tipo, item:itens(nome,codigo,unidade,valor_unitario), solicitante:solicitantes(nome)")
       .eq("tipo", "saida")
-      .gte("data_movimento", ini).lte("data_movimento", fim)
-      .order("data_movimento", { ascending: false }).limit(5000);
-    return data ?? [];
+      .gte("data_movimento", ini).lte("data_movimento", fim);
+    if (filtroItem) q = q.eq("item_id", filtroItem);
+    const { data } = await q.order("data_movimento", { ascending: false }).limit(5000);
+    return (data ?? []).filter((m: any) => !isAjusteMovimentacao(m));
   }
   if (id === "entradas") {
-    const { data } = await supabase
+    let q = supabase
       .from("movimentacoes")
-      .select("data_movimento,quantidade,valor_unitario,nota_fiscal, item:itens(nome,codigo,unidade), fornecedor:fornecedores(nome)")
+      .select("data_movimento,quantidade,valor_unitario,nota_fiscal,entrada_tipo,observacoes,finalidade,tipo, item:itens(nome,codigo,unidade), fornecedor:fornecedores(nome)")
       .eq("tipo", "entrada")
-      .gte("data_movimento", ini).lte("data_movimento", fim)
-      .order("data_movimento", { ascending: false }).limit(5000);
-    return data ?? [];
+      .gte("data_movimento", ini).lte("data_movimento", fim);
+    if (filtroItem) q = q.eq("item_id", filtroItem);
+    const { data } = await q.order("data_movimento", { ascending: false }).limit(5000);
+    return (data ?? []).filter((m: any) => !isAjusteMovimentacao(m));
   }
   if (id === "devolucoes") {
-    const { data } = await supabase
+    let q = supabase
       .from("movimentacoes")
       .select("data_movimento,quantidade,responsavel_recebimento, item:itens(nome,codigo,unidade), solicitante:solicitantes(nome)")
       .eq("tipo", "devolucao")
-      .gte("data_movimento", ini).lte("data_movimento", fim)
-      .order("data_movimento", { ascending: false }).limit(5000);
+      .gte("data_movimento", ini).lte("data_movimento", fim);
+    if (filtroItem) q = q.eq("item_id", filtroItem);
+    const { data } = await q.order("data_movimento", { ascending: false }).limit(5000);
     return data ?? [];
   }
+  if (id === "ajustes") {
+    let q = supabase
+      .from("movimentacoes")
+      .select("data_movimento,tipo,quantidade,valor_unitario,observacoes,finalidade,entrada_tipo,saida_tipo, item:itens(nome,codigo,unidade)")
+      .in("tipo", ["entrada", "saida"])
+      .gte("data_movimento", ini).lte("data_movimento", fim);
+    if (filtroItem) q = q.eq("item_id", filtroItem);
+    const { data } = await q.order("data_movimento", { ascending: false }).limit(5000);
+    return (data ?? []).filter((m: any) => isAjusteMovimentacao(m));
+  }
   if (id === "estoque") {
-    const { data } = await supabase.from("itens").select("*").order("nome").limit(5000);
+    let q = supabase.from("itens").select("*").order("nome");
+    if (filtroItem) q = q.eq("id", filtroItem);
+    const { data } = await q.limit(5000);
     return data ?? [];
   }
   if (id === "estoque_negativo") {
-    const { data } = await supabase
-      .from("itens")
-      .select("*")
-      .lt("quantidade_atual", 0)
-      .order("quantidade_atual", { ascending: true })
-      .limit(5000);
+    let q = supabase.from("itens").select("*").lt("quantidade_atual", 0).order("quantidade_atual", { ascending: true });
+    if (filtroItem) q = q.eq("id", filtroItem);
+    const { data } = await q.limit(5000);
     return data ?? [];
   }
 
@@ -264,19 +320,33 @@ async function loadReport(id: ReportId, dataIni: string, dataFim: string): Promi
   }
   if (id === "gastos_mes" || id === "gastos_categoria" || id === "saidas_evento") {
     const tipo = id === "saidas_evento" ? "saida" : "entrada";
-    const { data } = await supabase
+    let q = supabase
       .from("movimentacoes")
-      .select("data_movimento,quantidade,valor_unitario,evento_projeto, item:itens(nome,categoria,valor_unitario)")
+      .select("data_movimento,quantidade,valor_unitario,evento_projeto,entrada_tipo,saida_tipo,observacoes,finalidade,tipo, item:itens(nome,categoria,valor_unitario)")
       .eq("tipo", tipo)
-      .gte("data_movimento", ini).lte("data_movimento", fim)
-      .limit(10000);
-    return data ?? [];
+      .gte("data_movimento", ini).lte("data_movimento", fim);
+    if (filtroItem) q = q.eq("item_id", filtroItem);
+    const { data } = await q.limit(10000);
+    return (data ?? []).filter((m: any) => !isAjusteMovimentacao(m));
   }
   return [];
 }
 
 function formatReport(id: ReportId, rows: any[]): { headers: string[]; body: any[][]; totals: any[] | null } {
   const fmtBRL = (n: number) => `R$ ${n.toFixed(2)}`;
+
+  if (id === "ajustes") {
+    const headers = ["Data", "Tipo", "Código", "Item", "Qtd", "Un", "Observação"];
+    const body = rows.map((r) => [
+      format(new Date(r.data_movimento), "dd/MM/yyyy HH:mm"),
+      r.tipo === "entrada" ? "Entrada (ajuste)" : "Saída (ajuste)",
+      r.item?.codigo ?? "", r.item?.nome ?? "",
+      Number(r.quantidade), r.item?.unidade ?? "",
+      (r.observacoes || r.finalidade || "—"),
+    ]);
+    return { headers, body, totals: null };
+  }
+
 
   if (id === "saidas") {
     const headers = ["Data", "Código", "Item", "Qtd", "Un", "Valor unit.", "Valor total", "Solicitante", "Evento/Projeto", "Status"];

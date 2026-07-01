@@ -16,6 +16,7 @@ import {
   ArrowUpFromLine,
   Undo2,
   ListChecks,
+  CheckCircle2,
 } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { isAjusteMovimentacao } from "@/lib/utils";
@@ -208,6 +209,7 @@ function Dashboard() {
   const baixo = itens?.filter((i) => i.status === "baixo_estoque").length ?? 0;
   const sem = itens?.filter((i) => i.status === "sem_estoque").length ?? 0;
   const manut = itens?.filter((i) => i.status === "em_manutencao").length ?? 0;
+  const disponivel = itens?.filter((i) => i.status === "disponivel").length ?? 0;
   // Conta requisições (grupos) por tipo no período: linhas com mesmo requisicao_numero
   // contam como 1; linhas sem requisicao_numero contam individualmente.
   const countRequisicoes = (tipo: "entrada" | "saida" | "devolucao", aplicarFiltroAjuste: boolean) => {
@@ -359,6 +361,7 @@ function Dashboard() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Kpi icon={Package} label="Total de itens" value={total} tone="primary" />
+        <Kpi icon={CheckCircle2} label="Disponível" value={disponivel} tone="success" />
         <Kpi icon={AlertTriangle} label="Baixo estoque" value={baixo} tone="warning" />
         <Kpi icon={XCircle} label="Sem estoque" value={sem} tone="destructive" />
         <Kpi icon={Wrench} label="Em manutenção" value={manut} tone="accent" />
