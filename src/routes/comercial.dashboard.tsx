@@ -1,11 +1,12 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { createContext, useContext, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/PageHeader";
-import type { VendaRow } from "@/lib/comercial/vendas.functions";
 import { listVendasDb } from "@/lib/comercial/vendas-db.functions";
 import { applyFilters, filtrosIniciais, previousPeriod, getAno, type Filtros } from "@/lib/comercial/vendas-metrics";
+import { DashboardCtx } from "@/lib/comercial/dashboard-context";
+export { useDashboard } from "@/lib/comercial/dashboard-context";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,25 +14,6 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/comercial/dashboard")({
   component: DashboardLayout,
 });
-
-type Ctx = {
-  rows: VendaRow[];
-  filtered: VendaRow[];
-  previous: VendaRow[];
-  filtros: Filtros;
-  setFiltros: (f: Filtros) => void;
-  fetchedAt: string;
-};
-
-const DashboardCtx = createContext<Ctx | null>(null);
-export function useDashboard(): Ctx {
-  const c = useContext(DashboardCtx);
-  if (c) return c;
-  return {
-    rows: [], filtered: [], previous: [],
-    filtros: filtrosIniciais, setFiltros: () => {}, fetchedAt: "",
-  };
-}
 
 
 function DashboardLayout() {
