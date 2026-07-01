@@ -6,7 +6,6 @@ import { PageHeader } from "@/components/PageHeader";
 import { listVendasDb } from "@/lib/comercial/vendas-db.functions";
 import { applyFilters, filtrosIniciais, previousPeriod, getAno, type Filtros } from "@/lib/comercial/vendas-metrics";
 import { DashboardCtx } from "@/lib/comercial/dashboard-context";
-export { useDashboard } from "@/lib/comercial/dashboard-context";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
