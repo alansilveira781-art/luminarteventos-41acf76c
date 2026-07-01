@@ -9,6 +9,7 @@ import { GaugeRealVsMeta } from "@/components/comercial/dashboard/GaugeRealVsMet
 import {
   kpis, evolucaoTrimestre, evolucaoTicketTrimestre,
   rankingConsultor, valorPorClassificacao,
+  comissoesPorVendedor, rankingCerimonial, rankingDecorador,
 } from "@/lib/comercial/vendas-metrics";
 import { supabase } from "@/integrations/supabase/client";
 import { DollarSign, ShoppingCart, Percent, Receipt } from "lucide-react";
@@ -16,6 +17,9 @@ import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, LabelList,
   BarChart, Bar, Legend,
 } from "recharts";
+import {
+  Table, TableHeader, TableBody, TableFooter, TableRow, TableHead, TableCell,
+} from "@/components/ui/table";
 
 export const Route = createFileRoute("/comercial/dashboard/")({
   component: DashboardHome,
