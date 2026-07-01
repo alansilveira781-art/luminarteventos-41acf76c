@@ -69,6 +69,8 @@ export function canMoveCompra(
   currentStatus?: CompraStatus,
   // Responsável definido na Configuração para o STATUS DE DESTINO (null se não houver).
   statusResponsavelId?: string | null,
+  // Responsável definido na Configuração para o STATUS DE ORIGEM (null se não houver).
+  currentStatusResponsavelId?: string | null,
 ): boolean {
   const isPedro = !!userEmail && userEmail.trim().toLowerCase() === PEDRO_EMAIL;
   if (isPedro) {
@@ -86,6 +88,16 @@ export function canMoveCompra(
   // Admin move qualquer card para qualquer status.
   if (isAdmin) return true;
 
+  // Se o status de ORIGEM tem responsável configurado, SOMENTE ele (ou admin) pode tirar o card de lá.
+  if (currentStatusResponsavelId && currentStatusResponsavelId !== (statusResponsavelId ?? null)) {
+    // se destino é o mesmo responsável, cai no bloco abaixo; senão exige o responsável de origem
+    if (!userId || userId !== currentStatusResponsavelId) {
+      // Exceção: se destino também tem responsável configurado e é o próprio usuário, ainda assim
+      // não deixa retirar o card de um status de outra pessoa (regra pedida pelo usuário).
+      return false;
+    }
+  }
+
   // Se o status de destino tem responsável configurado, SOMENTE ele (ou admin) pode mover para lá.
   if (targetStatus && statusResponsavelId) {
     return !!userId && userId === statusResponsavelId;
@@ -94,6 +106,7 @@ export function canMoveCompra(
   // Status de destino sem responsável configurado: mantém a regra padrão de edição.
   return canEditCompra(compra, userId, isAdmin, userEmail);
 }
+
 
 export function moveBlockedMessage(compra: { responsavel_nome?: string | null }): string {
   return compra.responsavel_nome

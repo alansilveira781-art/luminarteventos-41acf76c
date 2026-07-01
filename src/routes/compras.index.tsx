@@ -159,19 +159,25 @@ function ComprasKanban() {
   ) {
     if (compra.status === status) return;
 
-    if (!canMoveCompra(compra, user?.id, isAdmin, user?.email, status, compra.status, responsavelDoStatus(status))) {
+    if (!canMoveCompra(compra, user?.id, isAdmin, user?.email, status, compra.status, responsavelDoStatus(status), responsavelDoStatus(compra.status))) {
       const isPedro = !!user?.email && user.email.trim().toLowerCase() === PEDRO_EMAIL;
-      const respId = responsavelDoStatus(status);
-      const respNome = statusDefaults.find((d) => d.status === status)?.responsavel_nome;
+      const respIdDest = responsavelDoStatus(status);
+      const respNomeDest = statusDefaults.find((d) => d.status === status)?.responsavel_nome;
+      const respIdOrig = responsavelDoStatus(compra.status);
+      const respNomeOrig = statusDefaults.find((d) => d.status === compra.status)?.responsavel_nome;
+      const blockedBySource = !!respIdOrig && user?.id !== respIdOrig && !isAdmin;
       toast.error(
         isPedro
           ? PEDRO_MOVE_BLOCKED_MSG
-          : respId
-          ? `Apenas ${respNome ?? "o responsável definido"} (ou um admin) pode mover o card para "${COMPRA_STATUSES.find((s) => s.key === status)?.label ?? status}".`
+          : blockedBySource
+          ? `Apenas ${respNomeOrig ?? "o responsável definido"} (ou um admin) pode retirar o card de "${COMPRA_STATUSES.find((s) => s.key === compra.status)?.label ?? compra.status}".`
+          : respIdDest
+          ? `Apenas ${respNomeDest ?? "o responsável definido"} (ou um admin) pode mover o card para "${COMPRA_STATUSES.find((s) => s.key === status)?.label ?? status}".`
           : moveBlockedMessage(compra),
       );
       return;
     }
+
 
     if (status === "a_receber" && !compra.tipo_compra) {
       toast.error("Defina o tipo da compra antes de movê-la para Compras a Receber.");
@@ -237,19 +243,25 @@ function ComprasKanban() {
     if (!status) return;
     const compra = compras.find((c) => c.id === id);
     if (!compra) return;
-    if (!canMoveCompra(compra, user?.id, isAdmin, user?.email, status, compra.status, responsavelDoStatus(status))) {
+    if (!canMoveCompra(compra, user?.id, isAdmin, user?.email, status, compra.status, responsavelDoStatus(status), responsavelDoStatus(compra.status))) {
       const isPedro = !!user?.email && user.email.trim().toLowerCase() === PEDRO_EMAIL;
-      const respId = responsavelDoStatus(status);
-      const respNome = statusDefaults.find((d) => d.status === status)?.responsavel_nome;
+      const respIdDest = responsavelDoStatus(status);
+      const respNomeDest = statusDefaults.find((d) => d.status === status)?.responsavel_nome;
+      const respIdOrig = responsavelDoStatus(compra.status);
+      const respNomeOrig = statusDefaults.find((d) => d.status === compra.status)?.responsavel_nome;
+      const blockedBySource = !!respIdOrig && user?.id !== respIdOrig && !isAdmin;
       toast.error(
         isPedro
           ? PEDRO_MOVE_BLOCKED_MSG
-          : respId
-          ? `Apenas ${respNome ?? "o responsável definido"} (ou um admin) pode mover o card para "${COMPRA_STATUSES.find((s) => s.key === status)?.label ?? status}".`
+          : blockedBySource
+          ? `Apenas ${respNomeOrig ?? "o responsável definido"} (ou um admin) pode retirar o card de "${COMPRA_STATUSES.find((s) => s.key === compra.status)?.label ?? compra.status}".`
+          : respIdDest
+          ? `Apenas ${respNomeDest ?? "o responsável definido"} (ou um admin) pode mover o card para "${COMPRA_STATUSES.find((s) => s.key === status)?.label ?? status}".`
           : moveBlockedMessage(compra),
       );
       return;
     }
+
     await advanceToStatus(compra, status);
   }
 
@@ -332,7 +344,7 @@ function ComprasKanban() {
             <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={byStatus[s.key]?.length ?? 0}>
               {(byStatus[s.key] ?? []).map((c) => {
                 const next = nextStatus(c.status);
-                const canMove = canMoveCompra(c, user?.id, isAdmin, user?.email, next ?? undefined, c.status, responsavelDoStatus(next));
+                const canMove = canMoveCompra(c, user?.id, isAdmin, user?.email, next ?? undefined, c.status, responsavelDoStatus(next), responsavelDoStatus(c.status));
                 return (
                   <Card
                     key={c.id}

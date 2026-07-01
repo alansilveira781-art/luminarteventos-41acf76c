@@ -1,9 +1,10 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, FileIcon, Loader2 } from "lucide-react";
+import { Download, FileIcon, Loader2, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
 
 const PdfPreview = lazy(() =>
   import("./PdfPreview").catch((err) => {
@@ -74,6 +75,11 @@ export async function baixarAnexo(bucket: string, path: string, nome: string) {
 export function AnexoViewer({ bucket, anexo, open, onOpenChange }: AnexoViewerProps) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [imgScale, setImgScale] = useState<number>(1);
+
+  useEffect(() => {
+    if (open) setImgScale(1);
+  }, [open, anexo]);
 
   useEffect(() => {
     if (!open || !anexo) {
@@ -105,6 +111,11 @@ export function AnexoViewer({ bucket, anexo, open, onOpenChange }: AnexoViewerPr
 
   if (!anexo) return null;
   const kind = detectKind(anexo.nome, anexo.mime_type);
+  const IMG_MIN = 0.25;
+  const IMG_MAX = 5;
+  const IMG_STEP = 0.25;
+  const zoomInImg = () => setImgScale((s) => Math.min(IMG_MAX, +(s + IMG_STEP).toFixed(2)));
+  const zoomOutImg = () => setImgScale((s) => Math.max(IMG_MIN, +(s - IMG_STEP).toFixed(2)));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -116,19 +127,48 @@ export function AnexoViewer({ bucket, anexo, open, onOpenChange }: AnexoViewerPr
           ) : null}
         </DialogHeader>
 
-        <div className="min-h-[40vh] flex items-center justify-center bg-muted/30 rounded-md overflow-hidden">
+        <div className="min-h-[40vh] flex flex-col bg-muted/30 rounded-md overflow-hidden">
           {loading || !objectUrl ? (
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <div className="flex-1 flex items-center justify-center min-h-[40vh]">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
           ) : kind === "image" ? (
-            <img
-              src={objectUrl}
-              alt={anexo.nome}
-              className="max-h-[70vh] max-w-full object-contain"
-            />
+            <>
+              <div className="sticky top-0 z-10 flex items-center gap-1 justify-end border-b bg-background/95 backdrop-blur px-2 py-1.5">
+                <Button type="button" size="sm" variant="ghost" onClick={zoomOutImg} disabled={imgScale <= IMG_MIN} title="Diminuir zoom">
+                  <ZoomOut className="h-4 w-4" />
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setImgScale(1)}
+                  className="text-xs tabular-nums w-14 text-center hover:underline"
+                  title="Restaurar 100%"
+                >
+                  {Math.round(imgScale * 100)}%
+                </button>
+                <Button type="button" size="sm" variant="ghost" onClick={zoomInImg} disabled={imgScale >= IMG_MAX} title="Aumentar zoom">
+                  <ZoomIn className="h-4 w-4" />
+                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setImgScale(1)} title="Restaurar zoom">
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex-1 overflow-auto flex items-start justify-center p-2" style={{ maxHeight: "70vh" }}>
+                <img
+                  src={objectUrl}
+                  alt={anexo.nome}
+                  style={{ transform: `scale(${imgScale})`, transformOrigin: "top center", transition: "transform 120ms ease-out" }}
+                  className="max-w-full object-contain"
+                />
+              </div>
+            </>
+
           ) : kind === "pdf" ? (
             <Suspense
               fallback={
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <div className="flex-1 flex items-center justify-center min-h-[40vh]">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
               }
             >
               <PdfPreview
@@ -137,7 +177,7 @@ export function AnexoViewer({ bucket, anexo, open, onOpenChange }: AnexoViewerPr
               />
             </Suspense>
           ) : (
-            <div className="flex flex-col items-center gap-2 p-8 text-center">
+            <div className="flex-1 flex flex-col items-center justify-center gap-2 p-8 text-center min-h-[40vh]">
               <FileIcon className="h-10 w-10 text-muted-foreground" />
               <p className="text-sm font-medium">{anexo.nome}</p>
               <p className="text-xs text-muted-foreground">
@@ -145,6 +185,7 @@ export function AnexoViewer({ bucket, anexo, open, onOpenChange }: AnexoViewerPr
               </p>
             </div>
           )}
+
         </div>
 
         <div className="flex justify-end gap-2">
