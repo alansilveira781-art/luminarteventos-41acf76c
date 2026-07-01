@@ -1244,6 +1244,55 @@ export type Database = {
         }
         Relationships: []
       }
+      compras_exclusoes: {
+        Row: {
+          compra_id: string | null
+          compra_numero: number | null
+          dados_json: Json | null
+          excluido_em: string
+          excluido_por: string | null
+          excluido_por_nome: string | null
+          fornecedor: string | null
+          id: string
+          motivo: string
+          status_no_momento: Database["public"]["Enums"]["compra_status"] | null
+          titulo: string | null
+          valor_total: number | null
+        }
+        Insert: {
+          compra_id?: string | null
+          compra_numero?: number | null
+          dados_json?: Json | null
+          excluido_em?: string
+          excluido_por?: string | null
+          excluido_por_nome?: string | null
+          fornecedor?: string | null
+          id?: string
+          motivo: string
+          status_no_momento?:
+            | Database["public"]["Enums"]["compra_status"]
+            | null
+          titulo?: string | null
+          valor_total?: number | null
+        }
+        Update: {
+          compra_id?: string | null
+          compra_numero?: number | null
+          dados_json?: Json | null
+          excluido_em?: string
+          excluido_por?: string | null
+          excluido_por_nome?: string | null
+          fornecedor?: string | null
+          id?: string
+          motivo?: string
+          status_no_momento?:
+            | Database["public"]["Enums"]["compra_status"]
+            | null
+          titulo?: string | null
+          valor_total?: number | null
+        }
+        Relationships: []
+      }
       compras_fornecedores: {
         Row: {
           contato_nome: string | null
