@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { ensureValidSession, describeSupabaseError } from "@/lib/supabase-guard";
 import { DEMANDA_STATUSES, TIPO_DEMANDA_OPTIONS, type DemandaStatus } from "@/lib/demandas";
 import { useAuth } from "@/contexts/AuthContext";
+import { CopiarLinkButton } from "@/components/CopiarLinkButton";
 
 const sb = supabase as any;
 
@@ -341,6 +342,11 @@ export function DemandaDialog({
               >
                 <Trash2 className="h-4 w-4 mr-1" /> Excluir
               </Button>
+            )}
+            {demandaId && (
+              <span className="ml-2 inline-block align-middle">
+                <CopiarLinkButton path={`/financeiro?id=${demandaId}`} />
+              </span>
             )}
           </div>
           <div className="flex flex-wrap gap-2">

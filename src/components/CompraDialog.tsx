@@ -19,6 +19,7 @@ import { ensureValidSession, describeSupabaseError } from "@/lib/supabase-guard"
 import { COMPRA_STATUSES, TIPO_COMPRA_OPTIONS, canMoveCompra, canEditCompra, moveBlockedMessage, nextCompraStatus, type CompraStatus } from "@/lib/compras";
 import { useAuth } from "@/contexts/AuthContext";
 import { notifyResponsiblesForStatus, notifyMentions } from "@/lib/notify";
+import { CopiarLinkButton } from "@/components/CopiarLinkButton";
 import { listEventos } from "@/lib/sheets.functions";
 
 const EVENTOS_FIXOS = ["Manutenção do Galpão", "Reposição de Estoque", "Showroom", "Placas do Zé"];
@@ -519,6 +520,11 @@ export function CompraDialog({
               >
                 <Trash2 className="h-4 w-4 mr-1" /> Excluir
               </Button>
+            )}
+            {compraId && (
+              <span className="ml-2 inline-block align-middle">
+                <CopiarLinkButton path={`/compras?id=${compraId}`} />
+              </span>
             )}
           </div>
           <div className="flex flex-wrap gap-2">

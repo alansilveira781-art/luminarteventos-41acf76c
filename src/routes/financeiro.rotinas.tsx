@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { FormField, FormSection, FormActions } from "@/components/FormSection";
 import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Pause, Play, Clock, CheckCircle2, Paperclip, ShieldCheck, X, Share2 } from "lucide-react";
 import { AnexoViewer } from "@/components/AnexoViewer";
+import { CopiarLinkButton } from "@/components/CopiarLinkButton";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/financeiro/rotinas")({
@@ -66,6 +67,17 @@ function RotinasPage() {
       return (data ?? []) as unknown as Rotina[];
     },
   });
+
+  // Abre a rotina para edição quando a URL tem ?rotina=<id>
+  useEffect(() => {
+    if (typeof window === "undefined" || !rotinas.length) return;
+    const params = new URLSearchParams(window.location.search);
+    const rid = params.get("rotina");
+    if (rid) {
+      const r = rotinas.find((x) => x.id === rid);
+      if (r) setEditing(r);
+    }
+  }, [rotinas]);
 
   const { data: pendentesCount = 0 } = useQuery({
     queryKey: ["financeiro-rotinas-validacoes-count"],
@@ -274,6 +286,13 @@ function TabelaRotinas({
                     <Button size="icon" variant="ghost" onClick={() => shareWithMaicon(r)} title="Compartilhar com Maicon">
                       <Share2 className="h-4 w-4" />
                     </Button>
+                    <CopiarLinkButton
+                      path={`/financeiro/rotinas?rotina=${r.id}`}
+                      label=""
+                      variant="ghost"
+                      size="icon"
+                      title="Copiar link"
+                    />
                     <Button size="icon" variant="ghost" onClick={() => toggleStatus.mutate(r)} title={r.status === "ativa" ? "Pausar" : "Ativar"}>
                       {r.status === "ativa" ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                     </Button>
