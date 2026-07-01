@@ -80,54 +80,18 @@ function DashboardHome() {
   const anoAtual = new Date().getFullYear();
   const [indAnoA, setIndAnoA] = useState<number>(anoAtual);
   const [indAnoB, setIndAnoB] = useState<number>(anoAtual - 1);
-  const [indEmpresa, setIndEmpresa] = useState<string>("Todos");
-  const [indTrimestre, setIndTrimestre] = useState<string>("Todos");
-  const [indConsultor, setIndConsultor] = useState<string>("Todos");
-  const [indClassificacao, setIndClassificacao] = useState<string>("Todos");
-
-  const empresasAll = useMemo(() => {
-    const s = new Set<string>();
-    for (const r of rows) { const v = cleanText(r.empresa); if (v) s.add(v); }
-    return [...s].sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [rows]);
-  const consultoresAll = useMemo(() => {
-    const s = new Set<string>();
-    for (const r of rows) { const v = cleanText(r.consultor); if (v) s.add(v); }
-    return [...s].sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [rows]);
-  const classificacoesAll = useMemo(() => {
-    const s = new Set<string>();
-    for (const r of rows) { const v = cleanText(r.classificacao); if (v) s.add(v); }
-    return [...s].sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [rows]);
 
   const indicadores = useMemo(() => {
     return compararAnos(rows, indAnoA, indAnoB, {
-      empresa: indEmpresa === "Todos" ? "Todos" : indEmpresa,
-      mes: "Todos",
-      trimestre: indTrimestre === "Todos" ? "Todos" : (Number(indTrimestre) as 1 | 2 | 3 | 4),
-      consultor: indConsultor === "Todos" ? "Todos" : indConsultor,
-      classificacao: indClassificacao === "Todos" ? "Todos" : indClassificacao,
+      empresa: filtros.empresa,
+      mes: filtros.mes,
+      trimestre: filtros.trimestre,
+      consultor: filtros.consultor,
+      classificacao: filtros.classificacao,
     });
-  }, [rows, indAnoA, indAnoB, indEmpresa, indTrimestre, indConsultor, indClassificacao]);
+  }, [rows, indAnoA, indAnoB, filtros.empresa, filtros.mes, filtros.trimestre, filtros.consultor, filtros.classificacao]);
 
   const pizzaColors = ["#0ea5e9", "#1e3a8a", "#f97316", "#7c3aed", "#ec4899", "#10b981", "#eab308"];
-
-  useEffect(() => {
-    if (
-      filtros.consultor !== "Todos" ||
-      filtros.classificacao !== "Todos" ||
-      filtros.trimestre !== "Todos"
-    ) {
-      setFiltros({
-        ...filtros,
-        consultor: "Todos",
-        classificacao: "Todos",
-        trimestre: "Todos",
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtros.consultor, filtros.classificacao, filtros.trimestre]);
 
   useEffect(() => {
     if (!rows.length) return;
