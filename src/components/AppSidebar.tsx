@@ -38,6 +38,7 @@ import {
   FileSignature,
   DollarSign,
   Target,
+  FileBarChart,
 
 
 } from "lucide-react";
