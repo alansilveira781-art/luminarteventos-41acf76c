@@ -42,6 +42,18 @@ const PEDRO_ALLOWED_SOURCES: CompraStatus[] = PEDRO_ALLOWED_MOVES.map(([from]) =
 export const PEDRO_MOVE_BLOCKED_MSG =
   "Pedro só pode mover cards de Solicitação → Análise e de Análise → Pendente Aprovação.";
 
+export function nextCompraStatus(status?: CompraStatus | null): CompraStatus | null {
+  if (!status) return null;
+  const idx = COMPRA_STATUSES.findIndex((s) => s.key === status);
+  if (idx < 0) return null;
+  for (let i = idx + 1; i < COMPRA_STATUSES.length; i++) {
+    const key = COMPRA_STATUSES[i].key;
+    if (key === "negada") continue;
+    return key;
+  }
+  return null;
+}
+
 
 export function canEditCompra(
   compra: { responsavel_id?: string | null; created_by?: string | null },
@@ -88,11 +100,21 @@ export function canMoveCompra(
   // Admin move qualquer card para qualquer status.
   if (isAdmin) return true;
 
-  // Regra: pode mover se for o responsável pelo STATUS DE ORIGEM (empurrar)
-  // OU o responsável pelo STATUS DE DESTINO (puxar).
+  // Regra: fora da aprovação, o card só pode avançar para o próximo status da sequência.
+  // O responsável da origem pode empurrar, e o responsável do destino pode puxar.
   if (targetStatus) {
     const isRespDestino = !!statusResponsavelId && !!userId && userId === statusResponsavelId;
     const isRespOrigem = !!currentStatusResponsavelId && !!userId && userId === currentStatusResponsavelId;
+
+    if (currentStatus === "pendente_aprovacao") {
+      return (targetStatus === "aprovada" || targetStatus === "negada") && isRespOrigem;
+    }
+
+    if (currentStatus) {
+      const next = nextCompraStatus(currentStatus);
+      if (!next || targetStatus !== next) return false;
+    }
+
     if (isRespDestino || isRespOrigem) return true;
     // Se nenhum dos dois tem responsável configurado, cai na regra padrão de edição.
     if (!statusResponsavelId && !currentStatusResponsavelId) {
