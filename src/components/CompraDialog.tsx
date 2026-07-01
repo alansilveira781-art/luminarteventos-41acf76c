@@ -645,7 +645,7 @@ export function CompraDialog({
                   const { error } = await sb.from("compras").delete().eq("id", compraId);
                   if (error) throw error;
 
-                  toast.success("Compra excluída e registrada no histórico.");
+                  toast.success("Compra excluída.");
                   qc.invalidateQueries({ queryKey: ["compras"] });
                   qc.invalidateQueries({ queryKey: ["compras-receber"] });
                   setExcluirOpen(false);
