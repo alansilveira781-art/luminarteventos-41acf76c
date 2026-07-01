@@ -730,7 +730,7 @@ function DashboardHome() {
                 <div className="h-96">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart margin={{ top: 40, right: 80, bottom: 40, left: 80 }}>
-                      <Tooltip formatter={(v: number) => brlAbbr ev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                      <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
                       <Legend
                         layout="horizontal"
                         align="center"
