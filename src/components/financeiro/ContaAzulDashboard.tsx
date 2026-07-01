@@ -341,6 +341,9 @@ function PainelFinanceiro() {
     return out;
   }, [totais, grupos, collapsed, planoMap, rb, dreEstrutura]);
 
+  const linhaLucro = useMemo(() => linhasDre.find((r) => r.id === "LU"), [linhasDre]);
+  const linhasDreSemLucro = useMemo(() => linhasDre.filter((r) => r.id !== "LU"), [linhasDre]);
+
   const toggleGroup = (id: string) => setCollapsed((c) => ({ ...c, [id]: !c[id] }));
   const onClickCategoria = (catId: string) =>
     setCategoriaSel((cur) => (cur === catId ? null : catId));
