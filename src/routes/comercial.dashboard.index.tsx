@@ -44,7 +44,7 @@ const brlAbrev = (v: number) => {
 
 type MetaRow = { ano: number; mes: number; classificacao: string; valor_meta: number };
 
-type Secao = "painel" | "relatorio" | "vendedores";
+type Secao = "painel" | "relatorio" | "vendedores" | "indicadores";
 
 function DashboardHome() {
   const { rows, filtered, previous, filtros, setFiltros } = useDashboard();
