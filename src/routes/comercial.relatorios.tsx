@@ -49,8 +49,10 @@ type Grupo = {
 };
 
 function RelatoriosPage() {
+  const [relatorioAtivo, setRelatorioAtivo] = useState<"comissao" | "periodo">("comissao");
   const [ano, setAno] = useState<number | "Todos">("Todos");
   const [mes, setMes] = useState<string>("Todos");
+
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["comercial-vendas-db", "relatorios"],
