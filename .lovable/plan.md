@@ -1,26 +1,30 @@
-## O que será feito
+## Adicionar relatório "Vendas por Período" em Comercial › Relatórios
 
-Fixar a linha **Lucro** (`LU`) na base do card **Demonstrativo** nas duas abas do Dashboard Financeiro: **Painel Financeiro** e **Análise Detalhada**, para que ela permaneça visível mesmo quando o usuário rolar as demais linhas.
+Novo relatório comparativo entre dois intervalos de datas, ao lado do atual "Distribuição de Comissão".
 
-## Arquivo a alterar
+### Arquivos
 
-- `src/components/financeiro/ContaAzulDashboard.tsx`
+**1. Criar `src/components/comercial/RelatorioVendasPeriodo.tsx`**
+- Recebe `rows`, `isLoading`, `error` como props (reutiliza dados já carregados via `listVendasDb`).
+- Estado: 4 datas (Período A início/fim, Período B início/fim). Padrão: Jan–Jun ano atual vs Jan–Jun ano anterior.
+- Filtra `rows` por `dataRegistro` (fallback `dataEvento`) dentro de cada intervalo.
+- Renderiza:
+  - Card de filtros com 4 inputs `type="date"` + botão Exportar CSV.
+  - 3 KPIs comparativos (Qtd vendas, Valor final, Ticket médio) com variação % A vs B.
+  - Gráfico de barras (recharts) comparando totais A vs B.
+  - 4 rankings comparativos (Categoria, Vendedores, Cerimonial, Decorador) — top 10, tabela com colunas A e B, usando `valorPorClassificacao`, `rankingConsultor`, `rankingCerimonial`, `rankingDecorador` já existentes em `vendas-metrics.ts`.
+- Exportação CSV com resumo + os 4 rankings.
 
-## Como está hoje
+**2. Editar `src/routes/comercial.relatorios.tsx`**
+- Adicionar estado `relatorioAtivo: "comissao" | "periodo"` (padrão `"comissao"`).
+- Importar `CalendarRange` do lucide-react e o novo componente `RelatorioVendasPeriodo`.
+- Transformar a barra de seletor de relatório em 2 botões (variant muda conforme ativo): "Distribuição de Comissão" e "Vendas por Período".
+- Envolver TODO o conteúdo atual (filtros Ano/Mês, cards de resumo, tabela agrupada por consultor) em `{relatorioAtivo === "comissao" && (<>…</>)}`.
+- Renderizar `<RelatorioVendasPeriodo rows={rows} isLoading={isLoading} error={error} />` quando `relatorioAtivo === "periodo"`.
 
-- O card **Demonstrativo** renderiza todas as linhas da DRE (`linhasDre`) dentro de uma única div scrollável com `max-h-[600px] overflow-y-auto`.
-- A linha `LU` (Lucro) é a última da estrutura e some ao rolar para cima.
-- O card vizinho **Lançamentos** já tem uma linha de total fixa na parte inferior, fora da rolagem.
+### Regras respeitadas
 
-## Alteração técnica
-
-1. Separar a linha `LU` do array de linhas scrolláveis.
-2. Renderizar o Lucro como um rodapé fixo na base do card **Demonstrativo**, abaixo da área de rolagem.
-3. Manter as mesmas colunas (`[1fr,140px,70px]`), formatação de valor/percentual e destaque visual (negrito e fundo diferenciado).
-4. Aplicar a mesma lógica nos dois locais: função `PainelFinanceiro` e função `AnaliseDetalhada`.
-
-## Resultado esperado
-
-- O Lucro fica sempre visível no final do Demonstrativo.
-- A rolagem continua funcionando para as demais linhas (Receita Bruta, Deduções, Despesas, Custos, etc.).
-- Altura e comportamento de scroll continuam alinhados ao card de Lançamentos.
+- Não altera o relatório de Distribuição de Comissão — apenas envolve em condicional.
+- Não altera `listVendasDb`, `vendas-metrics.ts`, schema ou RLS.
+- Reutiliza a mesma query `useQuery(["comercial-vendas-db", "relatorios"])`.
+- Categoria = `classificacao` (via `valorPorClassificacao`).

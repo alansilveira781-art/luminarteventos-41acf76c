@@ -13,9 +13,10 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/PageHeader";
-import { Loader2, AlertTriangle, Download, FileBarChart } from "lucide-react";
+import { Loader2, AlertTriangle, Download, FileBarChart, CalendarRange } from "lucide-react";
 import { listVendasDb } from "@/lib/comercial/vendas-db.functions";
 import { getAno, getMes, cleanText } from "@/lib/comercial/vendas-metrics";
+import { RelatorioVendasPeriodo } from "@/components/comercial/RelatorioVendasPeriodo";
 
 export const Route = createFileRoute("/comercial/relatorios")({
   component: RelatoriosPage,
@@ -48,8 +49,10 @@ type Grupo = {
 };
 
 function RelatoriosPage() {
+  const [relatorioAtivo, setRelatorioAtivo] = useState<"comissao" | "periodo">("comissao");
   const [ano, setAno] = useState<number | "Todos">("Todos");
   const [mes, setMes] = useState<string>("Todos");
+
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["comercial-vendas-db", "relatorios"],
@@ -148,10 +151,31 @@ function RelatoriosPage() {
       />
 
       <div className="flex flex-wrap gap-2">
-        <Button variant="default" size="sm" className="gap-2">
+        <Button
+          variant={relatorioAtivo === "comissao" ? "default" : "outline"}
+          size="sm"
+          className="gap-2"
+          onClick={() => setRelatorioAtivo("comissao")}
+        >
           <FileBarChart className="h-4 w-4" /> Distribuição de Comissão
         </Button>
+        <Button
+          variant={relatorioAtivo === "periodo" ? "default" : "outline"}
+          size="sm"
+          className="gap-2"
+          onClick={() => setRelatorioAtivo("periodo")}
+        >
+          <CalendarRange className="h-4 w-4" /> Vendas por Período
+        </Button>
       </div>
+
+      {relatorioAtivo === "periodo" && (
+        <RelatorioVendasPeriodo rows={rows} isLoading={isLoading} error={error} />
+      )}
+
+      {relatorioAtivo === "comissao" && (
+        <>
+
 
       <Card className="p-4">
         <div className="grid gap-3 sm:grid-cols-[160px_200px_1fr] sm:items-end">
@@ -312,6 +336,9 @@ function RelatoriosPage() {
           </Card>
         </>
       )}
+        </>
+      )}
     </div>
+
   );
 }
