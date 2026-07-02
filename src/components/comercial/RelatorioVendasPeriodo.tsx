@@ -227,9 +227,12 @@ export function RelatorioVendasPeriodo({
             </div>
           </div>
         </div>
-        <div className="mt-4 flex justify-end">
+        <div className="mt-4 flex justify-end gap-2">
           <Button variant="outline" size="sm" className="gap-2" onClick={exportarCSV}>
             <Download className="h-4 w-4" /> Exportar CSV
+          </Button>
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => window.print()}>
+            <Printer className="h-4 w-4" /> Imprimir
           </Button>
         </div>
       </Card>
