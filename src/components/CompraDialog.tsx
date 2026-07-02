@@ -439,7 +439,7 @@ export function CompraDialog({
                     <Input value={it.descricao} onChange={(e) => updateItem(idx, { descricao: e.target.value })} placeholder="Item novo / não cadastrado" />
                   </div>
                 </div>
-                <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-9">
+                <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
                   <div>
                     <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Qtd</label>
                     <Input type="number" step="0.01" value={it.quantidade} onChange={(e) => updateItem(idx, { quantidade: Number(e.target.value) })} />
@@ -470,6 +470,8 @@ export function CompraDialog({
                     <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Valor unit.</label>
                     <MoneyInput value={it.valor_unitario ?? 0} onChange={(n) => updateItem(idx, { valor_unitario: n || null })} />
                   </div>
+                </div>
+                <div className="grid gap-2 grid-cols-2 sm:grid-cols-4 lg:grid-cols-4">
                   <div>
                     <label className="text-[11px] uppercase tracking-wider text-muted-foreground">IPI</label>
                     <MoneyInput value={it.ipi ?? 0} onChange={(n) => updateItem(idx, { ipi: n || 0 })} />
