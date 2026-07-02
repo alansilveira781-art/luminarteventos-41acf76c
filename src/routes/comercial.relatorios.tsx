@@ -256,9 +256,12 @@ function RelatoriosPage() {
             </Select>
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2 print:hidden">
             <Button variant="outline" size="sm" className="gap-2" onClick={exportarCSV}>
               <Download className="h-4 w-4" /> Exportar CSV
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => window.print()}>
+              <Printer className="h-4 w-4" /> Imprimir
             </Button>
           </div>
         </div>
