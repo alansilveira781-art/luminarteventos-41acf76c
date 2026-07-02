@@ -156,15 +156,40 @@ export function PeriodoFilter({ preset, periodo, onChange, className }: Props) {
   );
 }
 
+/** Converte uma Date para "AAAA-MM-DD" no fuso LOCAL (sem conversão para UTC). */
+function toLocalYmd(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Normaliza a data de uma linha para "AAAA-MM-DD", aceitando string ISO ou Date. */
+function rowYmd(v: string | Date): string | null {
+  if (v instanceof Date) {
+    if (isNaN(v.getTime())) return null;
+    return toLocalYmd(v);
+  }
+  // String: pega os 10 primeiros caracteres se já estiver em ISO (AAAA-MM-DD...)
+  const s = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  // Outros formatos (ex.: dd/MM/yyyy): tenta parsear e formata em local
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : toLocalYmd(d);
+}
+
 export function filterByPeriodo<T>(rows: T[], periodo: Periodo, getDate: (row: T) => string | Date | null | undefined): T[] {
   if (!periodo.from && !periodo.to) return rows;
-  const fromMs = periodo.from?.getTime() ?? -Infinity;
-  const toMs = periodo.to?.getTime() ?? Infinity;
+  // Bordas do intervalo como "AAAA-MM-DD" no fuso local
+  const fromYmd = periodo.from ? toLocalYmd(periodo.from) : null;
+  const toYmd = periodo.to ? toLocalYmd(periodo.to) : null;
   return rows.filter((r) => {
     const v = getDate(r);
     if (!v) return false;
-    const t = typeof v === "string" ? new Date(v).getTime() : v.getTime();
-    if (isNaN(t)) return false;
-    return t >= fromMs && t <= toMs;
+    const ymd = rowYmd(v);
+    if (!ymd) return false;
+    if (fromYmd && ymd < fromYmd) return false;
+    if (toYmd && ymd > toYmd) return false;
+    return true;
   });
 }

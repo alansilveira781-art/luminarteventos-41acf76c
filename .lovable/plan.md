@@ -1,13 +1,15 @@
-Criar uma nova migration SQL que executa exatamente o conteúdo do arquivo colado (`pasted-2026-07-02T13-17-14-603Z.txt`, 1017 linhas):
+Corrigir o bug de fuso horário em `src/components/PeriodoFilter.tsx` na função `filterByPeriodo`, que exclui o primeiro dia de qualquer intervalo filtrado em fusos UTC-negativos (ex.: Fortaleza UTC-3).
 
-1. `BEGIN;`
-2. `TRUNCATE TABLE public.comercial_vendas;`
-3. `INSERT INTO public.comercial_vendas (...) VALUES (...)` — 1006 registros
-4. `COMMIT;`
+**O que será feito**
+1. Adicionar helpers internos `toLocalYmd` e `rowYmd` no arquivo `src/components/PeriodoFilter.tsx`.
+2. Substituir a implementação atual de `filterByPeriodo` (que compara timestamps em ms) por uma comparação de strings `YYYY-MM-DD` no fuso local, eliminando a conversão UTC que causava o deslocamento de dia.
 
-Não haverá alterações em:
-- Schema/colunas da tabela `comercial_vendas`
-- Políticas RLS, GRANTs, triggers
-- Qualquer outra tabela ou código da aplicação
+**Arquivo alterado**
+- `src/components/PeriodoFilter.tsx` (somente a função `filterByPeriodo` e os helpers adicionados)
 
-A migration será submetida via ferramenta de migração para sua aprovação antes de rodar.
+**Não será alterado**
+- `periodoFromPreset`, `periodoDoMes`, presets, assinatura de `filterByPeriodo`, páginas consumidoras ou outros módulos.
+
+**Verificação**
+- Rodar `bunx tsc --noEmit -p tsconfig.json` para garantir que a tipagem permanece válida.
+- Validar visualmente na página `/comercial/vendas` que filtrar por "Este mês" (ou outro preset) passa a incluir o dia 01 do intervalo.
