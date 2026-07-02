@@ -300,21 +300,21 @@ export function RelatorioVendasPeriodo({
               <YAxis tickFormatter={(v) => fmtAbrev(Number(v))} />
               <Tooltip formatter={(v) => fmtBRL(Number(v))} />
               <Legend />
-              <Bar dataKey="A" name={labelA} fill="#000000">
+              <Bar dataKey="A" name={labelA} fill="#0ea5e9">
                 <LabelList
                   dataKey="A"
                   position="top"
                   content={(props: any) => (
-                    <ChartLabel {...props} fill="#ffffff" />
+                    <ChartLabel {...props} fill="hsl(var(--foreground))" />
                   )}
                 />
               </Bar>
-              <Bar dataKey="B" name={labelB} fill="#4B5563">
+              <Bar dataKey="B" name={labelB} fill="#f59e0b">
                 <LabelList
                   dataKey="B"
                   position="top"
                   content={(props: any) => (
-                    <ChartLabel {...props} fill="#ffffff" />
+                    <ChartLabel {...props} fill="hsl(var(--foreground))" />
                   )}
                 />
               </Bar>
