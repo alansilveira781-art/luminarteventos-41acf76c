@@ -579,15 +579,24 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
           )}
         </div>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-between">
-          <Button
-            variant="outline"
-            className="border-warning/60 text-warning hover:bg-warning/10"
-            onClick={() => setDevolverOpen(true)}
-            disabled={!!statusBlocked || finalizar.isPending}
-          >
-            <Undo2 className="h-4 w-4 mr-1" /> Devolver para Compras
-          </Button>
+        <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-between sm:items-center">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button
+              variant="outline"
+              className="border-warning/60 text-warning hover:bg-warning/10"
+              onClick={() => setDevolverOpen(true)}
+              disabled={!!statusBlocked || finalizar.isPending}
+            >
+              <Undo2 className="h-4 w-4 mr-1" /> Devolver para Compras
+            </Button>
+            <div className="text-sm">
+              <span className="text-muted-foreground">Total do recebimento: </span>
+              <span className="font-semibold tabular-nums">
+                {totalRecebimento.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              </span>
+            </div>
+          </div>
+
 
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>Cancelar</Button>
