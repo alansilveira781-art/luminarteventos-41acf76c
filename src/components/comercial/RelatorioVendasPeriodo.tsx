@@ -283,7 +283,7 @@ export function RelatorioVendasPeriodo({
         </div>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 print:grid-cols-2 [&>*]:print:break-inside-avoid">
         <RankingComparativo
           titulo="Categoria"
           dados={rkCategoria}
