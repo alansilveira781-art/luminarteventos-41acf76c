@@ -297,6 +297,8 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
           frete: Number(fre.toFixed(4)),
           ipi: Number(ip.toFixed(4)),
           outros_custos: Number(out.toFixed(4)),
+          requisicao_numero: requisicaoNumero,
+
           empresa,
           data_movimento: dataIso,
           fornecedor_id: fornecedorId || null,
