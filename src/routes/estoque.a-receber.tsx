@@ -224,6 +224,22 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
     return itens.some((it) => !it.item_id && !itemMap[it.id]);
   }, [itens, itemMap]);
 
+  const totalRecebimento = useMemo(() => {
+    return itens.reduce((soma, it) => {
+      const extra = getExtra(it);
+      const qtd = extra.quantidade ?? Number(it.quantidade) ?? 0;
+      const vu = Number(extra.valor_unitario || 0);
+      const desc = Number(extra.desconto || 0);
+      const fre = Number(extra.frete || 0);
+      const ip = Number(extra.ipi || 0);
+      const out = Number(extra.outros_custos || 0);
+      if (!qtd || qtd <= 0) return soma;
+      return soma + (qtd * vu - desc + fre + ip + out);
+    }, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itens, linhaExtras]);
+
+
   const finalizar = useMutation({
     mutationFn: async () => {
       if (!fornecedorId) throw new Error("Selecione o fornecedor");
