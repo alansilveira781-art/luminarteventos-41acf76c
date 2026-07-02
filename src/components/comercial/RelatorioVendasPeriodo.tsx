@@ -281,20 +281,18 @@ export function RelatorioVendasPeriodo({
                 <LabelList
                   dataKey="A"
                   position="top"
-                  formatter={(v: number) => fmtAbrev(v)}
-                  fill="#ffffff"
-                  fontSize={11}
-                  fontWeight={600}
+                  content={(props: any) => (
+                    <ChartLabel {...props} fill="#ffffff" />
+                  )}
                 />
               </Bar>
               <Bar dataKey="B" name={labelB} fill="#4B5563">
                 <LabelList
                   dataKey="B"
                   position="top"
-                  formatter={(v: number) => fmtAbrev(v)}
-                  fill="#ffffff"
-                  fontSize={11}
-                  fontWeight={600}
+                  content={(props: any) => (
+                    <ChartLabel {...props} fill="#ffffff" />
+                  )}
                 />
               </Bar>
             </BarChart>
