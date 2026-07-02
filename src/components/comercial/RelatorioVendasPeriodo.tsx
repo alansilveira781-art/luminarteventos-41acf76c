@@ -182,7 +182,7 @@ export function RelatorioVendasPeriodo({
           Gerado em {new Date().toLocaleString("pt-BR")}
         </p>
       </div>
-      <Card className="p-4">
+      <Card className="p-4 print:hidden">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <p className="text-sm font-semibold">Período A</p>
