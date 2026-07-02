@@ -151,10 +151,31 @@ function RelatoriosPage() {
       />
 
       <div className="flex flex-wrap gap-2">
-        <Button variant="default" size="sm" className="gap-2">
+        <Button
+          variant={relatorioAtivo === "comissao" ? "default" : "outline"}
+          size="sm"
+          className="gap-2"
+          onClick={() => setRelatorioAtivo("comissao")}
+        >
           <FileBarChart className="h-4 w-4" /> Distribuição de Comissão
         </Button>
+        <Button
+          variant={relatorioAtivo === "periodo" ? "default" : "outline"}
+          size="sm"
+          className="gap-2"
+          onClick={() => setRelatorioAtivo("periodo")}
+        >
+          <CalendarRange className="h-4 w-4" /> Vendas por Período
+        </Button>
       </div>
+
+      {relatorioAtivo === "periodo" && (
+        <RelatorioVendasPeriodo rows={rows} isLoading={isLoading} error={error} />
+      )}
+
+      {relatorioAtivo === "comissao" && (
+        <>
+
 
       <Card className="p-4">
         <div className="grid gap-3 sm:grid-cols-[160px_200px_1fr] sm:items-end">
