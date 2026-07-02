@@ -374,8 +374,9 @@ function RelatoriosPage() {
               </table>
             </div>
           </Card>
-        </div>
+        </>
       )}
+        </div>
       )}
     </div>
 
