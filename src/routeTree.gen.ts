@@ -20,12 +20,14 @@ import { Route as JuridicoRouteImport } from './routes/juridico'
 import { Route as FornecedoresRouteImport } from './routes/fornecedores'
 import { Route as FinanceiroOpRouteImport } from './routes/financeiro-op'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
+import { Route as EventosRouteImport } from './routes/eventos'
 import { Route as EntradasRouteImport } from './routes/entradas'
 import { Route as DevolucoesRouteImport } from './routes/devolucoes'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContabilRouteImport } from './routes/contabil'
 import { Route as ComprasRouteImport } from './routes/compras'
 import { Route as ComercialRouteImport } from './routes/comercial'
+import { Route as CalendarioPublicoRouteImport } from './routes/calendario-publico'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
@@ -34,6 +36,7 @@ import { Route as PatrimonioIndexRouteImport } from './routes/patrimonio.index'
 import { Route as JuridicoIndexRouteImport } from './routes/juridico.index'
 import { Route as FinanceiroIndexRouteImport } from './routes/financeiro.index'
 import { Route as FinanceiroOpIndexRouteImport } from './routes/financeiro-op.index'
+import { Route as EventosIndexRouteImport } from './routes/eventos.index'
 import { Route as EstoqueIndexRouteImport } from './routes/estoque.index'
 import { Route as ContabilIndexRouteImport } from './routes/contabil.index'
 import { Route as ComprasIndexRouteImport } from './routes/compras.index'
@@ -145,6 +148,11 @@ const FinanceiroRoute = FinanceiroRouteImport.update({
   path: '/financeiro',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EventosRoute = EventosRouteImport.update({
+  id: '/eventos',
+  path: '/eventos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EntradasRoute = EntradasRouteImport.update({
   id: '/entradas',
   path: '/entradas',
@@ -173,6 +181,11 @@ const ComprasRoute = ComprasRouteImport.update({
 const ComercialRoute = ComercialRouteImport.update({
   id: '/comercial',
   path: '/comercial',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CalendarioPublicoRoute = CalendarioPublicoRouteImport.update({
+  id: '/calendario-publico',
+  path: '/calendario-publico',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -214,6 +227,11 @@ const FinanceiroOpIndexRoute = FinanceiroOpIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => FinanceiroOpRoute,
+} as any)
+const EventosIndexRoute = EventosIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => EventosRoute,
 } as any)
 const EstoqueIndexRoute = EstoqueIndexRouteImport.update({
   id: '/estoque/',
@@ -504,12 +522,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
+  '/calendario-publico': typeof CalendarioPublicoRoute
   '/comercial': typeof ComercialRouteWithChildren
   '/compras': typeof ComprasRouteWithChildren
   '/contabil': typeof ContabilRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/devolucoes': typeof DevolucoesRoute
   '/entradas': typeof EntradasRoute
+  '/eventos': typeof EventosRouteWithChildren
   '/financeiro': typeof FinanceiroRouteWithChildren
   '/financeiro-op': typeof FinanceiroOpRouteWithChildren
   '/fornecedores': typeof FornecedoresRoute
@@ -559,6 +579,7 @@ export interface FileRoutesByFullPath {
   '/compras/': typeof ComprasIndexRoute
   '/contabil/': typeof ContabilIndexRoute
   '/estoque/': typeof EstoqueIndexRoute
+  '/eventos/': typeof EventosIndexRoute
   '/financeiro-op/': typeof FinanceiroOpIndexRoute
   '/financeiro/': typeof FinanceiroIndexRoute
   '/juridico/': typeof JuridicoIndexRoute
@@ -585,6 +606,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/calendario-publico': typeof CalendarioPublicoRoute
   '/dashboard': typeof DashboardRoute
   '/devolucoes': typeof DevolucoesRoute
   '/entradas': typeof EntradasRoute
@@ -631,6 +653,7 @@ export interface FileRoutesByTo {
   '/compras': typeof ComprasIndexRoute
   '/contabil': typeof ContabilIndexRoute
   '/estoque': typeof EstoqueIndexRoute
+  '/eventos': typeof EventosIndexRoute
   '/financeiro-op': typeof FinanceiroOpIndexRoute
   '/financeiro': typeof FinanceiroIndexRoute
   '/juridico': typeof JuridicoIndexRoute
@@ -659,12 +682,14 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
+  '/calendario-publico': typeof CalendarioPublicoRoute
   '/comercial': typeof ComercialRouteWithChildren
   '/compras': typeof ComprasRouteWithChildren
   '/contabil': typeof ContabilRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/devolucoes': typeof DevolucoesRoute
   '/entradas': typeof EntradasRoute
+  '/eventos': typeof EventosRouteWithChildren
   '/financeiro': typeof FinanceiroRouteWithChildren
   '/financeiro-op': typeof FinanceiroOpRouteWithChildren
   '/fornecedores': typeof FornecedoresRoute
@@ -714,6 +739,7 @@ export interface FileRoutesById {
   '/compras/': typeof ComprasIndexRoute
   '/contabil/': typeof ContabilIndexRoute
   '/estoque/': typeof EstoqueIndexRoute
+  '/eventos/': typeof EventosIndexRoute
   '/financeiro-op/': typeof FinanceiroOpIndexRoute
   '/financeiro/': typeof FinanceiroIndexRoute
   '/juridico/': typeof JuridicoIndexRoute
@@ -743,12 +769,14 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/calendario-publico'
     | '/comercial'
     | '/compras'
     | '/contabil'
     | '/dashboard'
     | '/devolucoes'
     | '/entradas'
+    | '/eventos'
     | '/financeiro'
     | '/financeiro-op'
     | '/fornecedores'
@@ -798,6 +826,7 @@ export interface FileRouteTypes {
     | '/compras/'
     | '/contabil/'
     | '/estoque/'
+    | '/eventos/'
     | '/financeiro-op/'
     | '/financeiro/'
     | '/juridico/'
@@ -824,6 +853,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/calendario-publico'
     | '/dashboard'
     | '/devolucoes'
     | '/entradas'
@@ -870,6 +900,7 @@ export interface FileRouteTypes {
     | '/compras'
     | '/contabil'
     | '/estoque'
+    | '/eventos'
     | '/financeiro-op'
     | '/financeiro'
     | '/juridico'
@@ -897,12 +928,14 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/calendario-publico'
     | '/comercial'
     | '/compras'
     | '/contabil'
     | '/dashboard'
     | '/devolucoes'
     | '/entradas'
+    | '/eventos'
     | '/financeiro'
     | '/financeiro-op'
     | '/fornecedores'
@@ -952,6 +985,7 @@ export interface FileRouteTypes {
     | '/compras/'
     | '/contabil/'
     | '/estoque/'
+    | '/eventos/'
     | '/financeiro-op/'
     | '/financeiro/'
     | '/juridico/'
@@ -980,12 +1014,14 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRoute
+  CalendarioPublicoRoute: typeof CalendarioPublicoRoute
   ComercialRoute: typeof ComercialRouteWithChildren
   ComprasRoute: typeof ComprasRouteWithChildren
   ContabilRoute: typeof ContabilRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   DevolucoesRoute: typeof DevolucoesRoute
   EntradasRoute: typeof EntradasRoute
+  EventosRoute: typeof EventosRouteWithChildren
   FinanceiroRoute: typeof FinanceiroRouteWithChildren
   FinanceiroOpRoute: typeof FinanceiroOpRouteWithChildren
   FornecedoresRoute: typeof FornecedoresRoute
@@ -1092,6 +1128,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FinanceiroRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/eventos': {
+      id: '/eventos'
+      path: '/eventos'
+      fullPath: '/eventos'
+      preLoaderRoute: typeof EventosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/entradas': {
       id: '/entradas'
       path: '/entradas'
@@ -1132,6 +1175,13 @@ declare module '@tanstack/react-router' {
       path: '/comercial'
       fullPath: '/comercial'
       preLoaderRoute: typeof ComercialRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/calendario-publico': {
+      id: '/calendario-publico'
+      path: '/calendario-publico'
+      fullPath: '/calendario-publico'
+      preLoaderRoute: typeof CalendarioPublicoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -1189,6 +1239,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/financeiro-op/'
       preLoaderRoute: typeof FinanceiroOpIndexRouteImport
       parentRoute: typeof FinanceiroOpRoute
+    }
+    '/eventos/': {
+      id: '/eventos/'
+      path: '/'
+      fullPath: '/eventos/'
+      preLoaderRoute: typeof EventosIndexRouteImport
+      parentRoute: typeof EventosRoute
     }
     '/estoque/': {
       id: '/estoque/'
@@ -1680,6 +1737,17 @@ const ContabilRouteWithChildren = ContabilRoute._addFileChildren(
   ContabilRouteChildren,
 )
 
+interface EventosRouteChildren {
+  EventosIndexRoute: typeof EventosIndexRoute
+}
+
+const EventosRouteChildren: EventosRouteChildren = {
+  EventosIndexRoute: EventosIndexRoute,
+}
+
+const EventosRouteWithChildren =
+  EventosRoute._addFileChildren(EventosRouteChildren)
+
 interface FinanceiroRouteChildren {
   FinanceiroConfiguracoesRoute: typeof FinanceiroConfiguracoesRoute
   FinanceiroContaAzulRoute: typeof FinanceiroContaAzulRoute
@@ -1768,12 +1836,14 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRoute,
+  CalendarioPublicoRoute: CalendarioPublicoRoute,
   ComercialRoute: ComercialRouteWithChildren,
   ComprasRoute: ComprasRouteWithChildren,
   ContabilRoute: ContabilRouteWithChildren,
   DashboardRoute: DashboardRoute,
   DevolucoesRoute: DevolucoesRoute,
   EntradasRoute: EntradasRoute,
+  EventosRoute: EventosRouteWithChildren,
   FinanceiroRoute: FinanceiroRouteWithChildren,
   FinanceiroOpRoute: FinanceiroOpRouteWithChildren,
   FornecedoresRoute: FornecedoresRoute,
