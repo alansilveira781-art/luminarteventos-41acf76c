@@ -13,6 +13,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
   Legend,
+  LabelList,
 } from "recharts";
 import type { VendaRow } from "@/lib/comercial/vendas.functions";
 import {
@@ -44,6 +45,29 @@ function noIntervalo(r: VendaRow, ini: string, fim: string): boolean {
 }
 
 type RankItem = { nome: string; A: number; B: number };
+
+function ChartLabel(props: {
+  x?: number;
+  y?: number;
+  value?: number | string;
+  fill?: string;
+}) {
+  const { x, y, value, fill } = props;
+  if (x == null || y == null || value == null) return null;
+  return (
+    <text
+      x={x}
+      y={y}
+      dy={-4}
+      fill={fill || "currentColor"}
+      fontSize={11}
+      fontWeight={600}
+      textAnchor="middle"
+    >
+      {fmtAbrev(Number(value))}
+    </text>
+  );
+}
 
 export function RelatorioVendasPeriodo({
   rows,
@@ -276,8 +300,24 @@ export function RelatorioVendasPeriodo({
               <YAxis tickFormatter={(v) => fmtAbrev(Number(v))} />
               <Tooltip formatter={(v) => fmtBRL(Number(v))} />
               <Legend />
-              <Bar dataKey="A" name={labelA} fill="hsl(var(--primary))" />
-              <Bar dataKey="B" name={labelB} fill="hsl(var(--muted-foreground))" />
+              <Bar dataKey="A" name={labelA} fill="#000000">
+                <LabelList
+                  dataKey="A"
+                  position="top"
+                  content={(props: any) => (
+                    <ChartLabel {...props} fill="#ffffff" />
+                  )}
+                />
+              </Bar>
+              <Bar dataKey="B" name={labelB} fill="#4B5563">
+                <LabelList
+                  dataKey="B"
+                  position="top"
+                  content={(props: any) => (
+                    <ChartLabel {...props} fill="#ffffff" />
+                  )}
+                />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
