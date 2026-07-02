@@ -235,6 +235,9 @@ export function CompraDialog({
           desconto_percentual: it.desconto_percentual ?? null,
           valor_unitario: it.valor_unitario ?? null,
           evento_projeto: it.evento_projeto || null,
+          ipi: Number(it.ipi || 0),
+          frete: Number(it.frete || 0),
+          outros: Number(it.outros || 0),
         }));
         const { data: ins, error } = await sb.from("compra_itens").insert(rows).select("id");
         if (error) throw error;
