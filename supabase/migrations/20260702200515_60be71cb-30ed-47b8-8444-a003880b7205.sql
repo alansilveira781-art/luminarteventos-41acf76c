@@ -1,0 +1,3 @@
+UPDATE auth.users SET email = 'alan@luminarteventos.com.br', email_confirmed_at = COALESCE(email_confirmed_at, now()), updated_at = now() WHERE id = '405b2005-f400-495e-8f9c-7c2ca3982534';
+UPDATE public.profiles SET email = 'alan@luminarteventos.com.br' WHERE id = '405b2005-f400-495e-8f9c-7c2ca3982534';
+INSERT INTO public.user_roles (user_id, role) VALUES ('405b2005-f400-495e-8f9c-7c2ca3982534', 'admin') ON CONFLICT DO NOTHING;
