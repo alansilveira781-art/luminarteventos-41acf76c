@@ -282,7 +282,7 @@ export function RelatorioVendasPeriodo({
                   dataKey="A"
                   position="top"
                   formatter={(v: number) => fmtAbrev(v)}
-                  style={{ fill: "#000000", fontSize: 11, fontWeight: 600 }}
+                  style={{ fill: "#ffffff", fontSize: 11, fontWeight: 600 }}
                 />
               </Bar>
               <Bar dataKey="B" name={labelB} fill="#4B5563">
