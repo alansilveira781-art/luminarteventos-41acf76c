@@ -13,6 +13,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
   Legend,
+  LabelList,
 } from "recharts";
 import type { VendaRow } from "@/lib/comercial/vendas.functions";
 import {
