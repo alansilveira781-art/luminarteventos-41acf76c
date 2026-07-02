@@ -117,7 +117,7 @@ function AppShell() {
   }
 
   // Public routes (não exigem login)
-  if (pathname === "/auth" || pathname === "/solicitar") return <Outlet />;
+  if (pathname === "/auth" || pathname === "/solicitar" || pathname === "/calendario-publico") return <Outlet />;
 
   if (!session) return <Navigate to="/auth" />;
 

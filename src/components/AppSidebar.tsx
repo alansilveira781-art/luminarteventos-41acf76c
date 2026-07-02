@@ -39,7 +39,7 @@ import {
   DollarSign,
   Target,
   FileBarChart,
-
+  CalendarDays,
 
 } from "lucide-react";
 import logo from "@/assets/luminart-logo-white.png";
@@ -92,11 +92,12 @@ const allItems: NavItem[] = [
   { title: "Saídas", url: "/patrimonio/saidas", icon: ArrowUpFromLine, group: "Patrimônio", module: "patrimonio" },
   { title: "Devoluções", url: "/patrimonio/devolucoes", icon: Undo2, group: "Patrimônio", module: "patrimonio" },
   { title: "A receber", url: "/patrimonio/a-receber", icon: PackageCheck, group: "Patrimônio", module: "patrimonio" },
+  { title: "Calendário", url: "/eventos", icon: CalendarDays, group: "Eventos", module: "eventos" },
   { title: "Recrutamento", url: "/rh", icon: UserPlus, group: "Recursos Humanos", module: "rh" },
   { title: "Administração", url: "/admin", icon: Shield, group: "Administração", adminOnly: true },
 ];
 
-const groups = ["Visão geral", "Estoque", "Compras", "Despesas", "Financeiro", "Comercial", "Contábil", "Jurídico", "Patrimônio", "Recursos Humanos", "Administração"];
+const groups = ["Visão geral", "Estoque", "Compras", "Despesas", "Financeiro", "Comercial", "Eventos", "Contábil", "Jurídico", "Patrimônio", "Recursos Humanos", "Administração"];
 
 
 const ESTOQUE_ROUTES = ["/dashboard", "/estoque", "/solicitantes", "/fornecedores", "/entradas", "/saidas", "/devolucoes", "/relatorios"];
