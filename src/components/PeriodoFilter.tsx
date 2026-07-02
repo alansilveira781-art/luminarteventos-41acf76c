@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   startOfDay, endOfDay, startOfWeek, endOfWeek,
   startOfMonth, endOfMonth, startOfYear, endOfYear, format,
+  addMonths, subMonths,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,11 @@ export function periodoFromPreset(p: PeriodoPreset): Periodo {
     case "ano": return { from: startOfYear(now), to: endOfYear(now) };
     default: return { from: null, to: null };
   }
+}
+
+/** Período (início/fim) de um mês específico. */
+export function periodoDoMes(ref: Date): Periodo {
+  return { from: startOfMonth(ref), to: endOfMonth(ref) };
 }
 
 export const PERIODO_MES_DEFAULT: { preset: PeriodoPreset; periodo: Periodo } = {
@@ -78,6 +84,40 @@ export function PeriodoFilter({ preset, periodo, onChange, className }: Props) {
         </SelectContent>
       </Select>
 
+      {preset === "mes" && (
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => {
+              const base = periodo.from ?? new Date();
+              onChange("mes", periodoDoMes(subMonths(base, 1)));
+            }}
+            aria-label="Mês anterior"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="min-w-[130px] text-center text-sm font-medium capitalize">
+            {format(periodo.from ?? new Date(), "MMMM 'de' yyyy", { locale: ptBR })}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => {
+              const base = periodo.from ?? new Date();
+              onChange("mes", periodoDoMes(addMonths(base, 1)));
+            }}
+            aria-label="Próximo mês"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
       {preset === "personalizado" && (
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
@@ -86,7 +126,13 @@ export function PeriodoFilter({ preset, periodo, onChange, className }: Props) {
               {label}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
+          <PopoverContent
+            className="w-auto max-w-[95vw] p-0 overflow-hidden"
+            align="start"
+            side="bottom"
+            sideOffset={6}
+            collisionPadding={12}
+          >
             <Calendar
               mode="range"
               selected={range as any}
@@ -98,7 +144,7 @@ export function PeriodoFilter({ preset, periodo, onChange, className }: Props) {
                   to: next.to ? endOfDay(next.to) : null,
                 });
               }}
-              numberOfMonths={2}
+              numberOfMonths={typeof window !== "undefined" && window.innerWidth < 640 ? 1 : 2}
               locale={ptBR}
               initialFocus
               className={cn("p-3 pointer-events-auto")}
