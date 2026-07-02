@@ -194,7 +194,10 @@ export function CompraDialog({
 
   // Soma automática do valor total
   const totalCalc = useMemo(
-    () => itens.reduce((s, it) => s + Number(it.quantidade || 0) * Number(it.valor_unitario || 0), 0),
+    () => itens.reduce((s, it) => {
+      const subtotal = Number(it.quantidade || 0) * Number(it.valor_unitario || 0);
+      return s + subtotal + Number(it.ipi || 0) + Number(it.frete || 0) + Number(it.outros || 0);
+    }, 0),
     [itens],
   );
   useEffect(() => {
