@@ -264,11 +264,11 @@ export function RelatorioVendasPeriodo({
         />
       </div>
 
-      <Card className="p-4">
+      <Card className="p-4 print:break-inside-avoid">
         <p className="text-sm font-semibold mb-3">
           Comparativo — {labelA} vs {labelB}
         </p>
-        <div className="h-72 w-full">
+        <div className="h-72 w-full print:h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartTotais}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
