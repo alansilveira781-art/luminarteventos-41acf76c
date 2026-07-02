@@ -1900,6 +1900,72 @@ export type Database = {
           },
         ]
       }
+      eventos: {
+        Row: {
+          cidade: string | null
+          codigo: string | null
+          cor: string | null
+          created_at: string
+          created_by: string | null
+          data_desmontagem: string | null
+          data_evento: string
+          data_montagem: string | null
+          hora_fim: string | null
+          hora_inicio: string | null
+          id: string
+          local: string | null
+          nome: string
+          observacoes: string | null
+          origem: string
+          responsavel: string | null
+          tipo: string | null
+          updated_at: string
+          venda_id: string | null
+        }
+        Insert: {
+          cidade?: string | null
+          codigo?: string | null
+          cor?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_desmontagem?: string | null
+          data_evento: string
+          data_montagem?: string | null
+          hora_fim?: string | null
+          hora_inicio?: string | null
+          id?: string
+          local?: string | null
+          nome: string
+          observacoes?: string | null
+          origem?: string
+          responsavel?: string | null
+          tipo?: string | null
+          updated_at?: string
+          venda_id?: string | null
+        }
+        Update: {
+          cidade?: string | null
+          codigo?: string | null
+          cor?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_desmontagem?: string | null
+          data_evento?: string
+          data_montagem?: string | null
+          hora_fim?: string | null
+          hora_inicio?: string | null
+          id?: string
+          local?: string | null
+          nome?: string
+          observacoes?: string | null
+          origem?: string
+          responsavel?: string | null
+          tipo?: string | null
+          updated_at?: string
+          venda_id?: string | null
+        }
+        Relationships: []
+      }
       eventos_projetos: {
         Row: {
           codigo: string | null
@@ -3178,6 +3244,7 @@ export type Database = {
         }
         Returns: string
       }
+      proximo_codigo_evento: { Args: { _data: string }; Returns: string }
       reconciliar_estoque: { Args: { p_item_id: string }; Returns: number }
       refresh_item_status: { Args: { p_item_id: string }; Returns: undefined }
       show_limit: { Args: never; Returns: number }
