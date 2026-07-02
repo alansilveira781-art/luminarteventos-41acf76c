@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, AlertTriangle, Download } from "lucide-react";
+import { Loader2, AlertTriangle, Download, Printer } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -163,8 +163,26 @@ export function RelatorioVendasPeriodo({
   }
 
   return (
-    <div className="space-y-6">
-      <Card className="p-4">
+    <div className="space-y-6 print-area">
+      <style>{`
+        @media print {
+          @page { size: A4; margin: 12mm; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          body * { visibility: hidden !important; }
+          .print-area, .print-area * { visibility: visible !important; }
+          .print-area { position: absolute; inset: 0; padding: 0; }
+        }
+      `}</style>
+      <div className="hidden print:block mb-2">
+        <h1 className="text-xl font-bold">Relatório de Vendas por Período</h1>
+        <p className="text-sm text-muted-foreground">
+          Período A: {labelA} &nbsp;·&nbsp; Período B: {labelB}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Gerado em {new Date().toLocaleString("pt-BR")}
+        </p>
+      </div>
+      <Card className="p-4 print:hidden">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <p className="text-sm font-semibold">Período A</p>
@@ -209,14 +227,17 @@ export function RelatorioVendasPeriodo({
             </div>
           </div>
         </div>
-        <div className="mt-4 flex justify-end">
+        <div className="mt-4 flex justify-end gap-2">
           <Button variant="outline" size="sm" className="gap-2" onClick={exportarCSV}>
             <Download className="h-4 w-4" /> Exportar CSV
+          </Button>
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => window.print()}>
+            <Printer className="h-4 w-4" /> Imprimir
           </Button>
         </div>
       </Card>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-3 print:grid-cols-3 print:break-inside-avoid">
         <KpiComparativo
           titulo="Qtd de vendas"
           a={resA.qtd}
@@ -243,11 +264,11 @@ export function RelatorioVendasPeriodo({
         />
       </div>
 
-      <Card className="p-4">
+      <Card className="p-4 print:break-inside-avoid">
         <p className="text-sm font-semibold mb-3">
           Comparativo — {labelA} vs {labelB}
         </p>
-        <div className="h-72 w-full">
+        <div className="h-72 w-full print:h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartTotais}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
@@ -262,7 +283,7 @@ export function RelatorioVendasPeriodo({
         </div>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 print:grid-cols-2 [&>*]:print:break-inside-avoid">
         <RankingComparativo
           titulo="Categoria"
           dados={rkCategoria}
