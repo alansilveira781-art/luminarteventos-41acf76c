@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, AlertTriangle, Download } from "lucide-react";
+import { Loader2, AlertTriangle, Download, Printer } from "lucide-react";
 import {
   BarChart,
   Bar,
