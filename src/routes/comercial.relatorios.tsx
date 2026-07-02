@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/PageHeader";
-import { Loader2, AlertTriangle, Download, FileBarChart, CalendarRange } from "lucide-react";
+import { Loader2, AlertTriangle, Download, FileBarChart, CalendarRange, Printer } from "lucide-react";
 import { listVendasDb } from "@/lib/comercial/vendas-db.functions";
 import { getAno, getMes, cleanText } from "@/lib/comercial/vendas-metrics";
 import { RelatorioVendasPeriodo } from "@/components/comercial/RelatorioVendasPeriodo";
@@ -198,10 +198,26 @@ function RelatoriosPage() {
       )}
 
       {relatorioAtivo === "comissao" && (
-        <>
+        <div className="print-area space-y-6">
+          <style>{`
+            @media print {
+              body * { visibility: hidden; }
+              .print-area, .print-area * { visibility: visible !important; }
+              .print-area { position: absolute; inset: 0; padding: 0; }
+              .print\\:hidden { display: none !important; }
+              body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            }
+          `}</style>
+
+          <div className="hidden print:block mb-6">
+            <h1 className="text-2xl font-bold">Distribuição de Comissão</h1>
+            <p className="text-muted-foreground">
+              {ano === "Todos" ? "Todos os anos" : ano} · {mes === "Todos" ? "Todos os meses" : mes}
+            </p>
+          </div>
 
 
-      <Card className="p-4">
+      <Card className="p-4 print:hidden">
         <div className="grid gap-3 sm:grid-cols-[160px_200px_1fr] sm:items-end">
           <div className="space-y-1">
             <Label>Ano</Label>
@@ -240,9 +256,12 @@ function RelatoriosPage() {
             </Select>
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2 print:hidden">
             <Button variant="outline" size="sm" className="gap-2" onClick={exportarCSV}>
               <Download className="h-4 w-4" /> Exportar CSV
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => window.print()}>
+              <Printer className="h-4 w-4" /> Imprimir
             </Button>
           </div>
         </div>
@@ -360,7 +379,7 @@ function RelatoriosPage() {
           </Card>
         </>
       )}
-        </>
+        </div>
       )}
     </div>
 
