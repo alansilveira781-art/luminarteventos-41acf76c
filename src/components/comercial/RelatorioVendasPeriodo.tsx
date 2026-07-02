@@ -277,8 +277,22 @@ export function RelatorioVendasPeriodo({
               <YAxis tickFormatter={(v) => fmtAbrev(Number(v))} />
               <Tooltip formatter={(v) => fmtBRL(Number(v))} />
               <Legend />
-              <Bar dataKey="A" name={labelA} fill="hsl(var(--primary))" />
-              <Bar dataKey="B" name={labelB} fill="hsl(var(--muted-foreground))" />
+              <Bar dataKey="A" name={labelA} fill="#000000">
+                <LabelList
+                  dataKey="A"
+                  position="top"
+                  formatter={(v: number) => fmtAbrev(v)}
+                  style={{ fill: "#000000", fontSize: 11, fontWeight: 600 }}
+                />
+              </Bar>
+              <Bar dataKey="B" name={labelB} fill="#4B5563">
+                <LabelList
+                  dataKey="B"
+                  position="top"
+                  formatter={(v: number) => fmtAbrev(v)}
+                  style={{ fill: "#4B5563", fontSize: 11, fontWeight: 600 }}
+                />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
