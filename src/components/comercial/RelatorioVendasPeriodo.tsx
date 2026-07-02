@@ -163,7 +163,25 @@ export function RelatorioVendasPeriodo({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 print-area">
+      <style>{`
+        @media print {
+          @page { size: A4; margin: 12mm; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          body * { visibility: hidden !important; }
+          .print-area, .print-area * { visibility: visible !important; }
+          .print-area { position: absolute; inset: 0; padding: 0; }
+        }
+      `}</style>
+      <div className="hidden print:block mb-2">
+        <h1 className="text-xl font-bold">Relatório de Vendas por Período</h1>
+        <p className="text-sm text-muted-foreground">
+          Período A: {labelA} &nbsp;·&nbsp; Período B: {labelB}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Gerado em {new Date().toLocaleString("pt-BR")}
+        </p>
+      </div>
       <Card className="p-4">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
