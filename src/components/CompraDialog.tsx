@@ -36,6 +36,9 @@ export type CompraItem = {
   desconto_percentual?: number | null;
   valor_unitario?: number | null;
   evento_projeto?: string | null;
+  ipi?: number | null;
+  frete?: number | null;
+  outros?: number | null;
 };
 
 export type Compra = {
@@ -191,7 +194,10 @@ export function CompraDialog({
 
   // Soma automática do valor total
   const totalCalc = useMemo(
-    () => itens.reduce((s, it) => s + Number(it.quantidade || 0) * Number(it.valor_unitario || 0), 0),
+    () => itens.reduce((s, it) => {
+      const subtotal = Number(it.quantidade || 0) * Number(it.valor_unitario || 0);
+      return s + subtotal + Number(it.ipi || 0) + Number(it.frete || 0) + Number(it.outros || 0);
+    }, 0),
     [itens],
   );
   useEffect(() => {
@@ -229,6 +235,9 @@ export function CompraDialog({
           desconto_percentual: it.desconto_percentual ?? null,
           valor_unitario: it.valor_unitario ?? null,
           evento_projeto: it.evento_projeto || null,
+          ipi: Number(it.ipi || 0),
+          frete: Number(it.frete || 0),
+          outros: Number(it.outros || 0),
         }));
         const { data: ins, error } = await sb.from("compra_itens").insert(rows).select("id");
         if (error) throw error;
@@ -430,7 +439,7 @@ export function CompraDialog({
                     <Input value={it.descricao} onChange={(e) => updateItem(idx, { descricao: e.target.value })} placeholder="Item novo / não cadastrado" />
                   </div>
                 </div>
-                <div className="grid gap-2 grid-cols-2 sm:grid-cols-6">
+                <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-9">
                   <div>
                     <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Qtd</label>
                     <Input type="number" step="0.01" value={it.quantidade} onChange={(e) => updateItem(idx, { quantidade: Number(e.target.value) })} />
@@ -462,8 +471,27 @@ export function CompraDialog({
                     <MoneyInput value={it.valor_unitario ?? 0} onChange={(n) => updateItem(idx, { valor_unitario: n || null })} />
                   </div>
                   <div>
+                    <label className="text-[11px] uppercase tracking-wider text-muted-foreground">IPI</label>
+                    <MoneyInput value={it.ipi ?? 0} onChange={(n) => updateItem(idx, { ipi: n || 0 })} />
+                  </div>
+                  <div>
+                    <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Frete</label>
+                    <MoneyInput value={it.frete ?? 0} onChange={(n) => updateItem(idx, { frete: n || 0 })} />
+                  </div>
+                  <div>
+                    <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Outros</label>
+                    <MoneyInput value={it.outros ?? 0} onChange={(n) => updateItem(idx, { outros: n || 0 })} />
+                  </div>
+                  <div>
                     <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Subtotal</label>
-                    <Input value={(Number(it.quantidade || 0) * Number(it.valor_unitario || 0)).toFixed(2)} readOnly className="bg-muted/50" />
+                    <Input
+                      value={(
+                        Number(it.quantidade || 0) * Number(it.valor_unitario || 0)
+                        + Number(it.ipi || 0) + Number(it.frete || 0) + Number(it.outros || 0)
+                      ).toFixed(2)}
+                      readOnly
+                      className="bg-muted/50"
+                    />
                   </div>
                 </div>
                 <div>
