@@ -62,25 +62,49 @@ function RelatoriosPage() {
 
   const rows = data?.rows ?? [];
 
+  // Ano/mês pela DATA DE REGISTRO (quando a venda foi fechada), com fallback para evento.
+  const MESES_PT = [
+    "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+  ];
+  const anoDoRegistro = (r: typeof rows[number]): number | null => {
+    const iso = r.dataRegistro || r.dataEvento || null;
+    if (iso && /^\d{4}/.test(iso)) {
+      const y = Number(iso.slice(0, 4));
+      if (y > 1900 && y < 2100) return y;
+    }
+    return getAno(r); // fallback
+  };
+  const mesDoRegistro = (r: typeof rows[number]): string | null => {
+    const iso = r.dataRegistro || r.dataEvento || null;
+    if (iso && /^\d{4}-\d{2}/.test(iso)) {
+      const m = Number(iso.slice(5, 7));
+      if (m >= 1 && m <= 12) return MESES_PT[m - 1];
+    }
+    return (getMes(r) ?? "").toLowerCase() || null; // fallback
+  };
+
   const anosDisponiveis = useMemo(() => {
     const s = new Set<number>();
     for (const r of rows) {
-      const a = getAno(r);
+      const a = anoDoRegistro(r);
       if (a) s.add(a);
     }
     return [...s].sort((a, b) => b - a);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows]);
 
   const filtradas = useMemo(() => {
     const mesAlvo = mes === "Todos" ? null : mes.toLowerCase();
     return rows.filter((r) => {
-      if (ano !== "Todos" && getAno(r) !== ano) return false;
+      if (ano !== "Todos" && anoDoRegistro(r) !== ano) return false;
       if (mesAlvo) {
-        const m = (getMes(r) ?? "").toLowerCase();
+        const m = (mesDoRegistro(r) ?? "").toLowerCase();
         if (m !== mesAlvo) return false;
       }
       return true;
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, ano, mes]);
 
   const grupos = useMemo<Grupo[]>(() => {
