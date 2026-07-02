@@ -1088,8 +1088,11 @@ export type Database = {
           desconto_percentual: number | null
           descricao: string
           evento_projeto: string | null
+          frete: number | null
           id: string
+          ipi: number | null
           item_id: string | null
+          outros: number | null
           quantidade: number
           quantidade_recebida: number
           recebido: boolean
@@ -1105,8 +1108,11 @@ export type Database = {
           desconto_percentual?: number | null
           descricao: string
           evento_projeto?: string | null
+          frete?: number | null
           id?: string
+          ipi?: number | null
           item_id?: string | null
+          outros?: number | null
           quantidade?: number
           quantidade_recebida?: number
           recebido?: boolean
@@ -1122,8 +1128,11 @@ export type Database = {
           desconto_percentual?: number | null
           descricao?: string
           evento_projeto?: string | null
+          frete?: number | null
           id?: string
+          ipi?: number | null
           item_id?: string | null
+          outros?: number | null
           quantidade?: number
           quantidade_recebida?: number
           recebido?: boolean

@@ -1,0 +1,4 @@
+ALTER TABLE public.compra_itens
+  ADD COLUMN IF NOT EXISTS ipi numeric DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS frete numeric DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS outros numeric DEFAULT 0;
