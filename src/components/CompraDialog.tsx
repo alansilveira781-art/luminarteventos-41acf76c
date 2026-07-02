@@ -36,6 +36,9 @@ export type CompraItem = {
   desconto_percentual?: number | null;
   valor_unitario?: number | null;
   evento_projeto?: string | null;
+  ipi?: number | null;
+  frete?: number | null;
+  outros?: number | null;
 };
 
 export type Compra = {
