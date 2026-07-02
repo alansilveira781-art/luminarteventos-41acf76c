@@ -464,15 +464,18 @@ function VendasPage() {
       />
 
       <Card className="p-4 space-y-3">
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="space-y-1">
-            <Label className="text-[11px] uppercase">Período</Label>
-            <PeriodoFilter
-              preset={periodoPreset}
-              periodo={periodo}
-              onChange={(p, per) => { setPeriodoPreset(p); setPeriodo(per); }}
-            />
-          </div>
+        {/* Período — linha própria, largura livre para as setas e o calendário */}
+        <div className="space-y-1">
+          <Label className="text-[11px] uppercase">Período</Label>
+          <PeriodoFilter
+            preset={periodoPreset}
+            periodo={periodo}
+            onChange={(p, per) => { setPeriodoPreset(p); setPeriodo(per); }}
+          />
+        </div>
+
+        {/* Demais filtros — linha embaixo */}
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
           <FiltroSelect label="Empresa" value={empresa} onChange={setEmpresa} options={opts.empresas} />
           <FiltroSelect label="Consultor" value={consultor} onChange={setConsultor} options={opts.consultores} />
           <FiltroSelect label="Classificação" value={classificacao} onChange={setClassificacao} options={opts.classificacoes} />
