@@ -237,7 +237,7 @@ export function RelatorioVendasPeriodo({
         </div>
       </Card>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-3 print:grid-cols-3 print:break-inside-avoid">
         <KpiComparativo
           titulo="Qtd de vendas"
           a={resA.qtd}
