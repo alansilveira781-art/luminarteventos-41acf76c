@@ -46,6 +46,29 @@ function noIntervalo(r: VendaRow, ini: string, fim: string): boolean {
 
 type RankItem = { nome: string; A: number; B: number };
 
+function ChartLabel(props: {
+  x?: number;
+  y?: number;
+  value?: number | string;
+  fill?: string;
+}) {
+  const { x, y, value, fill } = props;
+  if (x == null || y == null || value == null) return null;
+  return (
+    <text
+      x={x}
+      y={y}
+      dy={-4}
+      fill={fill || "currentColor"}
+      fontSize={11}
+      fontWeight={600}
+      textAnchor="middle"
+    >
+      {fmtAbrev(Number(value))}
+    </text>
+  );
+}
+
 export function RelatorioVendasPeriodo({
   rows,
   isLoading,
