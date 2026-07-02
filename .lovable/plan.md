@@ -1,39 +1,26 @@
-## Contexto
-O usuário visualizou a aba Itens do card de Compra e notou que os campos estão apertados em uma única linha (9 colunas). Ele quer uma distribuição mais espaçosa em duas linhas.
+## Plano — Alternativa: policy dedicada para o Pedro
 
-## Objetivo
-Reorganizar os campos de cada item de compra no `CompraDialog` para melhor legibilidade e uso do espaço.
+Criar uma exceção RLS pontual em `public.compras` amarrada ao **user_id** do Pedro (`9465f822-0273-4235-ba24-148cb1bf2c4b`), não ao e-mail. Isso restaura a edição sem promovê-lo a admin do módulo e sem reintroduzir bypass por string de e-mail.
 
-## Alteração
-Arquivo: `src/components/CompraDialog.tsx` (seção "Itens", dentro do mapeamento de `itens`).
+### Migração
 
-Atualmente os campos estão em um único grid de 9 colunas:
+```sql
+CREATE POLICY "compras_update_pedro"
+ON public.compras
+FOR UPDATE
+TO authenticated
+USING  (auth.uid() = '9465f822-0273-4235-ba24-148cb1bf2c4b'::uuid)
+WITH CHECK (auth.uid() = '9465f822-0273-4235-ba24-148cb1bf2c4b'::uuid);
 ```
-Qtd | Unidade | Cotação | Desc. % | Valor unit. | IPI | Frete | Outros | Subtotal
-```
 
-Novo layout em duas linhas:
+Policies em PostgreSQL são unidas por `OR`, então essa nova policy libera UPDATE só para o Pedro, sem afetar as demais regras existentes.
 
-### Linha 1 — campos principais de quantidade/preço
-```
-Qtd | Unidade | Cotação | Desc. % | Valor unit.
-```
-- Grid responsivo: 5 colunas em telas grandes, ajustando para 2–3 colunas em telas menores.
-- Campos permanecem com os labels e handlers atuais.
+### O que **não** muda
 
-### Linha 2 — campos de acréscimos e subtotal
-```
-IPI | Frete | Outros | Subtotal
-```
-- Grid de 4 colunas em telas grandes, ajustando para 2 colunas em telas menores.
-- Subtotal continua somente leitura (`readOnly`, `bg-muted/50`).
+- Movimentação de status: continua limitada a Solicitação → Análise → Pendente Aprovação (via `validate_compra_status_transition` + `canMoveCompra`, que já tratam o `isPedro` separadamente).
+- Exclusão: segue as regras atuais (admin, criador, responsável do card, responsável do status).
+- Frontend: `canEditCompra` já retorna `true` para o Pedro; nenhuma alteração de código.
 
-## NÃO FAZER
-- Não alterar cálculos de subtotal, desconto, IPI, frete ou outros.
-- Não alterar validações, permissões ou lógica de salvamento.
-- Não alterar labels de campos ou comportamento de foco.
-- Não alterar outros módulos ou telas.
+### Observação
 
-## Validação
-- Verificar visualmente no preview que os campos aparecem em duas linhas.
-- Confirmar que valores e cálculos continuam funcionando normalmente.
+Se o Pedro trocar de e-mail/conta no futuro, essa policy precisa ser atualizada (é atrelada ao UUID). Documentarei isso no comentário da policy.
