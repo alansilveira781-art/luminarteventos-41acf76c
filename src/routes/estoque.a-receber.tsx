@@ -264,7 +264,13 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
 
       const dataIso = fromBRTInputDateTime(dataMovimento);
 
+      // Gera UM número de requisição para agrupar todos os itens deste recebimento
+      const { data: numData, error: numErr } = await sb.rpc("next_requisicao_numero");
+      if (numErr) throw numErr;
+      const requisicaoNumero = numData as number;
+
       for (const it of itens) {
+
         const extra = getExtra(it);
         const qtd = extra.quantidade ?? Number(it.quantidade);
         if (!qtd || qtd <= 0) continue;
