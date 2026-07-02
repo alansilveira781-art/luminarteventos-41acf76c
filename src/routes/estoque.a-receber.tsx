@@ -224,6 +224,22 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
     return itens.some((it) => !it.item_id && !itemMap[it.id]);
   }, [itens, itemMap]);
 
+  const totalRecebimento = useMemo(() => {
+    return itens.reduce((soma, it) => {
+      const extra = getExtra(it);
+      const qtd = extra.quantidade ?? Number(it.quantidade) ?? 0;
+      const vu = Number(extra.valor_unitario || 0);
+      const desc = Number(extra.desconto || 0);
+      const fre = Number(extra.frete || 0);
+      const ip = Number(extra.ipi || 0);
+      const out = Number(extra.outros_custos || 0);
+      if (!qtd || qtd <= 0) return soma;
+      return soma + (qtd * vu - desc + fre + ip + out);
+    }, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itens, linhaExtras]);
+
+
   const finalizar = useMutation({
     mutationFn: async () => {
       if (!fornecedorId) throw new Error("Selecione o fornecedor");
@@ -248,7 +264,13 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
 
       const dataIso = fromBRTInputDateTime(dataMovimento);
 
+      // Gera UM número de requisição para agrupar todos os itens deste recebimento
+      const { data: numData, error: numErr } = await sb.rpc("next_requisicao_numero");
+      if (numErr) throw numErr;
+      const requisicaoNumero = numData as number;
+
       for (const it of itens) {
+
         const extra = getExtra(it);
         const qtd = extra.quantidade ?? Number(it.quantidade);
         if (!qtd || qtd <= 0) continue;
@@ -275,6 +297,8 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
           frete: Number(fre.toFixed(4)),
           ipi: Number(ip.toFixed(4)),
           outros_custos: Number(out.toFixed(4)),
+          requisicao_numero: requisicaoNumero,
+
           empresa,
           data_movimento: dataIso,
           fornecedor_id: fornecedorId || null,
@@ -555,15 +579,24 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
           )}
         </div>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-between">
-          <Button
-            variant="outline"
-            className="border-warning/60 text-warning hover:bg-warning/10"
-            onClick={() => setDevolverOpen(true)}
-            disabled={!!statusBlocked || finalizar.isPending}
-          >
-            <Undo2 className="h-4 w-4 mr-1" /> Devolver para Compras
-          </Button>
+        <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-between sm:items-center">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button
+              variant="outline"
+              className="border-warning/60 text-warning hover:bg-warning/10"
+              onClick={() => setDevolverOpen(true)}
+              disabled={!!statusBlocked || finalizar.isPending}
+            >
+              <Undo2 className="h-4 w-4 mr-1" /> Devolver para Compras
+            </Button>
+            <div className="text-sm">
+              <span className="text-muted-foreground">Total do recebimento: </span>
+              <span className="font-semibold tabular-nums">
+                {totalRecebimento.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              </span>
+            </div>
+          </div>
+
 
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>Cancelar</Button>
