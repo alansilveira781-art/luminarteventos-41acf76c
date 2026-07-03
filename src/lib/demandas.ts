@@ -26,6 +26,7 @@ export const TIPO_DEMANDA_OPTIONS = [
   { value: "manutencao_veiculos", label: "Manutenção de Veículos" },
   { value: "manutencao_maquinario", label: "Manutenção de Maquinário" },
   { value: "fardamento", label: "Fardamento" },
+  { value: "frete", label: "Frete" },
   { value: "reformas_construcoes", label: "Reformas & Construções" },
   { value: "imobilizado", label: "Imobilizado" },
   { value: "material_limpeza", label: "Material de Limpeza" },
