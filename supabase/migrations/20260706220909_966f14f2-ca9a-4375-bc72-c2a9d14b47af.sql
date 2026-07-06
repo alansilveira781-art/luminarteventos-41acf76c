@@ -1,0 +1,1 @@
+alter table public.uber_corridas add column if not exists detalhamento text;
