@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Printer } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, CartesianGrid,
@@ -241,10 +242,38 @@ export function UberDashboard() {
     );
   }
 
+  const periodoLabel = (() => {
+    const parts: string[] = [];
+    if (dateFrom || dateTo) {
+      parts.push(`Período: ${dateFrom || "início"} até ${dateTo || "hoje"}`);
+    }
+    if (solicitante !== "__all__") parts.push(`Solicitante: ${solicitante}`);
+    if (projeto !== "__all__") parts.push(`Projeto: ${projeto}`);
+    return parts.length ? parts.join(" · ") : "Base completa";
+  })();
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 print-area">
+      <style>{`
+        @media print {
+          @page { size: A4 landscape; margin: 12mm; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          body * { visibility: hidden !important; }
+          .print-area, .print-area * { visibility: visible !important; }
+          .print-area { position: absolute; inset: 0; padding: 0; }
+        }
+      `}</style>
+
+      <div className="hidden print:block mb-2">
+        <h1 className="text-xl font-bold">Dashboard Uber — Grupo Luminart</h1>
+        <p className="text-sm text-muted-foreground">{periodoLabel}</p>
+        <p className="text-xs text-muted-foreground">
+          Emitido em {new Date().toLocaleString("pt-BR")}
+        </p>
+      </div>
+
       {/* Filtros */}
-      <Card className="p-3">
+      <Card className="p-3 print:hidden">
         <div className="flex flex-wrap items-end gap-3">
           <div>
             <label className="text-[11px] uppercase text-muted-foreground block mb-1">De</label>
@@ -282,11 +311,14 @@ export function UberDashboard() {
             <Button size="sm" variant="outline" onClick={setUltimos3}>Últimos 3 meses</Button>
             <Button size="sm" variant="outline" onClick={setEsteAno}>Este ano</Button>
             <Button size="sm" variant="ghost" onClick={limparFiltros}>Tudo</Button>
+            <Button size="sm" variant="outline" className="gap-2" onClick={() => window.print()}>
+              <Printer className="h-4 w-4" /> Imprimir
+            </Button>
           </div>
         </div>
       </Card>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 [&>*]:print:break-inside-avoid">
         <Stat label="Gasto total" value={fmt(kpis.total)} />
         <Stat label="Nº de corridas" value={fmtN(kpis.count)} />
         <Stat label="Ticket médio" value={fmt(kpis.ticket)} />
@@ -294,7 +326,7 @@ export function UberDashboard() {
       </div>
 
       {comparacoes && (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 [&>*]:print:break-inside-avoid">
           <CompareCard
             label={`${comparacoes.mesLabel}${comparacoes.mesPrevLabel ? ` vs ${comparacoes.mesPrevLabel}` : ""}`}
             cur={comparacoes.mesAtual}
@@ -308,34 +340,38 @@ export function UberDashboard() {
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2 [&>*]:print:break-inside-avoid">
         <ChartCard title="Gasto mensal (R$)">
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={porMes}>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-              <XAxis dataKey="mes" fontSize={11} tickFormatter={mesLabel} />
-              <YAxis fontSize={11} />
-              <Tooltip formatter={(v: any) => fmt(Number(v))} labelFormatter={(l: any) => mesLabel(String(l))} />
-              <Bar dataKey="valor" fill="#0f172a" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="h-[260px] print:h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={porMes}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                <XAxis dataKey="mes" fontSize={11} tickFormatter={mesLabel} />
+                <YAxis fontSize={11} />
+                <Tooltip formatter={(v: any) => fmt(Number(v))} labelFormatter={(l: any) => mesLabel(String(l))} />
+                <Bar dataKey="valor" fill="#0f172a" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </ChartCard>
 
         <ChartCard title="Gasto por serviço">
-          <ResponsiveContainer width="100%" height={260}>
-            <PieChart>
-              <Pie data={porServico} dataKey="valor" nameKey="nome" outerRadius={90} label>
-                {porServico.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-              </Pie>
-              <Tooltip formatter={(v: any) => fmt(Number(v))} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className="h-[260px] print:h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={porServico} dataKey="valor" nameKey="nome" outerRadius={90} label>
+                  {porServico.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                </Pie>
+                <Tooltip formatter={(v: any) => fmt(Number(v))} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
         </ChartCard>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="p-4">
+      <div className="grid gap-4 lg:grid-cols-2 [&>*]:print:break-inside-avoid">
+        <Card className="p-4 print:break-inside-avoid">
           <div className="text-sm font-semibold mb-3">Top solicitantes</div>
           <div className="overflow-auto">
             <table className="w-full text-sm">
@@ -361,7 +397,7 @@ export function UberDashboard() {
           </div>
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-4 print:break-inside-avoid">
           <div className="text-sm font-semibold mb-3">Endereços recorrentes</div>
           <div className="overflow-auto">
             <table className="w-full text-sm">
@@ -428,7 +464,7 @@ function CompareCard({ label, cur, prev }: { label: string; cur: number; prev: n
 
 function ChartCard({ title, children, className = "" }: { title: string; children: React.ReactNode; className?: string }) {
   return (
-    <Card className={`p-4 ${className}`}>
+    <Card className={`p-4 print:break-inside-avoid ${className}`}>
       <div className="text-sm font-semibold mb-3">{title}</div>
       {children}
     </Card>
