@@ -69,7 +69,7 @@ export function UberDashboard() {
     queryFn: async () => {
       const rows = await fetchAllRows<Corrida>(
         "uber_corridas",
-        "id, data_solicitacao, hora_solicitacao, nome, sobrenome, servico, cidade, endereco_partida, endereco_destino, valor, projeto",
+        "id, data_solicitacao, hora_solicitacao, nome, sobrenome, servico, cidade, endereco_partida, endereco_destino, valor, projeto, detalhamento",
         { orderBy: { column: "data_solicitacao", ascending: false } },
       );
       return rows.map((r) => ({ ...r, valor: Number(r.valor) }));
