@@ -326,7 +326,7 @@ export function UberDashboard() {
       </div>
 
       {comparacoes && (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 [&>*]:print:break-inside-avoid">
           <CompareCard
             label={`${comparacoes.mesLabel}${comparacoes.mesPrevLabel ? ` vs ${comparacoes.mesPrevLabel}` : ""}`}
             cur={comparacoes.mesAtual}
