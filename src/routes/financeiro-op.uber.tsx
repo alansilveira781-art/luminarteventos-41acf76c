@@ -145,6 +145,7 @@ function UberTabelona() {
                 <th className="text-left p-2">Nome</th>
                 <th className="text-left p-2">Sobrenome</th>
                 <th className="text-left p-2">Serviço</th>
+                <th className="text-left p-2">Detalhamento</th>
                 <th className="text-left p-2">Cidade</th>
                 <th className="text-left p-2">Projeto</th>
                 <th className="text-left p-2">Partida</th>
