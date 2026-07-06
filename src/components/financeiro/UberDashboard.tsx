@@ -274,8 +274,6 @@ export function UberDashboard() {
 
       {/* Filtros */}
       <Card className="p-3 print:hidden">
-      {/* Filtros */}
-      <Card className="p-3">
         <div className="flex flex-wrap items-end gap-3">
           <div>
             <label className="text-[11px] uppercase text-muted-foreground block mb-1">De</label>
@@ -313,6 +311,9 @@ export function UberDashboard() {
             <Button size="sm" variant="outline" onClick={setUltimos3}>Últimos 3 meses</Button>
             <Button size="sm" variant="outline" onClick={setEsteAno}>Este ano</Button>
             <Button size="sm" variant="ghost" onClick={limparFiltros}>Tudo</Button>
+            <Button size="sm" variant="outline" className="gap-2" onClick={() => window.print()}>
+              <Printer className="h-4 w-4" /> Imprimir
+            </Button>
           </div>
         </div>
       </Card>
