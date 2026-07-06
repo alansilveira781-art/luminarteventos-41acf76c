@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { UberDashboard } from "@/components/financeiro/UberDashboard";
+import { UberImportButton } from "@/components/financeiro/UberImportButton";
 import { ContaAzulDashboard } from "@/components/financeiro/ContaAzulDashboard";
 
 export const Route = createFileRoute("/financeiro-op/dashboard")({
