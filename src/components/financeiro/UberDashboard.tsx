@@ -242,8 +242,38 @@ export function UberDashboard() {
     );
   }
 
+  const periodoLabel = (() => {
+    const parts: string[] = [];
+    if (dateFrom || dateTo) {
+      parts.push(`Período: ${dateFrom || "início"} até ${dateTo || "hoje"}`);
+    }
+    if (solicitante !== "__all__") parts.push(`Solicitante: ${solicitante}`);
+    if (projeto !== "__all__") parts.push(`Projeto: ${projeto}`);
+    return parts.length ? parts.join(" · ") : "Base completa";
+  })();
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 print-area">
+      <style>{`
+        @media print {
+          @page { size: A4 landscape; margin: 12mm; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          body * { visibility: hidden !important; }
+          .print-area, .print-area * { visibility: visible !important; }
+          .print-area { position: absolute; inset: 0; padding: 0; }
+        }
+      `}</style>
+
+      <div className="hidden print:block mb-2">
+        <h1 className="text-xl font-bold">Dashboard Uber — Grupo Luminart</h1>
+        <p className="text-sm text-muted-foreground">{periodoLabel}</p>
+        <p className="text-xs text-muted-foreground">
+          Emitido em {new Date().toLocaleString("pt-BR")}
+        </p>
+      </div>
+
+      {/* Filtros */}
+      <Card className="p-3 print:hidden">
       {/* Filtros */}
       <Card className="p-3">
         <div className="flex flex-wrap items-end gap-3">
