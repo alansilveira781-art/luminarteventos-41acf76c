@@ -28,6 +28,7 @@ type Row = {
   endereco_destino: string | null;
   valor: number;
   projeto: string | null;
+  detalhamento: string | null;
 };
 
 const PAGE_SIZE = 50;
