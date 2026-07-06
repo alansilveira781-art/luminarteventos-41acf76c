@@ -340,7 +340,7 @@ export function UberDashboard() {
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2 [&>*]:print:break-inside-avoid">
         <ChartCard title="Gasto mensal (R$)">
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={porMes}>
