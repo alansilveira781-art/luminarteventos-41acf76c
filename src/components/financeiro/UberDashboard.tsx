@@ -1,6 +1,12 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -176,6 +182,38 @@ export function UberDashboard() {
       .map(([endereco, count]) => ({ endereco, count, pct: (count / total) * 100 }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
+  }, [trips]);
+
+  const agrupadoPessoaData = useMemo(() => {
+    const pessoas = new Map<
+      string,
+      {
+        pessoa: string;
+        total: number;
+        qtd: number;
+        datas: Map<string, { total: number; corridas: typeof trips }>;
+      }
+    >();
+    for (const t of trips) {
+      const pessoa = [t.nome, t.sobrenome].filter(Boolean).join(" ").trim() || "—";
+      const data = t.data_solicitacao;
+      if (!pessoas.has(pessoa)) pessoas.set(pessoa, { pessoa, total: 0, qtd: 0, datas: new Map() });
+      const p = pessoas.get(pessoa)!;
+      p.total += t.valor ?? 0;
+      p.qtd += 1;
+      if (!p.datas.has(data)) p.datas.set(data, { total: 0, corridas: [] });
+      const d = p.datas.get(data)!;
+      d.total += t.valor ?? 0;
+      d.corridas.push(t);
+    }
+    return Array.from(pessoas.values())
+      .sort((a, b) => b.total - a.total)
+      .map((p) => ({
+        ...p,
+        datas: Array.from(p.datas.entries())
+          .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+          .map(([data, v]) => ({ data, ...v })),
+      }));
   }, [trips]);
 
   // Mês atual = mês mais recente presente no recorte; anterior = mês imediatamente anterior a esse
@@ -421,6 +459,67 @@ export function UberDashboard() {
           </div>
         </Card>
       </div>
+
+      <Card className="p-4 print:break-inside-avoid">
+        <div className="text-sm font-semibold mb-3">Corridas por pessoa</div>
+        <Accordion type="multiple" className="w-full">
+          {agrupadoPessoaData.map((p) => (
+            <AccordionItem key={p.pessoa} value={p.pessoa} className="print:break-inside-avoid">
+              <AccordionTrigger>
+                <div className="flex items-center justify-between w-full pr-4">
+                  <span className="font-medium">{p.pessoa}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {p.qtd} corrida(s) · {fmt(p.total)}
+                  </span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <Accordion type="multiple" className="w-full pl-4">
+                  {p.datas.map((d) => (
+                    <AccordionItem key={d.data} value={`${p.pessoa}-${d.data}`} className="print:break-inside-avoid">
+                      <AccordionTrigger>
+                        <div className="flex items-center justify-between w-full pr-4">
+                          <span>
+                            {new Date(d.data + "T00:00:00").toLocaleDateString("pt-BR")}
+                          </span>
+                          <span className="text-xs text-muted-foreground">{fmt(d.total)}</span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="overflow-auto">
+                          <table className="w-full text-sm">
+                            <thead className="text-xs text-muted-foreground">
+                              <tr className="border-b">
+                                <th className="text-left py-2">Hora</th>
+                                <th className="text-left py-2">Projeto</th>
+                                <th className="text-left py-2">Serviço</th>
+                                <th className="text-right py-2">Valor</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {d.corridas
+                                .slice()
+                                .sort((a, b) => (a.hora_solicitacao || "").localeCompare(b.hora_solicitacao || ""))
+                                .map((c) => (
+                                  <tr key={c.id} className="border-b last:border-0">
+                                    <td className="py-2">{c.hora_solicitacao || "—"}</td>
+                                    <td className="py-2">{c.projeto || "—"}</td>
+                                    <td className="py-2">{c.servico || "—"}</td>
+                                    <td className="text-right py-2">{fmt(c.valor)}</td>
+                                  </tr>
+                                ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </Card>
     </div>
   );
 }
