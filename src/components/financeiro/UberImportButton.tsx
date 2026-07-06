@@ -45,7 +45,8 @@ export function UberImportButton() {
           (duplicadas > 0 ? ` • ${duplicadas} duplicadas ignoradas` : "") +
           (parsed.ignoredPayments > 0 ? ` • ${parsed.ignoredPayments} pagamentos ignorados` : ""),
       );
-      qc.invalidateQueries({ queryKey: ["uber-corridas"] });
+      qc.invalidateQueries({ queryKey: ["uber-corridas-tabelona"] });
+      qc.invalidateQueries({ queryKey: ["uber-corridas-all"] });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       toast.error(`Falha ao importar: ${msg}`);
