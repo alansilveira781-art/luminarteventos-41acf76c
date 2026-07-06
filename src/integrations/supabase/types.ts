@@ -3131,6 +3131,54 @@ export type Database = {
         }
         Relationships: []
       }
+      uber_corridas: {
+        Row: {
+          cidade: string | null
+          data_solicitacao: string
+          endereco_destino: string | null
+          endereco_partida: string | null
+          hash_dedup: string | null
+          hora_solicitacao: string | null
+          id: string
+          importado_em: string
+          importado_por: string | null
+          nome: string | null
+          servico: string | null
+          sobrenome: string | null
+          valor: number
+        }
+        Insert: {
+          cidade?: string | null
+          data_solicitacao: string
+          endereco_destino?: string | null
+          endereco_partida?: string | null
+          hash_dedup?: string | null
+          hora_solicitacao?: string | null
+          id?: string
+          importado_em?: string
+          importado_por?: string | null
+          nome?: string | null
+          servico?: string | null
+          sobrenome?: string | null
+          valor?: number
+        }
+        Update: {
+          cidade?: string | null
+          data_solicitacao?: string
+          endereco_destino?: string | null
+          endereco_partida?: string | null
+          hash_dedup?: string | null
+          hora_solicitacao?: string | null
+          id?: string
+          importado_em?: string
+          importado_por?: string | null
+          nome?: string | null
+          servico?: string | null
+          sobrenome?: string | null
+          valor?: number
+        }
+        Relationships: []
+      }
       unidades: {
         Row: {
           created_at: string
