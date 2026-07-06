@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "compras_update_pedro" ON public.compras;
