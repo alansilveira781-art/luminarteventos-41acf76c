@@ -18,6 +18,7 @@ export type UberCsvRow = {
   endereco_destino: string | null;
   valor: number;
   projeto: string | null;
+  detalhamento: string | null;
   hash_dedup: string;
 };
 
