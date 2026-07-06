@@ -76,7 +76,7 @@ function ComprasKanban() {
     queryFn: async () => {
       const { data, error } = await sb
         .from("compras")
-        .select("id,numero,status,titulo,solicitante,solicitante_id,fornecedor,comprador,data_solicitacao,data_compra,data_servico,valor_total,responsavel_id,responsavel_nome,tipo_compra,created_by")
+        .select("id,numero,status,titulo,solicitante,solicitante_id,fornecedor,comprador,data_solicitacao,data_compra,data_servico,valor_total,responsavel_id,responsavel_nome,tipo_compra,numero_nf,empresa_faturada,created_by")
 
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -182,9 +182,19 @@ function ComprasKanban() {
     }
 
 
-    if (status === "a_receber" && !compra.tipo_compra) {
-      toast.error("Defina o tipo da compra antes de movê-la para Compras a Receber.");
-      return;
+    if (status === "a_receber") {
+      if (!compra.tipo_compra) {
+        toast.error("Defina o tipo da compra antes de movê-la para Compras a Receber.");
+        return;
+      }
+      if (!(compra as any).numero_nf || !String((compra as any).numero_nf).trim()) {
+        toast.error("Informe o Nº da NF antes de mover para Compras a Receber.");
+        return;
+      }
+      if (!(compra as any).empresa_faturada) {
+        toast.error("Informe a empresa faturada antes de mover para Compras a Receber.");
+        return;
+      }
     }
 
     const oldIdx = COMPRA_STATUSES.findIndex((s) => s.key === compra.status);
