@@ -1179,11 +1179,13 @@ export type Database = {
           data_servico: string | null
           data_solicitacao: string
           documento: string | null
+          empresa_faturada: string | null
           fornecedor: string | null
           fornecedor_id: string | null
           id: string
           motivo_negacao: string | null
           numero: number | null
+          numero_nf: string | null
           observacoes: string | null
           ordem: number
           parcelamento: string | null
@@ -1206,11 +1208,13 @@ export type Database = {
           data_servico?: string | null
           data_solicitacao?: string
           documento?: string | null
+          empresa_faturada?: string | null
           fornecedor?: string | null
           fornecedor_id?: string | null
           id?: string
           motivo_negacao?: string | null
           numero?: number | null
+          numero_nf?: string | null
           observacoes?: string | null
           ordem?: number
           parcelamento?: string | null
@@ -1233,11 +1237,13 @@ export type Database = {
           data_servico?: string | null
           data_solicitacao?: string
           documento?: string | null
+          empresa_faturada?: string | null
           fornecedor?: string | null
           fornecedor_id?: string | null
           id?: string
           motivo_negacao?: string | null
           numero?: number | null
+          numero_nf?: string | null
           observacoes?: string | null
           ordem?: number
           parcelamento?: string | null
