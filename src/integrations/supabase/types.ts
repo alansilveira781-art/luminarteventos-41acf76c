@@ -3143,6 +3143,7 @@ export type Database = {
           importado_em: string
           importado_por: string | null
           nome: string | null
+          projeto: string | null
           servico: string | null
           sobrenome: string | null
           valor: number
@@ -3158,6 +3159,7 @@ export type Database = {
           importado_em?: string
           importado_por?: string | null
           nome?: string | null
+          projeto?: string | null
           servico?: string | null
           sobrenome?: string | null
           valor?: number
@@ -3173,6 +3175,7 @@ export type Database = {
           importado_em?: string
           importado_por?: string | null
           nome?: string | null
+          projeto?: string | null
           servico?: string | null
           sobrenome?: string | null
           valor?: number

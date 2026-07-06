@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetch-all";
 import { UberImportButton } from "@/components/financeiro/UberImportButton";
 
 export const Route = createFileRoute("/financeiro-op/uber")({
@@ -26,6 +27,7 @@ type Row = {
   endereco_partida: string | null;
   endereco_destino: string | null;
   valor: number;
+  projeto: string | null;
 };
 
 const PAGE_SIZE = 50;
@@ -40,13 +42,12 @@ function UberTabelona() {
   const { data, isLoading } = useQuery({
     queryKey: ["uber-corridas-tabelona"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("uber_corridas")
-        .select("id, data_solicitacao, hora_solicitacao, nome, sobrenome, servico, cidade, endereco_partida, endereco_destino, valor")
-        .order("data_solicitacao", { ascending: false })
-        .limit(50000);
-      if (error) throw error;
-      return (data ?? []).map((r) => ({ ...r, valor: Number(r.valor) })) as Row[];
+      const rows = await fetchAllRows<Row>(
+        "uber_corridas",
+        "id, data_solicitacao, hora_solicitacao, nome, sobrenome, servico, cidade, endereco_partida, endereco_destino, valor, projeto",
+        { orderBy: { column: "data_solicitacao", ascending: false } },
+      );
+      return rows.map((r) => ({ ...r, valor: Number(r.valor) }));
     },
     staleTime: 30 * 1000,
   });
@@ -57,7 +58,7 @@ function UberTabelona() {
     const q = busca.trim().toLowerCase();
     if (!q) return rows;
     return rows.filter((r) => {
-      const hay = [r.nome, r.sobrenome, r.servico, r.cidade, r.endereco_partida, r.endereco_destino]
+      const hay = [r.nome, r.sobrenome, r.servico, r.cidade, r.endereco_partida, r.endereco_destino, r.projeto]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
@@ -144,6 +145,7 @@ function UberTabelona() {
                 <th className="text-left p-2">Sobrenome</th>
                 <th className="text-left p-2">Serviço</th>
                 <th className="text-left p-2">Cidade</th>
+                <th className="text-left p-2">Projeto</th>
                 <th className="text-left p-2">Partida</th>
                 <th className="text-left p-2">Destino</th>
                 <th className="text-right p-2">Valor</th>
@@ -151,9 +153,9 @@ function UberTabelona() {
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={10} className="p-8 text-center text-muted-foreground">Carregando...</td></tr>
+                <tr><td colSpan={11} className="p-8 text-center text-muted-foreground">Carregando...</td></tr>
               ) : paged.length === 0 ? (
-                <tr><td colSpan={10} className="p-8 text-center text-muted-foreground">Nenhuma corrida. Importe um CSV da Uber Business.</td></tr>
+                <tr><td colSpan={11} className="p-8 text-center text-muted-foreground">Nenhuma corrida. Importe um CSV da Uber Business.</td></tr>
               ) : paged.map((r) => (
                 <tr key={r.id} className="border-t hover:bg-muted/30">
                   <td className="p-2">
@@ -165,6 +167,7 @@ function UberTabelona() {
                   <td className="p-2">{r.sobrenome ?? "—"}</td>
                   <td className="p-2">{r.servico ?? "—"}</td>
                   <td className="p-2">{r.cidade ?? "—"}</td>
+                  <td className="p-2 max-w-[16rem] truncate" title={r.projeto ?? ""}>{r.projeto ?? "—"}</td>
                   <td className="p-2 max-w-xs truncate" title={r.endereco_partida ?? ""}>{r.endereco_partida ?? "—"}</td>
                   <td className="p-2 max-w-xs truncate" title={r.endereco_destino ?? ""}>{r.endereco_destino ?? "—"}</td>
                   <td className="p-2 text-right whitespace-nowrap">{fmtBRL(r.valor)}</td>

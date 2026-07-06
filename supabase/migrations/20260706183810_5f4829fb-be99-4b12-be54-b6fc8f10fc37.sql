@@ -1,0 +1,1 @@
+ALTER TABLE public.uber_corridas ADD COLUMN IF NOT EXISTS projeto text;

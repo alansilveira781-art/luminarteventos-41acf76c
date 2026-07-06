@@ -1,11 +1,14 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, CartesianGrid,
 } from "recharts";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetch-all";
 
 type Corrida = {
   id: string;
@@ -18,28 +21,93 @@ type Corrida = {
   endereco_partida: string | null;
   endereco_destino: string | null;
   valor: number;
+  projeto: string | null;
 };
 
 const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#06b6d4", "#8b5cf6", "#ec4899", "#84cc16"];
 const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtN = (n: number) => n.toLocaleString("pt-BR");
 
+const MESES_PT = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+
+function mesLabel(ym: string): string {
+  const [y, m] = ym.split("-").map(Number);
+  if (!y || !m || m < 1 || m > 12) return ym;
+  return `${MESES_PT[m - 1]}/${y}`;
+}
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function firstOfMonthIso(offsetMonths = 0): string {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + offsetMonths);
+  return d.toISOString().slice(0, 10);
+}
+
+function firstOfYearIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-01-01`;
+}
+
 export function UberDashboard() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["uber-corridas-all"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("uber_corridas")
-        .select("id, data_solicitacao, hora_solicitacao, nome, sobrenome, servico, cidade, endereco_partida, endereco_destino, valor")
-        .order("data_solicitacao", { ascending: false })
-        .limit(50000);
-      if (error) throw error;
-      return (data ?? []).map((r) => ({ ...r, valor: Number(r.valor) })) as Corrida[];
+      const rows = await fetchAllRows<Corrida>(
+        "uber_corridas",
+        "id, data_solicitacao, hora_solicitacao, nome, sobrenome, servico, cidade, endereco_partida, endereco_destino, valor, projeto",
+        { orderBy: { column: "data_solicitacao", ascending: false } },
+      );
+      return rows.map((r) => ({ ...r, valor: Number(r.valor) }));
     },
     staleTime: 30 * 1000,
   });
 
-  const trips = data ?? [];
+  const allTrips = data ?? [];
+
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [solicitante, setSolicitante] = useState("__all__");
+  const [projeto, setProjeto] = useState("__all__");
+
+  const solicitantesOptions = useMemo(() => {
+    const set = new Set<string>();
+    allTrips.forEach((t) => {
+      const nome = [t.nome, t.sobrenome].filter(Boolean).join(" ").trim();
+      if (nome) set.add(nome);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [allTrips]);
+
+  const projetosOptions = useMemo(() => {
+    const set = new Set<string>();
+    allTrips.forEach((t) => {
+      const p = (t.projeto || "").trim();
+      if (p) set.add(p);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [allTrips]);
+
+  const trips = useMemo(() => {
+    return allTrips.filter((t) => {
+      if (dateFrom && t.data_solicitacao < dateFrom) return false;
+      if (dateTo && t.data_solicitacao > dateTo) return false;
+      if (solicitante !== "__all__") {
+        const nome = [t.nome, t.sobrenome].filter(Boolean).join(" ").trim();
+        if (nome !== solicitante) return false;
+      }
+      if (projeto !== "__all__") {
+        if ((t.projeto || "").trim() !== projeto) return false;
+      }
+      return true;
+    });
+  }, [allTrips, dateFrom, dateTo, solicitante, projeto]);
 
   const kpis = useMemo(() => {
     const total = trips.reduce((s, t) => s + (t.valor ?? 0), 0);
@@ -109,7 +177,7 @@ export function UberDashboard() {
       .slice(0, 10);
   }, [trips]);
 
-  // Mês atual = mês mais recente presente na base; anterior = mês imediatamente anterior a esse
+  // Mês atual = mês mais recente presente no recorte; anterior = mês imediatamente anterior a esse
   const comparacoes = useMemo(() => {
     if (!trips.length) return null;
     const meses = Array.from(new Set(trips.map((t) => t.data_solicitacao.slice(0, 7)))).sort();
@@ -127,14 +195,23 @@ export function UberDashboard() {
     const hasYearPrev = trips.some((t) => t.data_solicitacao.startsWith(yPrev));
 
     return {
-      mesLabel: ymCur,
-      mesPrevLabel: hasPrev ? ymPrev : null,
+      mesLabel: mesLabel(ymCur),
+      mesPrevLabel: hasPrev ? mesLabel(ymPrev) : null,
       mesAtual: sumBy(ymCur),
       mesAnterior: hasPrev ? sumBy(ymPrev) : null,
       anoAtual: sumBy(yCur),
       anoAnterior: hasYearPrev ? sumBy(yPrev) : null,
+      yCur,
+      yPrev,
     };
   }, [trips]);
+
+  function limparFiltros() {
+    setDateFrom(""); setDateTo(""); setSolicitante("__all__"); setProjeto("__all__");
+  }
+  function setEsteMes() { setDateFrom(firstOfMonthIso(0)); setDateTo(todayIso()); }
+  function setUltimos3() { setDateFrom(firstOfMonthIso(-2)); setDateTo(todayIso()); }
+  function setEsteAno() { setDateFrom(firstOfYearIso()); setDateTo(todayIso()); }
 
   if (isLoading) {
     return (
@@ -153,7 +230,7 @@ export function UberDashboard() {
     );
   }
 
-  if (!trips.length) {
+  if (!allTrips.length) {
     return (
       <Card className="p-12 text-center">
         <div className="text-sm font-semibold mb-1">Sem corridas na base</div>
@@ -166,6 +243,49 @@ export function UberDashboard() {
 
   return (
     <div className="space-y-4">
+      {/* Filtros */}
+      <Card className="p-3">
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <label className="text-[11px] uppercase text-muted-foreground block mb-1">De</label>
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-40" />
+          </div>
+          <div>
+            <label className="text-[11px] uppercase text-muted-foreground block mb-1">Até</label>
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-40" />
+          </div>
+          <div>
+            <label className="text-[11px] uppercase text-muted-foreground block mb-1">Solicitante</label>
+            <Select value={solicitante} onValueChange={setSolicitante}>
+              <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Todos</SelectItem>
+                {solicitantesOptions.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-[11px] uppercase text-muted-foreground block mb-1">Projeto</label>
+            <Select value={projeto} onValueChange={setProjeto}>
+              <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Todos</SelectItem>
+                {projetosOptions.length === 0 && (
+                  <SelectItem value="__none__" disabled>Sem projetos importados</SelectItem>
+                )}
+                {projetosOptions.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-wrap gap-1.5 ml-auto">
+            <Button size="sm" variant="outline" onClick={setEsteMes}>Este mês</Button>
+            <Button size="sm" variant="outline" onClick={setUltimos3}>Últimos 3 meses</Button>
+            <Button size="sm" variant="outline" onClick={setEsteAno}>Este ano</Button>
+            <Button size="sm" variant="ghost" onClick={limparFiltros}>Tudo</Button>
+          </div>
+        </div>
+      </Card>
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Gasto total" value={fmt(kpis.total)} />
         <Stat label="Nº de corridas" value={fmtN(kpis.count)} />
@@ -176,11 +296,15 @@ export function UberDashboard() {
       {comparacoes && (
         <div className="grid gap-3 sm:grid-cols-2">
           <CompareCard
-            label={`Mês ${comparacoes.mesLabel}${comparacoes.mesPrevLabel ? ` vs ${comparacoes.mesPrevLabel}` : ""}`}
+            label={`${comparacoes.mesLabel}${comparacoes.mesPrevLabel ? ` vs ${comparacoes.mesPrevLabel}` : ""}`}
             cur={comparacoes.mesAtual}
             prev={comparacoes.mesAnterior}
           />
-          <CompareCard label="Ano atual vs anterior" cur={comparacoes.anoAtual} prev={comparacoes.anoAnterior} />
+          <CompareCard
+            label={`${comparacoes.yCur} vs ${comparacoes.yPrev}`}
+            cur={comparacoes.anoAtual}
+            prev={comparacoes.anoAnterior}
+          />
         </div>
       )}
 
@@ -189,9 +313,9 @@ export function UberDashboard() {
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={porMes}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-              <XAxis dataKey="mes" fontSize={11} />
+              <XAxis dataKey="mes" fontSize={11} tickFormatter={mesLabel} />
               <YAxis fontSize={11} />
-              <Tooltip formatter={(v: any) => fmt(Number(v))} />
+              <Tooltip formatter={(v: any) => fmt(Number(v))} labelFormatter={(l: any) => mesLabel(String(l))} />
               <Bar dataKey="valor" fill="#0f172a" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
