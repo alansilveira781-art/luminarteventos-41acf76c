@@ -4,25 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Download, FileIcon, Loader2, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 
-const PdfPreview = lazy(() =>
-  import("./PdfPreview").catch((err) => {
-    const msg = String(err?.message ?? err);
-    const isChunkError =
-      msg.includes("Failed to fetch dynamically imported module") ||
-      msg.includes("Importing a module script failed");
-    if (
-      isChunkError &&
-      typeof window !== "undefined" &&
-      !sessionStorage.getItem("pdfpreview-reloaded")
-    ) {
-      sessionStorage.setItem("pdfpreview-reloaded", "1");
-      window.location.reload();
-    }
-    throw err;
-  }),
-);
+const PdfPreview = lazy(() => import("./PdfPreview"));
+
 
 export type AnexoViewerProps = {
   bucket: string;
@@ -164,18 +150,34 @@ export function AnexoViewer({ bucket, anexo, open, onOpenChange }: AnexoViewerPr
             </>
 
           ) : kind === "pdf" ? (
-            <Suspense
+            <ErrorBoundary
               fallback={
-                <div className="flex-1 flex items-center justify-center min-h-[40vh]">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <div className="flex-1 flex flex-col items-center justify-center gap-2 p-8 text-center min-h-[40vh]">
+                  <FileIcon className="h-10 w-10 text-muted-foreground" />
+                  <p className="text-sm font-medium">Não foi possível exibir a prévia do PDF</p>
+                  <p className="text-xs text-muted-foreground">
+                    Baixe o arquivo para visualizá-lo.
+                  </p>
+                  <Button type="button" size="sm" onClick={() => baixarAnexo(bucket, anexo.path, anexo.nome)}>
+                    <Download className="h-4 w-4 mr-1" /> Baixar
+                  </Button>
                 </div>
               }
             >
-              <PdfPreview
-                fileUrl={objectUrl}
-                onDownload={() => baixarAnexo(bucket, anexo.path, anexo.nome)}
-              />
-            </Suspense>
+              <Suspense
+                fallback={
+                  <div className="flex-1 flex items-center justify-center min-h-[40vh]">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                }
+              >
+                <PdfPreview
+                  fileUrl={objectUrl}
+                  onDownload={() => baixarAnexo(bucket, anexo.path, anexo.nome)}
+                />
+              </Suspense>
+            </ErrorBoundary>
+
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center gap-2 p-8 text-center min-h-[40vh]">
               <FileIcon className="h-10 w-10 text-muted-foreground" />

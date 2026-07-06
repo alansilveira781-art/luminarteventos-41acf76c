@@ -5,13 +5,10 @@ import "react-pdf/dist/Page/AnnotationLayer.css";
 import { Loader2, FileIcon, Download, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const workerUrl = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url
-).toString();
 if (typeof window !== "undefined") {
-  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
 }
+
 
 export type PdfPreviewProps = {
   fileUrl: string;
