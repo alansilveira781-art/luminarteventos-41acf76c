@@ -53,7 +53,7 @@ function FinanceiroOpDashboard() {
       </TabsContent>
 
       <TabsContent value="uber" className="mt-0">
-        <PageHeader title="Dashboard Uber Business" description="Corridas, gastos e padrões da sua organização Uber" />
+        <PageHeader title="Dashboard Uber" description="Corridas importadas da planilha da Uber Business" />
 
         <div className="flex flex-wrap gap-3 mb-4 items-end">
           <div>
@@ -63,6 +63,9 @@ function FinanceiroOpDashboard() {
           <div>
             <label className="text-xs font-medium text-muted-foreground block mb-1">Até</label>
             <Input type="date" value={uberTo} onChange={(e) => setUberTo(e.target.value)} className="w-44" />
+          </div>
+          <div className="ml-auto">
+            <UberImportButton />
           </div>
         </div>
 
