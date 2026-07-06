@@ -52,6 +52,7 @@ import { Route as FinanceiroRotinasRouteImport } from './routes/financeiro.rotin
 import { Route as FinanceiroDashboardRouteImport } from './routes/financeiro.dashboard'
 import { Route as FinanceiroContaAzulRouteImport } from './routes/financeiro.conta-azul'
 import { Route as FinanceiroConfiguracoesRouteImport } from './routes/financeiro.configuracoes'
+import { Route as FinanceiroOpUberRouteImport } from './routes/financeiro-op.uber'
 import { Route as FinanceiroOpRotinasRouteImport } from './routes/financeiro-op.rotinas'
 import { Route as FinanceiroOpDashboardRouteImport } from './routes/financeiro-op.dashboard'
 import { Route as FinanceiroOpContaAzulRouteImport } from './routes/financeiro-op.conta-azul'
@@ -307,6 +308,11 @@ const FinanceiroConfiguracoesRoute = FinanceiroConfiguracoesRouteImport.update({
   id: '/configuracoes',
   path: '/configuracoes',
   getParentRoute: () => FinanceiroRoute,
+} as any)
+const FinanceiroOpUberRoute = FinanceiroOpUberRouteImport.update({
+  id: '/uber',
+  path: '/uber',
+  getParentRoute: () => FinanceiroOpRoute,
 } as any)
 const FinanceiroOpRotinasRoute = FinanceiroOpRotinasRouteImport.update({
   id: '/rotinas',
@@ -564,6 +570,7 @@ export interface FileRoutesByFullPath {
   '/financeiro-op/conta-azul': typeof FinanceiroOpContaAzulRoute
   '/financeiro-op/dashboard': typeof FinanceiroOpDashboardRoute
   '/financeiro-op/rotinas': typeof FinanceiroOpRotinasRoute
+  '/financeiro-op/uber': typeof FinanceiroOpUberRoute
   '/financeiro/configuracoes': typeof FinanceiroConfiguracoesRoute
   '/financeiro/conta-azul': typeof FinanceiroContaAzulRoute
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
@@ -638,6 +645,7 @@ export interface FileRoutesByTo {
   '/financeiro-op/conta-azul': typeof FinanceiroOpContaAzulRoute
   '/financeiro-op/dashboard': typeof FinanceiroOpDashboardRoute
   '/financeiro-op/rotinas': typeof FinanceiroOpRotinasRoute
+  '/financeiro-op/uber': typeof FinanceiroOpUberRoute
   '/financeiro/configuracoes': typeof FinanceiroConfiguracoesRoute
   '/financeiro/conta-azul': typeof FinanceiroContaAzulRoute
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
@@ -724,6 +732,7 @@ export interface FileRoutesById {
   '/financeiro-op/conta-azul': typeof FinanceiroOpContaAzulRoute
   '/financeiro-op/dashboard': typeof FinanceiroOpDashboardRoute
   '/financeiro-op/rotinas': typeof FinanceiroOpRotinasRoute
+  '/financeiro-op/uber': typeof FinanceiroOpUberRoute
   '/financeiro/configuracoes': typeof FinanceiroConfiguracoesRoute
   '/financeiro/conta-azul': typeof FinanceiroContaAzulRoute
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
@@ -811,6 +820,7 @@ export interface FileRouteTypes {
     | '/financeiro-op/conta-azul'
     | '/financeiro-op/dashboard'
     | '/financeiro-op/rotinas'
+    | '/financeiro-op/uber'
     | '/financeiro/configuracoes'
     | '/financeiro/conta-azul'
     | '/financeiro/dashboard'
@@ -885,6 +895,7 @@ export interface FileRouteTypes {
     | '/financeiro-op/conta-azul'
     | '/financeiro-op/dashboard'
     | '/financeiro-op/rotinas'
+    | '/financeiro-op/uber'
     | '/financeiro/configuracoes'
     | '/financeiro/conta-azul'
     | '/financeiro/dashboard'
@@ -970,6 +981,7 @@ export interface FileRouteTypes {
     | '/financeiro-op/conta-azul'
     | '/financeiro-op/dashboard'
     | '/financeiro-op/rotinas'
+    | '/financeiro-op/uber'
     | '/financeiro/configuracoes'
     | '/financeiro/conta-azul'
     | '/financeiro/dashboard'
@@ -1351,6 +1363,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/financeiro/configuracoes'
       preLoaderRoute: typeof FinanceiroConfiguracoesRouteImport
       parentRoute: typeof FinanceiroRoute
+    }
+    '/financeiro-op/uber': {
+      id: '/financeiro-op/uber'
+      path: '/uber'
+      fullPath: '/financeiro-op/uber'
+      preLoaderRoute: typeof FinanceiroOpUberRouteImport
+      parentRoute: typeof FinanceiroOpRoute
     }
     '/financeiro-op/rotinas': {
       id: '/financeiro-op/rotinas'
@@ -1772,6 +1791,7 @@ interface FinanceiroOpRouteChildren {
   FinanceiroOpContaAzulRoute: typeof FinanceiroOpContaAzulRoute
   FinanceiroOpDashboardRoute: typeof FinanceiroOpDashboardRoute
   FinanceiroOpRotinasRoute: typeof FinanceiroOpRotinasRoute
+  FinanceiroOpUberRoute: typeof FinanceiroOpUberRoute
   FinanceiroOpIndexRoute: typeof FinanceiroOpIndexRoute
 }
 
@@ -1779,6 +1799,7 @@ const FinanceiroOpRouteChildren: FinanceiroOpRouteChildren = {
   FinanceiroOpContaAzulRoute: FinanceiroOpContaAzulRoute,
   FinanceiroOpDashboardRoute: FinanceiroOpDashboardRoute,
   FinanceiroOpRotinasRoute: FinanceiroOpRotinasRoute,
+  FinanceiroOpUberRoute: FinanceiroOpUberRoute,
   FinanceiroOpIndexRoute: FinanceiroOpIndexRoute,
 }
 

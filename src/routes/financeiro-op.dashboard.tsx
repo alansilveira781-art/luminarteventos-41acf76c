@@ -1,10 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { UberDashboard } from "@/components/financeiro/UberDashboard";
-import { UberImportButton } from "@/components/financeiro/UberImportButton";
 import { ContaAzulDashboard } from "@/components/financeiro/ContaAzulDashboard";
 
 export const Route = createFileRoute("/financeiro-op/dashboard")({
@@ -18,23 +15,9 @@ export const Route = createFileRoute("/financeiro-op/dashboard")({
   }),
 });
 
-function startOfMonth(d = new Date()) {
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
-}
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 function FinanceiroOpDashboard() {
   const { tab } = Route.useSearch();
   const navigate = Route.useNavigate();
-
-  const [uberFrom, setUberFrom] = useState(() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - 23);
-    return startOfMonth(d);
-  });
-  const [uberTo, setUberTo] = useState(() => today());
 
   return (
     <Tabs
@@ -53,24 +36,10 @@ function FinanceiroOpDashboard() {
       </TabsContent>
 
       <TabsContent value="uber" className="mt-0">
-        <PageHeader title="Dashboard Uber" description="Corridas importadas da planilha da Uber Business" />
-
-        <div className="flex flex-wrap gap-3 mb-4 items-end">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">De</label>
-            <Input type="date" value={uberFrom} onChange={(e) => setUberFrom(e.target.value)} className="w-44" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">Até</label>
-            <Input type="date" value={uberTo} onChange={(e) => setUberTo(e.target.value)} className="w-44" />
-          </div>
-          <div className="ml-auto">
-            <UberImportButton />
-          </div>
-        </div>
-
-        <UberDashboard from={uberFrom} to={uberTo} />
+        <PageHeader title="Dashboard Uber" description="Base completa importada na aba Uber" />
+        <UberDashboard />
       </TabsContent>
     </Tabs>
   );
 }
+
