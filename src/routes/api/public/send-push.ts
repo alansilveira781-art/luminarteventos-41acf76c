@@ -5,7 +5,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireProjectApiKey } from "@/lib/public-endpoint-auth";
 
 export const VAPID_PUBLIC_KEY =
-  "BLlTDNBlWcPNSlscKsQamo6lkYcZba-1nBHzF0PeKovUqisCFaxOVHQuP-5KT9-F9wgjtXUFcuPAlOG2Wt2ks3k";
+  "BLrAMB5j4yyM2glgoeCxm76pn4n21HHeRMy57LofyqmNSZlAvSELhsVjdLUBZGwQOb5LuwjwiAwyXlmmXRI2x08";
 
 const BodySchema = z.object({
   notificacao_id: z.string().uuid(),
