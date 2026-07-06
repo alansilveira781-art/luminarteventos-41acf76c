@@ -121,6 +121,7 @@ export function parseUberCsv(text: string): UberParseResult {
     destino: findColumn(headers, ["Endereço de destino", "Endereco de destino"]),
     valor: findColumn(headers, ["Valor da transação: BRL", "Valor da transacao: BRL"]),
     projeto: findColumn(headers, ["Programa"]),
+    detalhamento: findColumn(headers, ["Detalhamento da despesa"]),
   };
 
   const rows: UberCsvRow[] = [];
