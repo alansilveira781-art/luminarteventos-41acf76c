@@ -59,7 +59,7 @@ function UberTabelona() {
     const q = busca.trim().toLowerCase();
     if (!q) return rows;
     return rows.filter((r) => {
-      const hay = [r.nome, r.sobrenome, r.servico, r.cidade, r.endereco_partida, r.endereco_destino, r.projeto]
+      const hay = [r.nome, r.sobrenome, r.servico, r.cidade, r.endereco_partida, r.endereco_destino, r.projeto, r.detalhamento]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
