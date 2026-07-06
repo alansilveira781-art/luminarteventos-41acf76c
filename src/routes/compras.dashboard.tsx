@@ -5,12 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, CartesianGrid,
 } from "recharts";
 import { COMPRA_STATUSES } from "@/lib/compras";
+import { EMPRESAS } from "@/lib/empresas";
 import { AlertaEstoqueCard } from "@/components/compras/AlertaEstoqueCard";
 
 const sb = supabase as any;
@@ -29,16 +31,19 @@ function ComprasDashboard() {
     return startOfMonth(d);
   });
   const [to, setTo] = useState(() => today());
+  const [empresaFilter, setEmpresaFilter] = useState<string>("all");
 
   const { data: compras = [] } = useQuery({
-    queryKey: ["compras-dash", from, to],
+    queryKey: ["compras-dash", from, to, empresaFilter],
     queryFn: async () => {
       const { data } = await sb
         .from("compras")
-        .select("id,status,fornecedor,condicao_pagamento,valor_total,data_compra,data_solicitacao,created_at");
+        .select("id,status,fornecedor,condicao_pagamento,valor_total,data_compra,data_solicitacao,created_at,empresa_faturada");
       return ((data ?? []) as any[]).filter((c) => {
         const ref = (c.data_compra || c.data_solicitacao || c.created_at)?.slice(0, 10);
-        return ref >= from && ref <= to;
+        if (!(ref >= from && ref <= to)) return false;
+        if (empresaFilter !== "all" && c.empresa_faturada !== empresaFilter) return false;
+        return true;
       });
     },
   });
@@ -143,7 +148,18 @@ function ComprasDashboard() {
           <label className="text-xs font-medium text-muted-foreground block mb-1">Até</label>
           <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-44" />
         </div>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground block mb-1">Empresa faturada</label>
+          <Select value={empresaFilter} onValueChange={setEmpresaFilter}>
+            <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              {EMPRESAS.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-4">
         <Stat label="Total compras" value={String(stats.count)} />
