@@ -70,6 +70,7 @@ export const Route = createFileRoute("/api/public/send-push")({
         };
 
         let sent = 0;
+        const results: Array<{ id: string; ok: boolean; status?: number; error?: string }> = [];
         await Promise.all(
           subs.map(async (s) => {
             const subscription = {
@@ -86,16 +87,21 @@ export const Route = createFileRoute("/api/public/send-push")({
               });
               if (res.status === 404 || res.status === 410) {
                 await supabaseAdmin.from("push_subscriptions").delete().eq("id", s.id);
+                results.push({ id: s.id as string, ok: false, status: res.status, error: "expired-removed" });
               } else if (res.ok) {
                 sent++;
+                results.push({ id: s.id as string, ok: true, status: res.status });
+              } else {
+                const body = await res.text().catch(() => "");
+                results.push({ id: s.id as string, ok: false, status: res.status, error: body.slice(0, 200) });
               }
-            } catch {
-              // ignora falhas individuais
+            } catch (err) {
+              results.push({ id: s.id as string, ok: false, error: err instanceof Error ? err.message : String(err) });
             }
           }),
         );
 
-        return new Response(JSON.stringify({ sent }), {
+        return new Response(JSON.stringify({ sent, total: subs.length, results }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         });
