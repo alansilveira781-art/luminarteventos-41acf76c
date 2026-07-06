@@ -159,6 +159,8 @@ export function parseUberCsv(text: string): UberParseResult {
     const valor = col.valor >= 0 ? parseNumber(cells[col.valor]) : 0;
     const projetoRaw = col.projeto >= 0 ? (cells[col.projeto] || "").trim() : "";
     const projeto = projetoRaw || null;
+    const detalhamentoRaw = col.detalhamento >= 0 ? (cells[col.detalhamento] || "").trim() : "";
+    const detalhamento = detalhamentoRaw || null;
 
     const hash_dedup = [
       data,
@@ -180,6 +182,7 @@ export function parseUberCsv(text: string): UberParseResult {
       endereco_destino: destino,
       valor,
       projeto,
+      detalhamento,
       hash_dedup,
     });
   }
