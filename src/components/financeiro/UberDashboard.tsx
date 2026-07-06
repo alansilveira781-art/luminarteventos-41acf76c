@@ -459,6 +459,68 @@ export function UberDashboard() {
           </div>
         </Card>
       </div>
+
+      <Card className="p-4 print:break-inside-avoid">
+        <div className="text-sm font-semibold mb-3">Corridas por pessoa</div>
+        <Accordion type="multiple" className="w-full">
+          {agrupadoPessoaData.map((p) => (
+            <AccordionItem key={p.pessoa} value={p.pessoa} className="print:break-inside-avoid">
+              <AccordionTrigger>
+                <div className="flex items-center justify-between w-full pr-4">
+                  <span className="font-medium">{p.pessoa}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {p.qtd} corrida(s) · {fmt(p.total)}
+                  </span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <Accordion type="multiple" className="w-full pl-4">
+                  {p.datas.map((d) => (
+                    <AccordionItem key={d.data} value={`${p.pessoa}-${d.data}`} className="print:break-inside-avoid">
+                      <AccordionTrigger>
+                        <div className="flex items-center justify-between w-full pr-4">
+                          <span>
+                            {new Date(d.data + "T00:00:00").toLocaleDateString("pt-BR")}
+                          </span>
+                          <span className="text-xs text-muted-foreground">{fmt(d.total)}</span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="overflow-auto">
+                          <table className="w-full text-sm">
+                            <thead className="text-xs text-muted-foreground">
+                              <tr className="border-b">
+                                <th className="text-left py-2">Hora</th>
+                                <th className="text-left py-2">Projeto</th>
+                                <th className="text-left py-2">Serviço</th>
+                                <th className="text-right py-2">Valor</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {d.corridas
+                                .slice()
+                                .sort((a, b) => (a.hora_solicitacao || "").localeCompare(b.hora_solicitacao || ""))
+                                .map((c) => (
+                                  <tr key={c.id} className="border-b last:border-0">
+                                    <td className="py-2">{c.hora_solicitacao || "—"}</td>
+                                    <td className="py-2">{c.projeto || "—"}</td>
+                                    <td className="py-2">{c.servico || "—"}</td>
+                                    <td className="text-right py-2">{fmt(c.valor)}</td>
+                                  </tr>
+                                ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </Card>
+    </div>
     </div>
   );
 }
