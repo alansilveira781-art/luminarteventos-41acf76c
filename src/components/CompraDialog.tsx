@@ -338,6 +338,25 @@ export function CompraDialog({
                   </SelectContent>
                 </Select>
               </FormField>
+              <FormField label="Nº da NF">
+                <Input
+                  value={form.numero_nf ?? ""}
+                  onChange={(e) => setForm({ ...form, numero_nf: e.target.value })}
+                  placeholder="Ex.: 12345"
+                />
+              </FormField>
+              <FormField label="Empresa faturada">
+                <Select
+                  value={form.empresa_faturada ?? ""}
+                  onValueChange={(v) => setForm({ ...form, empresa_faturada: v })}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+                  <SelectContent>
+                    {EMPRESAS.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </FormField>
+
               <FormField label="Solicitante">
                 <SelectCreatable
                   table="compras_solicitantes"
