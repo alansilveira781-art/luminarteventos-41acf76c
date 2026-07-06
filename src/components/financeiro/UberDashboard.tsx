@@ -393,7 +393,7 @@ export function UberDashboard() {
           </div>
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-4 print:break-inside-avoid">
           <div className="text-sm font-semibold mb-3">Endereços recorrentes</div>
           <div className="overflow-auto">
             <table className="w-full text-sm">
