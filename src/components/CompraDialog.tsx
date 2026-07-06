@@ -17,6 +17,7 @@ import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
 import { ensureValidSession, describeSupabaseError } from "@/lib/supabase-guard";
 import { COMPRA_STATUSES, TIPO_COMPRA_OPTIONS, canMoveCompra, canEditCompra, canDeleteCompra, moveBlockedMessage, nextCompraStatus, type CompraStatus } from "@/lib/compras";
+import { EMPRESAS } from "@/lib/empresas";
 import { useAuth } from "@/contexts/AuthContext";
 import { notifyResponsiblesForStatus, notifyMentions } from "@/lib/notify";
 import { CopiarLinkButton } from "@/components/CopiarLinkButton";
@@ -61,6 +62,8 @@ export type Compra = {
   observacoes?: string | null;
   motivo_negacao?: string | null;
   tipo_compra?: string | null;
+  numero_nf?: string | null;
+  empresa_faturada?: string | null;
   responsavel_id?: string | null;
   responsavel_nome?: string | null;
   created_by?: string | null;
@@ -207,8 +210,16 @@ export function CompraDialog({
   const save = useMutation({
     mutationFn: async () => {
       await ensureValidSession();
-      if (form.status === "a_receber" && !form.tipo_compra) {
-        throw new Error("Defina o tipo da compra antes de salvar como Compras a Receber.");
+      if (form.status === "a_receber") {
+        if (!form.tipo_compra) {
+          throw new Error("Defina o tipo da compra antes de salvar como Compras a Receber.");
+        }
+        if (!form.numero_nf?.trim()) {
+          throw new Error("Informe o Nº da NF antes de mover para Compras a Receber.");
+        }
+        if (!form.empresa_faturada) {
+          throw new Error("Informe a empresa faturada antes de mover para Compras a Receber.");
+        }
       }
       const payload: any = { ...form, valor_total: totalCalc };
 
@@ -327,6 +338,25 @@ export function CompraDialog({
                   </SelectContent>
                 </Select>
               </FormField>
+              <FormField label="Nº da NF">
+                <Input
+                  value={form.numero_nf ?? ""}
+                  onChange={(e) => setForm({ ...form, numero_nf: e.target.value })}
+                  placeholder="Ex.: 12345"
+                />
+              </FormField>
+              <FormField label="Empresa faturada">
+                <Select
+                  value={form.empresa_faturada ?? ""}
+                  onValueChange={(v) => setForm({ ...form, empresa_faturada: v })}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+                  <SelectContent>
+                    {EMPRESAS.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </FormField>
+
               <FormField label="Solicitante">
                 <SelectCreatable
                   table="compras_solicitantes"
