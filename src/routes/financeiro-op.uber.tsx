@@ -145,6 +145,7 @@ function UberTabelona() {
                 <th className="text-left p-2">Sobrenome</th>
                 <th className="text-left p-2">Serviço</th>
                 <th className="text-left p-2">Cidade</th>
+                <th className="text-left p-2">Projeto</th>
                 <th className="text-left p-2">Partida</th>
                 <th className="text-left p-2">Destino</th>
                 <th className="text-right p-2">Valor</th>
@@ -152,9 +153,9 @@ function UberTabelona() {
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={10} className="p-8 text-center text-muted-foreground">Carregando...</td></tr>
+                <tr><td colSpan={11} className="p-8 text-center text-muted-foreground">Carregando...</td></tr>
               ) : paged.length === 0 ? (
-                <tr><td colSpan={10} className="p-8 text-center text-muted-foreground">Nenhuma corrida. Importe um CSV da Uber Business.</td></tr>
+                <tr><td colSpan={11} className="p-8 text-center text-muted-foreground">Nenhuma corrida. Importe um CSV da Uber Business.</td></tr>
               ) : paged.map((r) => (
                 <tr key={r.id} className="border-t hover:bg-muted/30">
                   <td className="p-2">
@@ -166,6 +167,7 @@ function UberTabelona() {
                   <td className="p-2">{r.sobrenome ?? "—"}</td>
                   <td className="p-2">{r.servico ?? "—"}</td>
                   <td className="p-2">{r.cidade ?? "—"}</td>
+                  <td className="p-2 max-w-[16rem] truncate" title={r.projeto ?? ""}>{r.projeto ?? "—"}</td>
                   <td className="p-2 max-w-xs truncate" title={r.endereco_partida ?? ""}>{r.endereco_partida ?? "—"}</td>
                   <td className="p-2 max-w-xs truncate" title={r.endereco_destino ?? ""}>{r.endereco_destino ?? "—"}</td>
                   <td className="p-2 text-right whitespace-nowrap">{fmtBRL(r.valor)}</td>
