@@ -460,7 +460,7 @@ function CompareCard({ label, cur, prev }: { label: string; cur: number; prev: n
 
 function ChartCard({ title, children, className = "" }: { title: string; children: React.ReactNode; className?: string }) {
   return (
-    <Card className={`p-4 ${className}`}>
+    <Card className={`p-4 print:break-inside-avoid ${className}`}>
       <div className="text-sm font-semibold mb-3">{title}</div>
       {children}
     </Card>
