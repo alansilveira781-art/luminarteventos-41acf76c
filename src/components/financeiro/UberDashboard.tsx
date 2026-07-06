@@ -521,7 +521,6 @@ export function UberDashboard() {
         </Accordion>
       </Card>
     </div>
-    </div>
   );
 }
 
