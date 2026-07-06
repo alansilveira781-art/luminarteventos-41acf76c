@@ -493,6 +493,7 @@ export function UberDashboard() {
                               <tr className="border-b">
                                 <th className="text-left py-2">Hora</th>
                                 <th className="text-left py-2">Projeto</th>
+                                <th className="py-1 pr-2">Detalhamento</th>
                                 <th className="text-left py-2">Serviço</th>
                                 <th className="text-right py-2">Valor</th>
                               </tr>
@@ -505,6 +506,7 @@ export function UberDashboard() {
                                   <tr key={c.id} className="border-b last:border-0">
                                     <td className="py-2">{c.hora_solicitacao || "—"}</td>
                                     <td className="py-2">{c.projeto || "—"}</td>
+                                    <td className="py-1 pr-2">{c.detalhamento || "—"}</td>
                                     <td className="py-2">{c.servico || "—"}</td>
                                     <td className="text-right py-2">{fmt(c.valor)}</td>
                                   </tr>
