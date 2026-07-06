@@ -318,7 +318,7 @@ export function UberDashboard() {
         </div>
       </Card>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 [&>*]:print:break-inside-avoid">
         <Stat label="Gasto total" value={fmt(kpis.total)} />
         <Stat label="Nº de corridas" value={fmtN(kpis.count)} />
         <Stat label="Ticket médio" value={fmt(kpis.ticket)} />
