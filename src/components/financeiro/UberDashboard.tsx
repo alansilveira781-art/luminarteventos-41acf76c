@@ -342,27 +342,31 @@ export function UberDashboard() {
 
       <div className="grid gap-4 lg:grid-cols-2 [&>*]:print:break-inside-avoid">
         <ChartCard title="Gasto mensal (R$)">
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={porMes}>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-              <XAxis dataKey="mes" fontSize={11} tickFormatter={mesLabel} />
-              <YAxis fontSize={11} />
-              <Tooltip formatter={(v: any) => fmt(Number(v))} labelFormatter={(l: any) => mesLabel(String(l))} />
-              <Bar dataKey="valor" fill="#0f172a" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="h-[260px] print:h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={porMes}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                <XAxis dataKey="mes" fontSize={11} tickFormatter={mesLabel} />
+                <YAxis fontSize={11} />
+                <Tooltip formatter={(v: any) => fmt(Number(v))} labelFormatter={(l: any) => mesLabel(String(l))} />
+                <Bar dataKey="valor" fill="#0f172a" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </ChartCard>
 
         <ChartCard title="Gasto por serviço">
-          <ResponsiveContainer width="100%" height={260}>
-            <PieChart>
-              <Pie data={porServico} dataKey="valor" nameKey="nome" outerRadius={90} label>
-                {porServico.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-              </Pie>
-              <Tooltip formatter={(v: any) => fmt(Number(v))} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className="h-[260px] print:h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={porServico} dataKey="valor" nameKey="nome" outerRadius={90} label>
+                  {porServico.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                </Pie>
+                <Tooltip formatter={(v: any) => fmt(Number(v))} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
         </ChartCard>
       </div>
 
