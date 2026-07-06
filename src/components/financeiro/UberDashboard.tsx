@@ -24,26 +24,15 @@ const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#06b6d4", "#8b5cf6"
 const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtN = (n: number) => n.toLocaleString("pt-BR");
 
-function diffDays(from: string, to: string) {
-  return Math.max(1, Math.round((+new Date(to) - +new Date(from)) / 86400000));
-}
-function shiftDays(iso: string, days: number) {
-  const d = new Date(iso + "T00:00:00Z");
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
-export function UberDashboard({ from, to }: { from: string; to: string }) {
+export function UberDashboard() {
   const { data, isLoading, error } = useQuery({
-    queryKey: ["uber-corridas", from, to],
+    queryKey: ["uber-corridas-all"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("uber_corridas")
         .select("id, data_solicitacao, hora_solicitacao, nome, sobrenome, servico, cidade, endereco_partida, endereco_destino, valor")
-        .gte("data_solicitacao", from)
-        .lte("data_solicitacao", to)
         .order("data_solicitacao", { ascending: false })
-        .limit(10000);
+        .limit(50000);
       if (error) throw error;
       return (data ?? []).map((r) => ({ ...r, valor: Number(r.valor) })) as Corrida[];
     },
@@ -56,9 +45,8 @@ export function UberDashboard({ from, to }: { from: string; to: string }) {
     const total = trips.reduce((s, t) => s + (t.valor ?? 0), 0);
     const count = trips.length;
     const ticket = count ? total / count : 0;
-    const days = diffDays(from, to);
-    return { total, count, ticket, days };
-  }, [trips, from, to]);
+    return { total, count, ticket };
+  }, [trips]);
 
   const porMes = useMemo(() => {
     const map = new Map<string, number>();
@@ -96,6 +84,15 @@ export function UberDashboard({ from, to }: { from: string; to: string }) {
       .slice(0, 10);
   }, [trips]);
 
+  const solicitantesUnicos = useMemo(() => {
+    const set = new Set<string>();
+    trips.forEach((t) => {
+      const nome = [t.nome, t.sobrenome].filter(Boolean).join(" ").trim();
+      if (nome) set.add(nome);
+    });
+    return set.size;
+  }, [trips]);
+
   const enderecos = useMemo(() => {
     const map = new Map<string, number>();
     trips.forEach((t) => {
@@ -112,31 +109,32 @@ export function UberDashboard({ from, to }: { from: string; to: string }) {
       .slice(0, 10);
   }, [trips]);
 
+  // Mês atual = mês mais recente presente na base; anterior = mês imediatamente anterior a esse
   const comparacoes = useMemo(() => {
-    const now = new Date();
-    const ymCur = now.toISOString().slice(0, 7);
-    const ymPrev = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 7);
-    const yCur = String(now.getFullYear());
-    const yPrev = String(now.getFullYear() - 1);
+    if (!trips.length) return null;
+    const meses = Array.from(new Set(trips.map((t) => t.data_solicitacao.slice(0, 7)))).sort();
+    const ymCur = meses[meses.length - 1];
+    const [y, m] = ymCur.split("-").map(Number);
+    const prevDate = new Date(Date.UTC(y, m - 2, 1));
+    const ymPrev = `${prevDate.getUTCFullYear()}-${String(prevDate.getUTCMonth() + 1).padStart(2, "0")}`;
+    const hasPrev = trips.some((t) => t.data_solicitacao.startsWith(ymPrev));
 
-    const sumBy = (pred: (t: Corrida) => boolean) =>
-      trips.filter(pred).reduce((s, t) => s + (t.valor ?? 0), 0);
+    const sumBy = (pref: string) =>
+      trips.filter((t) => t.data_solicitacao.startsWith(pref)).reduce((s, t) => s + (t.valor ?? 0), 0);
 
-    const mesAtual = sumBy((t) => t.data_solicitacao.startsWith(ymCur));
-    const mesAnterior = sumBy((t) => t.data_solicitacao.startsWith(ymPrev));
-    const anoAtual = sumBy((t) => t.data_solicitacao.startsWith(yCur));
-    const anoAnterior = sumBy((t) => t.data_solicitacao.startsWith(yPrev));
+    const yCur = String(y);
+    const yPrev = String(y - 1);
+    const hasYearPrev = trips.some((t) => t.data_solicitacao.startsWith(yPrev));
 
-    const days = diffDays(from, to);
-    const prevFrom = shiftDays(from, -days);
-    const prevTo = shiftDays(from, -1);
-    const periodo = sumBy((t) => t.data_solicitacao >= from && t.data_solicitacao <= to);
-    const periodoAnterior = sumBy(
-      (t) => t.data_solicitacao >= prevFrom && t.data_solicitacao <= prevTo,
-    );
-
-    return { mesAtual, mesAnterior, anoAtual, anoAnterior, periodo, periodoAnterior };
-  }, [trips, from, to]);
+    return {
+      mesLabel: ymCur,
+      mesPrevLabel: hasPrev ? ymPrev : null,
+      mesAtual: sumBy(ymCur),
+      mesAnterior: hasPrev ? sumBy(ymPrev) : null,
+      anoAtual: sumBy(yCur),
+      anoAnterior: hasYearPrev ? sumBy(yPrev) : null,
+    };
+  }, [trips]);
 
   if (isLoading) {
     return (
@@ -158,9 +156,9 @@ export function UberDashboard({ from, to }: { from: string; to: string }) {
   if (!trips.length) {
     return (
       <Card className="p-12 text-center">
-        <div className="text-sm font-semibold mb-1">Sem corridas no período</div>
+        <div className="text-sm font-semibold mb-1">Sem corridas na base</div>
         <p className="text-sm text-muted-foreground">
-          Ajuste o filtro de datas ou importe uma planilha da Uber Business no botão acima.
+          Importe uma planilha da Uber Business na aba <strong>Uber</strong> do menu Financeiro.
         </p>
       </Card>
     );
@@ -168,20 +166,23 @@ export function UberDashboard({ from, to }: { from: string; to: string }) {
 
   return (
     <div className="space-y-4">
-      {/* KPIs */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Gasto total" value={fmt(kpis.total)} />
         <Stat label="Nº de corridas" value={fmtN(kpis.count)} />
         <Stat label="Ticket médio" value={fmt(kpis.ticket)} />
-        <Stat label="Solicitantes únicos" value={fmtN(topPessoas.length)} />
+        <Stat label="Solicitantes únicos" value={fmtN(solicitantesUnicos)} />
       </div>
 
-      {/* Comparações */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        <CompareCard label="Mês atual vs anterior" cur={comparacoes.mesAtual} prev={comparacoes.mesAnterior} />
-        <CompareCard label="Ano atual vs anterior" cur={comparacoes.anoAtual} prev={comparacoes.anoAnterior} />
-        <CompareCard label="Período vs anterior" cur={comparacoes.periodo} prev={comparacoes.periodoAnterior} />
-      </div>
+      {comparacoes && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <CompareCard
+            label={`Mês ${comparacoes.mesLabel}${comparacoes.mesPrevLabel ? ` vs ${comparacoes.mesPrevLabel}` : ""}`}
+            cur={comparacoes.mesAtual}
+            prev={comparacoes.mesAnterior}
+          />
+          <CompareCard label="Ano atual vs anterior" cur={comparacoes.anoAtual} prev={comparacoes.anoAnterior} />
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard title="Gasto mensal (R$)">
@@ -273,18 +274,29 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function CompareCard({ label, cur, prev }: { label: string; cur: number; prev: number }) {
-  const delta = prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : 0;
-  const up = delta >= 0;
+function CompareCard({ label, cur, prev }: { label: string; cur: number; prev: number | null }) {
+  const hasPrev = prev !== null && prev > 0;
+  const delta = hasPrev ? ((cur - (prev as number)) / (prev as number)) * 100 : null;
+  const up = (delta ?? 0) >= 0;
   return (
     <Card className="p-4">
       <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className="text-xl font-semibold mt-1">{fmt(cur)}</div>
       <div className="text-xs text-muted-foreground mt-1">
-        Anterior: {fmt(prev)} •{" "}
-        <span className={up ? "text-emerald-600" : "text-red-600"}>
-          {up ? "▲" : "▼"} {Math.abs(delta).toFixed(1)}%
-        </span>
+        {prev === null ? (
+          <>Sem período anterior na base — <span>—</span></>
+        ) : (
+          <>
+            Anterior: {fmt(prev)} •{" "}
+            {delta === null ? (
+              <span>—</span>
+            ) : (
+              <span className={up ? "text-emerald-600" : "text-red-600"}>
+                {up ? "▲" : "▼"} {Math.abs(delta).toFixed(1)}%
+              </span>
+            )}
+          </>
+        )}
       </div>
     </Card>
   );
