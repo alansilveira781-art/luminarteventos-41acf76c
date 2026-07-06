@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetch-all";
 import { UberImportButton } from "@/components/financeiro/UberImportButton";
 
 export const Route = createFileRoute("/financeiro-op/uber")({
@@ -26,6 +27,7 @@ type Row = {
   endereco_partida: string | null;
   endereco_destino: string | null;
   valor: number;
+  projeto: string | null;
 };
 
 const PAGE_SIZE = 50;
@@ -40,13 +42,12 @@ function UberTabelona() {
   const { data, isLoading } = useQuery({
     queryKey: ["uber-corridas-tabelona"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("uber_corridas")
-        .select("id, data_solicitacao, hora_solicitacao, nome, sobrenome, servico, cidade, endereco_partida, endereco_destino, valor")
-        .order("data_solicitacao", { ascending: false })
-        .limit(50000);
-      if (error) throw error;
-      return (data ?? []).map((r) => ({ ...r, valor: Number(r.valor) })) as Row[];
+      const rows = await fetchAllRows<Row>(
+        "uber_corridas",
+        "id, data_solicitacao, hora_solicitacao, nome, sobrenome, servico, cidade, endereco_partida, endereco_destino, valor, projeto",
+        { orderBy: { column: "data_solicitacao", ascending: false } },
+      );
+      return rows.map((r) => ({ ...r, valor: Number(r.valor) }));
     },
     staleTime: 30 * 1000,
   });
