@@ -41,10 +41,7 @@ function validYear(y: number | null | undefined): number | null {
 }
 
 function pickDateIso(r: VendaRow): string | null {
-  // Prefer data_evento for "evento" derivations, fallback to dataRegistro
-  return r.dataEvento || r.dataRegistro || null;
-}
-function pickAnyDateIso(r: VendaRow): string | null {
+  // Régua fixa: sempre data de registro/fechamento; evento só como fallback.
   return r.dataRegistro || r.dataEvento || null;
 }
 function parseMonth(iso: string | null): number | null {
@@ -57,24 +54,16 @@ function parseYear(iso: string | null): number | null {
   return validYear(Number(iso.slice(0, 4)));
 }
 
-// Derivation helpers — tolerant of NULL/garbage stored fields
+// Derivation helpers — sempre pela data de registro
 export function getAno(r: VendaRow): number | null {
-  return (
-    validYear(r.anoEvento) ??
-    validYear(r.ano) ??
-    parseYear(pickDateIso(r)) ??
-    parseYear(pickAnyDateIso(r))
-  );
+  return parseYear(pickDateIso(r));
 }
 export function getMes(r: VendaRow): string | null {
-  const stored = cleanText(r.mesEvento) || cleanText(r.mes);
-  if (stored) return stored;
-  const m = parseMonth(pickDateIso(r)) ?? parseMonth(pickAnyDateIso(r));
+  const m = parseMonth(pickDateIso(r));
   return m ? MESES_PT[m - 1] : null;
 }
 export function getTrimestre(r: VendaRow): 1 | 2 | 3 | 4 | null {
-  if (r.trimestreEvento) return r.trimestreEvento;
-  const m = parseMonth(pickDateIso(r)) ?? parseMonth(pickAnyDateIso(r));
+  const m = parseMonth(pickDateIso(r));
   if (!m) return null;
   return (Math.ceil(m / 3) as 1 | 2 | 3 | 4);
 }
