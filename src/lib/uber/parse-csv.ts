@@ -17,6 +17,7 @@ export type UberCsvRow = {
   endereco_partida: string | null;
   endereco_destino: string | null;
   valor: number;
+  projeto: string | null;
   hash_dedup: string;
 };
 
@@ -118,6 +119,7 @@ export function parseUberCsv(text: string): UberParseResult {
     partida: findColumn(headers, ["Endereço de partida", "Endereco de partida"]),
     destino: findColumn(headers, ["Endereço de destino", "Endereco de destino"]),
     valor: findColumn(headers, ["Valor da transação: BRL", "Valor da transacao: BRL"]),
+    projeto: findColumn(headers, ["Programa"]),
   };
 
   const rows: UberCsvRow[] = [];
@@ -153,6 +155,8 @@ export function parseUberCsv(text: string): UberParseResult {
     const partida = col.partida >= 0 ? cells[col.partida] || null : null;
     const destino = col.destino >= 0 ? cells[col.destino] || null : null;
     const valor = col.valor >= 0 ? parseNumber(cells[col.valor]) : 0;
+    const projetoRaw = col.projeto >= 0 ? (cells[col.projeto] || "").trim() : "";
+    const projeto = projetoRaw || null;
 
     const hash_dedup = [
       data,
@@ -173,6 +177,7 @@ export function parseUberCsv(text: string): UberParseResult {
       endereco_partida: partida,
       endereco_destino: destino,
       valor,
+      projeto,
       hash_dedup,
     });
   }
