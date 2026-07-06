@@ -366,8 +366,8 @@ export function UberDashboard() {
         </ChartCard>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="p-4">
+      <div className="grid gap-4 lg:grid-cols-2 [&>*]:print:break-inside-avoid">
+        <Card className="p-4 print:break-inside-avoid">
           <div className="text-sm font-semibold mb-3">Top solicitantes</div>
           <div className="overflow-auto">
             <table className="w-full text-sm">
