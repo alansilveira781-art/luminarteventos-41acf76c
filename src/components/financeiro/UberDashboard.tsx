@@ -113,32 +113,19 @@ export function UberDashboard({ from, to }: { from: string; to: string }) {
   }, [trips]);
 
   const comparacoes = useMemo(() => {
-    // "Mês atual" = mês mais recente presente na base filtrada (não o calendário).
-    const maxDate = trips.reduce<string | null>((acc, t) => {
-      return !acc || t.data_solicitacao > acc ? t.data_solicitacao : acc;
-    }, null);
+    const now = new Date();
+    const ymCur = now.toISOString().slice(0, 7);
+    const ymPrev = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 7);
+    const yCur = String(now.getFullYear());
+    const yPrev = String(now.getFullYear() - 1);
 
     const sumBy = (pred: (t: Corrida) => boolean) =>
       trips.filter(pred).reduce((s, t) => s + (t.valor ?? 0), 0);
 
-    let ymCur = "";
-    let ymPrev = "";
-    let yCur = "";
-    let yPrev = "";
-    if (maxDate) {
-      ymCur = maxDate.slice(0, 7);
-      const [y, m] = ymCur.split("-").map(Number);
-      const prev = new Date(y, m - 2, 1);
-      ymPrev = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`;
-      yCur = String(y);
-      yPrev = String(y - 1);
-    }
-
-    const mesAtual = ymCur ? sumBy((t) => t.data_solicitacao.startsWith(ymCur)) : 0;
-    const mesAnterior = ymPrev ? sumBy((t) => t.data_solicitacao.startsWith(ymPrev)) : 0;
-    const anoAtual = yCur ? sumBy((t) => t.data_solicitacao.startsWith(yCur)) : 0;
-    const anoAnterior = yPrev ? sumBy((t) => t.data_solicitacao.startsWith(yPrev)) : 0;
-
+    const mesAtual = sumBy((t) => t.data_solicitacao.startsWith(ymCur));
+    const mesAnterior = sumBy((t) => t.data_solicitacao.startsWith(ymPrev));
+    const anoAtual = sumBy((t) => t.data_solicitacao.startsWith(yCur));
+    const anoAnterior = sumBy((t) => t.data_solicitacao.startsWith(yPrev));
 
     const days = diffDays(from, to);
     const prevFrom = shiftDays(from, -days);
