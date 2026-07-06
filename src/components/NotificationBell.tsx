@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bell, Check } from "lucide-react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,6 +45,24 @@ export function NotificationBell() {
     qc.invalidateQueries({ queryKey: ["notificacoes", user?.id] });
     qc.invalidateQueries({ queryKey: ["notificacoes-all", user?.id] });
   };
+
+  // Realtime: atualiza o sininho no instante em que uma notificação é criada/alterada
+  useEffect(() => {
+    if (!user) return;
+    const channel = sb
+      .channel(`notificacoes-user-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notificacoes", filter: `user_id=eq.${user.id}` },
+        () => invalidate(),
+      )
+      .subscribe();
+    return () => {
+      sb.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
 
   const markAll = useMutation({
     mutationFn: async () => {
