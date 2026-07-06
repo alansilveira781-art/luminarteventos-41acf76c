@@ -150,18 +150,34 @@ export function AnexoViewer({ bucket, anexo, open, onOpenChange }: AnexoViewerPr
             </>
 
           ) : kind === "pdf" ? (
-            <Suspense
+            <ErrorBoundary
               fallback={
-                <div className="flex-1 flex items-center justify-center min-h-[40vh]">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <div className="flex-1 flex flex-col items-center justify-center gap-2 p-8 text-center min-h-[40vh]">
+                  <FileIcon className="h-10 w-10 text-muted-foreground" />
+                  <p className="text-sm font-medium">Não foi possível exibir a prévia do PDF</p>
+                  <p className="text-xs text-muted-foreground">
+                    Baixe o arquivo para visualizá-lo.
+                  </p>
+                  <Button type="button" size="sm" onClick={() => baixarAnexo(bucket, anexo.path, anexo.nome)}>
+                    <Download className="h-4 w-4 mr-1" /> Baixar
+                  </Button>
                 </div>
               }
             >
-              <PdfPreview
-                fileUrl={objectUrl}
-                onDownload={() => baixarAnexo(bucket, anexo.path, anexo.nome)}
-              />
-            </Suspense>
+              <Suspense
+                fallback={
+                  <div className="flex-1 flex items-center justify-center min-h-[40vh]">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                }
+              >
+                <PdfPreview
+                  fileUrl={objectUrl}
+                  onDownload={() => baixarAnexo(bucket, anexo.path, anexo.nome)}
+                />
+              </Suspense>
+            </ErrorBoundary>
+
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center gap-2 p-8 text-center min-h-[40vh]">
               <FileIcon className="h-10 w-10 text-muted-foreground" />
