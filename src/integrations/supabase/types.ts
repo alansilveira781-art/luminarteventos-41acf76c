@@ -3135,6 +3135,7 @@ export type Database = {
         Row: {
           cidade: string | null
           data_solicitacao: string
+          detalhamento: string | null
           endereco_destino: string | null
           endereco_partida: string | null
           hash_dedup: string | null
@@ -3151,6 +3152,7 @@ export type Database = {
         Insert: {
           cidade?: string | null
           data_solicitacao: string
+          detalhamento?: string | null
           endereco_destino?: string | null
           endereco_partida?: string | null
           hash_dedup?: string | null
@@ -3167,6 +3169,7 @@ export type Database = {
         Update: {
           cidade?: string | null
           data_solicitacao?: string
+          detalhamento?: string | null
           endereco_destino?: string | null
           endereco_partida?: string | null
           hash_dedup?: string | null

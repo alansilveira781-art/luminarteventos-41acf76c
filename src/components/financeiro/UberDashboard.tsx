@@ -29,6 +29,7 @@ type Corrida = {
   endereco_destino: string | null;
   valor: number;
   projeto: string | null;
+  detalhamento: string | null;
 };
 
 const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#06b6d4", "#8b5cf6", "#ec4899", "#84cc16"];
@@ -68,7 +69,7 @@ export function UberDashboard() {
     queryFn: async () => {
       const rows = await fetchAllRows<Corrida>(
         "uber_corridas",
-        "id, data_solicitacao, hora_solicitacao, nome, sobrenome, servico, cidade, endereco_partida, endereco_destino, valor, projeto",
+        "id, data_solicitacao, hora_solicitacao, nome, sobrenome, servico, cidade, endereco_partida, endereco_destino, valor, projeto, detalhamento",
         { orderBy: { column: "data_solicitacao", ascending: false } },
       );
       return rows.map((r) => ({ ...r, valor: Number(r.valor) }));
@@ -492,6 +493,7 @@ export function UberDashboard() {
                               <tr className="border-b">
                                 <th className="text-left py-2">Hora</th>
                                 <th className="text-left py-2">Projeto</th>
+                                <th className="py-1 pr-2">Detalhamento</th>
                                 <th className="text-left py-2">Serviço</th>
                                 <th className="text-right py-2">Valor</th>
                               </tr>
@@ -504,6 +506,7 @@ export function UberDashboard() {
                                   <tr key={c.id} className="border-b last:border-0">
                                     <td className="py-2">{c.hora_solicitacao || "—"}</td>
                                     <td className="py-2">{c.projeto || "—"}</td>
+                                    <td className="py-1 pr-2">{c.detalhamento || "—"}</td>
                                     <td className="py-2">{c.servico || "—"}</td>
                                     <td className="text-right py-2">{fmt(c.valor)}</td>
                                   </tr>

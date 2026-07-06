@@ -28,6 +28,7 @@ type Row = {
   endereco_destino: string | null;
   valor: number;
   projeto: string | null;
+  detalhamento: string | null;
 };
 
 const PAGE_SIZE = 50;
@@ -44,7 +45,7 @@ function UberTabelona() {
     queryFn: async () => {
       const rows = await fetchAllRows<Row>(
         "uber_corridas",
-        "id, data_solicitacao, hora_solicitacao, nome, sobrenome, servico, cidade, endereco_partida, endereco_destino, valor, projeto",
+        "id, data_solicitacao, hora_solicitacao, nome, sobrenome, servico, cidade, endereco_partida, endereco_destino, valor, projeto, detalhamento",
         { orderBy: { column: "data_solicitacao", ascending: false } },
       );
       return rows.map((r) => ({ ...r, valor: Number(r.valor) }));
@@ -58,7 +59,7 @@ function UberTabelona() {
     const q = busca.trim().toLowerCase();
     if (!q) return rows;
     return rows.filter((r) => {
-      const hay = [r.nome, r.sobrenome, r.servico, r.cidade, r.endereco_partida, r.endereco_destino, r.projeto]
+      const hay = [r.nome, r.sobrenome, r.servico, r.cidade, r.endereco_partida, r.endereco_destino, r.projeto, r.detalhamento]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
@@ -144,6 +145,7 @@ function UberTabelona() {
                 <th className="text-left p-2">Nome</th>
                 <th className="text-left p-2">Sobrenome</th>
                 <th className="text-left p-2">Serviço</th>
+                <th className="text-left p-2">Detalhamento</th>
                 <th className="text-left p-2">Cidade</th>
                 <th className="text-left p-2">Projeto</th>
                 <th className="text-left p-2">Partida</th>
@@ -153,9 +155,9 @@ function UberTabelona() {
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={11} className="p-8 text-center text-muted-foreground">Carregando...</td></tr>
+                <tr><td colSpan={12} className="p-8 text-center text-muted-foreground">Carregando...</td></tr>
               ) : paged.length === 0 ? (
-                <tr><td colSpan={11} className="p-8 text-center text-muted-foreground">Nenhuma corrida. Importe um CSV da Uber Business.</td></tr>
+                <tr><td colSpan={12} className="p-8 text-center text-muted-foreground">Nenhuma corrida. Importe um CSV da Uber Business.</td></tr>
               ) : paged.map((r) => (
                 <tr key={r.id} className="border-t hover:bg-muted/30">
                   <td className="p-2">
@@ -166,6 +168,7 @@ function UberTabelona() {
                   <td className="p-2">{r.nome ?? "—"}</td>
                   <td className="p-2">{r.sobrenome ?? "—"}</td>
                   <td className="p-2">{r.servico ?? "—"}</td>
+                  <td className="p-2 max-w-[16rem] truncate" title={r.detalhamento ?? ""}>{r.detalhamento ?? "—"}</td>
                   <td className="p-2">{r.cidade ?? "—"}</td>
                   <td className="p-2 max-w-[16rem] truncate" title={r.projeto ?? ""}>{r.projeto ?? "—"}</td>
                   <td className="p-2 max-w-xs truncate" title={r.endereco_partida ?? ""}>{r.endereco_partida ?? "—"}</td>
