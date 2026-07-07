@@ -461,6 +461,7 @@ export function UberDashboard() {
                 <th className="text-left py-2 pr-2">Hora</th>
                 <th className="text-left py-2 pr-2">Nome</th>
                 <th className="text-left py-2 pr-2">Endereço de partida</th>
+                <th className="text-left py-2 pr-2">Endereço de destino</th>
                 <th className="text-left py-2 pr-2">Detalhamento</th>
                 <th className="text-left py-2 pr-2">Programa</th>
                 <th className="text-right py-2 pr-2">Valor</th>
@@ -474,6 +475,7 @@ export function UberDashboard() {
                   <td className="py-2 pr-2">{c.hora_solicitacao || "—"}</td>
                   <td className="py-2 pr-2">{c.pessoa}</td>
                   <td className="py-2 pr-2">{c.endereco_partida || "—"}</td>
+                  <td className="py-2 pr-2">{c.endereco_destino || "—"}</td>
                   <td className="py-2 pr-2">{c.detalhamento || "—"}</td>
                   <td className="py-2 pr-2">{c.projeto || "—"}</td>
                   <td className="text-right py-2 pr-2">{fmt(c.valor)}</td>
@@ -482,7 +484,7 @@ export function UberDashboard() {
             </tbody>
             <tfoot>
               <tr className="border-t font-semibold">
-                <td className="py-2 pr-2" colSpan={7}>Total</td>
+                <td className="py-2 pr-2" colSpan={8}>Total</td>
                 <td className="text-right py-2 pr-2">
                   {fmt(corridasRelatorio.reduce((s, c) => s + (c.valor ?? 0), 0))}
                 </td>
