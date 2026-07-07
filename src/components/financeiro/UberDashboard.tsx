@@ -179,36 +179,31 @@ export function UberDashboard() {
       .slice(0, 10);
   }, [trips]);
 
-  const agrupadoPessoaData = useMemo(() => {
-    const pessoas = new Map<
-      string,
-      {
-        pessoa: string;
-        total: number;
-        qtd: number;
-        datas: Map<string, { total: number; corridas: typeof trips }>;
-      }
-    >();
-    for (const t of trips) {
-      const pessoa = [t.nome, t.sobrenome].filter(Boolean).join(" ").trim() || "—";
-      const data = t.data_solicitacao;
-      if (!pessoas.has(pessoa)) pessoas.set(pessoa, { pessoa, total: 0, qtd: 0, datas: new Map() });
-      const p = pessoas.get(pessoa)!;
-      p.total += t.valor ?? 0;
-      p.qtd += 1;
-      if (!p.datas.has(data)) p.datas.set(data, { total: 0, corridas: [] });
-      const d = p.datas.get(data)!;
-      d.total += t.valor ?? 0;
-      d.corridas.push(t);
-    }
-    return Array.from(pessoas.values())
-      .sort((a, b) => b.total - a.total)
-      .map((p) => ({
-        ...p,
-        datas: Array.from(p.datas.entries())
-          .sort((a, b) => (a[0] < b[0] ? 1 : -1))
-          .map(([data, v]) => ({ data, ...v })),
-      }));
+  const corridasRelatorio = useMemo(() => {
+    const periodo = (hora: string | null) => {
+      if (!hora) return "—";
+      const m = hora.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+      if (!m) return "—";
+      let h = parseInt(m[1], 10);
+      const ampm = (m[3] || "").toUpperCase();
+      if (ampm === "PM" && h < 12) h += 12;
+      if (ampm === "AM" && h === 12) h = 0;
+      if (h < 12) return "Manhã";
+      if (h < 18) return "Tarde";
+      return "Noite";
+    };
+    return trips
+      .slice()
+      .map((t) => ({
+        ...t,
+        pessoa: [t.nome, t.sobrenome].filter(Boolean).join(" ").trim() || "—",
+        periodo: periodo(t.hora_solicitacao),
+      }))
+      .sort((a, b) =>
+        a.pessoa.localeCompare(b.pessoa) ||
+        (a.data_solicitacao < b.data_solicitacao ? -1 : a.data_solicitacao > b.data_solicitacao ? 1 : 0) ||
+        (a.hora_solicitacao || "").localeCompare(b.hora_solicitacao || "")
+      );
   }, [trips]);
 
   // Mês atual = mês mais recente presente no recorte; anterior = mês imediatamente anterior a esse
