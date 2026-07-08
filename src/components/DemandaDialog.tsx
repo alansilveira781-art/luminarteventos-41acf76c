@@ -174,6 +174,10 @@ export function DemandaDialog({
             unidade: it.unidade ?? null,
             quantidade: Number(it.quantidade || 0),
             valor_unitario: it.valor_unitario ?? null,
+            desconto: Number(it.desconto || 0),
+            frete: Number(it.frete || 0),
+            ipi: Number(it.ipi || 0),
+            outros_custos: Number(it.outros_custos || 0),
           }));
         if (rows.length) {
           const { error } = await sb.from("demanda_itens").insert(rows);
