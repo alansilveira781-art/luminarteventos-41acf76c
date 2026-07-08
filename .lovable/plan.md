@@ -1,34 +1,39 @@
-## Contexto
+## Diagnóstico
 
-Em `AnaliseDetalhada` (`src/components/financeiro/ContaAzulDashboard.tsx`) já existe uma leitura das `movimentacoes` tipo `saida` cruzando por `evento_projeto` com o nome do centro de custo selecionado, e as somas já são adicionadas ao DRE. **Mas** hoje cada linha de estoque aparece como uma linha separada rotulada "(estoque)" — chave `stock:<categoria>` — porque o código não faz o casamento da categoria do item com o plano de contas do Conta Azul.
+Checagem direta no banco:
 
-O usuário quer:
-- **Sem mudança visual.** Somar dentro das linhas existentes de Custos Variáveis / Custos Diretos, na mesma categoria do plano de contas — sem criar linha nova "(estoque)".
-- Casar `itens.categoria` **por nome** com `ca_plano_contas.nome` (o usuário garante que os nomes batem). O grupo do DRE (CV/CD/etc.) sai naturalmente do prefixo do plano.
-- Continuar cruzando `movimentacoes.evento_projeto` com o nome do `centro_custo` selecionado (já é assim).
+```
+select tipo, count(*), count(valor_total) fv, count(valor_unitario) fu from movimentacoes group by tipo;
+   tipo    | count | fv  | fu
+-----------+-------+-----+-----
+ saida     |  1719 |   0 |   0
+ devolucao |   150 |   0 |   0
+ entrada   |  1535 | 394 | 500
+```
 
-## Mudança
+Ou seja: **nenhuma saída tem `valor_total` preenchido**. A `AnaliseDetalhada` está lendo `movimentacoes.valor_total` diretamente (linha 666), então soma sempre = 0 e nada aparece. Não é problema de casamento categoria↔plano nem de evento↔centro; é a fonte do valor.
 
-Ajustar somente o bloco `stockAgg` em `src/components/financeiro/ContaAzulDashboard.tsx` (~linhas 720-746):
+O valor real da saída = `movimentacoes.quantidade × itens.valor_unitario` (custo médio já mantido pelo trigger `apply_custo_medio_entrada` nas entradas). Todas as 1719 saídas têm `item_id` preenchido; `movimentacao_itens` tem só 28 linhas (composites raros).
 
-1. Construir um índice `nomePlano (normalizado) → { external_id, grupo }` a partir de `planosArr` + `grupoDoPlanoNome(plano.nome)`.
-2. Para cada saída elegível (evento casa com o centro), procurar o plano pelo nome da categoria do item (case/acento-insensível).
-3. Se casar: usar `categoria_external_id` como chave de detalhe (mesma chave usada pelos rateios do Conta Azul) → **soma direta na linha existente** do plano de contas, dentro do grupo correto (CV/CD/…).
-4. Se não casar: manter fallback atual (agrupa em "SC – Sem classificação") para não perder valor — sem criar novo comportamento visual.
-5. Remover a lógica atual de chave `stock:<cat>` e do rótulo "(estoque)" — não é mais necessária pois os valores mesclam nas linhas do próprio plano de contas.
-6. `estruturaEfetiva`/`planoMapExt` seguem funcionando: `planoMapExt` só precisa continuar cobrindo o caso "SC" quando houver fallback.
+Também confirmei:
+- `ca_centros_custo.nome` começa com o mesmo código do `evento_projeto` (ex: "46158 - …" nos dois lados), então o casamento por prefixo do `centroNeedle` funciona.
+- `itens.categoria` usa nomes tipo "CV - ACRILICO" (maiúsculo, sem acento) e `ca_plano_contas.nome` usa "CV - Acrílico". A normalização que apliquei (lowercase + strip acento) casa esses casos; onde não casar, cai no fallback SC (visível como "(?) Sem classificação").
+
+## Correção
+
+Em `AnaliseDetalhada` de `src/components/financeiro/ContaAzulDashboard.tsx`:
+
+1. Trocar o `select` da query `saidasEstoque` para trazer `quantidade` e `itens(categoria, valor_unitario)` em vez de `valor_total`.
+2. No `stockAgg`, calcular `valor = quantidade × (itens.valor_unitario ?? 0)`.
+3. Também considerar as saídas de composite via `movimentacao_itens` (query adicional só das saídas dessa mov): buscar `movimentacao_itens(quantidade, itens(categoria, valor_unitario))` para as movimentações `tipo='saida'` cujo `item_id` é null (28 registros no total, custo baixíssimo). Somar cada linha à agregação usando o `evento_projeto` da movimentação-pai.
+4. Manter o resto igual: casamento por `evento_projeto` × `centroNeedle`, categoria por nome ↔ plano de contas, chave de detalhe = `external_id` do plano (mescla na linha existente), fallback SC quando não casar.
 
 ## Escopo
 
-- Só `src/components/financeiro/ContaAzulDashboard.tsx`, dentro do componente `AnaliseDetalhada`.
-- Nada de mudança em UI, cores, layout, colunas, títulos.
-- Nada de migração, backend, `sync.server.ts`, nem outras telas (dashboard principal, DRE do módulo Financeiro etc.).
-- Nada de novos filtros/toggles.
-
-## Fora do escopo (confirmar se quiser incluir)
-
-- Mostrar as saídas de estoque também no painel principal (Dashboard Conta Azul) ou no DRE de `/financeiro/dashboard`. Aqui a instrução foi só "Análise Detalhamento" — mantenho só lá.
+- Só `src/components/financeiro/ContaAzulDashboard.tsx` (componente `AnaliseDetalhada`).
+- Nenhuma mudança visual, de UI, layout ou de outras telas.
+- Sem migração / sem alteração no `sync.server.ts`.
 
 ## Validação
 
-Selecionar um centro de custo que tenha saídas de estoque no evento correspondente e conferir que o valor entra na linha da categoria correta em CV/CD, sem aparecer nenhuma linha nova rotulada "(estoque)".
+Após o ajuste, selecionar um centro de custo com evento que tenha saídas de estoque (ex.: um dos "46158 - …") e conferir se aparecem valores em Custos Variáveis / Custos Diretos na Análise Detalhada.
