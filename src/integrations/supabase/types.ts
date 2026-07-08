@@ -1772,6 +1772,63 @@ export type Database = {
         }
         Relationships: []
       }
+      demanda_itens: {
+        Row: {
+          created_at: string
+          demanda_id: string
+          descricao: string | null
+          id: string
+          item_id: string | null
+          quantidade: number
+          quantidade_recebida: number
+          recebido: boolean
+          recebido_em: string | null
+          unidade: string | null
+          valor_unitario: number | null
+        }
+        Insert: {
+          created_at?: string
+          demanda_id: string
+          descricao?: string | null
+          id?: string
+          item_id?: string | null
+          quantidade?: number
+          quantidade_recebida?: number
+          recebido?: boolean
+          recebido_em?: string | null
+          unidade?: string | null
+          valor_unitario?: number | null
+        }
+        Update: {
+          created_at?: string
+          demanda_id?: string
+          descricao?: string | null
+          id?: string
+          item_id?: string | null
+          quantidade?: number
+          quantidade_recebida?: number
+          recebido?: boolean
+          recebido_em?: string | null
+          unidade?: string | null
+          valor_unitario?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demanda_itens_demanda_id_fkey"
+            columns: ["demanda_id"]
+            isOneToOne: false
+            referencedRelation: "demandas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demanda_itens_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "itens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       demanda_patrimonio_registros: {
         Row: {
           demanda_id: string

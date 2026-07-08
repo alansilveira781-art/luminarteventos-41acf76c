@@ -1,49 +1,79 @@
+## Objetivo
 
-## Problema
+Levar a entrada no estoque para dentro do próprio card de despesa (DemandaDialog), com lista de itens editável na aba "Descritivo" quando o tipo for fardamento/material_limpeza/material_escritorio, gravando em uma nova tabela `demanda_itens`. Remover a página separada `/financeiro/a-receber` criada anteriormente.
 
-Os lançamentos do evento **46179 – MÉTODO CIS 250 – CURITIBA** existem em `ca_contas_pagar` / `ca_contas_receber`, mas quase todos estão com `centro_custo_external_id = NULL`. Consequência:
+## Parte 1 — Migração `demanda_itens`
 
-- O DRE do evento na Análise Detalhada só encontra o que está em `ca_lancamento_rateios` (rateados) + o que tem centro direto — e a maioria não tem nenhum dos dois.
-- Ex.: `HOSPEDAGEM MV MÉTODO CIS CURITIBA` R$ 2.400, `LOCAC MOBILIA METODO CIS CURIT` R$ 17.000, todas as receitas do CIS (2× R$ 140.000 + R$ 35.390), etc.
+Nova migration espelhando `compra_itens`:
 
-Causa raiz em `src/lib/conta-azul/sync.server.ts`: a listagem da API v2 do Conta Azul **não** devolve `centros_de_custo` para lançamentos com 1 único centro. Hoje o `enrichItemsWithDetail` chama o endpoint de detalhe **só** quando `isRateado(it)` (≥2 centros ou ≥2 categorias). Lançamentos de 1 centro entram no banco sem centro nenhum.
+- Tabela `public.demanda_itens` com: `demanda_id (fk demandas on delete cascade)`, `item_id (fk itens)`, `descricao`, `unidade`, `quantidade`, `valor_unitario`, `recebido bool`, `quantidade_recebida`, `recebido_em`, timestamps.
+- `GRANT SELECT, INSERT, UPDATE, DELETE ... TO authenticated; GRANT ALL ... TO service_role`.
+- RLS habilitado com policy espelhando a de `compra_itens` (verifico via `supabase--read_query` no início da build).
+- Índice em `demanda_id`.
 
-## Fix
+Sem mexer no enum: `compra_status` já tem `a_receber`.
 
-### 1. `src/lib/conta-azul/sync.server.ts`
+## Parte 2 — Descritivo condicional no DemandaDialog
 
-- Trocar o critério de enriquecimento: chamar o endpoint de detalhe **sempre que o item da listagem não trouxer centro nem categoria completos** — na prática, para todos os itens com `centros_de_custo?.length === 0` ou `categorias?.length === 0` (além dos já rateados). Manter concorrência 5.
-- Em `persistRateios`, gerar fatia também para itens com 1 centro (a função `buildRateios` já faz isso quando `centros_de_custo` está presente após enriquecimento). Assim o DRE pode se apoiar 100% em `ca_lancamento_rateios` para agregar por evento, sem depender do campo direto.
-- `mapEvento` continua lendo `it.centros_de_custo?.[0]?.id`, que agora estará preenchido pós-enriquecimento — o campo `centro_custo_external_id` da tabela pai também passa a vir correto.
+Em `src/components/DemandaDialog.tsx`, aba "Descritivo":
 
-Impacto de performance: hoje o sync mensal só chama detalhe para ~10-20% dos itens; passará a chamar para praticamente todos. Um mês de ~800 lançamentos × ~200ms cada / 5 workers ≈ 30s adicionais por recurso por mês. Aceitável para o cron D-1 e para o histórico em chunks mensais que já existe.
+- Se `form.tipo_demanda ∈ {fardamento, material_limpeza, material_escritorio}`: substitui o Textarea por uma lista de itens editável (mesmo padrão da aba "Itens" de `CompraDialog`): linhas com `ItemSearchSelect`, descrição, unidade, quantidade, `MoneyInput` para valor unitário, subtotal por linha, total geral, botões adicionar/remover.
+- Caso contrário: mantém o Textarea de descritivo atual.
+- Evento/Projeto continua acima em ambos os casos.
 
-### 2. Reprocessar o evento CIS
+Estado local `itens: DemandaItem[]` carregado via query quando `demandaId` existe (`select * from demanda_itens where demanda_id = ?`).
 
-Depois do deploy, disparar via `/api/contaazul/historico` um job cobrindo `2026-05-01` → `2026-08-31` (janela do CIS + parcelas futuras do carro). Isso re-baixa esses meses de contas a pagar e a receber com o novo enriquecimento, atualiza `centro_custo_external_id` e recria as fatias em `ca_lancamento_rateios`.
+Na mutation `save`:
+- Grava a demanda como hoje.
+- Se o tipo for um dos três: `delete from demanda_itens where demanda_id = id` e reinsere a lista atual (mesma estratégia do CompraDialog).
+- Se não for: não toca em `demanda_itens`.
 
-### 3. Validação
+## Parte 3 — Coluna "A Receber" + regra de próximo status
 
-Rodar no SQL:
+Já implementado em passos anteriores (verifico e mantenho):
+- `DEMANDA_STATUSES` inclui `a_receber` antes de `finalizado`.
+- `proximoStatusDemanda(status, tipo)` roteia `em_andamento → a_receber` só para os três tipos.
+- `financeiro.index.tsx` usa `proximoStatusDemanda(c.status, c.tipo_demanda)` e traz `tipo_demanda` no select.
 
-```sql
-select 'pagar_rateio' src, count(*), sum(valor)
-from ca_lancamento_rateios
-where tipo='pagar' and centro_custo_external_id='514fc86e-60d4-11f1-bf1c-6f50526ad2f5'
-union all
-select 'receber_rateio', count(*), sum(valor)
-from ca_lancamento_rateios
-where tipo='receber' and centro_custo_external_id='514fc86e-60d4-11f1-bf1c-6f50526ad2f5';
-```
+Nada novo aqui além de confirmar.
 
-Esperado, conforme o extrato enviado:
-- Receber ≈ R$ 315.390,00 (3 recebimentos)
-- Pagar ≈ R$ 212.000,00 (~14 lançamentos, incluindo as fatias das comissões e do vídeo MAXMIDIAS já rateados)
+## Parte 4 — Validar recebimento a partir do card
 
-Depois abrir Financeiro › Dashboard › Análise Detalhada, filtrar o evento CIS e conferir se o DRE bate com o extrato.
+No `DemandaDialog`, quando `form.status === 'a_receber'` e o tipo for um dos três, adicionar botão **"Validar recebimento"** no rodapé (ao lado de Avançar). Ele abre um sub-dialog compacto que:
 
-## Fora de escopo
+1. Lista os itens da demanda (de `demanda_itens`) com quantidade editável (default = `quantidade`).
+2. Ao confirmar:
+   - Revalida `select status from demandas where id = ?` — precisa estar em `a_receber`.
+   - Gera `requisicao_numero` via RPC `next_requisicao_numero`.
+   - Para cada linha, insere em `movimentacoes`: `tipo:'entrada'`, `entrada_tipo:'compra'`, `item_id`, `quantidade`, `valor_unitario`, `valor_total = qtd*vu`, `empresa` (usa `empresa` da demanda se houver, senão default), `data_movimento: hoje`, `requisicao_numero`, `observacao: 'DESPESA-<numero>'`.
+   - Atualiza `demanda_itens.recebido=true`, `quantidade_recebida`, `recebido_em=now()`.
+   - Atualiza `demandas.status='finalizado'`.
+   - Invalida queries: `demandas`, `itens`, `entradas`, `item-movs`, `dashboard-*`.
 
-- Não altero `calcularDRECaixa` nem outras queries da Análise Detalhada (já corrigidas anteriormente com `fetchPaged`).
-- Não mudo as tabelas nem o schema — só a lógica de sincronização.
-- Sem re-sync global agora; só a janela do CIS. Um re-sync completo dos últimos 12 meses pode ser rodado depois se você quiser garantir os outros eventos também.
+Fecha o card ao final.
+
+## Parte 5 — Limpeza da tentativa anterior
+
+- Deletar `src/routes/financeiro.a-receber.tsx` (fluxo agora vive no card).
+- Remover o item "A receber" das Despesas em `src/components/AppSidebar.tsx`.
+- Regenerar `routeTree.gen.ts` (automático no build).
+
+## Detalhes técnicos
+
+- Uso `sb as any` como o restante do arquivo para acessar a nova tabela sem esperar regenerar `types.ts`.
+- Padrão idêntico ao `CompraDialog` para itens: precisa que eu leia rapidamente a seção "Itens" desse arquivo antes de codar, para copiar exatamente o layout/lógica.
+- Antes de escrever a migration, leio as policies de `compra_itens` via `supabase--read_query` e espelho.
+
+## Ordem de execução
+
+1. `supabase--read_query` para policies de `compra_itens` e schema de `movimentacoes` (confirmar colunas usadas no recebimento em `estoque.a-receber.tsx`).
+2. `supabase--migration` para `demanda_itens`.
+3. Edições em `DemandaDialog.tsx` (lista de itens + botão validar).
+4. Delete de `financeiro.a-receber.tsx` e limpeza do sidebar.
+5. Verificação de build.
+
+## Respostas prometidas ao final
+
+(1) Precisou de migration no enum? Não — `compra_status` já aceita `a_receber`.
+(2) Onde ficou o botão de validar? No rodapé do próprio DemandaDialog, visível quando o card está em "A Receber" e o tipo exige estoque.
+(3) Confirmação de que a entrada cai em `itens`/`movimentacoes` no mesmo formato que Compras — os triggers existentes (`apply_movement`, custo médio, refresh_status) rodam normalmente.
