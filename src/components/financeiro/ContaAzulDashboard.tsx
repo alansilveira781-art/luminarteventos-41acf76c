@@ -833,7 +833,7 @@ function AnaliseDetalhada() {
   const linhasDre = useMemo(() => {
     const out: { kind: "header" | "calc" | "detail"; id: string; label: string; valor: number; pct: number; catId?: string; groupId?: DreGroupId }[] = [];
     const pct = (v: number) => (rb > 0 ? v / rb : 0);
-    for (const line of dreEstrutura) {
+    for (const line of estruturaEfetiva) {
       const v = totais[line.id] ?? 0;
       if (line.kind === "sum") {
         out.push({ kind: "header", id: line.id, label: GROUP_LABEL[line.id] ?? line.label, valor: v, pct: pct(v), groupId: line.id });
@@ -841,13 +841,13 @@ function AnaliseDetalhada() {
           const det = grupos.get(line.id);
           if (det) {
             Array.from(det.entries())
-              .sort((a, b) => (planoMap.get(a[0])?.nome ?? "").localeCompare(planoMap.get(b[0])?.nome ?? "", "pt-BR"))
+              .sort((a, b) => (planoMapExt.get(a[0])?.nome ?? "").localeCompare(planoMapExt.get(b[0])?.nome ?? "", "pt-BR"))
               .forEach(([catId, valor]) => {
                 const signed = valor * line.sign;
                 out.push({
                   kind: "detail",
                   id: `${line.id}:${catId}`,
-                  label: planoMap.get(catId)?.nome ?? "Sem categoria",
+                  label: planoMapExt.get(catId)?.nome ?? "Sem categoria",
                   valor: signed,
                   pct: pct(signed),
                   catId,
@@ -860,7 +860,7 @@ function AnaliseDetalhada() {
       }
     }
     return out;
-  }, [totais, grupos, collapsed, planoMap, rb, dreEstrutura]);
+  }, [totais, grupos, collapsed, planoMapExt, rb, estruturaEfetiva]);
 
   const linhaLucro = useMemo(() => linhasDre.find((r) => r.id === "LU"), [linhasDre]);
   const linhasDreSemLucro = useMemo(() => linhasDre.filter((r) => r.id !== "LU"), [linhasDre]);
