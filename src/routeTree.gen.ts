@@ -90,6 +90,7 @@ import { Route as ApiContaazulStatusRouteImport } from './routes/api/contaazul/s
 import { Route as ApiContaazulScheduleRouteImport } from './routes/api/contaazul/schedule'
 import { Route as ApiContaazulReprocessarFalhasRouteImport } from './routes/api/contaazul/reprocessar-falhas'
 import { Route as ApiContaazulHistoricoRouteImport } from './routes/api/contaazul/historico'
+import { Route as ApiContaazulDiagMaxmidiasRouteImport } from './routes/api/contaazul/diag-maxmidias'
 import { Route as ApiPublicContaazulCronRouteImport } from './routes/api/public/contaazul/cron'
 import { Route as ApiContaazulOauthPrepareRouteImport } from './routes/api/contaazul/oauth.prepare'
 import { Route as ApiContaazulOauthCallbackRouteImport } from './routes/api/contaazul/oauth.callback'
@@ -506,6 +507,12 @@ const ApiContaazulHistoricoRoute = ApiContaazulHistoricoRouteImport.update({
   path: '/api/contaazul/historico',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiContaazulDiagMaxmidiasRoute =
+  ApiContaazulDiagMaxmidiasRouteImport.update({
+    id: '/api/contaazul/diag-maxmidias',
+    path: '/api/contaazul/diag-maxmidias',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicContaazulCronRoute = ApiPublicContaazulCronRouteImport.update({
   id: '/api/public/contaazul/cron',
   path: '/api/public/contaazul/cron',
@@ -592,6 +599,7 @@ export interface FileRoutesByFullPath {
   '/juridico/': typeof JuridicoIndexRoute
   '/patrimonio/': typeof PatrimonioIndexRoute
   '/rh/': typeof RhIndexRoute
+  '/api/contaazul/diag-maxmidias': typeof ApiContaazulDiagMaxmidiasRoute
   '/api/contaazul/historico': typeof ApiContaazulHistoricoRoute
   '/api/contaazul/reprocessar-falhas': typeof ApiContaazulReprocessarFalhasRoute
   '/api/contaazul/schedule': typeof ApiContaazulScheduleRoute
@@ -667,6 +675,7 @@ export interface FileRoutesByTo {
   '/juridico': typeof JuridicoIndexRoute
   '/patrimonio': typeof PatrimonioIndexRoute
   '/rh': typeof RhIndexRoute
+  '/api/contaazul/diag-maxmidias': typeof ApiContaazulDiagMaxmidiasRoute
   '/api/contaazul/historico': typeof ApiContaazulHistoricoRoute
   '/api/contaazul/reprocessar-falhas': typeof ApiContaazulReprocessarFalhasRoute
   '/api/contaazul/schedule': typeof ApiContaazulScheduleRoute
@@ -754,6 +763,7 @@ export interface FileRoutesById {
   '/juridico/': typeof JuridicoIndexRoute
   '/patrimonio/': typeof PatrimonioIndexRoute
   '/rh/': typeof RhIndexRoute
+  '/api/contaazul/diag-maxmidias': typeof ApiContaazulDiagMaxmidiasRoute
   '/api/contaazul/historico': typeof ApiContaazulHistoricoRoute
   '/api/contaazul/reprocessar-falhas': typeof ApiContaazulReprocessarFalhasRoute
   '/api/contaazul/schedule': typeof ApiContaazulScheduleRoute
@@ -842,6 +852,7 @@ export interface FileRouteTypes {
     | '/juridico/'
     | '/patrimonio/'
     | '/rh/'
+    | '/api/contaazul/diag-maxmidias'
     | '/api/contaazul/historico'
     | '/api/contaazul/reprocessar-falhas'
     | '/api/contaazul/schedule'
@@ -917,6 +928,7 @@ export interface FileRouteTypes {
     | '/juridico'
     | '/patrimonio'
     | '/rh'
+    | '/api/contaazul/diag-maxmidias'
     | '/api/contaazul/historico'
     | '/api/contaazul/reprocessar-falhas'
     | '/api/contaazul/schedule'
@@ -1003,6 +1015,7 @@ export interface FileRouteTypes {
     | '/juridico/'
     | '/patrimonio/'
     | '/rh/'
+    | '/api/contaazul/diag-maxmidias'
     | '/api/contaazul/historico'
     | '/api/contaazul/reprocessar-falhas'
     | '/api/contaazul/schedule'
@@ -1048,6 +1061,7 @@ export interface RootRouteChildren {
   EstoqueItemIdRoute: typeof EstoqueItemIdRoute
   EstoqueAReceberRoute: typeof EstoqueAReceberRoute
   EstoqueIndexRoute: typeof EstoqueIndexRoute
+  ApiContaazulDiagMaxmidiasRoute: typeof ApiContaazulDiagMaxmidiasRoute
   ApiContaazulHistoricoRoute: typeof ApiContaazulHistoricoRoute
   ApiContaazulReprocessarFalhasRoute: typeof ApiContaazulReprocessarFalhasRoute
   ApiContaazulScheduleRoute: typeof ApiContaazulScheduleRoute
@@ -1630,6 +1644,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiContaazulHistoricoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/contaazul/diag-maxmidias': {
+      id: '/api/contaazul/diag-maxmidias'
+      path: '/api/contaazul/diag-maxmidias'
+      fullPath: '/api/contaazul/diag-maxmidias'
+      preLoaderRoute: typeof ApiContaazulDiagMaxmidiasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/contaazul/cron': {
       id: '/api/public/contaazul/cron'
       path: '/api/public/contaazul/cron'
@@ -1879,6 +1900,7 @@ const rootRouteChildren: RootRouteChildren = {
   EstoqueItemIdRoute: EstoqueItemIdRoute,
   EstoqueAReceberRoute: EstoqueAReceberRoute,
   EstoqueIndexRoute: EstoqueIndexRoute,
+  ApiContaazulDiagMaxmidiasRoute: ApiContaazulDiagMaxmidiasRoute,
   ApiContaazulHistoricoRoute: ApiContaazulHistoricoRoute,
   ApiContaazulReprocessarFalhasRoute: ApiContaazulReprocessarFalhasRoute,
   ApiContaazulScheduleRoute: ApiContaazulScheduleRoute,
