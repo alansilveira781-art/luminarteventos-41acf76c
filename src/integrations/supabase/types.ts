@@ -1776,9 +1776,13 @@ export type Database = {
         Row: {
           created_at: string
           demanda_id: string
+          desconto: number
           descricao: string | null
+          frete: number
           id: string
+          ipi: number
           item_id: string | null
+          outros_custos: number
           quantidade: number
           quantidade_recebida: number
           recebido: boolean
@@ -1789,9 +1793,13 @@ export type Database = {
         Insert: {
           created_at?: string
           demanda_id: string
+          desconto?: number
           descricao?: string | null
+          frete?: number
           id?: string
+          ipi?: number
           item_id?: string | null
+          outros_custos?: number
           quantidade?: number
           quantidade_recebida?: number
           recebido?: boolean
@@ -1802,9 +1810,13 @@ export type Database = {
         Update: {
           created_at?: string
           demanda_id?: string
+          desconto?: number
           descricao?: string | null
+          frete?: number
           id?: string
+          ipi?: number
           item_id?: string | null
+          outros_custos?: number
           quantidade?: number
           quantidade_recebida?: number
           recebido?: boolean
