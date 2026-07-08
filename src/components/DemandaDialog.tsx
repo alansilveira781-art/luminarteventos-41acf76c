@@ -370,16 +370,101 @@ export function DemandaDialog({
                 }}
               />
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Descritivo da solicitação</label>
-              <Textarea
-                rows={12}
-                value={form.descritivo ?? ""}
-                onChange={(e) => setForm({ ...form, descritivo: e.target.value })}
-                placeholder="Descreva em detalhes a solicitação (o que precisa, quantidades, observações, prazos, etc.)"
-              />
-            </div>
+            {tipoRequerItens ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-muted-foreground">Itens da despesa</label>
+                  <Button type="button" variant="outline" size="sm" onClick={addItem}>
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar item
+                  </Button>
+                </div>
+                {itens.length === 0 && (
+                  <p className="text-xs text-muted-foreground italic">Nenhum item adicionado.</p>
+                )}
+                {itens.map((it, idx) => (
+                  <div key={idx} className="rounded-md border border-border p-3 space-y-2">
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Item do estoque</label>
+                        <ItemSearchSelect
+                          itens={estoqueItens as any}
+                          value={it.item_id ?? ""}
+                          onChange={(id) => {
+                            const found: any = (estoqueItens as any[]).find((x) => x.id === id);
+                            updateItem(idx, {
+                              item_id: id,
+                              descricao: it.descricao || found?.nome || "",
+                              unidade: it.unidade || found?.unidade || "",
+                            });
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Descrição (livre)</label>
+                        <Input
+                          value={it.descricao ?? ""}
+                          onChange={(e) => updateItem(idx, { descricao: e.target.value })}
+                          placeholder="Item novo / não cadastrado"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Qtd</label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={it.quantidade}
+                          onChange={(e) => updateItem(idx, { quantidade: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Unidade</label>
+                        <Input
+                          value={it.unidade ?? ""}
+                          onChange={(e) => updateItem(idx, { unidade: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Valor unit.</label>
+                        <MoneyInput
+                          value={it.valor_unitario ?? 0}
+                          onChange={(n) => updateItem(idx, { valor_unitario: n || null })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Subtotal</label>
+                        <Input
+                          value={(Number(it.quantidade || 0) * Number(it.valor_unitario || 0)).toFixed(2)}
+                          readOnly
+                          className="bg-muted/50"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end">
+                      <Button type="button" variant="ghost" size="sm" onClick={() => removeItem(idx)}>
+                        <Trash2 className="h-3.5 w-3.5 mr-1" /> Remover
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                <div className="text-right text-sm font-medium pt-2">
+                  Total: {totalItens.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Descritivo da solicitação</label>
+                <Textarea
+                  rows={12}
+                  value={form.descritivo ?? ""}
+                  onChange={(e) => setForm({ ...form, descritivo: e.target.value })}
+                  placeholder="Descreva em detalhes a solicitação (o que precisa, quantidades, observações, prazos, etc.)"
+                />
+              </div>
+            )}
           </TabsContent>
+
 
           <TabsContent value="anexos" className="space-y-2 pt-4">
             {demandaId ? (
