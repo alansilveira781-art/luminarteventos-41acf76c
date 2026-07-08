@@ -82,7 +82,7 @@ function DemandasKanban() {
     queryFn: async () => {
       const { data, error } = await sb
         .from("demandas")
-        .select("id,numero,status,titulo,solicitante,fornecedor,comprador,data_solicitacao,data_compra,valor_total,responsavel_id,responsavel_nome")
+        .select("id,numero,status,titulo,solicitante,fornecedor,comprador,data_solicitacao,data_compra,valor_total,tipo_demanda,responsavel_id,responsavel_nome")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Demanda[];
