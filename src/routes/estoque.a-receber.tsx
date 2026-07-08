@@ -793,3 +793,369 @@ function CadastrarItemInline({
     </div>
   );
 }
+
+type LinhaRecDem = {
+  key: string;
+  demanda_item_id?: string | null;
+  item_id: string;
+  descricao: string;
+  unidade: string;
+  quantidade: number;
+  valor_unitario: number;
+  desconto: number;
+  frete: number;
+  ipi: number;
+  outros_custos: number;
+};
+
+function novaLinhaRecDem(): LinhaRecDem {
+  return {
+    key: `l-${Math.random().toString(36).slice(2, 9)}`,
+    item_id: "",
+    descricao: "",
+    unidade: "",
+    quantidade: 0,
+    valor_unitario: 0,
+    desconto: 0,
+    frete: 0,
+    ipi: 0,
+    outros_custos: 0,
+  };
+}
+
+function ReceberDemandaDialog({ demandaId, onClose }: { demandaId: string; onClose: () => void }) {
+  const qc = useQueryClient();
+
+  const { data: demanda } = useQuery({
+    queryKey: ["demanda-a-receber-info", demandaId],
+    queryFn: async () => {
+      const { data, error } = await sb
+        .from("demandas")
+        .select("id,numero,titulo,solicitante,fornecedor,fornecedor_id,documento,comprador,status,tipo_demanda")
+        .eq("id", demandaId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("Despesa não encontrada");
+      return data as any;
+    },
+  });
+
+  const { data: demandaItens = [] } = useQuery({
+    queryKey: ["demanda-itens-a-receber-src", demandaId],
+    queryFn: async () => {
+      const { data, error } = await sb
+        .from("demanda_itens")
+        .select("id,item_id,descricao,unidade,quantidade,valor_unitario,desconto,frete,ipi,outros_custos,recebido")
+        .eq("demanda_id", demandaId)
+        .eq("recebido", false)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  const { data: estoqueItens = [] } = useQuery({
+    queryKey: ["itens-select"],
+    queryFn: async () =>
+      await fetchAllRows<any>("itens", "id,nome,codigo,codigo_proprio,unidade,valor_unitario", {
+        orderBy: { column: "nome", ascending: true },
+        pageSize: 1000,
+      }),
+    staleTime: 0,
+  });
+
+  const { data: fornecedores = [] } = useQuery({
+    queryKey: ["fornecedores-select"],
+    queryFn: async () =>
+      (await sb.from("fornecedores").select("*").eq("status", "ativo").order("nome")).data ?? [],
+  });
+
+  const [linhas, setLinhas] = useState<LinhaRecDem[]>([novaLinhaRecDem()]);
+  const [fornecedorId, setFornecedorId] = useState("");
+  const [notaFiscal, setNotaFiscal] = useState("");
+  const [empresa, setEmpresa] = useState("");
+  const [dataMovimento, setDataMovimento] = useState(() => toBRTInputDateTime());
+  const [prefilled, setPrefilled] = useState(false);
+
+  if (demanda && !prefilled) {
+    setPrefilled(true);
+    if (demanda.fornecedor_id) setFornecedorId(demanda.fornecedor_id);
+    if (demanda.documento) setNotaFiscal(demanda.documento);
+  }
+
+  const [linhasInit, setLinhasInit] = useState(false);
+  if (demandaItens.length > 0 && !linhasInit) {
+    setLinhasInit(true);
+    setLinhas(
+      demandaItens.map((it) => ({
+        key: `l-${it.id}`,
+        demanda_item_id: it.id,
+        item_id: it.item_id ?? "",
+        descricao: it.descricao ?? "",
+        unidade: it.unidade ?? "",
+        quantidade: Number(it.quantidade || 0),
+        valor_unitario: Number(it.valor_unitario || 0),
+        desconto: Number(it.desconto || 0),
+        frete: Number(it.frete || 0),
+        ipi: Number(it.ipi || 0),
+        outros_custos: Number(it.outros_custos || 0),
+      })),
+    );
+  }
+
+  const statusBlocked = demanda && demanda.status !== "a_receber";
+
+  const totalRecebimento = useMemo(() => {
+    return linhas.reduce((soma, l) => {
+      const q = Number(l.quantidade || 0);
+      if (!q || q <= 0) return soma;
+      const vu = Number(l.valor_unitario || 0);
+      return soma + (q * vu - Number(l.desconto || 0) + Number(l.frete || 0) + Number(l.ipi || 0) + Number(l.outros_custos || 0));
+    }, 0);
+  }, [linhas]);
+
+  const linhasValidas = linhas.filter((l) => l.item_id && l.quantidade > 0);
+
+  function setLinha(key: string, patch: Partial<LinhaRecDem>) {
+    setLinhas((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+  }
+  function removerLinha(key: string) {
+    setLinhas((ls) => (ls.length <= 1 ? ls : ls.filter((l) => l.key !== key)));
+  }
+  function adicionarLinha() {
+    setLinhas((ls) => [...ls, novaLinhaRecDem()]);
+  }
+
+  const finalizar = useMutation({
+    mutationFn: async () => {
+      if (!fornecedorId) throw new Error("Selecione o fornecedor");
+      if (!empresa) throw new Error("Selecione a empresa");
+      if (!dataMovimento) throw new Error("Informe a data do recebimento");
+      if (linhasValidas.length === 0)
+        throw new Error("Selecione ao menos um item de estoque e informe a quantidade.");
+
+      const fornecedorNome = fornecedores.find((f: any) => f.id === fornecedorId)?.nome ?? "";
+
+      const { data: statusRow, error: statusErr } = await sb
+        .from("demandas").select("status").eq("id", demandaId).maybeSingle();
+      if (statusErr) throw statusErr;
+      if (!statusRow) throw new Error("Despesa não encontrada");
+      if (statusRow.status !== "a_receber") {
+        throw new Error(`Esta despesa não está mais em 'A Receber' (status atual: ${statusRow.status}).`);
+      }
+
+      const dataIso = fromBRTInputDateTime(dataMovimento);
+      const { data: numData, error: numErr } = await sb.rpc("next_requisicao_numero");
+      if (numErr) throw numErr;
+      const requisicaoNumero = numData as number;
+      const origem = demanda?.numero != null ? `DESPESA-${demanda.numero}` : demandaId;
+
+      for (const l of linhasValidas) {
+        const qtd = Number(l.quantidade);
+        const vu = Number(l.valor_unitario || 0);
+        const desc = Number(l.desconto || 0);
+        const fre = Number(l.frete || 0);
+        const ip = Number(l.ipi || 0);
+        const out = Number(l.outros_custos || 0);
+        const valorTotal = qtd * vu - desc + fre + ip + out;
+
+        const { error } = await sb.from("movimentacoes").insert({
+          tipo: "entrada",
+          entrada_tipo: "compra",
+          item_id: l.item_id,
+          quantidade: qtd,
+          valor_unitario: vu || null,
+          valor_total: Number(valorTotal.toFixed(4)),
+          desconto: Number(desc.toFixed(4)),
+          frete: Number(fre.toFixed(4)),
+          ipi: Number(ip.toFixed(4)),
+          outros_custos: Number(out.toFixed(4)),
+          requisicao_numero: requisicaoNumero,
+          empresa,
+          data_movimento: dataIso,
+          fornecedor_id: fornecedorId || null,
+          nota_fiscal: notaFiscal || null,
+          responsavel_recebimento: demanda?.comprador ?? null,
+          responsavel_lancamento: demanda?.comprador ?? null,
+          observacoes: `Recebimento da despesa ${origem}${fornecedorNome ? ` - Fornecedor: ${fornecedorNome}` : ""}`,
+        });
+        if (error) throw error;
+
+        if (l.demanda_item_id) {
+          await sb.from("demanda_itens").update({
+            recebido: true,
+            quantidade_recebida: qtd,
+            recebido_em: new Date().toISOString(),
+          }).eq("id", l.demanda_item_id);
+        }
+      }
+
+      const { error: updErr } = await sb.from("demandas").update({
+        status: "finalizado",
+        fornecedor: fornecedorNome || demanda?.fornecedor || null,
+        fornecedor_id: fornecedorId || null,
+        documento: notaFiscal || null,
+      }).eq("id", demandaId);
+      if (updErr) throw updErr;
+    },
+    onSuccess: () => {
+      toast.success("Recebimento registrado e despesa finalizada");
+      qc.invalidateQueries({ queryKey: ["demandas"] });
+      qc.invalidateQueries({ queryKey: ["demandas-receber"] });
+      qc.invalidateQueries({ queryKey: ["itens-min"] });
+      qc.invalidateQueries({ queryKey: ["itens"] });
+      qc.invalidateQueries({ queryKey: ["entradas"] });
+      qc.invalidateQueries({ queryKey: ["item-movs"] });
+      onClose();
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao finalizar"),
+  });
+
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            Validar recebimento
+            {demanda?.numero != null && (
+              <span className="ml-2 text-xs font-mono text-muted-foreground">DESPESA-{demanda.numero}</span>
+            )}
+          </DialogTitle>
+        </DialogHeader>
+
+        {statusBlocked && (
+          <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
+            <AlertTriangle className="h-4 w-4 mt-0.5 text-destructive shrink-0" />
+            <div>
+              Esta despesa não está mais em <strong>A Receber</strong> (status atual: <strong>{demanda?.status}</strong>).
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-md border border-border p-3 bg-muted/20">
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Data do recebimento*</label>
+            <Input type="datetime-local" value={dataMovimento} onChange={(e) => setDataMovimento(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Empresa*</label>
+            <Select value={empresa} onValueChange={setEmpresa}>
+              <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+              <SelectContent>
+                {EMPRESAS.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Tipo de entrada</label>
+            <Input value="Compra (despesa)" readOnly className="bg-muted/40" />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Fornecedor*</label>
+            <EntitySearchSelect
+              options={fornecedores as any}
+              value={fornecedorId}
+              onChange={(v) => setFornecedorId(v)}
+              placeholder="Selecione…"
+              searchPlaceholder="Buscar fornecedor…"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Nota fiscal</label>
+            <Input value={notaFiscal} onChange={(e) => setNotaFiscal(e.target.value)} />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold">Itens que vão dar entrada no estoque</h3>
+            <Button size="sm" variant="outline" onClick={adicionarLinha}>
+              <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar item
+            </Button>
+          </div>
+
+          {linhas.map((l) => {
+            const total = Number(l.quantidade || 0) * Number(l.valor_unitario || 0)
+              - Number(l.desconto || 0) + Number(l.frete || 0) + Number(l.ipi || 0) + Number(l.outros_custos || 0);
+            return (
+              <div key={l.key} className="rounded-md border border-border p-3 space-y-2">
+                {l.descricao && (
+                  <div className="text-xs text-muted-foreground">{l.descricao}</div>
+                )}
+                <div className="grid gap-2 sm:grid-cols-[1fr_100px_120px_120px]">
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Item de estoque*</label>
+                    <ItemSearchSelect
+                      itens={estoqueItens as any}
+                      value={l.item_id}
+                      onChange={(v) => setLinha(l.key, { item_id: v })}
+                      placeholder="Buscar item…"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Qtd*</label>
+                    <Input
+                      type="number" min={0} step="0.01"
+                      value={l.quantidade || ""}
+                      onChange={(e) => setLinha(l.key, { quantidade: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Cust. unit.</label>
+                    <MoneyInput value={l.valor_unitario} onChange={(v) => setLinha(l.key, { valor_unitario: v })} hidePrefix decimals={4} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Total linha</label>
+                    <div className="h-9 flex items-center justify-end px-2 rounded-md border border-input bg-muted/30 text-sm tabular-nums">
+                      {total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Desconto</label>
+                    <MoneyInput value={l.desconto} onChange={(v) => setLinha(l.key, { desconto: v })} hidePrefix />
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Frete</label>
+                    <MoneyInput value={l.frete} onChange={(v) => setLinha(l.key, { frete: v })} hidePrefix />
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground">IPI</label>
+                    <MoneyInput value={l.ipi} onChange={(v) => setLinha(l.key, { ipi: v })} hidePrefix />
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Outros / Imposto</label>
+                    <MoneyInput value={l.outros_custos} onChange={(v) => setLinha(l.key, { outros_custos: v })} hidePrefix />
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button size="sm" variant="ghost" disabled={linhas.length <= 1} onClick={() => removerLinha(l.key)}>
+                    <Undo2 className="h-3.5 w-3.5 mr-1" /> Remover
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+          <div className="text-right text-sm">
+            <span className="text-muted-foreground">Total do recebimento: </span>
+            <span className="font-semibold tabular-nums">
+              {totalRecebimento.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            </span>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button
+            onClick={() => finalizar.mutate()}
+            disabled={finalizar.isPending || !!statusBlocked}
+          >
+            <PackageCheck className="h-4 w-4 mr-1" />
+            {finalizar.isPending ? "Registrando…" : "Finalizar recebimento"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
