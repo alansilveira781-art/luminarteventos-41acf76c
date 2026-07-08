@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -12,16 +12,34 @@ import { SelectCreatable } from "@/components/SelectCreatable";
 import { DbComboboxCreatable } from "@/components/DbComboboxCreatable";
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { MentionInput, renderCommentText } from "@/components/MentionInput";
-import { Trash2, Upload, Download, FileIcon, ChevronRight, CheckCircle2, XCircle } from "lucide-react";
+import { Trash2, Upload, Download, FileIcon, ChevronRight, CheckCircle2, XCircle, Plus, PackageCheck, AlertTriangle } from "lucide-react";
 import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 import { MoneyInput } from "@/components/MoneyInput";
+import { ItemSearchSelect } from "@/components/ItemSearchSelect";
+import { EntitySearchSelect } from "@/components/EntitySearchSelect";
+import { EMPRESAS } from "@/lib/empresas";
+import { fetchAllRows } from "@/lib/fetch-all";
+import { toBRTInputDateTime, fromBRTInputDateTime } from "@/lib/datetime";
 import { toast } from "sonner";
 import { ensureValidSession, describeSupabaseError } from "@/lib/supabase-guard";
-import { DEMANDA_STATUSES, TIPO_DEMANDA_OPTIONS, proximoStatusDemanda, type DemandaStatus } from "@/lib/demandas";
+import { DEMANDA_STATUSES, TIPO_DEMANDA_OPTIONS, TIPOS_QUE_VAO_PARA_ESTOQUE, proximoStatusDemanda, type DemandaStatus } from "@/lib/demandas";
 import { useAuth } from "@/contexts/AuthContext";
 import { CopiarLinkButton } from "@/components/CopiarLinkButton";
 
 const sb = supabase as any;
+
+export type DemandaItem = {
+  id?: string;
+  item_id?: string | null;
+  descricao?: string | null;
+  unidade?: string | null;
+  quantidade: number;
+  valor_unitario?: number | null;
+};
+
+function novoDemandaItem(): DemandaItem {
+  return { item_id: null, descricao: "", unidade: "", quantidade: 1, valor_unitario: 0 };
+}
 
 export type Demanda = {
   id?: string;
