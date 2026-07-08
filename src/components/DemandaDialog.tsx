@@ -370,15 +370,10 @@ export function DemandaDialog({
                   </>
                 );
               }
-              const idx = DEMANDA_STATUSES.findIndex((s) => s.key === form.status);
-              let nextKey: DemandaStatus | null = null;
-              let nextLabel: string | null = null;
-              for (let i = idx + 1; i < DEMANDA_STATUSES.length; i++) {
-                if (DEMANDA_STATUSES[i].key === "negada") continue;
-                nextKey = DEMANDA_STATUSES[i].key;
-                nextLabel = DEMANDA_STATUSES[i].label;
-                break;
-              }
+              const nextKey = proximoStatusDemanda(form.status, form.tipo_demanda ?? null);
+              const nextLabel = nextKey
+                ? DEMANDA_STATUSES.find((s) => s.key === nextKey)?.label ?? null
+                : null;
               if (!nextLabel || !nextKey) return null;
               return (
                 <Button
