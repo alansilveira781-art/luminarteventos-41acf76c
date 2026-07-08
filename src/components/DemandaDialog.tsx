@@ -264,7 +264,9 @@ export function DemandaDialog({
                 <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as DemandaStatus })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {DEMANDA_STATUSES.map((s) => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}
+                    {DEMANDA_STATUSES
+                      .filter((s) => s.key !== "a_receber" || TIPOS_QUE_VAO_PARA_ESTOQUE.includes(form.tipo_demanda ?? ""))
+                      .map((s) => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </FormField>
