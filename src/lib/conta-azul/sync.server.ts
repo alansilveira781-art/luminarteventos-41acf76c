@@ -171,22 +171,61 @@ function buildRateios(
   const lancId = String(it.id);
   const total = Number(it.total ?? 0);
 
-  const pairedRaw: any[] | null = Array.isArray(it.rateios)
-    ? it.rateios
-    : Array.isArray(it.alocacoes)
-      ? it.alocacoes
-      : null;
+  // Descobrir onde vem o array de fatias. O payload pode variar:
+  //  a) it.rateios / it.alocacoes / it.rateio_centros_custo / it.rateios_centro_custo
+  //  b) it.rateio: { fatias: [...] } ou { itens: [...] } ou { centros_de_custo: [...] }
+  //  c) só it.centros_de_custo + it.categorias (sem valor por fatia — cai em divisão igual)
+  const nested = it.rateio ?? it.detalhe_rateio ?? it.rateios_detalhe ?? null;
+  const pairedRaw: any[] | null =
+    (Array.isArray(it.rateios) && it.rateios) ||
+    (Array.isArray(it.alocacoes) && it.alocacoes) ||
+    (Array.isArray(it.rateio_centros_custo) && it.rateio_centros_custo) ||
+    (Array.isArray(it.rateios_centro_custo) && it.rateios_centro_custo) ||
+    (Array.isArray(it.rateios_centros_custo) && it.rateios_centros_custo) ||
+    (Array.isArray(it.centro_custo_rateios) && it.centro_custo_rateios) ||
+    (nested && Array.isArray(nested.fatias) && nested.fatias) ||
+    (nested && Array.isArray(nested.itens) && nested.itens) ||
+    (nested && Array.isArray(nested.rateios) && nested.rateios) ||
+    (nested && Array.isArray(nested.centros_de_custo) && nested.centros_de_custo) ||
+    null;
+
   let pairs: Array<{ ordem: number; cc: string | null; cat: string | null; valorRaw: number | null; pct: number | null }>;
   if (pairedRaw && pairedRaw.length > 0) {
     pairs = pairedRaw.map((r: any, idx: number) => {
-      const ccId = r.centro_custo?.id ?? r.centro_de_custo?.id ?? r.centro_custo_id ?? r.cc?.id ?? null;
-      const catId = r.categoria?.id ?? r.categoria_id ?? r.cat?.id ?? null;
+      const ccId =
+        r.centro_custo?.id ??
+        r.centro_de_custo?.id ??
+        r.centro_custo_id ??
+        r.centro_de_custo_id ??
+        r.id_centro_custo ??
+        r.cc?.id ??
+        (typeof r.id === "string" && (r.centro_custo || r.centro_de_custo || r.tipo === "CENTRO_CUSTO") ? r.id : null) ??
+        null;
+      const catId =
+        r.categoria?.id ??
+        r.categoria_id ??
+        r.id_categoria ??
+        r.cat?.id ??
+        null;
+      const valorRaw =
+        r.valor != null ? Number(r.valor) :
+        r.valor_rateio != null ? Number(r.valor_rateio) :
+        r.valor_fatia != null ? Number(r.valor_fatia) :
+        r.montante != null ? Number(r.montante) :
+        r.total != null ? Number(r.total) :
+        null;
+      const pct =
+        r.percentual != null ? Number(r.percentual) :
+        r.percentual_rateio != null ? Number(r.percentual_rateio) :
+        r.porcentagem != null ? Number(r.porcentagem) :
+        r.percent != null ? Number(r.percent) :
+        null;
       return {
         ordem: idx,
         cc: ccId ? String(ccId) : null,
         cat: catId ? String(catId) : null,
-        valorRaw: r.valor != null ? Number(r.valor) : null,
-        pct: r.percentual != null ? Number(r.percentual) : null,
+        valorRaw,
+        pct,
       };
     });
   } else {
@@ -204,12 +243,18 @@ function buildRateios(
         ordem: idx,
         cc: c?.id ? String(c.id) : null,
         cat: k?.id ? String(k.id) : null,
-        valorRaw: c?.valor != null ? Number(c.valor)
-                : k?.valor != null ? Number(k.valor)
-                : null,
-        pct: c?.percentual != null ? Number(c.percentual)
-           : k?.percentual != null ? Number(k.percentual)
-           : null,
+        valorRaw:
+          c?.valor != null ? Number(c.valor) :
+          c?.valor_rateio != null ? Number(c.valor_rateio) :
+          k?.valor != null ? Number(k.valor) :
+          k?.valor_rateio != null ? Number(k.valor_rateio) :
+          null,
+        pct:
+          c?.percentual != null ? Number(c.percentual) :
+          c?.porcentagem != null ? Number(c.porcentagem) :
+          k?.percentual != null ? Number(k.percentual) :
+          k?.porcentagem != null ? Number(k.porcentagem) :
+          null,
       };
     });
   }
@@ -226,6 +271,7 @@ function buildRateios(
     synced_at: syncedAt,
   }));
 }
+
 
 function distribuirValores(
   pairs: Array<{ ordem: number; cc: string | null; cat: string | null; valorRaw: number | null; pct: number | null }>,
@@ -332,6 +378,7 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber"): P
   const out = items.slice();
   let cursor = 0;
   let detalheFalhas = 0;
+  const primeirosErros: string[] = [];
 
   async function worker() {
     while (true) {
@@ -344,8 +391,11 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber"): P
         const detail = await caFetch(`${detailBase}/${id}`);
         await logDetailProbe(detail, tipo);
         out[i] = { ...items[i], ...detail };
-      } catch {
+      } catch (e: any) {
         detalheFalhas++;
+        if (primeirosErros.length < 3) {
+          primeirosErros.push(`id=${id}: ${String(e?.message ?? e).slice(0, 400)}`);
+        }
       }
     }
   }
@@ -356,14 +406,15 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber"): P
     try {
       await sb.from("ca_sync_log").insert({
         recurso: `detalhe_rateio_${tipo}`,
-        status: "ok",
+        status: "erro",
         started_at: new Date().toISOString(),
         finished_at: new Date().toISOString(),
         qtd_registros: detalheFalhas,
-        mensagem: `Falhas ao buscar detalhe de ${detalheFalhas}/${idxs.length} lançamentos rateados (fallback divisão igual).`,
+        mensagem: `Falhas ao buscar detalhe de ${detalheFalhas}/${idxs.length} lançamentos rateados (fallback divisão igual).\nPrimeiros erros:\n${primeirosErros.join("\n")}`,
       });
     } catch {}
   }
+
   return out;
 }
 

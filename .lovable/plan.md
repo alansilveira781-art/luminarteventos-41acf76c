@@ -1,55 +1,82 @@
-## Objetivo
+# Diagnóstico do rateio
 
-Somar as **saídas de estoque** (`movimentacoes` tipo `saida`) ao DRE da Análise Detalhada por evento, agrupando cada saída no grupo do DRE via `grupoDoPlanoNome(item.categoria)` — sem tabela de mapeamento e sem tela de configuração. Nada muda no Conta Azul nem no rateio; as saídas são apenas somadas por cima.
+## O que está acontecendo
 
-Arquivo tocado: `src/components/financeiro/ContaAzulDashboard.tsx` (componente `AnaliseDetalhada`).
+Confirmei o que está acontecendo olhando o sync e os logs no banco:
 
-## Passos
+1. A listagem do Conta Azul (`/contas-a-pagar/buscar`) **não devolve o valor de cada fatia** do rateio. Ela devolve só a lista de centros de custo e a lista de categorias, sem `valor` nem `percentual` por linha. Exemplo real que está gravado hoje em `ca_sync_log`:
 
-### 1. Nova query de saídas de estoque (por evento)
-Dentro de `AnaliseDetalhada`, após as queries de rateios/pais, adicionar `useQuery` habilitada quando `centroId` estiver selecionado:
+```json
+{
+  "id": "9c36a349-...",
+  "total": 1382.33,
+  "categorias": [
+    {"id":"...","nome":"CV - Bagum"},
+    {"id":"...","nome":"CV - Carpete"}
+  ],
+  "centros_de_custo": [
+    {"id":"...","nome":"Almoxarifado/Estoque"},
+    {"id":"...","nome":"Almoxarifado/Estoque"}
+  ]
+}
+```
 
-- `sb.from("movimentacoes").select("valor_total, evento_projeto, itens(categoria)").eq("tipo","saida")` paginado com o `fetchPaged` já existente (mesmo motivo de truncamento).
-- Sem filtro de data (a Análise Detalhada não tem período).
-- `queryKey: ["mov-saidas-evento", centroId]`, `enabled: !!centroId`.
+Repare: nenhum campo `valor` ou `percentual` nas fatias.
 
-### 2. Filtro por evento reutilizando os helpers atuais
-Calcular `needle = centroNeedle(centroSelNome)` (já existe). Uma saída pertence ao evento quando `rowMatchesText({ descricao: mov.evento_projeto }, needle)` — mesma lógica de tokens usada hoje para os lançamentos do Conta Azul. Nenhum casamento novo.
+2. Por isso o sync tenta enriquecer cada lançamento rateado batendo no endpoint de detalhe (`/contas-a-pagar/{id}`) e faz o merge do resultado. **A lógica de divisão só cai em "dividir igual pelo número de fatias" quando não encontra nem `valor` nem `percentual` em nenhuma fatia** (arquivo `src/lib/conta-azul/sync.server.ts`, função `distribuirValores`, linhas ~230-260). Ou seja: se o detalhe estivesse trazendo os valores certos, o rateio real seria usado.
 
-### 3. Agregar por grupo do DRE
-Novo `useMemo` (`stockAgg`) que percorre as saídas filtradas e produz `Map<DreGroupId, Map<categoriaNome, number>>`:
+3. O log `probe_rateio_detalhe_pagar` (que grava uma amostra do payload de detalhe) **está vazio** no banco. Isso significa que ou o endpoint de detalhe está falhando silenciosamente para todos os itens, ou está devolvendo o payload em uma forma que o código não reconhece como "tem rateio" (ex.: chaves com outros nomes, valores dentro de outro objeto, etc.).
 
-- `grupo = grupoDoPlanoNome(mov.itens?.categoria, prefixIndex)` — mesma função do dashboard.
-- Se `grupo` for `null`, cai em `"SC"` (grupo já existente em `GROUP_LABEL`/`DreGroupId`).
-- Chave do detalhamento = `stock:${categoriaNome ?? "Sem categoria"}` para não colidir com `categoria_external_id` do Conta Azul.
-- Valor somado = `Number(mov.valor_total || 0)` (positivo; o sinal é aplicado pelo `line.sign` na renderização, como já é feito no Conta Azul).
+Ou seja: o problema não é uma regra errada de rateio — é que **o código não está conseguindo ler o valor real das fatias no payload de detalhe** e por isso cai no fallback de divisão igual.
 
-### 4. Somar por cima do resultado do Conta Azul
-Substituir o `useMemo` atual de `{ totais, grupos }` por um wrapper que:
+## O plano
 
-1. Chama `calcularDRECaixa(...)` como hoje (inalterada).
-2. Faz merge do `stockAgg` no `grupos` retornado (concatena entradas por categoria).
-3. Para cada `groupId` do `stockAgg` cuja linha é `kind: "sum"` no `dreEstrutura`, incrementa `totais[groupId]` em `soma * line.sign` (mantém a convenção existente: `sum` já vem com sinal aplicado; `grupos` guarda valor absoluto).
-4. Recalcula as linhas `kind: "calc"` do `dreEstrutura` a partir das `formula`, para propagar o efeito nos subtotais (RV, RO, RG, RN, LU, etc.).
+Para resolver preciso primeiro **ver o payload cru do detalhe** de um lançamento rateado conhecido (o MAXMIDIAS 300/900 é perfeito) e depois ajustar o parser. Dois passos:
 
-### 5. Grupo "Sem classificação" (SC) visível
-`"SC"` existe em `DreGroupId` e em `GROUP_LABEL`, mas não em `DRE_STRUCTURE`. Se `stockAgg` tiver entradas no grupo `"SC"`, injetar em um `dreEstrutura` local (memoizado só neste componente) uma linha extra `{ id: "SC", kind: "sum", sign: -1, prefixes: [] }` para que apareça no `linhasDre`. Sem essa linha extra, o loop de renderização a ignora.
+### Passo 1 — Capturar o payload de detalhe
 
-### 6. Nome da categoria no detalhamento
-Extender o `planoMap` local com entradas sintéticas para as chaves `stock:...` (ex.: `Map` derivado que já contém `stock:Detergentes → { nome: "Detergentes (estoque)" }`) para que o `linhasDre` (linha 765) renderize o rótulo correto sem tocar no restante do fluxo.
+Rodar o endpoint de diagnóstico que já existe (`/api/contaazul/diag-maxmidias`) e gravar o JSON completo do detalhe em `ca_sync_log`. Se o endpoint retornar erro (404/403), o próprio diagnóstico registra o erro — o que já é a resposta.
 
-### 7. Não mexer em
-- `calcularDRECaixa` (assinatura preservada).
-- Lançamentos listados no painel lateral (permanecem só do Conta Azul).
-- Painel Financeiro e Fluxo de Caixa.
-- Qualquer lógica de rateio ou de casamento por texto.
+Como disparar (console do navegador, logado como admin):
 
-## Onde as saídas serão somadas (resposta pedida)
+```js
+const { data: { session } } = await window.supabase.auth.getSession();
+const r = await fetch('/api/contaazul/diag-maxmidias', {
+  method: 'POST',
+  headers: { Authorization: `Bearer ${session.access_token}` },
+});
+console.log(await r.json());
+```
 
-No `AnaliseDetalhada`, entre as linhas ~700 e ~705 de `ContaAzulDashboard.tsx`, no `useMemo` que hoje devolve `{ totais, grupos }`: ali entra o merge do `stockAgg` (calculado a partir da nova query + filtro por `centroNeedle`/`rowMatchesText` + `grupoDoPlanoNome`).
+Depois consultar:
 
-## Fora do escopo
-- Não criar tabela de mapa categoria→grupo.
-- Não criar tela de configuração.
-- Não filtrar por data (a Análise Detalhada é do evento inteiro).
-- Não alterar a lista de lançamentos (apenas o DRE).
+```sql
+select recurso, status, mensagem
+from ca_sync_log
+where recurso like 'diag_maxmidias%'
+order by started_at desc;
+```
+
+### Passo 2 — Ajustar o parser em `sync.server.ts` conforme o payload real
+
+Com o JSON em mãos, três ajustes possíveis (escolho o certo com base no que aparecer):
+
+- **Caso A — o detalhe vem com nomes diferentes** (ex.: `rateios_centro_custo`, `valor_rateio`, `alocacoes_categoria`): adicionar essas chaves na lista de fontes lidas em `buildRateios` (linhas 174-215).
+- **Caso B — o detalhe vem aninhado** (ex.: `it.rateio: { centros: [...], categorias: [...] }`): descer um nível antes de mapear.
+- **Caso C — o endpoint de detalhe está falhando** (401/404/500): tratar o erro adequadamente e usar o endpoint alternativo (`/rateios` ou similar), ou pedir o valor via outro recurso.
+
+Também vou adicionar log explícito de erro do detalhe (hoje o `catch` da linha 347 só incrementa contador sem logar), para nunca mais ficar cego.
+
+### Passo 3 — Reprocessar
+
+Depois do ajuste, rodar um sync incremental cobrindo o período do lançamento MAXMIDIAS para reescrever as linhas em `ca_lancamento_rateios` com os valores corretos (300/900 em vez de 600/600).
+
+## Escopo
+
+- **Não** mexo em nenhuma lógica de dashboard, DRE, evento nem em outro módulo.
+- **Só** ajusto o parser de rateio em `src/lib/conta-azul/sync.server.ts`.
+- Sem migration nova, sem novo endpoint (o `/api/contaazul/diag-maxmidias` já foi criado).
+
+## Confirmação necessária antes de codar
+
+Preciso do output do Passo 1 para saber qual dos casos A/B/C se aplica. Se você aprovar este plano, no build eu já assumo que você vai disparar o diag e me passar o resultado, ou me autoriza a implementar os três parsers alternativos de uma vez (mais defensivo, sem depender do payload exato).
