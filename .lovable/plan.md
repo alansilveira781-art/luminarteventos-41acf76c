@@ -1,79 +1,55 @@
 ## Objetivo
 
-Levar a entrada no estoque para dentro do próprio card de despesa (DemandaDialog), com lista de itens editável na aba "Descritivo" quando o tipo for fardamento/material_limpeza/material_escritorio, gravando em uma nova tabela `demanda_itens`. Remover a página separada `/financeiro/a-receber` criada anteriormente.
+Somar as **saídas de estoque** (`movimentacoes` tipo `saida`) ao DRE da Análise Detalhada por evento, agrupando cada saída no grupo do DRE via `grupoDoPlanoNome(item.categoria)` — sem tabela de mapeamento e sem tela de configuração. Nada muda no Conta Azul nem no rateio; as saídas são apenas somadas por cima.
 
-## Parte 1 — Migração `demanda_itens`
+Arquivo tocado: `src/components/financeiro/ContaAzulDashboard.tsx` (componente `AnaliseDetalhada`).
 
-Nova migration espelhando `compra_itens`:
+## Passos
 
-- Tabela `public.demanda_itens` com: `demanda_id (fk demandas on delete cascade)`, `item_id (fk itens)`, `descricao`, `unidade`, `quantidade`, `valor_unitario`, `recebido bool`, `quantidade_recebida`, `recebido_em`, timestamps.
-- `GRANT SELECT, INSERT, UPDATE, DELETE ... TO authenticated; GRANT ALL ... TO service_role`.
-- RLS habilitado com policy espelhando a de `compra_itens` (verifico via `supabase--read_query` no início da build).
-- Índice em `demanda_id`.
+### 1. Nova query de saídas de estoque (por evento)
+Dentro de `AnaliseDetalhada`, após as queries de rateios/pais, adicionar `useQuery` habilitada quando `centroId` estiver selecionado:
 
-Sem mexer no enum: `compra_status` já tem `a_receber`.
+- `sb.from("movimentacoes").select("valor_total, evento_projeto, itens(categoria)").eq("tipo","saida")` paginado com o `fetchPaged` já existente (mesmo motivo de truncamento).
+- Sem filtro de data (a Análise Detalhada não tem período).
+- `queryKey: ["mov-saidas-evento", centroId]`, `enabled: !!centroId`.
 
-## Parte 2 — Descritivo condicional no DemandaDialog
+### 2. Filtro por evento reutilizando os helpers atuais
+Calcular `needle = centroNeedle(centroSelNome)` (já existe). Uma saída pertence ao evento quando `rowMatchesText({ descricao: mov.evento_projeto }, needle)` — mesma lógica de tokens usada hoje para os lançamentos do Conta Azul. Nenhum casamento novo.
 
-Em `src/components/DemandaDialog.tsx`, aba "Descritivo":
+### 3. Agregar por grupo do DRE
+Novo `useMemo` (`stockAgg`) que percorre as saídas filtradas e produz `Map<DreGroupId, Map<categoriaNome, number>>`:
 
-- Se `form.tipo_demanda ∈ {fardamento, material_limpeza, material_escritorio}`: substitui o Textarea por uma lista de itens editável (mesmo padrão da aba "Itens" de `CompraDialog`): linhas com `ItemSearchSelect`, descrição, unidade, quantidade, `MoneyInput` para valor unitário, subtotal por linha, total geral, botões adicionar/remover.
-- Caso contrário: mantém o Textarea de descritivo atual.
-- Evento/Projeto continua acima em ambos os casos.
+- `grupo = grupoDoPlanoNome(mov.itens?.categoria, prefixIndex)` — mesma função do dashboard.
+- Se `grupo` for `null`, cai em `"SC"` (grupo já existente em `GROUP_LABEL`/`DreGroupId`).
+- Chave do detalhamento = `stock:${categoriaNome ?? "Sem categoria"}` para não colidir com `categoria_external_id` do Conta Azul.
+- Valor somado = `Number(mov.valor_total || 0)` (positivo; o sinal é aplicado pelo `line.sign` na renderização, como já é feito no Conta Azul).
 
-Estado local `itens: DemandaItem[]` carregado via query quando `demandaId` existe (`select * from demanda_itens where demanda_id = ?`).
+### 4. Somar por cima do resultado do Conta Azul
+Substituir o `useMemo` atual de `{ totais, grupos }` por um wrapper que:
 
-Na mutation `save`:
-- Grava a demanda como hoje.
-- Se o tipo for um dos três: `delete from demanda_itens where demanda_id = id` e reinsere a lista atual (mesma estratégia do CompraDialog).
-- Se não for: não toca em `demanda_itens`.
+1. Chama `calcularDRECaixa(...)` como hoje (inalterada).
+2. Faz merge do `stockAgg` no `grupos` retornado (concatena entradas por categoria).
+3. Para cada `groupId` do `stockAgg` cuja linha é `kind: "sum"` no `dreEstrutura`, incrementa `totais[groupId]` em `soma * line.sign` (mantém a convenção existente: `sum` já vem com sinal aplicado; `grupos` guarda valor absoluto).
+4. Recalcula as linhas `kind: "calc"` do `dreEstrutura` a partir das `formula`, para propagar o efeito nos subtotais (RV, RO, RG, RN, LU, etc.).
 
-## Parte 3 — Coluna "A Receber" + regra de próximo status
+### 5. Grupo "Sem classificação" (SC) visível
+`"SC"` existe em `DreGroupId` e em `GROUP_LABEL`, mas não em `DRE_STRUCTURE`. Se `stockAgg` tiver entradas no grupo `"SC"`, injetar em um `dreEstrutura` local (memoizado só neste componente) uma linha extra `{ id: "SC", kind: "sum", sign: -1, prefixes: [] }` para que apareça no `linhasDre`. Sem essa linha extra, o loop de renderização a ignora.
 
-Já implementado em passos anteriores (verifico e mantenho):
-- `DEMANDA_STATUSES` inclui `a_receber` antes de `finalizado`.
-- `proximoStatusDemanda(status, tipo)` roteia `em_andamento → a_receber` só para os três tipos.
-- `financeiro.index.tsx` usa `proximoStatusDemanda(c.status, c.tipo_demanda)` e traz `tipo_demanda` no select.
+### 6. Nome da categoria no detalhamento
+Extender o `planoMap` local com entradas sintéticas para as chaves `stock:...` (ex.: `Map` derivado que já contém `stock:Detergentes → { nome: "Detergentes (estoque)" }`) para que o `linhasDre` (linha 765) renderize o rótulo correto sem tocar no restante do fluxo.
 
-Nada novo aqui além de confirmar.
+### 7. Não mexer em
+- `calcularDRECaixa` (assinatura preservada).
+- Lançamentos listados no painel lateral (permanecem só do Conta Azul).
+- Painel Financeiro e Fluxo de Caixa.
+- Qualquer lógica de rateio ou de casamento por texto.
 
-## Parte 4 — Validar recebimento a partir do card
+## Onde as saídas serão somadas (resposta pedida)
 
-No `DemandaDialog`, quando `form.status === 'a_receber'` e o tipo for um dos três, adicionar botão **"Validar recebimento"** no rodapé (ao lado de Avançar). Ele abre um sub-dialog compacto que:
+No `AnaliseDetalhada`, entre as linhas ~700 e ~705 de `ContaAzulDashboard.tsx`, no `useMemo` que hoje devolve `{ totais, grupos }`: ali entra o merge do `stockAgg` (calculado a partir da nova query + filtro por `centroNeedle`/`rowMatchesText` + `grupoDoPlanoNome`).
 
-1. Lista os itens da demanda (de `demanda_itens`) com quantidade editável (default = `quantidade`).
-2. Ao confirmar:
-   - Revalida `select status from demandas where id = ?` — precisa estar em `a_receber`.
-   - Gera `requisicao_numero` via RPC `next_requisicao_numero`.
-   - Para cada linha, insere em `movimentacoes`: `tipo:'entrada'`, `entrada_tipo:'compra'`, `item_id`, `quantidade`, `valor_unitario`, `valor_total = qtd*vu`, `empresa` (usa `empresa` da demanda se houver, senão default), `data_movimento: hoje`, `requisicao_numero`, `observacao: 'DESPESA-<numero>'`.
-   - Atualiza `demanda_itens.recebido=true`, `quantidade_recebida`, `recebido_em=now()`.
-   - Atualiza `demandas.status='finalizado'`.
-   - Invalida queries: `demandas`, `itens`, `entradas`, `item-movs`, `dashboard-*`.
-
-Fecha o card ao final.
-
-## Parte 5 — Limpeza da tentativa anterior
-
-- Deletar `src/routes/financeiro.a-receber.tsx` (fluxo agora vive no card).
-- Remover o item "A receber" das Despesas em `src/components/AppSidebar.tsx`.
-- Regenerar `routeTree.gen.ts` (automático no build).
-
-## Detalhes técnicos
-
-- Uso `sb as any` como o restante do arquivo para acessar a nova tabela sem esperar regenerar `types.ts`.
-- Padrão idêntico ao `CompraDialog` para itens: precisa que eu leia rapidamente a seção "Itens" desse arquivo antes de codar, para copiar exatamente o layout/lógica.
-- Antes de escrever a migration, leio as policies de `compra_itens` via `supabase--read_query` e espelho.
-
-## Ordem de execução
-
-1. `supabase--read_query` para policies de `compra_itens` e schema de `movimentacoes` (confirmar colunas usadas no recebimento em `estoque.a-receber.tsx`).
-2. `supabase--migration` para `demanda_itens`.
-3. Edições em `DemandaDialog.tsx` (lista de itens + botão validar).
-4. Delete de `financeiro.a-receber.tsx` e limpeza do sidebar.
-5. Verificação de build.
-
-## Respostas prometidas ao final
-
-(1) Precisou de migration no enum? Não — `compra_status` já aceita `a_receber`.
-(2) Onde ficou o botão de validar? No rodapé do próprio DemandaDialog, visível quando o card está em "A Receber" e o tipo exige estoque.
-(3) Confirmação de que a entrada cai em `itens`/`movimentacoes` no mesmo formato que Compras — os triggers existentes (`apply_movement`, custo médio, refresh_status) rodam normalmente.
+## Fora do escopo
+- Não criar tabela de mapa categoria→grupo.
+- Não criar tela de configuração.
+- Não filtrar por data (a Análise Detalhada é do evento inteiro).
+- Não alterar a lista de lançamentos (apenas o DRE).
