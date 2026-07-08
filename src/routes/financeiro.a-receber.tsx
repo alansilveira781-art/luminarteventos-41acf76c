@@ -386,7 +386,7 @@ function ReceberDemandaDialog({ demandaId, onClose }: { demandaId: string; onClo
                     <tr key={l.key} className="border-t border-border align-top">
                       <td className="p-2">
                         <ItemSearchSelect
-                          items={estoqueItens as any}
+                          itens={estoqueItens as any}
                           value={l.item_id}
                           onChange={(v) => setLinha(l.key, { item_id: v })}
                           placeholder="Buscar item…"
