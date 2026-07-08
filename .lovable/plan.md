@@ -1,65 +1,34 @@
-## Diagnóstico (já confirmado no banco)
+## Contexto
 
-Bati direto na API Conta Azul usando o access_token salvo em `conta_azul_credentials`:
+Em `AnaliseDetalhada` (`src/components/financeiro/ContaAzulDashboard.tsx`) já existe uma leitura das `movimentacoes` tipo `saida` cruzando por `evento_projeto` com o nome do centro de custo selecionado, e as somas já são adicionadas ao DRE. **Mas** hoje cada linha de estoque aparece como uma linha separada rotulada "(estoque)" — chave `stock:<categoria>` — porque o código não faz o casamento da categoria do item com o plano de contas do Conta Azul.
 
-- `GET /financeiro/eventos-financeiros/parcelas/94a2a5b6-d95c-4c0f-a3f0-b95e81fd3f15` responde **200 OK** com o rateio correto:
-  ```
-  evento.rateio[0].rateio_centro_custo = [
-    { valor: 300.00, id_centro_custo: 514fc86e-...  (Método CIS) },
-    { valor: 900.00, id_centro_custo: 44b8ddb2-...  (Stand Brahma) }
-  ]
-  ```
-- O parser `buildRateios` em `src/lib/conta-azul/sync.server.ts` (linhas 177-229) **já lê esse formato certo**.
-- Em `ca_lancamento_rateios` o lançamento MAXMIDIAS ainda está 600/600 porque nenhum sync usando a nova função rodou para junho/2026 depois da correção.
+O usuário quer:
+- **Sem mudança visual.** Somar dentro das linhas existentes de Custos Variáveis / Custos Diretos, na mesma categoria do plano de contas — sem criar linha nova "(estoque)".
+- Casar `itens.categoria` **por nome** com `ca_plano_contas.nome` (o usuário garante que os nomes batem). O grupo do DRE (CV/CD/etc.) sai naturalmente do prefixo do plano.
+- Continuar cruzando `movimentacoes.evento_projeto` com o nome do `centro_custo` selecionado (já é assim).
 
-Ou seja: **não falta código; falta reprocessar o período**. E ninguém precisa clicar em nada no navegador.
+## Mudança
 
-## O que vou fazer
+Ajustar somente o bloco `stockAgg` em `src/components/financeiro/ContaAzulDashboard.tsx` (~linhas 720-746):
 
-### 1. Reprocessar junho/2026 direto pelo servidor
-
-Chamar `syncContasPagar('2026-06-01','2026-06-30')` e `syncContasReceber('2026-06-01','2026-06-30')` a partir de um pequeno server function `reprocessarPeriodo` protegido por `requireAdminOfModule('financeiro')`, e disparar via `psql`/curl usando um endpoint público interno protegido por API key (o mesmo padrão já usado em `/api/public/contaazul/cron`). Alternativa mais direta: rodar como um GET one-shot em `/api/public/contaazul/cron` já dispara `processNextHistoricoChunk` — mas como não há job histórico pendente, o caminho certo é criar um endpoint interno de "reprocessar mês" que aceite `{from,to}` e a project API key. Vou usar o endpoint que já existe (`/api/contaazul/reprocessar-falhas`) se ele aceitar alvo explícito; senão, adiciono uma variante `POST /api/contaazul/reprocessar-periodo` com auth admin.
-
-Vou verificar `src/routes/api/contaazul/reprocessar-falhas.ts` durante a implementação e reaproveitar se ele já aceitar `{from,to,recurso}`. Caso contrário, adiciono um endpoint enxuto.
-
-Disparo do sync no build via `curl` com header admin (session já disponível quando você abrir o preview) — ou eu mesmo posso rodar o sync in-process via um script Node one-shot em `code--exec` que carrega `sync.server.ts` e chama a função (não precisa expor endpoint novo).
-
-Escolha final entre as duas: **rodo in-process via code--exec** (mais simples, sem alterar rotas). O sandbox tem acesso ao Postgres e às env vars do Conta Azul.
-
-### 2. Verificar no banco
-
-```sql
-select centro_custo_external_id, valor, ordem
-from ca_lancamento_rateios
-where lancamento_external_id = '94a2a5b6-d95c-4c0f-a3f0-b95e81fd3f15'
-order by ordem;
-```
-
-Esperado: **300,00** para `514fc86e-…` (Método CIS) e **900,00** para `44b8ddb2-…` (Stand Brahma).
-
-### 3. Reprocessar meses anteriores com rateio suspeito
-
-Rodar o mesmo sync para os últimos 12 meses de `ca_contas_pagar` / `ca_contas_receber`, mês a mês, para reescrever `ca_lancamento_rateios` com os valores reais. Log final agregado no chat.
-
-### 4. Remover diagnóstico temporário
-
-Depois que a validação da etapa 2 der 300/900:
-
-- Deletar `src/routes/api/contaazul/diag-maxmidias.ts`.
-- Remover o card "Diagnóstico do rateio" de `src/routes/financeiro-op.conta-azul.tsx`.
+1. Construir um índice `nomePlano (normalizado) → { external_id, grupo }` a partir de `planosArr` + `grupoDoPlanoNome(plano.nome)`.
+2. Para cada saída elegível (evento casa com o centro), procurar o plano pelo nome da categoria do item (case/acento-insensível).
+3. Se casar: usar `categoria_external_id` como chave de detalhe (mesma chave usada pelos rateios do Conta Azul) → **soma direta na linha existente** do plano de contas, dentro do grupo correto (CV/CD/…).
+4. Se não casar: manter fallback atual (agrupa em "SC – Sem classificação") para não perder valor — sem criar novo comportamento visual.
+5. Remover a lógica atual de chave `stock:<cat>` e do rótulo "(estoque)" — não é mais necessária pois os valores mesclam nas linhas do próprio plano de contas.
+6. `estruturaEfetiva`/`planoMapExt` seguem funcionando: `planoMapExt` só precisa continuar cobrindo o caso "SC" quando houver fallback.
 
 ## Escopo
 
-- **Não** mexo em `buildRateios` nem em `enrichItemsWithDetail` — já estão corretos.
-- **Não** altero UI de dashboards, DRE, ou qualquer outro módulo.
-- **Não** crio migration.
-- Apenas: (a) rodo o sync de um período histórico, (b) deleto o endpoint/card de diagnóstico.
+- Só `src/components/financeiro/ContaAzulDashboard.tsx`, dentro do componente `AnaliseDetalhada`.
+- Nada de mudança em UI, cores, layout, colunas, títulos.
+- Nada de migração, backend, `sync.server.ts`, nem outras telas (dashboard principal, DRE do módulo Financeiro etc.).
+- Nada de novos filtros/toggles.
 
-## Riscos
+## Fora do escopo (confirmar se quiser incluir)
 
-- Se o sync do mês inteiro falhar em algum item, os demais continuam (cada item é try/catch); ao final relato quantos passaram vs falharam.
-- Reprocessar 12 meses = ~5-15 min de execução server-side (paginação + concurrency=5 no enrich). Confirmar se quer 12 meses ou apenas junho/2026 primeiro.
+- Mostrar as saídas de estoque também no painel principal (Dashboard Conta Azul) ou no DRE de `/financeiro/dashboard`. Aqui a instrução foi só "Análise Detalhamento" — mantenho só lá.
 
-## Confirmação
+## Validação
 
-Reprocesso **apenas junho/2026** primeiro para validar, ou já disparo os **últimos 12 meses** de uma vez?
+Selecionar um centro de custo que tenha saídas de estoque no evento correspondente e conferir que o valor entra na linha da categoria correta em CV/CD, sem aparecer nenhuma linha nova rotulada "(estoque)".
