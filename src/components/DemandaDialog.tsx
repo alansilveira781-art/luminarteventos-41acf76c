@@ -84,6 +84,13 @@ export function DemandaDialog({
   const { user } = useAuth();
   const [form, setForm] = useState<Demanda>({ status: defaultStatus });
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [itens, setItens] = useState<DemandaItem[]>([]);
+  const [receberOpen, setReceberOpen] = useState(false);
+
+  const tipoRequerItens = useMemo(
+    () => TIPOS_QUE_VAO_PARA_ESTOQUE.includes(form.tipo_demanda ?? ""),
+    [form.tipo_demanda],
+  );
 
   const { data: fornecedores = [] } = useQuery({
     queryKey: ["compras-fornecedores-min"],
@@ -109,16 +116,32 @@ export function DemandaDialog({
     },
   });
 
+  const { data: estoqueItens = [] } = useQuery({
+    queryKey: ["itens-min"],
+    queryFn: async () => {
+      const { data } = await supabase.from("itens").select("id,nome,codigo,codigo_proprio,unidade").order("nome");
+      return data ?? [];
+    },
+  });
+
   useEffect(() => {
     if (!open) return;
     setPendingFiles([]);
+    setReceberOpen(false);
     if (!demandaId) {
       setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10) });
+      setItens([]);
       return;
     }
     (async () => {
       const { data: c } = await sb.from("demandas").select("*").eq("id", demandaId).maybeSingle();
       if (c) setForm(c as any);
+      const { data: dItens } = await sb
+        .from("demanda_itens")
+        .select("id,item_id,descricao,unidade,quantidade,valor_unitario")
+        .eq("demanda_id", demandaId)
+        .order("created_at", { ascending: true });
+      setItens((dItens ?? []) as any);
     })();
   }, [open, demandaId, defaultStatus]);
 
@@ -136,6 +159,24 @@ export function DemandaDialog({
         if (error) throw error;
         if (!data?.id) throw new Error("Demanda não foi confirmada pelo banco.");
         id = data.id;
+      }
+      // Persistir itens quando o tipo exigir (fardamento/material_limpeza/material_escritorio)
+      if (id && tipoRequerItens) {
+        await sb.from("demanda_itens").delete().eq("demanda_id", id).eq("recebido", false);
+        const rows = itens
+          .filter((it) => it.item_id || (it.descricao ?? "").trim() || Number(it.quantidade) > 0)
+          .map((it) => ({
+            demanda_id: id,
+            item_id: it.item_id || null,
+            descricao: it.descricao ?? null,
+            unidade: it.unidade ?? null,
+            quantidade: Number(it.quantidade || 0),
+            valor_unitario: it.valor_unitario ?? null,
+          }));
+        if (rows.length) {
+          const { error } = await sb.from("demanda_itens").insert(rows);
+          if (error) throw error;
+        }
       }
       // Upload de anexos pendentes (anexados antes de salvar)
       if (id && pendingFiles.length > 0) {
@@ -167,6 +208,18 @@ export function DemandaDialog({
     },
     onError: (e: any) => toast.error(describeSupabaseError(e)),
   });
+
+  function addItem() { setItens((p) => [...p, novoDemandaItem()]); }
+  function updateItem(idx: number, patch: Partial<DemandaItem>) {
+    setItens((p) => p.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+  }
+  function removeItem(idx: number) { setItens((p) => p.filter((_, i) => i !== idx)); }
+
+  const totalItens = useMemo(
+    () => itens.reduce((s, it) => s + Number(it.quantidade || 0) * Number(it.valor_unitario || 0), 0),
+    [itens],
+  );
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
