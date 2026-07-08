@@ -222,7 +222,15 @@ export function DemandaDialog({
   function removeItem(idx: number) { setItens((p) => p.filter((_, i) => i !== idx)); }
 
   const totalItens = useMemo(
-    () => itens.reduce((s, it) => s + Number(it.quantidade || 0) * Number(it.valor_unitario || 0), 0),
+    () => itens.reduce((s, it) => {
+      const q = Number(it.quantidade || 0);
+      const vu = Number(it.valor_unitario || 0);
+      const desc = Number(it.desconto || 0);
+      const fre = Number(it.frete || 0);
+      const ip = Number(it.ipi || 0);
+      const out = Number(it.outros_custos || 0);
+      return s + (q * vu - desc + fre + ip + out);
+    }, 0),
     [itens],
   );
 
