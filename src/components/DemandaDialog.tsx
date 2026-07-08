@@ -12,7 +12,7 @@ import { SelectCreatable } from "@/components/SelectCreatable";
 import { DbComboboxCreatable } from "@/components/DbComboboxCreatable";
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { MentionInput, renderCommentText } from "@/components/MentionInput";
-import { Trash2, Upload, Download, FileIcon, ChevronRight, CheckCircle2, XCircle, Plus, PackageCheck, AlertTriangle } from "lucide-react";
+import { Trash2, Upload, Download, FileIcon, ChevronRight, CheckCircle2, XCircle, Plus } from "lucide-react";
 import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 import { MoneyInput } from "@/components/MoneyInput";
 import { ItemSearchSelect } from "@/components/ItemSearchSelect";
