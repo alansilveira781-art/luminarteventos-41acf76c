@@ -540,6 +540,14 @@ export function DemandaDialog({
                 </Button>
               );
             })()}
+            {demandaId && form.status === "a_receber" && tipoRequerItens && (
+              <Button
+                onClick={() => setReceberOpen(true)}
+                className="bg-success text-success-foreground hover:bg-success/90"
+              >
+                <PackageCheck className="h-4 w-4 mr-1" /> Validar recebimento
+              </Button>
+            )}
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button onClick={() => save.mutate()} disabled={save.isPending}>
               {save.isPending ? "Salvando…" : "Salvar"}
@@ -548,8 +556,20 @@ export function DemandaDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    {demandaId && receberOpen && (
+      <ReceberDemandaDialog
+        demandaId={demandaId}
+        onClose={() => {
+          setReceberOpen(false);
+          qc.invalidateQueries({ queryKey: ["demandas"] });
+          onOpenChange(false);
+        }}
+      />
+    )}
+    </>
   );
 }
+
 
 function Comentarios({ demandaId, userId }: { demandaId: string; userId?: string }) {
   const qc = useQueryClient();
