@@ -158,11 +158,14 @@ function mapEvento(it: any, syncedAt: string, pessoaKey: "fornecedor_nome" | "cl
 }
 
 /** Extrai linhas de rateio para `ca_lancamento_rateios`.
- *  Estratégia defensiva — o payload do Conta Azul v2 pode trazer:
- *    a) it.rateios = [{ centro_custo:{id}, categoria:{id}, valor, percentual }, ...]
- *    b) it.centros_de_custo = [{id, nome, valor?, percentual?}] + it.categorias = [{id, ...}]
- *    c) só it.centros_de_custo e it.categorias com 1 item cada (caso simples).
- *  Em todos os casos a soma dos `valor` das fatias bate com it.total. */
+ *  Formato oficial v2 (endpoint de parcelas):
+ *    it.evento.rateio = [
+ *      { id_categoria, nome_categoria, valor, rateio_centro_custo: [
+ *        { id_centro_custo, nome_centro_custo, valor }
+ *      ] }, ...
+ *    ]
+ *  Se `evento.rateio[]` não estiver presente (lançamento sem detalhe enriquecido,
+ *  ou payload de formato antigo), caímos nos formatos legados como fallback. */
 function buildRateios(
   it: any,
   tipo: "pagar" | "receber",
@@ -171,11 +174,62 @@ function buildRateios(
   const lancId = String(it.id);
   const total = Number(it.total ?? 0);
 
-  // Descobrir onde vem o array de fatias. O payload pode variar:
-  //  a) it.rateios / it.alocacoes / it.rateio_centros_custo / it.rateios_centro_custo
-  //  b) it.rateio: { fatias: [...] } ou { itens: [...] } ou { centros_de_custo: [...] }
-  //  c) só it.centros_de_custo + it.categorias (sem valor por fatia — cai em divisão igual)
-  const nested = it.rateio ?? it.detalhe_rateio ?? it.rateios_detalhe ?? null;
+  // --- 1. Formato oficial v2: evento.rateio[] com rateio_centro_custo[] ---
+  const eventoRateio: any[] | null =
+    (Array.isArray(it.evento?.rateio) && it.evento.rateio) ||
+    (Array.isArray(it.rateio) && it.rateio) ||
+    null;
+
+  if (eventoRateio && eventoRateio.length > 0) {
+    const fatias: Array<{
+      ordem: number;
+      cc: string | null;
+      cat: string | null;
+      valor: number;
+      pct: number | null;
+    }> = [];
+    let ordem = 0;
+    for (const r of eventoRateio) {
+      const catId = r.id_categoria ?? r.categoria?.id ?? r.categoria_id ?? null;
+      const valorGrupo = r.valor != null ? Number(r.valor) : null;
+      const ccList: any[] = Array.isArray(r.rateio_centro_custo) ? r.rateio_centro_custo : [];
+      if (ccList.length > 0) {
+        for (const c of ccList) {
+          const ccId = c.id_centro_custo ?? c.centro_custo?.id ?? c.centro_custo_id ?? null;
+          const valor = c.valor != null ? Number(c.valor) : (valorGrupo ?? 0);
+          fatias.push({
+            ordem: ordem++,
+            cc: ccId ? String(ccId) : null,
+            cat: catId ? String(catId) : null,
+            valor: Math.round((Number.isFinite(valor) ? valor : 0) * 100) / 100,
+            pct: null,
+          });
+        }
+      } else {
+        // grupo de rateio sem lista de centro de custo — usa o valor do grupo
+        fatias.push({
+          ordem: ordem++,
+          cc: null,
+          cat: catId ? String(catId) : null,
+          valor: Math.round((valorGrupo ?? 0) * 100) / 100,
+          pct: null,
+        });
+      }
+    }
+    return fatias.map((p) => ({
+      lancamento_external_id: lancId,
+      tipo,
+      centro_custo_external_id: p.cc,
+      categoria_external_id: p.cat,
+      valor: p.valor,
+      percentual: p.pct,
+      ordem: p.ordem,
+      synced_at: syncedAt,
+    }));
+  }
+
+  // --- 2. Formatos legados (defensivo, itens não enriquecidos ou pré-parcelas) ---
+  const nested = it.detalhe_rateio ?? it.rateios_detalhe ?? null;
   const pairedRaw: any[] | null =
     (Array.isArray(it.rateios) && it.rateios) ||
     (Array.isArray(it.alocacoes) && it.alocacoes) ||
@@ -259,6 +313,15 @@ function buildRateios(
     });
   }
 
+  const hasValor = pairs.some((p) => p.valorRaw != null && Number.isFinite(p.valorRaw));
+  const hasPct = pairs.some((p) => p.pct != null && Number.isFinite(p.pct));
+  const isRateado = pairs.length >= 2;
+  if (isRateado && !hasValor && !hasPct) {
+    // Fatiamento sem valor/percentual explícito — vamos cair em divisão igual.
+    // Loga para investigação (throttled dentro de logRateioSemValor).
+    logRateioSemValor(lancId, tipo, pairs.length).catch(() => {});
+  }
+
   const valores = distribuirValores(pairs, total);
   return valores.map((p) => ({
     lancamento_external_id: lancId,
@@ -271,6 +334,8 @@ function buildRateios(
     synced_at: syncedAt,
   }));
 }
+
+
 
 
 function distribuirValores(
@@ -366,11 +431,41 @@ function needsDetail(it: any): boolean {
   return !ccId || !catId;
 }
 
-/** Busca o endpoint de detalhe para cada item que precisa (ver `needsDetail`). */
+/** Extrai o id da parcela para o endpoint /parcelas/{id}.
+ *  Em lançamentos de parcela única, o próprio id do evento financeiro
+ *  costuma servir. Quando a listagem trouxer explicitamente um id de
+ *  parcela, damos preferência. */
+function extractParcelaId(it: any): { parcelaId: string | null; source: string } {
+  const p0 = Array.isArray(it.parcelas) && it.parcelas.length > 0 ? it.parcelas[0] : null;
+  if (p0?.id) return { parcelaId: String(p0.id), source: "parcelas[0].id" };
+  if (it.parcela_id) return { parcelaId: String(it.parcela_id), source: "parcela_id" };
+  if (it.id_parcela) return { parcelaId: String(it.id_parcela), source: "id_parcela" };
+  if (it.id) return { parcelaId: String(it.id), source: "fallback:it.id" };
+  return { parcelaId: null, source: "none" };
+}
+
+const _rateioSemValorSeen = new Set<string>();
+async function logRateioSemValor(lancId: string, tipo: "pagar" | "receber", n: number) {
+  if (_rateioSemValorSeen.has(lancId)) return;
+  _rateioSemValorSeen.add(lancId);
+  if (_rateioSemValorSeen.size > 200) return; // não estourar
+  try {
+    await sb.from("ca_sync_log").insert({
+      recurso: "rateio_sem_valor",
+      status: "erro",
+      started_at: new Date().toISOString(),
+      finished_at: new Date().toISOString(),
+      qtd_registros: n,
+      mensagem: `Lançamento ${tipo} ${lancId}: rateado (${n} fatias) sem valor nem percentual no payload — fallback divisão igual.`,
+    });
+  } catch {}
+}
+
+/** Busca o endpoint de parcelas para cada item que precisa (ver `needsDetail`).
+ *  O endpoint correto na API v2 é /financeiro/eventos-financeiros/parcelas/{id}
+ *  — os antigos /contas-a-pagar/{id} e /contas-a-receber/{id} retornam 404. */
 async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber"): Promise<any[]> {
-  const detailBase = tipo === "pagar"
-    ? "/financeiro/eventos-financeiros/contas-a-pagar"
-    : "/financeiro/eventos-financeiros/contas-a-receber";
+  const detailBase = "/financeiro/eventos-financeiros/parcelas";
   const idxs = items.map((it, i) => (needsDetail(it) ? i : -1)).filter((i) => i >= 0);
   if (idxs.length === 0) return items;
 
@@ -378,23 +473,30 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber"): P
   const out = items.slice();
   let cursor = 0;
   let detalheFalhas = 0;
+  let fallbackIdCount = 0;
   const primeirosErros: string[] = [];
+  const fallbackSample: string[] = [];
 
   async function worker() {
     while (true) {
       const my = cursor++;
       if (my >= idxs.length) return;
       const i = idxs[my];
-      const id = items[i]?.id;
-      if (!id) continue;
+      const { parcelaId, source } = extractParcelaId(items[i]);
+      if (!parcelaId) continue;
+      if (source === "fallback:it.id") {
+        fallbackIdCount++;
+        if (fallbackSample.length < 5) fallbackSample.push(parcelaId);
+      }
+      const url = `${detailBase}/${parcelaId}`;
       try {
-        const detail = await caFetch(`${detailBase}/${id}`);
+        const detail = await caFetch(url);
         await logDetailProbe(detail, tipo);
         out[i] = { ...items[i], ...detail };
       } catch (e: any) {
         detalheFalhas++;
         if (primeirosErros.length < 3) {
-          primeirosErros.push(`id=${id}: ${String(e?.message ?? e).slice(0, 400)}`);
+          primeirosErros.push(`GET ${url} — ${String(e?.message ?? e).slice(0, 400)}`);
         }
       }
     }
@@ -405,18 +507,32 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber"): P
   if (detalheFalhas > 0) {
     try {
       await sb.from("ca_sync_log").insert({
-        recurso: `detalhe_rateio_${tipo}`,
+        recurso: `detalhe_falha_${tipo}`,
         status: "erro",
         started_at: new Date().toISOString(),
         finished_at: new Date().toISOString(),
         qtd_registros: detalheFalhas,
-        mensagem: `Falhas ao buscar detalhe de ${detalheFalhas}/${idxs.length} lançamentos rateados (fallback divisão igual).\nPrimeiros erros:\n${primeirosErros.join("\n")}`,
+        mensagem: `Falhas ao buscar detalhe (${detailBase}/{id}) de ${detalheFalhas}/${idxs.length} lançamentos.\nPrimeiros erros:\n${primeirosErros.join("\n")}`,
+      });
+    } catch {}
+  }
+
+  if (fallbackIdCount > 0) {
+    try {
+      await sb.from("ca_sync_log").insert({
+        recurso: "parcela_id_ausente",
+        status: "erro",
+        started_at: new Date().toISOString(),
+        finished_at: new Date().toISOString(),
+        qtd_registros: fallbackIdCount,
+        mensagem: `Listagem ${tipo} não trouxe id de parcela em ${fallbackIdCount}/${idxs.length} lançamentos — usando it.id como fallback para /parcelas/{id}.\nAmostra: ${fallbackSample.join(", ")}`,
       });
     } catch {}
   }
 
   return out;
 }
+
 
 async function persistRateios(items: any[], tipo: "pagar" | "receber", syncedAt: string) {
   await logRatioProbe(items, tipo);
