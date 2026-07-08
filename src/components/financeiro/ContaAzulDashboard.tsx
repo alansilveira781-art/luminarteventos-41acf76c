@@ -715,28 +715,56 @@ function AnaliseDetalhada() {
   // Nome do centro selecionado — usado no casamento de saídas de estoque.
   const centroSelNomeEarly = centroId ? (ccs.find((c) => c.external_id === centroId)?.nome ?? "") : "";
 
-  // Agrega saídas de estoque filtradas pelo evento em grupos do DRE.
-  // Chave detalhe = `stock:${categoria}` para não colidir com categoria_external_id do Conta Azul.
+  // Índice nome-do-plano (normalizado) -> { external_id, grupo }.
+  // Casamento por nome é o critério pedido: itens.categoria == ca_plano_contas.nome.
+  const planoPorNome = useMemo(() => {
+    const norm = (s: string) =>
+      s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+    const prefixIndex = buildPrefixIndex(dreEstrutura);
+    const m = new Map<string, { external_id: string; grupo: DreGroupId | null }>();
+    planosArr.forEach((p) => {
+      if (!p?.nome) return;
+      m.set(norm(p.nome), {
+        external_id: p.external_id,
+        grupo: grupoDoPlanoNome(p.nome, prefixIndex),
+      });
+    });
+    return m;
+  }, [planosArr, dreEstrutura]);
+
+  // Agrega saídas de estoque do evento; mescla direto na linha do plano de contas
+  // (mesmo detail key usado pelos rateios do Conta Azul), sem criar linha "(estoque)".
   const stockAgg = useMemo(() => {
     const agg = new Map<DreGroupId, Map<string, number>>();
-    const catNames = new Map<string, string>(); // "stock:<cat>" -> nome legível
+    const catNames = new Map<string, string>(); // só para fallback SC
     if (!enabled) return { agg, catNames };
     const needle = centroNeedle(centroSelNomeEarly);
     if (!needle) return { agg, catNames };
-    const prefixIndex = buildPrefixIndex(dreEstrutura);
+    const norm = (s: string) =>
+      s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
     (saidasEstoque.data ?? []).forEach((m) => {
       if (!rowMatchesText({ descricao: m.evento_projeto }, needle)) return;
-      const cat = m.itens?.categoria ?? null;
-      const g: DreGroupId = grupoDoPlanoNome(cat, prefixIndex) ?? "SC";
-      const catNome = cat?.trim() || "Sem categoria";
-      const key = `stock:${catNome}`;
-      catNames.set(key, `${catNome} (estoque)`);
+      const valor = Number(m.valor_total || 0);
+      if (!valor) return;
+      const catNome = m.itens?.categoria?.trim() || "";
+      const hit = catNome ? planoPorNome.get(norm(catNome)) : undefined;
+      let g: DreGroupId;
+      let key: string;
+      if (hit && hit.grupo) {
+        g = hit.grupo;
+        key = hit.external_id; // mescla com o rateio do Conta Azul da mesma categoria
+      } else {
+        g = "SC";
+        const label = catNome || "Sem categoria";
+        key = `stock:${label}`;
+        catNames.set(key, label);
+      }
       const det = agg.get(g) ?? new Map<string, number>();
-      det.set(key, (det.get(key) ?? 0) + Number(m.valor_total || 0));
+      det.set(key, (det.get(key) ?? 0) + valor);
       agg.set(g, det);
     });
     return { agg, catNames };
-  }, [saidasEstoque.data, enabled, centroSelNomeEarly, dreEstrutura]);
+  }, [saidasEstoque.data, enabled, centroSelNomeEarly, planoPorNome]);
 
   // Estrutura efetiva do DRE: se houver saídas em SC, adiciona a linha SC (sum, sign -1).
   const estruturaEfetiva = useMemo<DreLine[]>(() => {
