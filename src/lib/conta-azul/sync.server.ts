@@ -158,11 +158,14 @@ function mapEvento(it: any, syncedAt: string, pessoaKey: "fornecedor_nome" | "cl
 }
 
 /** Extrai linhas de rateio para `ca_lancamento_rateios`.
- *  Estratégia defensiva — o payload do Conta Azul v2 pode trazer:
- *    a) it.rateios = [{ centro_custo:{id}, categoria:{id}, valor, percentual }, ...]
- *    b) it.centros_de_custo = [{id, nome, valor?, percentual?}] + it.categorias = [{id, ...}]
- *    c) só it.centros_de_custo e it.categorias com 1 item cada (caso simples).
- *  Em todos os casos a soma dos `valor` das fatias bate com it.total. */
+ *  Formato oficial v2 (endpoint de parcelas):
+ *    it.evento.rateio = [
+ *      { id_categoria, nome_categoria, valor, rateio_centro_custo: [
+ *        { id_centro_custo, nome_centro_custo, valor }
+ *      ] }, ...
+ *    ]
+ *  Se `evento.rateio[]` não estiver presente (lançamento sem detalhe enriquecido,
+ *  ou payload de formato antigo), caímos nos formatos legados como fallback. */
 function buildRateios(
   it: any,
   tipo: "pagar" | "receber",
@@ -171,11 +174,62 @@ function buildRateios(
   const lancId = String(it.id);
   const total = Number(it.total ?? 0);
 
-  // Descobrir onde vem o array de fatias. O payload pode variar:
-  //  a) it.rateios / it.alocacoes / it.rateio_centros_custo / it.rateios_centro_custo
-  //  b) it.rateio: { fatias: [...] } ou { itens: [...] } ou { centros_de_custo: [...] }
-  //  c) só it.centros_de_custo + it.categorias (sem valor por fatia — cai em divisão igual)
-  const nested = it.rateio ?? it.detalhe_rateio ?? it.rateios_detalhe ?? null;
+  // --- 1. Formato oficial v2: evento.rateio[] com rateio_centro_custo[] ---
+  const eventoRateio: any[] | null =
+    (Array.isArray(it.evento?.rateio) && it.evento.rateio) ||
+    (Array.isArray(it.rateio) && it.rateio) ||
+    null;
+
+  if (eventoRateio && eventoRateio.length > 0) {
+    const fatias: Array<{
+      ordem: number;
+      cc: string | null;
+      cat: string | null;
+      valor: number;
+      pct: number | null;
+    }> = [];
+    let ordem = 0;
+    for (const r of eventoRateio) {
+      const catId = r.id_categoria ?? r.categoria?.id ?? r.categoria_id ?? null;
+      const valorGrupo = r.valor != null ? Number(r.valor) : null;
+      const ccList: any[] = Array.isArray(r.rateio_centro_custo) ? r.rateio_centro_custo : [];
+      if (ccList.length > 0) {
+        for (const c of ccList) {
+          const ccId = c.id_centro_custo ?? c.centro_custo?.id ?? c.centro_custo_id ?? null;
+          const valor = c.valor != null ? Number(c.valor) : (valorGrupo ?? 0);
+          fatias.push({
+            ordem: ordem++,
+            cc: ccId ? String(ccId) : null,
+            cat: catId ? String(catId) : null,
+            valor: Math.round((Number.isFinite(valor) ? valor : 0) * 100) / 100,
+            pct: null,
+          });
+        }
+      } else {
+        // grupo de rateio sem lista de centro de custo — usa o valor do grupo
+        fatias.push({
+          ordem: ordem++,
+          cc: null,
+          cat: catId ? String(catId) : null,
+          valor: Math.round((valorGrupo ?? 0) * 100) / 100,
+          pct: null,
+        });
+      }
+    }
+    return fatias.map((p) => ({
+      lancamento_external_id: lancId,
+      tipo,
+      centro_custo_external_id: p.cc,
+      categoria_external_id: p.cat,
+      valor: p.valor,
+      percentual: p.pct,
+      ordem: p.ordem,
+      synced_at: syncedAt,
+    }));
+  }
+
+  // --- 2. Formatos legados (defensivo, itens não enriquecidos ou pré-parcelas) ---
+  const nested = it.detalhe_rateio ?? it.rateios_detalhe ?? null;
   const pairedRaw: any[] | null =
     (Array.isArray(it.rateios) && it.rateios) ||
     (Array.isArray(it.alocacoes) && it.alocacoes) ||
@@ -259,6 +313,15 @@ function buildRateios(
     });
   }
 
+  const hasValor = pairs.some((p) => p.valorRaw != null && Number.isFinite(p.valorRaw));
+  const hasPct = pairs.some((p) => p.pct != null && Number.isFinite(p.pct));
+  const isRateado = pairs.length >= 2;
+  if (isRateado && !hasValor && !hasPct) {
+    // Fatiamento sem valor/percentual explícito — vamos cair em divisão igual.
+    // Loga para investigação (throttled dentro de logRateioSemValor).
+    logRateioSemValor(lancId, tipo, pairs.length).catch(() => {});
+  }
+
   const valores = distribuirValores(pairs, total);
   return valores.map((p) => ({
     lancamento_external_id: lancId,
@@ -271,6 +334,8 @@ function buildRateios(
     synced_at: syncedAt,
   }));
 }
+
+
 
 
 function distribuirValores(
