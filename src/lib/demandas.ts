@@ -10,9 +10,39 @@ export const DEMANDA_STATUSES: { key: DemandaStatus; label: string; color: strin
   { key: "pendente_aprovacao", label: "Pendente Aprovação", color: "bg-amber-500" },
   { key: "aprovada", label: "Despesa Aprovada", color: "bg-emerald-500" },
   { key: "em_andamento", label: "Despesa Em Andamento", color: "bg-indigo-500" },
+  { key: "a_receber", label: "A Receber", color: "bg-cyan-500" },
   { key: "finalizado", label: "Finalizado", color: "bg-success" },
   { key: "negada", label: "Despesa Negada", color: "bg-destructive" },
 ];
+
+// Tipos de despesa que geram entrada em estoque — ao sair de "Em Andamento"
+// vão primeiro para "A Receber" (validação de recebimento) antes de "Finalizado".
+export const TIPOS_QUE_VAO_PARA_ESTOQUE: string[] = [
+  "fardamento",
+  "material_limpeza",
+  "material_escritorio",
+];
+
+export function proximoStatusDemanda(
+  status: DemandaStatus,
+  tipo?: string | null,
+): DemandaStatus | null {
+  if (status === "em_andamento") {
+    return TIPOS_QUE_VAO_PARA_ESTOQUE.includes(tipo ?? "") ? "a_receber" : "finalizado";
+  }
+  const ordem: DemandaStatus[] = [
+    "solicitacao",
+    "analise",
+    "pendente_aprovacao",
+    "aprovada",
+    "em_andamento",
+    "a_receber",
+    "finalizado",
+  ];
+  const idx = ordem.indexOf(status);
+  if (idx < 0 || idx >= ordem.length - 1) return null;
+  return ordem[idx + 1];
+}
 
 export const DEMANDA_STATUS_LABEL: Record<DemandaStatus, string> = DEMANDA_STATUSES.reduce(
   (acc, s) => ({ ...acc, [s.key]: s.label }),

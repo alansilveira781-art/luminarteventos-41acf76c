@@ -9,7 +9,7 @@ import { Plus, Search, ChevronRight } from "lucide-react";
 import { DemandaDialog } from "@/components/DemandaDialog";
 import { AvancarCardDialog } from "@/components/AvancarCardDialog";
 import { notifyResponsavel } from "@/lib/notify";
-import { DEMANDA_STATUSES, type DemandaStatus } from "@/lib/demandas";
+import { DEMANDA_STATUSES, proximoStatusDemanda, type DemandaStatus } from "@/lib/demandas";
 import {
   DndContext,
   PointerSensor,
@@ -38,6 +38,7 @@ type Demanda = {
   data_solicitacao: string | null;
   data_compra: string | null;
   valor_total: number | null;
+  tipo_demanda?: string | null;
   responsavel_id?: string | null;
   responsavel_nome?: string | null;
 };
@@ -81,7 +82,7 @@ function DemandasKanban() {
     queryFn: async () => {
       const { data, error } = await sb
         .from("demandas")
-        .select("id,numero,status,titulo,solicitante,fornecedor,comprador,data_solicitacao,data_compra,valor_total,responsavel_id,responsavel_nome")
+        .select("id,numero,status,titulo,solicitante,fornecedor,comprador,data_solicitacao,data_compra,valor_total,tipo_demanda,responsavel_id,responsavel_nome")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Demanda[];
@@ -143,15 +144,8 @@ function DemandasKanban() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-  function nextStatus(s: DemandaStatus): DemandaStatus | null {
-    const idx = DEMANDA_STATUSES.findIndex((x) => x.key === s);
-    if (idx < 0) return null;
-    for (let i = idx + 1; i < DEMANDA_STATUSES.length; i++) {
-      const k = DEMANDA_STATUSES[i].key;
-      if (k === "negada") continue;
-      return k;
-    }
-    return null;
+  function nextStatus(d: Demanda): DemandaStatus | null {
+    return proximoStatusDemanda(d.status, d.tipo_demanda ?? null);
   }
 
   async function advanceToStatus(
@@ -265,7 +259,7 @@ function DemandasKanban() {
           {DEMANDA_STATUSES.map((s) => (
             <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={byStatus[s.key]?.length ?? 0}>
               {(byStatus[s.key] ?? []).map((c) => {
-                const next = nextStatus(c.status);
+                const next = nextStatus(c);
                 return (
                   <Card
                     key={c.id}
@@ -299,7 +293,7 @@ function DemandasKanban() {
             ? "negada"
             : opts?.approve
             ? "aprovada"
-            : nextStatus(demandaData.status as DemandaStatus);
+            : nextStatus(demandaData as unknown as Demanda);
           if (!target) return;
           await advanceToStatus(demandaData as unknown as Demanda, target as DemandaStatus, {
             force: !!(opts?.approve || opts?.deny),
