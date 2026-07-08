@@ -293,7 +293,7 @@ function DemandasKanban() {
             ? "negada"
             : opts?.approve
             ? "aprovada"
-            : nextStatus(demandaData.status as DemandaStatus);
+            : nextStatus(demandaData as unknown as Demanda);
           if (!target) return;
           await advanceToStatus(demandaData as unknown as Demanda, target as DemandaStatus, {
             force: !!(opts?.approve || opts?.deny),
