@@ -378,6 +378,7 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber"): P
   const out = items.slice();
   let cursor = 0;
   let detalheFalhas = 0;
+  const primeirosErros: string[] = [];
 
   async function worker() {
     while (true) {
@@ -390,8 +391,11 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber"): P
         const detail = await caFetch(`${detailBase}/${id}`);
         await logDetailProbe(detail, tipo);
         out[i] = { ...items[i], ...detail };
-      } catch {
+      } catch (e: any) {
         detalheFalhas++;
+        if (primeirosErros.length < 3) {
+          primeirosErros.push(`id=${id}: ${String(e?.message ?? e).slice(0, 400)}`);
+        }
       }
     }
   }
@@ -402,14 +406,15 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber"): P
     try {
       await sb.from("ca_sync_log").insert({
         recurso: `detalhe_rateio_${tipo}`,
-        status: "ok",
+        status: "erro",
         started_at: new Date().toISOString(),
         finished_at: new Date().toISOString(),
         qtd_registros: detalheFalhas,
-        mensagem: `Falhas ao buscar detalhe de ${detalheFalhas}/${idxs.length} lançamentos rateados (fallback divisão igual).`,
+        mensagem: `Falhas ao buscar detalhe de ${detalheFalhas}/${idxs.length} lançamentos rateados (fallback divisão igual).\nPrimeiros erros:\n${primeirosErros.join("\n")}`,
       });
     } catch {}
   }
+
   return out;
 }
 
