@@ -269,7 +269,7 @@ function ContaAzulPage() {
 
       <SyncStateCard />
 
-      <DiagRateioCard canManage={canManage} />
+      
 
       <Card className="mt-4">
         <CardHeader>
@@ -772,52 +772,4 @@ function ReprocessarFalhasCard({
   );
 }
 
-
-
-function DiagRateioCard({ canManage }: { canManage: boolean }) {
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<any>(null);
-  async function run() {
-    setBusy(true);
-    setResult(null);
-    try {
-      const res = await fetch("/api/contaazul/diag-maxmidias", {
-        method: "POST",
-        headers: await authHeaders(),
-      });
-      const json = await res.json();
-      setResult(json);
-      if (!res.ok) toast.error(json?.error ?? "Erro ao rodar diagnóstico");
-      else toast.success("Diagnóstico gravado em ca_sync_log (recurso=diag_maxmidias)");
-    } catch (e: any) {
-      toast.error(String(e?.message ?? e));
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <Card className="mt-4">
-      <CardHeader className="flex flex-row items-center justify-between gap-2">
-        <div>
-          <CardTitle className="text-base">Diagnóstico do rateio (MAXMIDIAS R$ 1.200)</CardTitle>
-          <p className="text-xs text-muted-foreground mt-1">
-            Chama o endpoint de detalhe do Conta Azul para o lançamento rateado conhecido e grava o payload cru
-            em <code>ca_sync_log</code> (recurso <code>diag_maxmidias</code>). Roda 100% no servidor.
-          </p>
-        </div>
-        <Button size="sm" onClick={run} disabled={!canManage || busy}>
-          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
-          Rodar diagnóstico
-        </Button>
-      </CardHeader>
-      {result && (
-        <CardContent>
-          <pre className="text-xs bg-muted/40 rounded p-3 overflow-auto max-h-[300px]">
-            {JSON.stringify(result, null, 2)}
-          </pre>
-        </CardContent>
-      )}
-    </Card>
-  );
-}
 
