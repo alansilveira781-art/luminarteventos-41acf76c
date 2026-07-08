@@ -89,7 +89,6 @@ export function DemandaDialog({
   const [form, setForm] = useState<Demanda>({ status: defaultStatus });
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [itens, setItens] = useState<DemandaItem[]>([]);
-  const [receberOpen, setReceberOpen] = useState(false);
 
   const tipoRequerItens = useMemo(
     () => TIPOS_QUE_VAO_PARA_ESTOQUE.includes(form.tipo_demanda ?? ""),
