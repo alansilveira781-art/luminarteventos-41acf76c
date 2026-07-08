@@ -305,13 +305,27 @@ function isRateado(it: any): boolean {
   return ccs.length >= 2 || cats.length >= 2;
 }
 
-/** Para itens com rateio (>=2 centros OU >=2 categorias), busca o endpoint
- *  de detalhe para obter o `valor` real de cada fatia (a listagem não traz). */
+/** A listagem v2 do Conta Azul omite `centros_de_custo` / `categorias` para
+ *  boa parte dos lançamentos (inclusive os de 1 centro). Sem enriquecer, o
+ *  campo `centro_custo_external_id` fica NULL na tabela pai e o DRE por
+ *  evento perde essas linhas. Enriquecemos todo item que:
+ *   - é rateado (>=2 centros ou categorias) — precisa do detalhe p/ valor da fatia; OU
+ *   - não tem centro OU não tem categoria na listagem. */
+function needsDetail(it: any): boolean {
+  if (isRateado(it)) return true;
+  const ccs = Array.isArray(it.centros_de_custo) ? it.centros_de_custo : [];
+  const cats = Array.isArray(it.categorias) ? it.categorias : [];
+  const ccId = ccs[0]?.id ?? null;
+  const catId = cats[0]?.id ?? null;
+  return !ccId || !catId;
+}
+
+/** Busca o endpoint de detalhe para cada item que precisa (ver `needsDetail`). */
 async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber"): Promise<any[]> {
   const detailBase = tipo === "pagar"
     ? "/financeiro/eventos-financeiros/contas-a-pagar"
     : "/financeiro/eventos-financeiros/contas-a-receber";
-  const idxs = items.map((it, i) => (isRateado(it) ? i : -1)).filter((i) => i >= 0);
+  const idxs = items.map((it, i) => (needsDetail(it) ? i : -1)).filter((i) => i >= 0);
   if (idxs.length === 0) return items;
 
   const CONCURRENCY = 5;
