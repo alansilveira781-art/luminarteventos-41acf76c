@@ -144,15 +144,8 @@ function DemandasKanban() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-  function nextStatus(s: DemandaStatus): DemandaStatus | null {
-    const idx = DEMANDA_STATUSES.findIndex((x) => x.key === s);
-    if (idx < 0) return null;
-    for (let i = idx + 1; i < DEMANDA_STATUSES.length; i++) {
-      const k = DEMANDA_STATUSES[i].key;
-      if (k === "negada") continue;
-      return k;
-    }
-    return null;
+  function nextStatus(d: Demanda): DemandaStatus | null {
+    return proximoStatusDemanda(d.status, d.tipo_demanda ?? null);
   }
 
   async function advanceToStatus(
