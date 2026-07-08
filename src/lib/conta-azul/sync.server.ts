@@ -469,7 +469,10 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber"): P
   const idxs = items.map((it, i) => (needsDetail(it) ? i : -1)).filter((i) => i >= 0);
   if (idxs.length === 0) return items;
 
-  const CONCURRENCY = 5;
+  // Conta Azul rate-limita agressivamente /parcelas/{id}. Concurrency 2 +
+  // pequeno throttle entre chamadas evita 429 em massa (era 5, gerava
+  // falhas de detalhe em ~30% dos itens).
+  const CONCURRENCY = 2;
   const out = items.slice();
   let cursor = 0;
   let detalheFalhas = 0;
