@@ -12,7 +12,7 @@ import { SelectCreatable } from "@/components/SelectCreatable";
 import { DbComboboxCreatable } from "@/components/DbComboboxCreatable";
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { MentionInput, renderCommentText } from "@/components/MentionInput";
-import { Trash2, Upload, Download, FileIcon, ChevronRight, CheckCircle2, XCircle, Plus, PackageCheck, AlertTriangle } from "lucide-react";
+import { Trash2, Upload, Download, FileIcon, ChevronRight, CheckCircle2, XCircle, Plus } from "lucide-react";
 import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 import { MoneyInput } from "@/components/MoneyInput";
 import { ItemSearchSelect } from "@/components/ItemSearchSelect";
@@ -35,10 +35,14 @@ export type DemandaItem = {
   unidade?: string | null;
   quantidade: number;
   valor_unitario?: number | null;
+  desconto?: number | null;
+  frete?: number | null;
+  ipi?: number | null;
+  outros_custos?: number | null;
 };
 
 function novoDemandaItem(): DemandaItem {
-  return { item_id: null, descricao: "", unidade: "", quantidade: 1, valor_unitario: 0 };
+  return { item_id: null, descricao: "", unidade: "", quantidade: 1, valor_unitario: 0, desconto: 0, frete: 0, ipi: 0, outros_custos: 0 };
 }
 
 export type Demanda = {
@@ -85,7 +89,6 @@ export function DemandaDialog({
   const [form, setForm] = useState<Demanda>({ status: defaultStatus });
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [itens, setItens] = useState<DemandaItem[]>([]);
-  const [receberOpen, setReceberOpen] = useState(false);
 
   const tipoRequerItens = useMemo(
     () => TIPOS_QUE_VAO_PARA_ESTOQUE.includes(form.tipo_demanda ?? ""),
@@ -127,7 +130,6 @@ export function DemandaDialog({
   useEffect(() => {
     if (!open) return;
     setPendingFiles([]);
-    setReceberOpen(false);
     if (!demandaId) {
       setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10) });
       setItens([]);
@@ -138,7 +140,7 @@ export function DemandaDialog({
       if (c) setForm(c as any);
       const { data: dItens } = await sb
         .from("demanda_itens")
-        .select("id,item_id,descricao,unidade,quantidade,valor_unitario")
+        .select("id,item_id,descricao,unidade,quantidade,valor_unitario,desconto,frete,ipi,outros_custos")
         .eq("demanda_id", demandaId)
         .order("created_at", { ascending: true });
       setItens((dItens ?? []) as any);
@@ -172,6 +174,10 @@ export function DemandaDialog({
             unidade: it.unidade ?? null,
             quantidade: Number(it.quantidade || 0),
             valor_unitario: it.valor_unitario ?? null,
+            desconto: Number(it.desconto || 0),
+            frete: Number(it.frete || 0),
+            ipi: Number(it.ipi || 0),
+            outros_custos: Number(it.outros_custos || 0),
           }));
         if (rows.length) {
           const { error } = await sb.from("demanda_itens").insert(rows);
@@ -216,7 +222,15 @@ export function DemandaDialog({
   function removeItem(idx: number) { setItens((p) => p.filter((_, i) => i !== idx)); }
 
   const totalItens = useMemo(
-    () => itens.reduce((s, it) => s + Number(it.quantidade || 0) * Number(it.valor_unitario || 0), 0),
+    () => itens.reduce((s, it) => {
+      const q = Number(it.quantidade || 0);
+      const vu = Number(it.valor_unitario || 0);
+      const desc = Number(it.desconto || 0);
+      const fre = Number(it.frete || 0);
+      const ip = Number(it.ipi || 0);
+      const out = Number(it.outros_custos || 0);
+      return s + (q * vu - desc + fre + ip + out);
+    }, 0),
     [itens],
   );
 
@@ -362,15 +376,6 @@ export function DemandaDialog({
           </TabsContent>
 
           <TabsContent value="descritivo" className="space-y-3 pt-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Evento / Projeto</label>
-              <EventoSheetCombobox
-                value={form.evento_projeto}
-                onChange={(v) => {
-                  setForm({ ...form, evento_projeto: v, evento_projeto_id: null });
-                }}
-              />
-            </div>
             {tipoRequerItens ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -382,7 +387,15 @@ export function DemandaDialog({
                 {itens.length === 0 && (
                   <p className="text-xs text-muted-foreground italic">Nenhum item adicionado.</p>
                 )}
-                {itens.map((it, idx) => (
+                {itens.map((it, idx) => {
+                  const q = Number(it.quantidade || 0);
+                  const vu = Number(it.valor_unitario || 0);
+                  const desc = Number(it.desconto || 0);
+                  const fre = Number(it.frete || 0);
+                  const ip = Number(it.ipi || 0);
+                  const out = Number(it.outros_custos || 0);
+                  const subtotal = q * vu - desc + fre + ip + out;
+                  return (
                   <div key={idx} className="rounded-md border border-border p-3 space-y-2">
                     <div className="grid gap-2 sm:grid-cols-2">
                       <div>
@@ -436,10 +449,28 @@ export function DemandaDialog({
                       <div>
                         <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Subtotal</label>
                         <Input
-                          value={(Number(it.quantidade || 0) * Number(it.valor_unitario || 0)).toFixed(2)}
+                          value={subtotal.toFixed(2)}
                           readOnly
                           className="bg-muted/50"
                         />
+                      </div>
+                    </div>
+                    <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Desconto</label>
+                        <MoneyInput value={it.desconto ?? 0} onChange={(n) => updateItem(idx, { desconto: n })} />
+                      </div>
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Frete</label>
+                        <MoneyInput value={it.frete ?? 0} onChange={(n) => updateItem(idx, { frete: n })} />
+                      </div>
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">IPI</label>
+                        <MoneyInput value={it.ipi ?? 0} onChange={(n) => updateItem(idx, { ipi: n })} />
+                      </div>
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Outros / Imposto</label>
+                        <MoneyInput value={it.outros_custos ?? 0} onChange={(n) => updateItem(idx, { outros_custos: n })} />
                       </div>
                     </div>
                     <div className="flex justify-end">
@@ -448,23 +479,36 @@ export function DemandaDialog({
                       </Button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
                 <div className="text-right text-sm font-medium pt-2">
                   Total: {totalItens.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                 </div>
               </div>
             ) : (
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Descritivo da solicitação</label>
-                <Textarea
-                  rows={12}
-                  value={form.descritivo ?? ""}
-                  onChange={(e) => setForm({ ...form, descritivo: e.target.value })}
-                  placeholder="Descreva em detalhes a solicitação (o que precisa, quantidades, observações, prazos, etc.)"
-                />
-              </div>
+              <>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Evento / Projeto</label>
+                  <EventoSheetCombobox
+                    value={form.evento_projeto}
+                    onChange={(v) => {
+                      setForm({ ...form, evento_projeto: v, evento_projeto_id: null });
+                    }}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Descritivo da solicitação</label>
+                  <Textarea
+                    rows={12}
+                    value={form.descritivo ?? ""}
+                    onChange={(e) => setForm({ ...form, descritivo: e.target.value })}
+                    placeholder="Descreva em detalhes a solicitação (o que precisa, quantidades, observações, prazos, etc.)"
+                  />
+                </div>
+              </>
             )}
           </TabsContent>
+
 
 
           <TabsContent value="anexos" className="space-y-2 pt-4">
@@ -541,14 +585,6 @@ export function DemandaDialog({
                 </Button>
               );
             })()}
-            {demandaId && form.status === "a_receber" && tipoRequerItens && (
-              <Button
-                onClick={() => setReceberOpen(true)}
-                className="bg-success text-success-foreground hover:bg-success/90"
-              >
-                <PackageCheck className="h-4 w-4 mr-1" /> Validar recebimento
-              </Button>
-            )}
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button onClick={() => save.mutate()} disabled={save.isPending}>
               {save.isPending ? "Salvando…" : "Salvar"}
@@ -557,16 +593,6 @@ export function DemandaDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-    {demandaId && receberOpen && (
-      <ReceberDemandaDialog
-        demandaId={demandaId}
-        onClose={() => {
-          setReceberOpen(false);
-          qc.invalidateQueries({ queryKey: ["demandas"] });
-          onOpenChange(false);
-        }}
-      />
-    )}
     </>
   );
 }
@@ -837,377 +863,6 @@ function PendingAnexos({ files, onChange }: { files: File[]; onChange: (f: File[
         </div>
       )}
     </div>
-  );
-}
-
-type LinhaRec = {
-  key: string;
-  demanda_item_id?: string | null;
-  item_id: string;
-  descricao: string;
-  quantidade: number;
-  valor_unitario: number;
-};
-
-function novaLinhaRec(): LinhaRec {
-  return {
-    key: `l-${Math.random().toString(36).slice(2, 9)}`,
-    item_id: "",
-    descricao: "",
-    quantidade: 0,
-    valor_unitario: 0,
-  };
-}
-
-function ReceberDemandaDialog({ demandaId, onClose }: { demandaId: string; onClose: () => void }) {
-  const qc = useQueryClient();
-
-  const { data: demanda } = useQuery({
-    queryKey: ["demanda-a-receber", demandaId],
-    queryFn: async () => {
-      const { data, error } = await sb
-        .from("demandas")
-        .select("id,numero,titulo,solicitante,fornecedor,fornecedor_id,documento,comprador,status,observacoes,tipo_demanda")
-        .eq("id", demandaId)
-        .maybeSingle();
-      if (error) throw error;
-      if (!data) throw new Error("Demanda não encontrada");
-      return data as any;
-    },
-  });
-
-  const { data: demandaItens = [] } = useQuery({
-    queryKey: ["demanda-itens-a-receber", demandaId],
-    queryFn: async () => {
-      const { data, error } = await sb
-        .from("demanda_itens")
-        .select("id,item_id,descricao,unidade,quantidade,valor_unitario,recebido")
-        .eq("demanda_id", demandaId)
-        .eq("recebido", false)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as any[];
-    },
-  });
-
-  const { data: estoqueItens = [] } = useQuery({
-    queryKey: ["itens-select"],
-    queryFn: async () =>
-      await fetchAllRows<any>("itens", "id,nome,codigo,codigo_proprio,unidade,valor_unitario", {
-        orderBy: { column: "nome", ascending: true },
-        pageSize: 1000,
-      }),
-    staleTime: 0,
-  });
-
-  const { data: fornecedores = [] } = useQuery({
-    queryKey: ["fornecedores-select"],
-    queryFn: async () =>
-      (await sb.from("fornecedores").select("*").eq("status", "ativo").order("nome")).data ?? [],
-  });
-
-  const [linhas, setLinhas] = useState<LinhaRec[]>([novaLinhaRec()]);
-  const [fornecedorId, setFornecedorId] = useState("");
-  const [notaFiscal, setNotaFiscal] = useState("");
-  const [empresa, setEmpresa] = useState("");
-  const [observacoes, setObservacoes] = useState("");
-  const [dataMovimento, setDataMovimento] = useState(() => toBRTInputDateTime());
-  const [prefilled, setPrefilled] = useState(false);
-
-  useEffect(() => {
-    if (!demanda || prefilled) return;
-    setPrefilled(true);
-    if (demanda.fornecedor_id) setFornecedorId(demanda.fornecedor_id);
-    if (demanda.documento) setNotaFiscal(demanda.documento);
-    if (demanda.observacoes) setObservacoes(demanda.observacoes);
-  }, [demanda, prefilled]);
-
-  useEffect(() => {
-    if (demandaItens.length === 0) return;
-    setLinhas(
-      demandaItens.map((it) => ({
-        key: `l-${it.id}`,
-        demanda_item_id: it.id,
-        item_id: it.item_id ?? "",
-        descricao: it.descricao ?? "",
-        quantidade: Number(it.quantidade || 0),
-        valor_unitario: Number(it.valor_unitario || 0),
-      })),
-    );
-  }, [demandaItens]);
-
-  const statusBlocked = demanda && demanda.status !== "a_receber";
-
-  const totalRecebimento = useMemo(() => {
-    return linhas.reduce((soma, l) => {
-      const q = Number(l.quantidade || 0);
-      const vu = Number(l.valor_unitario || 0);
-      if (!q || q <= 0) return soma;
-      return soma + q * vu;
-    }, 0);
-  }, [linhas]);
-
-  const linhasValidas = linhas.filter((l) => l.item_id && l.quantidade > 0);
-
-  function setLinha(key: string, patch: Partial<LinhaRec>) {
-    setLinhas((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
-  }
-  function removerLinha(key: string) {
-    setLinhas((ls) => (ls.length <= 1 ? ls : ls.filter((l) => l.key !== key)));
-  }
-  function adicionarLinha() {
-    setLinhas((ls) => [...ls, novaLinhaRec()]);
-  }
-
-  const finalizar = useMutation({
-    mutationFn: async () => {
-      if (!fornecedorId) throw new Error("Selecione o fornecedor");
-      if (!empresa) throw new Error("Selecione a empresa");
-      if (!dataMovimento) throw new Error("Informe a data do recebimento");
-      if (linhasValidas.length === 0)
-        throw new Error("Selecione ao menos um item de estoque e informe a quantidade.");
-
-      const fornecedorNome = fornecedores.find((f: any) => f.id === fornecedorId)?.nome ?? "";
-
-      const { data: statusRow, error: statusErr } = await sb
-        .from("demandas")
-        .select("status")
-        .eq("id", demandaId)
-        .maybeSingle();
-      if (statusErr) throw statusErr;
-      if (!statusRow) throw new Error("Demanda não encontrada");
-      if (statusRow.status !== "a_receber") {
-        throw new Error(
-          `Esta despesa não está mais em 'A Receber' (status atual: ${statusRow.status}).`,
-        );
-      }
-
-      const dataIso = fromBRTInputDateTime(dataMovimento);
-
-      const { data: numData, error: numErr } = await sb.rpc("next_requisicao_numero");
-      if (numErr) throw numErr;
-      const requisicaoNumero = numData as number;
-
-      const origem = demanda?.numero != null ? `DESPESA-${demanda.numero}` : demandaId;
-
-      for (const l of linhasValidas) {
-        const qtd = Number(l.quantidade);
-        const vu = Number(l.valor_unitario || 0);
-        const valorTotal = qtd * vu;
-
-        const { error } = await sb.from("movimentacoes").insert({
-          tipo: "entrada",
-          entrada_tipo: "compra",
-          item_id: l.item_id,
-          quantidade: qtd,
-          valor_unitario: vu || null,
-          valor_total: Number(valorTotal.toFixed(4)),
-          desconto: 0,
-          frete: 0,
-          ipi: 0,
-          outros_custos: 0,
-          requisicao_numero: requisicaoNumero,
-          empresa,
-          data_movimento: dataIso,
-          fornecedor_id: fornecedorId || null,
-          nota_fiscal: notaFiscal || null,
-          responsavel_recebimento: demanda?.comprador ?? null,
-          responsavel_lancamento: demanda?.comprador ?? null,
-          observacoes:
-            (observacoes ? observacoes + " — " : "") +
-            `Recebimento da despesa ${origem}${fornecedorNome ? ` - Fornecedor: ${fornecedorNome}` : ""}`,
-        });
-        if (error) throw error;
-
-        if (l.demanda_item_id) {
-          await sb
-            .from("demanda_itens")
-            .update({
-              recebido: true,
-              quantidade_recebida: qtd,
-              recebido_em: new Date().toISOString(),
-            })
-            .eq("id", l.demanda_item_id);
-        }
-      }
-
-      const { error: updErr } = await sb
-        .from("demandas")
-        .update({
-          status: "finalizado",
-          fornecedor: fornecedorNome || demanda?.fornecedor || null,
-          fornecedor_id: fornecedorId || null,
-          documento: notaFiscal || null,
-        })
-        .eq("id", demandaId);
-      if (updErr) throw updErr;
-    },
-    onSuccess: () => {
-      toast.success("Recebimento registrado e despesa finalizada");
-      qc.invalidateQueries({ queryKey: ["demandas"] });
-      qc.invalidateQueries({ queryKey: ["itens-min"] });
-      qc.invalidateQueries({ queryKey: ["itens"] });
-      qc.invalidateQueries({ queryKey: ["entradas"] });
-      qc.invalidateQueries({ queryKey: ["item-movs"] });
-      onClose();
-    },
-    onError: (e: any) => toast.error(e.message ?? "Erro ao finalizar"),
-  });
-
-  return (
-    <Dialog open onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            Validar recebimento
-            {demanda?.numero != null && (
-              <span className="ml-2 text-xs font-mono text-muted-foreground">DEMANDA-{demanda.numero}</span>
-            )}
-          </DialogTitle>
-        </DialogHeader>
-
-        {statusBlocked && (
-          <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
-            <AlertTriangle className="h-4 w-4 mt-0.5 text-destructive shrink-0" />
-            <div>
-              Esta despesa não está mais em <strong>A Receber</strong> (status atual: <strong>{demanda?.status}</strong>).
-              O recebimento está bloqueado.
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-md border border-border p-3 bg-muted/20">
-          <div>
-            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Data do recebimento*</label>
-            <Input type="datetime-local" value={dataMovimento} onChange={(e) => setDataMovimento(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Empresa*</label>
-            <Select value={empresa} onValueChange={setEmpresa}>
-              <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
-              <SelectContent>
-                {EMPRESAS.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Tipo de entrada</label>
-            <Input value="Compra (despesa)" readOnly className="bg-muted/40" />
-          </div>
-          <div>
-            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Fornecedor*</label>
-            <EntitySearchSelect
-              options={fornecedores as any}
-              value={fornecedorId}
-              onChange={(v) => setFornecedorId(v)}
-              placeholder="Selecione…"
-              searchPlaceholder="Buscar fornecedor…"
-            />
-          </div>
-          <div>
-            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Nota fiscal</label>
-            <Input value={notaFiscal} onChange={(e) => setNotaFiscal(e.target.value)} />
-          </div>
-          <div className="sm:col-span-3">
-            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Observações</label>
-            <Textarea rows={2} value={observacoes} onChange={(e) => setObservacoes(e.target.value)} />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold">Itens que vão dar entrada no estoque</h3>
-            <Button size="sm" variant="outline" onClick={adicionarLinha}>
-              <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar item
-            </Button>
-          </div>
-
-          <div className="rounded-md border border-border overflow-hidden">
-            <table className="w-full text-xs">
-              <thead className="bg-muted/40">
-                <tr className="text-left">
-                  <th className="p-2 font-medium">Item de estoque*</th>
-                  <th className="p-2 font-medium w-24">Qtd*</th>
-                  <th className="p-2 font-medium w-32">Valor unit.</th>
-                  <th className="p-2 font-medium w-32 text-right">Total</th>
-                  <th className="p-2 w-10"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {linhas.map((l) => {
-                  const total = Number(l.quantidade || 0) * Number(l.valor_unitario || 0);
-                  return (
-                    <tr key={l.key} className="border-t border-border align-top">
-                      <td className="p-2">
-                        <ItemSearchSelect
-                          itens={estoqueItens as any}
-                          value={l.item_id}
-                          onChange={(v) => setLinha(l.key, { item_id: v })}
-                          placeholder="Buscar item…"
-                        />
-                        {l.descricao && (
-                          <div className="text-[10px] text-muted-foreground mt-1 truncate">{l.descricao}</div>
-                        )}
-                      </td>
-                      <td className="p-2">
-                        <Input
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={l.quantidade || ""}
-                          onChange={(e) => setLinha(l.key, { quantidade: Number(e.target.value) })}
-                        />
-                      </td>
-                      <td className="p-2">
-                        <MoneyInput
-                          value={l.valor_unitario}
-                          onChange={(v) => setLinha(l.key, { valor_unitario: v })}
-                        />
-                      </td>
-                      <td className="p-2 text-right tabular-nums">
-                        {total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                      </td>
-                      <td className="p-2">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          disabled={linhas.length <= 1}
-                          onClick={() => removerLinha(l.key)}
-                          aria-label="Remover linha"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot className="bg-muted/20">
-                <tr>
-                  <td colSpan={3} className="p-2 text-right font-medium">Total do recebimento</td>
-                  <td className="p-2 text-right font-semibold tabular-nums">
-                    {totalRecebimento.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                  </td>
-                  <td />
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button
-            onClick={() => finalizar.mutate()}
-            disabled={finalizar.isPending || !!statusBlocked}
-            className="bg-success text-success-foreground hover:bg-success/90"
-          >
-            <PackageCheck className="h-4 w-4 mr-1" />
-            {finalizar.isPending ? "Registrando…" : "Registrar entrada no estoque"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }
 
