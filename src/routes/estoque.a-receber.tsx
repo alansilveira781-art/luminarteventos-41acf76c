@@ -51,9 +51,25 @@ type CompraItemRow = {
 };
 
 
+type DemandaRow = {
+  id: string;
+  numero: number | null;
+  titulo: string | null;
+  tipo_demanda: string | null;
+  solicitante: string | null;
+  fornecedor: string | null;
+  fornecedor_id: string | null;
+  comprador: string | null;
+  observacoes: string | null;
+  total: number;
+};
+
+const TIPOS_ESTOQUE_DESPESA = ["fardamento", "material_limpeza", "material_escritorio"];
+
 function AReceberPage() {
   const qc = useQueryClient();
   const [openId, setOpenId] = useState<string | null>(null);
+  const [openDemandaId, setOpenDemandaId] = useState<string | null>(null);
 
   const { data: compras = [] } = useQuery({
     queryKey: ["compras-receber"],
@@ -70,26 +86,58 @@ function AReceberPage() {
     },
   });
 
+  const { data: demandas = [] } = useQuery({
+    queryKey: ["demandas-receber"],
+    queryFn: async () => {
+      const { data: dm, error } = await sb
+        .from("demandas")
+        .select("id,numero,titulo,tipo_demanda,solicitante,fornecedor,fornecedor_id,comprador,observacoes")
+        .eq("status", "a_receber")
+        .in("tipo_demanda", TIPOS_ESTOQUE_DESPESA);
+      if (error) throw error;
+      const rows = (dm ?? []) as any[];
+      const ids = rows.map((r) => r.id);
+      let totals: Record<string, number> = {};
+      if (ids.length) {
+        const { data: itens } = await sb
+          .from("demanda_itens")
+          .select("demanda_id,quantidade,valor_unitario,desconto,frete,ipi,outros_custos")
+          .in("demanda_id", ids)
+          .eq("recebido", false);
+        for (const it of (itens ?? []) as any[]) {
+          const q = Number(it.quantidade || 0);
+          const vu = Number(it.valor_unitario || 0);
+          const desc = Number(it.desconto || 0);
+          const fre = Number(it.frete || 0);
+          const ip = Number(it.ipi || 0);
+          const out = Number(it.outros_custos || 0);
+          totals[it.demanda_id] = (totals[it.demanda_id] || 0) + (q * vu - desc + fre + ip + out);
+        }
+      }
+      return rows.map((r) => ({ ...r, total: totals[r.id] || 0 })) as DemandaRow[];
+    },
+  });
+
   return (
     <>
       <PageHeader
-        title="Compras a receber"
-        description="Valide o recebimento dos itens e dê entrada no estoque"
+        title="Recebimentos a validar"
+        description="Compras e despesas de material aguardando entrada no estoque"
       />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {compras.length === 0 && (
+        {compras.length === 0 && demandas.length === 0 && (
           <Card className="p-8 text-center text-sm text-muted-foreground sm:col-span-2 lg:col-span-3">
-            Nenhuma compra aguardando recebimento.
+            Nenhum recebimento pendente.
           </Card>
         )}
         {compras.map((c) => (
           <Card key={c.id} className="p-4 space-y-2">
             <div className="flex items-start justify-between gap-2">
               <div className="font-medium">{c.titulo || c.fornecedor || "Compra"}</div>
-              <div className="text-[11px] font-mono text-muted-foreground shrink-0">
-                {c.numero != null ? `COMPRA-${c.numero}` : "—"}
-              </div>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary shrink-0">
+                {c.numero != null ? `COMPRA-${c.numero}` : "COMPRA"}
+              </span>
             </div>
             <div className="text-xs text-muted-foreground space-y-0.5">
               {c.solicitante && <div>Solicitante: {c.solicitante}</div>}
@@ -106,12 +154,45 @@ function AReceberPage() {
               <PackageCheck className="h-4 w-4 mr-1" /> Validar recebimento
             </Button>
           </Card>
-
+        ))}
+        {demandas.map((d) => (
+          <Card key={d.id} className="p-4 space-y-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="font-medium">{d.titulo || d.fornecedor || "Despesa"}</div>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">
+                {d.numero != null ? `DESPESA-${d.numero}` : "DESPESA"}
+              </span>
+            </div>
+            <div className="text-xs text-muted-foreground space-y-0.5">
+              {d.tipo_demanda && <div>Tipo: {d.tipo_demanda.replace(/_/g, " ")}</div>}
+              {d.solicitante && <div>Solicitante: {d.solicitante}</div>}
+              {d.fornecedor && <div>Fornecedor: {d.fornecedor}</div>}
+              {d.comprador && <div>Comprador: {d.comprador}</div>}
+              {d.total > 0 && (
+                <div className="font-medium text-foreground">
+                  {d.total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                </div>
+              )}
+            </div>
+            <Button size="sm" className="w-full" onClick={() => setOpenDemandaId(d.id)}>
+              <PackageCheck className="h-4 w-4 mr-1" /> Validar recebimento
+            </Button>
+          </Card>
         ))}
       </div>
 
       {openId && (
         <ReceberDialog compraId={openId} onClose={() => { setOpenId(null); qc.invalidateQueries({ queryKey: ["compras-receber"] }); }} />
+      )}
+      {openDemandaId && (
+        <ReceberDemandaDialog
+          demandaId={openDemandaId}
+          onClose={() => {
+            setOpenDemandaId(null);
+            qc.invalidateQueries({ queryKey: ["demandas-receber"] });
+            qc.invalidateQueries({ queryKey: ["demandas"] });
+          }}
+        />
       )}
     </>
   );
