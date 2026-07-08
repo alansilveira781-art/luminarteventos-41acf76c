@@ -38,6 +38,7 @@ type Demanda = {
   data_solicitacao: string | null;
   data_compra: string | null;
   valor_total: number | null;
+  tipo_demanda?: string | null;
   responsavel_id?: string | null;
   responsavel_nome?: string | null;
 };
