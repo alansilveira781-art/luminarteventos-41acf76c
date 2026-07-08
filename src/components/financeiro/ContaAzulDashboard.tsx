@@ -595,18 +595,19 @@ function AnaliseDetalhada() {
     enabled,
     queryFn: async () => {
       const cols = "lancamento_external_id,tipo,categoria_external_id,valor,ordem";
-      const { data, error } = await sb
-        .from("ca_lancamento_rateios")
-        .select(cols)
-        .eq("centro_custo_external_id", centroId);
-      if (error) throw error;
-      return (data ?? []) as Array<{
+      return fetchPaged<{
         lancamento_external_id: string;
         tipo: "pagar" | "receber";
         categoria_external_id: string | null;
         valor: number;
         ordem: number;
-      }>;
+      }>((from, to) =>
+        sb
+          .from("ca_lancamento_rateios")
+          .select(cols)
+          .eq("centro_custo_external_id", centroId)
+          .range(from, to),
+      );
     },
   });
 
@@ -631,11 +632,12 @@ function AnaliseDetalhada() {
     enabled: enabled && lancPagarIds.length > 0,
     queryFn: async () => {
       const out: any[] = [];
-      for (let i = 0; i < lancPagarIds.length; i += 500) {
-        const chunk = lancPagarIds.slice(i, i + 500);
-        const { data, error } = await sb.from("ca_contas_pagar").select(pagarCols).in("external_id", chunk);
-        if (error) throw error;
-        out.push(...(data ?? []));
+      for (let i = 0; i < lancPagarIds.length; i += 300) {
+        const chunk = lancPagarIds.slice(i, i + 300);
+        const rows = await fetchPaged<any>((from, to) =>
+          sb.from("ca_contas_pagar").select(pagarCols).in("external_id", chunk).range(from, to),
+        );
+        out.push(...rows);
       }
       return out;
     },
@@ -645,15 +647,17 @@ function AnaliseDetalhada() {
     enabled: enabled && lancReceberIds.length > 0,
     queryFn: async () => {
       const out: any[] = [];
-      for (let i = 0; i < lancReceberIds.length; i += 500) {
-        const chunk = lancReceberIds.slice(i, i + 500);
-        const { data, error } = await sb.from("ca_contas_receber").select(receberCols).in("external_id", chunk);
-        if (error) throw error;
-        out.push(...(data ?? []));
+      for (let i = 0; i < lancReceberIds.length; i += 300) {
+        const chunk = lancReceberIds.slice(i, i + 300);
+        const rows = await fetchPaged<any>((from, to) =>
+          sb.from("ca_contas_receber").select(receberCols).in("external_id", chunk).range(from, to),
+        );
+        out.push(...rows);
       }
       return out;
     },
   });
+
 
   // 3. Monta linhas sintéticas (1 por fatia): herdam descrição/datas/status do pai
   //    e usam valor + categoria da fatia. Quantidade de rateios por lancamento_external_id
