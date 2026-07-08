@@ -658,50 +658,104 @@ function AnaliseDetalhada() {
     },
   });
 
+  // Saídas de estoque do evento (movimentacoes tipo=saida). Sem filtro de data — evento inteiro.
+  const saidasEstoque = useQuery({
+    queryKey: ["mov-saidas-evento", centroId],
+    enabled,
+    queryFn: async () => {
+      return fetchPaged<{ valor_total: number | null; evento_projeto: string | null; itens: { categoria: string | null } | null }>((from, to) =>
+        sb
+          .from("movimentacoes")
+          .select("valor_total, evento_projeto, itens(categoria)")
+          .eq("tipo", "saida")
+          .range(from, to),
+      );
+    },
+  });
+
 
   // 3. Monta linhas sintéticas (1 por fatia): herdam descrição/datas/status do pai
   //    e usam valor + categoria da fatia. Quantidade de rateios por lancamento_external_id
   //    determina o badge "Rateado".
   const { pagarRows, receberRows } = useMemo(() => {
-    const pPar = new Map<string, any>();
-    (pagarParents.data ?? []).forEach((p: any) => pPar.set(p.external_id, p));
-    const rPar = new Map<string, any>();
-    (receberParents.data ?? []).forEach((p: any) => rPar.set(p.external_id, p));
-    const counts = new Map<string, number>(); // "tipo|lanc_id" -> total de rateios desse lançamento
-    rateiosData.forEach((r) => {
-      const k = `${r.tipo}|${r.lancamento_external_id}`;
-      counts.set(k, (counts.get(k) ?? 0) + 1);
-    });
-    const pagarRows: any[] = [];
-    const receberRows: any[] = [];
-    rateiosData.forEach((r) => {
-      const par = r.tipo === "pagar" ? pPar.get(r.lancamento_external_id) : rPar.get(r.lancamento_external_id);
-      if (!par) return;
-      const row = {
-        external_id: `${r.lancamento_external_id}#${r.ordem}`,
-        descricao: par.descricao,
-        fornecedor_nome: par.fornecedor_nome ?? null,
-        cliente_nome: par.cliente_nome ?? null,
-        categoria_external_id: r.categoria_external_id,
-        centro_custo_external_id: centroId,
-        valor: r.valor,
-        data_vencimento: par.data_vencimento,
-        data_pagamento: par.data_pagamento,
-        status: par.status,
-        observacoes: par.observacoes,
-        _rateado: (counts.get(`${r.tipo}|${r.lancamento_external_id}`) ?? 1) > 1,
-      };
-      if (r.tipo === "pagar") pagarRows.push(row);
-      else receberRows.push(row);
-    });
-    return { pagarRows, receberRows };
+...
   }, [rateiosData, pagarParents.data, receberParents.data, centroId]);
 
+  // Nome do centro selecionado — usado no casamento de saídas de estoque.
+  const centroSelNomeEarly = centroId ? (ccs.find((c) => c.external_id === centroId)?.nome ?? "") : "";
+
+  // Agrega saídas de estoque filtradas pelo evento em grupos do DRE.
+  // Chave detalhe = `stock:${categoria}` para não colidir com categoria_external_id do Conta Azul.
+  const stockAgg = useMemo(() => {
+    const agg = new Map<DreGroupId, Map<string, number>>();
+    const catNames = new Map<string, string>(); // "stock:<cat>" -> nome legível
+    if (!enabled) return { agg, catNames };
+    const needle = centroNeedle(centroSelNomeEarly);
+    if (!needle) return { agg, catNames };
+    const prefixIndex = buildPrefixIndex(dreEstrutura);
+    (saidasEstoque.data ?? []).forEach((m) => {
+      if (!rowMatchesText({ descricao: m.evento_projeto }, needle)) return;
+      const cat = m.itens?.categoria ?? null;
+      const g: DreGroupId = grupoDoPlanoNome(cat, prefixIndex) ?? "SC";
+      const catNome = cat?.trim() || "Sem categoria";
+      const key = `stock:${catNome}`;
+      catNames.set(key, `${catNome} (estoque)`);
+      const det = agg.get(g) ?? new Map<string, number>();
+      det.set(key, (det.get(key) ?? 0) + Number(m.valor_total || 0));
+      agg.set(g, det);
+    });
+    return { agg, catNames };
+  }, [saidasEstoque.data, enabled, centroSelNomeEarly, dreEstrutura]);
+
+  // Estrutura efetiva do DRE: se houver saídas em SC, adiciona a linha SC (sum, sign -1).
+  const estruturaEfetiva = useMemo<DreLine[]>(() => {
+    if (!stockAgg.agg.has("SC")) return dreEstrutura;
+    if (dreEstrutura.some((l) => l.id === "SC")) return dreEstrutura;
+    return [...dreEstrutura, { id: "SC", label: "(?) Sem classificação", kind: "sum", sign: -1, prefixes: [] }];
+  }, [dreEstrutura, stockAgg.agg]);
+
   // Servidor já fatiou pelo centro de custo — sem filtro client-side adicional.
-  const { totais, grupos } = useMemo(
-    () => calcularDRECaixa(pagarRows, receberRows, planoMap, 0, 0, dreEstrutura),
-    [pagarRows, receberRows, planoMap, dreEstrutura],
-  );
+  // Depois, soma por cima as saídas de estoque (não altera lógica do Conta Azul).
+  const { totais, grupos } = useMemo(() => {
+    const base = calcularDRECaixa(pagarRows, receberRows, planoMap, 0, 0, estruturaEfetiva);
+    if (stockAgg.agg.size === 0) return base;
+    const grupos = new Map(base.grupos);
+    const totais: Partial<Record<DreGroupId, number>> = { ...base.totais };
+    // Merge dos detalhes em grupos.
+    stockAgg.agg.forEach((det, g) => {
+      const cur = grupos.get(g) ?? new Map<string, number>();
+      det.forEach((v, k) => cur.set(k, (cur.get(k) ?? 0) + v));
+      grupos.set(g, cur);
+    });
+    // Recalcula totais do zero a partir de grupos + estruturaEfetiva para propagar nas linhas calc.
+    const sumByGroup = new Map<DreGroupId, number>();
+    grupos.forEach((det, g) => {
+      let s = 0;
+      det.forEach((v) => (s += v));
+      sumByGroup.set(g, s);
+    });
+    const getVal = (id: DreGroupId): number => {
+      if (totais[id] !== undefined) return totais[id]!;
+      const line = estruturaEfetiva.find((l) => l.id === id);
+      if (!line) { totais[id] = 0; return 0; }
+      let v = 0;
+      if (line.kind === "sum") v = (sumByGroup.get(id) ?? 0) * line.sign;
+      else if (line.formula) v = line.formula.reduce((s, f) => s + getVal(f), 0);
+      totais[id] = v;
+      return v;
+    };
+    // Reset e recompute.
+    (Object.keys(totais) as DreGroupId[]).forEach((k) => delete totais[k]);
+    estruturaEfetiva.forEach((l) => getVal(l.id));
+    return { totais, grupos };
+  }, [pagarRows, receberRows, planoMap, estruturaEfetiva, stockAgg]);
+
+  // planoMap estendido com nomes das categorias de estoque, para o rótulo em linhasDre.
+  const planoMapExt = useMemo(() => {
+    const m = new Map(planoMap);
+    stockAgg.catNames.forEach((nome, key) => m.set(key, { nome }));
+    return m;
+  }, [planoMap, stockAgg.catNames]);
 
   const rb = totais.RB ?? 0;
   const pv = (totais.AC ?? 0) + (totais.DM ?? 0) + (totais.DC ?? 0);
