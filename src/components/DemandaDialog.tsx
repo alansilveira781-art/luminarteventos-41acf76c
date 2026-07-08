@@ -130,7 +130,6 @@ export function DemandaDialog({
   useEffect(() => {
     if (!open) return;
     setPendingFiles([]);
-    setReceberOpen(false);
     if (!demandaId) {
       setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10) });
       setItens([]);
@@ -141,7 +140,7 @@ export function DemandaDialog({
       if (c) setForm(c as any);
       const { data: dItens } = await sb
         .from("demanda_itens")
-        .select("id,item_id,descricao,unidade,quantidade,valor_unitario")
+        .select("id,item_id,descricao,unidade,quantidade,valor_unitario,desconto,frete,ipi,outros_custos")
         .eq("demanda_id", demandaId)
         .order("created_at", { ascending: true });
       setItens((dItens ?? []) as any);
