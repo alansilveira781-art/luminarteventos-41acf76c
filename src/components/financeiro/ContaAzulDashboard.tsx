@@ -659,17 +659,56 @@ function AnaliseDetalhada() {
   });
 
   // Saídas de estoque do evento (movimentacoes tipo=saida). Sem filtro de data — evento inteiro.
+  // valor_total nas saídas é sempre NULL na base; calculamos custo = quantidade × itens.valor_unitario.
   const saidasEstoque = useQuery({
     queryKey: ["mov-saidas-evento", centroId],
     enabled,
     queryFn: async () => {
-      return fetchPaged<{ valor_total: number | null; evento_projeto: string | null; itens: { categoria: string | null } | null }>((from, to) =>
+      // (a) saídas simples com item_id direto.
+      const simples = await fetchPaged<{
+        id: string;
+        quantidade: number | null;
+        evento_projeto: string | null;
+        item_id: string | null;
+        itens: { categoria: string | null; valor_unitario: number | null } | null;
+      }>((from, to) =>
         sb
           .from("movimentacoes")
-          .select("valor_total, evento_projeto, itens(categoria)")
+          .select("id, quantidade, evento_projeto, item_id, itens(categoria, valor_unitario)")
           .eq("tipo", "saida")
           .range(from, to),
       );
+
+      // (b) saídas compostas (movimentacao_itens) — raras; buscamos linhas cujo pai é saida.
+      const composites = await fetchPaged<{
+        quantidade: number | null;
+        itens: { categoria: string | null; valor_unitario: number | null } | null;
+        movimentacoes: { evento_projeto: string | null; tipo: string | null; item_id: string | null } | null;
+      }>((from, to) =>
+        sb
+          .from("movimentacao_itens")
+          .select("quantidade, itens(categoria, valor_unitario), movimentacoes!inner(evento_projeto, tipo, item_id)")
+          .eq("movimentacoes.tipo", "saida")
+          .range(from, to),
+      );
+
+      const rows: { valor_total: number; evento_projeto: string | null; itens: { categoria: string | null } | null }[] = [];
+      simples.forEach((m) => {
+        if (!m.item_id) return; // composite: valor virá em (b)
+        const q = Number(m.quantidade || 0);
+        const vu = Number(m.itens?.valor_unitario || 0);
+        rows.push({ valor_total: q * vu, evento_projeto: m.evento_projeto, itens: m.itens });
+      });
+      composites.forEach((mi) => {
+        const q = Number(mi.quantidade || 0);
+        const vu = Number(mi.itens?.valor_unitario || 0);
+        rows.push({
+          valor_total: q * vu,
+          evento_projeto: mi.movimentacoes?.evento_projeto ?? null,
+          itens: mi.itens,
+        });
+      });
+      return rows;
     },
   });
 
