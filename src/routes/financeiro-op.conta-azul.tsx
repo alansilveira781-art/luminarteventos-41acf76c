@@ -269,6 +269,8 @@ function ContaAzulPage() {
 
       <SyncStateCard />
 
+      <DiagRateioCard canManage={canManage} />
+
       <Card className="mt-4">
         <CardHeader>
           <CardTitle className="text-base">Histórico de sincronizações</CardTitle>
