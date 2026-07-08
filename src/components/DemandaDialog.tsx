@@ -376,15 +376,6 @@ export function DemandaDialog({
           </TabsContent>
 
           <TabsContent value="descritivo" className="space-y-3 pt-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Evento / Projeto</label>
-              <EventoSheetCombobox
-                value={form.evento_projeto}
-                onChange={(v) => {
-                  setForm({ ...form, evento_projeto: v, evento_projeto_id: null });
-                }}
-              />
-            </div>
             {tipoRequerItens ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -396,7 +387,15 @@ export function DemandaDialog({
                 {itens.length === 0 && (
                   <p className="text-xs text-muted-foreground italic">Nenhum item adicionado.</p>
                 )}
-                {itens.map((it, idx) => (
+                {itens.map((it, idx) => {
+                  const q = Number(it.quantidade || 0);
+                  const vu = Number(it.valor_unitario || 0);
+                  const desc = Number(it.desconto || 0);
+                  const fre = Number(it.frete || 0);
+                  const ip = Number(it.ipi || 0);
+                  const out = Number(it.outros_custos || 0);
+                  const subtotal = q * vu - desc + fre + ip + out;
+                  return (
                   <div key={idx} className="rounded-md border border-border p-3 space-y-2">
                     <div className="grid gap-2 sm:grid-cols-2">
                       <div>
@@ -450,10 +449,28 @@ export function DemandaDialog({
                       <div>
                         <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Subtotal</label>
                         <Input
-                          value={(Number(it.quantidade || 0) * Number(it.valor_unitario || 0)).toFixed(2)}
+                          value={subtotal.toFixed(2)}
                           readOnly
                           className="bg-muted/50"
                         />
+                      </div>
+                    </div>
+                    <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Desconto</label>
+                        <MoneyInput value={it.desconto ?? 0} onChange={(n) => updateItem(idx, { desconto: n })} />
+                      </div>
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Frete</label>
+                        <MoneyInput value={it.frete ?? 0} onChange={(n) => updateItem(idx, { frete: n })} />
+                      </div>
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">IPI</label>
+                        <MoneyInput value={it.ipi ?? 0} onChange={(n) => updateItem(idx, { ipi: n })} />
+                      </div>
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Outros / Imposto</label>
+                        <MoneyInput value={it.outros_custos ?? 0} onChange={(n) => updateItem(idx, { outros_custos: n })} />
                       </div>
                     </div>
                     <div className="flex justify-end">
@@ -462,23 +479,36 @@ export function DemandaDialog({
                       </Button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
                 <div className="text-right text-sm font-medium pt-2">
                   Total: {totalItens.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                 </div>
               </div>
             ) : (
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Descritivo da solicitação</label>
-                <Textarea
-                  rows={12}
-                  value={form.descritivo ?? ""}
-                  onChange={(e) => setForm({ ...form, descritivo: e.target.value })}
-                  placeholder="Descreva em detalhes a solicitação (o que precisa, quantidades, observações, prazos, etc.)"
-                />
-              </div>
+              <>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Evento / Projeto</label>
+                  <EventoSheetCombobox
+                    value={form.evento_projeto}
+                    onChange={(v) => {
+                      setForm({ ...form, evento_projeto: v, evento_projeto_id: null });
+                    }}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Descritivo da solicitação</label>
+                  <Textarea
+                    rows={12}
+                    value={form.descritivo ?? ""}
+                    onChange={(e) => setForm({ ...form, descritivo: e.target.value })}
+                    placeholder="Descreva em detalhes a solicitação (o que precisa, quantidades, observações, prazos, etc.)"
+                  />
+                </div>
+              </>
             )}
           </TabsContent>
+
 
 
           <TabsContent value="anexos" className="space-y-2 pt-4">
