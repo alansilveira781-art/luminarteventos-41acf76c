@@ -259,7 +259,7 @@ function DemandasKanban() {
           {DEMANDA_STATUSES.map((s) => (
             <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={byStatus[s.key]?.length ?? 0}>
               {(byStatus[s.key] ?? []).map((c) => {
-                const next = nextStatus(c.status);
+                const next = nextStatus(c);
                 return (
                   <Card
                     key={c.id}
