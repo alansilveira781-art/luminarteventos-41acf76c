@@ -770,6 +770,9 @@ function ReprocessarFalhasCard({
       </CardContent>
     </Card>
   );
+}
+
+
 
 function DiagRateioCard({ canManage }: { canManage: boolean }) {
   const [busy, setBusy] = useState(false);
