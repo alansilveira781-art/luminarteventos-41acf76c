@@ -678,7 +678,38 @@ function AnaliseDetalhada() {
   //    e usam valor + categoria da fatia. Quantidade de rateios por lancamento_external_id
   //    determina o badge "Rateado".
   const { pagarRows, receberRows } = useMemo(() => {
-...
+    const pPar = new Map<string, any>();
+    (pagarParents.data ?? []).forEach((p: any) => pPar.set(p.external_id, p));
+    const rPar = new Map<string, any>();
+    (receberParents.data ?? []).forEach((p: any) => rPar.set(p.external_id, p));
+    const counts = new Map<string, number>();
+    rateiosData.forEach((r) => {
+      const k = `${r.tipo}|${r.lancamento_external_id}`;
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    });
+    const pagarRows: any[] = [];
+    const receberRows: any[] = [];
+    rateiosData.forEach((r) => {
+      const par = r.tipo === "pagar" ? pPar.get(r.lancamento_external_id) : rPar.get(r.lancamento_external_id);
+      if (!par) return;
+      const row = {
+        external_id: `${r.lancamento_external_id}#${r.ordem}`,
+        descricao: par.descricao,
+        fornecedor_nome: par.fornecedor_nome ?? null,
+        cliente_nome: par.cliente_nome ?? null,
+        categoria_external_id: r.categoria_external_id,
+        centro_custo_external_id: centroId,
+        valor: r.valor,
+        data_vencimento: par.data_vencimento,
+        data_pagamento: par.data_pagamento,
+        status: par.status,
+        observacoes: par.observacoes,
+        _rateado: (counts.get(`${r.tipo}|${r.lancamento_external_id}`) ?? 1) > 1,
+      };
+      if (r.tipo === "pagar") pagarRows.push(row);
+      else receberRows.push(row);
+    });
+    return { pagarRows, receberRows };
   }, [rateiosData, pagarParents.data, receberParents.data, centroId]);
 
   // Nome do centro selecionado — usado no casamento de saídas de estoque.
