@@ -431,11 +431,41 @@ function needsDetail(it: any): boolean {
   return !ccId || !catId;
 }
 
-/** Busca o endpoint de detalhe para cada item que precisa (ver `needsDetail`). */
+/** Extrai o id da parcela para o endpoint /parcelas/{id}.
+ *  Em lançamentos de parcela única, o próprio id do evento financeiro
+ *  costuma servir. Quando a listagem trouxer explicitamente um id de
+ *  parcela, damos preferência. */
+function extractParcelaId(it: any): { parcelaId: string | null; source: string } {
+  const p0 = Array.isArray(it.parcelas) && it.parcelas.length > 0 ? it.parcelas[0] : null;
+  if (p0?.id) return { parcelaId: String(p0.id), source: "parcelas[0].id" };
+  if (it.parcela_id) return { parcelaId: String(it.parcela_id), source: "parcela_id" };
+  if (it.id_parcela) return { parcelaId: String(it.id_parcela), source: "id_parcela" };
+  if (it.id) return { parcelaId: String(it.id), source: "fallback:it.id" };
+  return { parcelaId: null, source: "none" };
+}
+
+const _rateioSemValorSeen = new Set<string>();
+async function logRateioSemValor(lancId: string, tipo: "pagar" | "receber", n: number) {
+  if (_rateioSemValorSeen.has(lancId)) return;
+  _rateioSemValorSeen.add(lancId);
+  if (_rateioSemValorSeen.size > 200) return; // não estourar
+  try {
+    await sb.from("ca_sync_log").insert({
+      recurso: "rateio_sem_valor",
+      status: "erro",
+      started_at: new Date().toISOString(),
+      finished_at: new Date().toISOString(),
+      qtd_registros: n,
+      mensagem: `Lançamento ${tipo} ${lancId}: rateado (${n} fatias) sem valor nem percentual no payload — fallback divisão igual.`,
+    });
+  } catch {}
+}
+
+/** Busca o endpoint de parcelas para cada item que precisa (ver `needsDetail`).
+ *  O endpoint correto na API v2 é /financeiro/eventos-financeiros/parcelas/{id}
+ *  — os antigos /contas-a-pagar/{id} e /contas-a-receber/{id} retornam 404. */
 async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber"): Promise<any[]> {
-  const detailBase = tipo === "pagar"
-    ? "/financeiro/eventos-financeiros/contas-a-pagar"
-    : "/financeiro/eventos-financeiros/contas-a-receber";
+  const detailBase = "/financeiro/eventos-financeiros/parcelas";
   const idxs = items.map((it, i) => (needsDetail(it) ? i : -1)).filter((i) => i >= 0);
   if (idxs.length === 0) return items;
 
@@ -443,23 +473,30 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber"): P
   const out = items.slice();
   let cursor = 0;
   let detalheFalhas = 0;
+  let fallbackIdCount = 0;
   const primeirosErros: string[] = [];
+  const fallbackSample: string[] = [];
 
   async function worker() {
     while (true) {
       const my = cursor++;
       if (my >= idxs.length) return;
       const i = idxs[my];
-      const id = items[i]?.id;
-      if (!id) continue;
+      const { parcelaId, source } = extractParcelaId(items[i]);
+      if (!parcelaId) continue;
+      if (source === "fallback:it.id") {
+        fallbackIdCount++;
+        if (fallbackSample.length < 5) fallbackSample.push(parcelaId);
+      }
+      const url = `${detailBase}/${parcelaId}`;
       try {
-        const detail = await caFetch(`${detailBase}/${id}`);
+        const detail = await caFetch(url);
         await logDetailProbe(detail, tipo);
         out[i] = { ...items[i], ...detail };
       } catch (e: any) {
         detalheFalhas++;
         if (primeirosErros.length < 3) {
-          primeirosErros.push(`id=${id}: ${String(e?.message ?? e).slice(0, 400)}`);
+          primeirosErros.push(`GET ${url} — ${String(e?.message ?? e).slice(0, 400)}`);
         }
       }
     }
@@ -470,18 +507,32 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber"): P
   if (detalheFalhas > 0) {
     try {
       await sb.from("ca_sync_log").insert({
-        recurso: `detalhe_rateio_${tipo}`,
+        recurso: `detalhe_falha_${tipo}`,
         status: "erro",
         started_at: new Date().toISOString(),
         finished_at: new Date().toISOString(),
         qtd_registros: detalheFalhas,
-        mensagem: `Falhas ao buscar detalhe de ${detalheFalhas}/${idxs.length} lançamentos rateados (fallback divisão igual).\nPrimeiros erros:\n${primeirosErros.join("\n")}`,
+        mensagem: `Falhas ao buscar detalhe (${detailBase}/{id}) de ${detalheFalhas}/${idxs.length} lançamentos.\nPrimeiros erros:\n${primeirosErros.join("\n")}`,
+      });
+    } catch {}
+  }
+
+  if (fallbackIdCount > 0) {
+    try {
+      await sb.from("ca_sync_log").insert({
+        recurso: "parcela_id_ausente",
+        status: "erro",
+        started_at: new Date().toISOString(),
+        finished_at: new Date().toISOString(),
+        qtd_registros: fallbackIdCount,
+        mensagem: `Listagem ${tipo} não trouxe id de parcela em ${fallbackIdCount}/${idxs.length} lançamentos — usando it.id como fallback para /parcelas/{id}.\nAmostra: ${fallbackSample.join(", ")}`,
       });
     } catch {}
   }
 
   return out;
 }
+
 
 async function persistRateios(items: any[], tipo: "pagar" | "receber", syncedAt: string) {
   await logRatioProbe(items, tipo);
