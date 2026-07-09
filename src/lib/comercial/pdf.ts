@@ -417,13 +417,16 @@ function drawInvestimentoPage(doc: jsPDF, p: Proposta) {
   for (const [label, val] of rows) {
     setText(doc, INK);
     doc.setFont("helvetica", "bold");
-    doc.text(label, labelX, ry);
+    const maxLabelW = (valueX - labelX) - 20;
+    const labelLines = doc.splitTextToSize(label, maxLabelW);
+    doc.text(labelLines, labelX, ry);
     doc.setFont("helvetica", "normal");
     doc.text(brl(val), valueX, ry, { align: "right" });
     setDraw(doc, SOFT);
     doc.setLineWidth(0.2);
-    doc.line(tableX, ry + 2.5, tableX + tableW, ry + 2.5);
-    ry += rowH;
+    const usedH = Math.max(rowH, labelLines.length * 5 + 2);
+    doc.line(tableX, ry + usedH - 6.5, tableX + tableW, ry + usedH - 6.5);
+    ry += usedH;
   }
 
   // Total Geral — faixa dourada com sombra
