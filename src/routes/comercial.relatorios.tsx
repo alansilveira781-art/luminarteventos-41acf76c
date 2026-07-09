@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/PageHeader";
-import { Loader2, AlertTriangle, Download, FileBarChart, CalendarRange, Printer, Award, Plus, Trash2 } from "lucide-react";
+import { Loader2, AlertTriangle, Download, FileBarChart, CalendarRange, Printer, Award, Plus, Trash2, Lock, History, Save } from "lucide-react";
 import { listVendasDb } from "@/lib/comercial/vendas-db.functions";
 import { getAno, getMes, cleanText } from "@/lib/comercial/vendas-metrics";
 import { RelatorioVendasPeriodo } from "@/components/comercial/RelatorioVendasPeriodo";
