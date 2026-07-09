@@ -72,7 +72,8 @@ async function loadImage(
 function descricaoLinha(d: DescricaoItem): string {
   const medida = descricaoMedidaLabel(d);
   const desc = d.descricao || "—";
-  return `- ${desc}  (${medida})`;
+  const qtd = d.quantidade ?? 1;
+  return `- ${qtd}x ${desc}  (${medida})`;
 }
 
 // ─────────────────────────────────────────────────────────────
