@@ -18,7 +18,7 @@ import { Loader2, AlertTriangle, Download, FileBarChart, CalendarRange, Printer,
 import { listVendasDb } from "@/lib/comercial/vendas-db.functions";
 import { getAno, getMes, cleanText } from "@/lib/comercial/vendas-metrics";
 import { RelatorioVendasPeriodo } from "@/components/comercial/RelatorioVendasPeriodo";
-import { TIPOS_EVENTO } from "@/lib/comercial/types";
+
 import {
   useProdutores,
   useAlcadas,
@@ -564,12 +564,8 @@ function DistribuicaoBonificacao({
   }, [bonifKey, eventosKey, alcadasKey]);
 
 
-  const [categoriaOverride, setCategoriaOverride] = useState<Record<string, string>>({});
-
-  const catDe = (e: EventoBonif) => categoriaOverride[e.vendaId] ?? e.categoria;
-
   const valorBonificacao = (e: EventoBonif, complexidade: number) => {
-    const mult = multiplicadorDaCategoria(alcadas, catDe(e));
+    const mult = multiplicadorDaCategoria(alcadas, e.categoria);
     return complexidade * mult;
   };
 
@@ -584,7 +580,7 @@ function DistribuicaoBonificacao({
             key: `new-${e.vendaId}-${Date.now()}`,
             vendaId: e.vendaId,
             produtorId: null,
-            complexidade: sugerirComplexidade(alcadas, catDe(e), e.valorFinal),
+            complexidade: sugerirComplexidade(alcadas, e.categoria, e.valorFinal),
           },
         ],
       };
@@ -620,7 +616,6 @@ function DistribuicaoBonificacao({
       return;
     }
     const produtor = produtores.find((p) => p.id === l.produtorId);
-    const cat = catDe(e);
     const valor = valorBonificacao(e, l.complexidade);
     try {
       await upsert.mutateAsync({
@@ -628,7 +623,7 @@ function DistribuicaoBonificacao({
         venda_id: e.vendaId,
         nome_evento: e.nomeEvento,
         data_evento: e.dataEvento,
-        categoria: cat,
+        categoria: e.categoria,
         produtor_id: l.produtorId,
         produtor_nome: produtor?.nome ?? null,
         complexidade: l.complexidade,
@@ -657,7 +652,7 @@ function DistribuicaoBonificacao({
       }
     }
     return [...map.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
-  }, [eventos, linhasPorVenda, produtores, alcadas, categoriaOverride]);
+  }, [eventos, linhasPorVenda, produtores, alcadas]);
 
   return (
     <div className="print-area space-y-6">
@@ -750,7 +745,6 @@ function DistribuicaoBonificacao({
                   )}
                   {eventos.map((e) => {
                     const linhas = linhasPorVenda[e.vendaId] ?? [];
-                    const cat = catDe(e);
                     return (
                       <Fragment key={e.vendaId}>
                         {linhas.map((l, idx) => (
@@ -761,19 +755,7 @@ function DistribuicaoBonificacao({
                                 <td className="px-3 py-2" rowSpan={linhas.length}>
                                   {e.dataEvento ? new Date(e.dataEvento + "T00:00:00").toLocaleDateString("pt-BR") : "-"}
                                 </td>
-                                <td className="px-3 py-2" rowSpan={linhas.length}>
-                                  <Select
-                                    value={cat && (TIPOS_EVENTO as readonly string[]).includes(cat) ? cat : ""}
-                                    onValueChange={(v) => setCategoriaOverride((prev) => ({ ...prev, [e.vendaId]: v }))}
-                                  >
-                                    <SelectTrigger className="h-8 w-40"><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                                    <SelectContent>
-                                      {TIPOS_EVENTO.map((t) => (
-                                        <SelectItem key={t} value={t}>{t}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </td>
+                                <td className="px-3 py-2" rowSpan={linhas.length}>{e.categoria || "—"}</td>
                               </>
                             ) : null}
                             <td className="px-3 py-2">
