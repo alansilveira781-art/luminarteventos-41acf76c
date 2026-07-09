@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, Fragment } from "react";
+import { useMemo, useState, Fragment, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -13,10 +14,20 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/PageHeader";
-import { Loader2, AlertTriangle, Download, FileBarChart, CalendarRange, Printer } from "lucide-react";
+import { Loader2, AlertTriangle, Download, FileBarChart, CalendarRange, Printer, Award, Plus, Trash2 } from "lucide-react";
 import { listVendasDb } from "@/lib/comercial/vendas-db.functions";
 import { getAno, getMes, cleanText } from "@/lib/comercial/vendas-metrics";
 import { RelatorioVendasPeriodo } from "@/components/comercial/RelatorioVendasPeriodo";
+import { TIPOS_EVENTO } from "@/lib/comercial/types";
+import {
+  useProdutores,
+  useAlcadas,
+  useBonificacoes,
+  useBonificacaoMutations,
+  sugerirComplexidade,
+  multiplicadorDaCategoria,
+} from "@/lib/comercial/bonificacao";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/comercial/relatorios")({
   component: RelatoriosPage,
@@ -25,6 +36,11 @@ export const Route = createFileRoute("/comercial/relatorios")({
 const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+
+const MESES_PT = [
+  "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
 ];
 
 const fmtBRL = (v: number) =>
@@ -49,7 +65,7 @@ type Grupo = {
 };
 
 function RelatoriosPage() {
-  const [relatorioAtivo, setRelatorioAtivo] = useState<"comissao" | "periodo">("comissao");
+  const [relatorioAtivo, setRelatorioAtivo] = useState<"comissao" | "periodo" | "bonificacao">("comissao");
   const [ano, setAno] = useState<number | "Todos">("Todos");
   const [mes, setMes] = useState<string>("Todos");
 
@@ -62,18 +78,13 @@ function RelatoriosPage() {
 
   const rows = data?.rows ?? [];
 
-  // Ano/mês pela DATA DE REGISTRO (quando a venda foi fechada), com fallback para evento.
-  const MESES_PT = [
-    "janeiro", "fevereiro", "março", "abril", "maio", "junho",
-    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
-  ];
   const anoDoRegistro = (r: typeof rows[number]): number | null => {
     const iso = r.dataRegistro || r.dataEvento || null;
     if (iso && /^\d{4}/.test(iso)) {
       const y = Number(iso.slice(0, 4));
       if (y > 1900 && y < 2100) return y;
     }
-    return getAno(r); // fallback
+    return getAno(r);
   };
   const mesDoRegistro = (r: typeof rows[number]): string | null => {
     const iso = r.dataRegistro || r.dataEvento || null;
@@ -81,7 +92,7 @@ function RelatoriosPage() {
       const m = Number(iso.slice(5, 7));
       if (m >= 1 && m <= 12) return MESES_PT[m - 1];
     }
-    return (getMes(r) ?? "").toLowerCase() || null; // fallback
+    return (getMes(r) ?? "").toLowerCase() || null;
   };
 
   const anosDisponiveis = useMemo(() => {
@@ -174,7 +185,7 @@ function RelatoriosPage() {
         description="Relatórios operacionais do Comercial."
       />
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 print:hidden">
         <Button
           variant={relatorioAtivo === "comissao" ? "default" : "outline"}
           size="sm"
@@ -191,10 +202,33 @@ function RelatoriosPage() {
         >
           <CalendarRange className="h-4 w-4" /> Vendas por Período
         </Button>
+        <Button
+          variant={relatorioAtivo === "bonificacao" ? "default" : "outline"}
+          size="sm"
+          className="gap-2"
+          onClick={() => setRelatorioAtivo("bonificacao")}
+        >
+          <Award className="h-4 w-4" /> Distribuição Bonificação
+        </Button>
       </div>
 
       {relatorioAtivo === "periodo" && (
         <RelatorioVendasPeriodo rows={rows} isLoading={isLoading} error={error} />
+      )}
+
+      {relatorioAtivo === "bonificacao" && (
+        <DistribuicaoBonificacao
+          rows={rows}
+          isLoading={isLoading}
+          error={error as Error | null}
+          ano={ano}
+          setAno={setAno}
+          mes={mes}
+          setMes={setMes}
+          anosDisponiveis={anosDisponiveis}
+          anoDoRegistro={anoDoRegistro}
+          mesDoRegistro={mesDoRegistro}
+        />
       )}
 
       {relatorioAtivo === "comissao" && (
@@ -383,5 +417,401 @@ function RelatoriosPage() {
       )}
     </div>
 
+  );
+}
+
+/* -------------------- Distribuição Bonificação -------------------- */
+
+type EventoBonif = {
+  vendaId: string;
+  nomeEvento: string;
+  dataEvento: string | null;
+  categoria: string;
+  valorFinal: number;
+  ano: number | null;
+  mes: string | null;
+};
+
+type LinhaAtribuicao = {
+  key: string;
+  vendaId: string;
+  produtorId: string | null;
+  complexidade: number;
+  bonifId?: string;
+  dirty?: boolean;
+};
+
+function DistribuicaoBonificacao({
+  rows,
+  isLoading,
+  error,
+  ano,
+  setAno,
+  mes,
+  setMes,
+  anosDisponiveis,
+  anoDoRegistro,
+  mesDoRegistro,
+}: {
+  rows: any[];
+  isLoading: boolean;
+  error: Error | null;
+  ano: number | "Todos";
+  setAno: (v: number | "Todos") => void;
+  mes: string;
+  setMes: (v: string) => void;
+  anosDisponiveis: number[];
+  anoDoRegistro: (r: any) => number | null;
+  mesDoRegistro: (r: any) => string | null;
+}) {
+  const { data: produtores = [] } = useProdutores(true);
+  const { data: alcadas = [] } = useAlcadas();
+  const { data: bonifRows = [] } = useBonificacoes(ano, mes);
+  const { upsert, remove } = useBonificacaoMutations();
+
+  // Filtrar somente vendas do tipo VENDA (ignora EXTRA), no período
+  const eventos = useMemo<EventoBonif[]>(() => {
+    const mesAlvo = mes === "Todos" ? null : mes.toLowerCase();
+    return rows
+      .filter((r) => {
+        const t = (r.tipo || "").toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+        if (t !== "VENDA") return false;
+        if (ano !== "Todos" && anoDoRegistro(r) !== ano) return false;
+        if (mesAlvo) {
+          const m = (mesDoRegistro(r) ?? "").toLowerCase();
+          if (m !== mesAlvo) return false;
+        }
+        return !!r.id;
+      })
+      .map((r) => ({
+        vendaId: r.id as string,
+        nomeEvento: cleanText(r.nomeEvento) || "-",
+        dataEvento: r.dataEvento || null,
+        categoria: cleanText(r.tipoEvento) || "",
+        valorFinal: Number(r.valorFinal || 0),
+        ano: anoDoRegistro(r),
+        mes: mesDoRegistro(r),
+      }))
+      .sort((a, b) => (a.dataEvento || "").localeCompare(b.dataEvento || ""));
+  }, [rows, ano, mes, anoDoRegistro, mesDoRegistro]);
+
+  // Local state para linhas de atribuição por venda_id (permite múltiplos produtores)
+  const [linhasPorVenda, setLinhasPorVenda] = useState<Record<string, LinhaAtribuicao[]>>({});
+
+  // Hidratar a partir do que já foi salvo
+  useEffect(() => {
+    const map: Record<string, LinhaAtribuicao[]> = {};
+    for (const b of bonifRows) {
+      if (!b.venda_id) continue;
+      const arr = map[b.venda_id] ?? [];
+      arr.push({
+        key: b.id,
+        vendaId: b.venda_id,
+        produtorId: b.produtor_id,
+        complexidade: b.complexidade ?? 1,
+        bonifId: b.id,
+      });
+      map[b.venda_id] = arr;
+    }
+    // garantir 1 linha vazia para eventos sem atribuição
+    for (const e of eventos) {
+      if (!map[e.vendaId] || map[e.vendaId].length === 0) {
+        map[e.vendaId] = [{
+          key: `new-${e.vendaId}`,
+          vendaId: e.vendaId,
+          produtorId: null,
+          complexidade: sugerirComplexidade(alcadas, e.categoria, e.valorFinal),
+        }];
+      }
+    }
+    setLinhasPorVenda(map);
+  }, [bonifRows, eventos, alcadas]);
+
+  const [categoriaOverride, setCategoriaOverride] = useState<Record<string, string>>({});
+
+  const catDe = (e: EventoBonif) => categoriaOverride[e.vendaId] ?? e.categoria;
+
+  const valorBonificacao = (e: EventoBonif, complexidade: number) => {
+    const mult = multiplicadorDaCategoria(alcadas, catDe(e));
+    return complexidade * mult;
+  };
+
+  const addLinha = (e: EventoBonif) => {
+    setLinhasPorVenda((prev) => {
+      const arr = prev[e.vendaId] ?? [];
+      return {
+        ...prev,
+        [e.vendaId]: [
+          ...arr,
+          {
+            key: `new-${e.vendaId}-${Date.now()}`,
+            vendaId: e.vendaId,
+            produtorId: null,
+            complexidade: sugerirComplexidade(alcadas, catDe(e), e.valorFinal),
+          },
+        ],
+      };
+    });
+  };
+
+  const updateLinha = (e: EventoBonif, key: string, patch: Partial<LinhaAtribuicao>) => {
+    setLinhasPorVenda((prev) => ({
+      ...prev,
+      [e.vendaId]: (prev[e.vendaId] ?? []).map((l) => (l.key === key ? { ...l, ...patch, dirty: true } : l)),
+    }));
+  };
+
+  const removeLinha = async (e: EventoBonif, l: LinhaAtribuicao) => {
+    if (l.bonifId) {
+      try {
+        await remove.mutateAsync(l.bonifId);
+        toast.success("Removido");
+      } catch (err: any) {
+        toast.error(err?.message || "Falha ao remover");
+        return;
+      }
+    }
+    setLinhasPorVenda((prev) => ({
+      ...prev,
+      [e.vendaId]: (prev[e.vendaId] ?? []).filter((x) => x.key !== l.key),
+    }));
+  };
+
+  const salvarLinha = async (e: EventoBonif, l: LinhaAtribuicao) => {
+    if (!l.produtorId) {
+      toast.error("Selecione o produtor");
+      return;
+    }
+    const produtor = produtores.find((p) => p.id === l.produtorId);
+    const cat = catDe(e);
+    const valor = valorBonificacao(e, l.complexidade);
+    try {
+      await upsert.mutateAsync({
+        id: l.bonifId,
+        venda_id: e.vendaId,
+        nome_evento: e.nomeEvento,
+        data_evento: e.dataEvento,
+        categoria: cat,
+        produtor_id: l.produtorId,
+        produtor_nome: produtor?.nome ?? null,
+        complexidade: l.complexidade,
+        valor_final: valor,
+        ano: e.ano,
+        mes: e.mes,
+      });
+      toast.success("Salvo");
+    } catch (err: any) {
+      toast.error(err?.message || "Falha ao salvar");
+    }
+  };
+
+  // Informativo agregado por produtor no período
+  const porProdutor = useMemo(() => {
+    const map = new Map<string, { nome: string; total: number }>();
+    for (const e of eventos) {
+      const linhas = linhasPorVenda[e.vendaId] ?? [];
+      for (const l of linhas) {
+        if (!l.produtorId) continue;
+        const nome = produtores.find((p) => p.id === l.produtorId)?.nome || "?";
+        const key = l.produtorId;
+        const prev = map.get(key) ?? { nome, total: 0 };
+        prev.total += valorBonificacao(e, l.complexidade);
+        map.set(key, prev);
+      }
+    }
+    return [...map.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  }, [eventos, linhasPorVenda, produtores, alcadas, categoriaOverride]);
+
+  return (
+    <div className="print-area space-y-6">
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          .print-area, .print-area * { visibility: visible !important; }
+          .print-area { position: absolute; inset: 0; padding: 0; }
+          .print\\:hidden { display: none !important; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+      `}</style>
+
+      <div className="hidden print:block mb-6">
+        <h1 className="text-2xl font-bold">Distribuição Bonificação</h1>
+        <p className="text-muted-foreground">
+          {ano === "Todos" ? "Todos os anos" : ano} · {mes === "Todos" ? "Todos os meses" : mes}
+        </p>
+      </div>
+
+      <Card className="p-4 print:hidden">
+        <div className="grid gap-3 sm:grid-cols-[160px_200px_1fr] sm:items-end">
+          <div className="space-y-1">
+            <Label>Ano</Label>
+            <Select value={String(ano)} onValueChange={(v) => setAno(v === "Todos" ? "Todos" : Number(v))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Todos">Todos</SelectItem>
+                {anosDisponiveis.map((a) => (
+                  <SelectItem key={a} value={String(a)}>{a}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label>Mês</Label>
+            <Select value={mes} onValueChange={setMes}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Todos">Todos</SelectItem>
+                {MESES.map((m) => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex justify-end gap-2 print:hidden">
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => window.print()}>
+              <Printer className="h-4 w-4" /> Imprimir
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      {isLoading && (
+        <Card className="p-6 flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Carregando vendas…
+        </Card>
+      )}
+      {error && (
+        <Card className="p-6 flex items-start gap-2 text-sm text-destructive">
+          <AlertTriangle className="h-4 w-4 mt-0.5" />
+          <span>Não foi possível carregar os dados. {error.message}</span>
+        </Card>
+      )}
+
+      {!isLoading && !error && (
+        <>
+          <Card className="overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
+                  <tr>
+                    <th className="text-left px-3 py-2">Nome do evento</th>
+                    <th className="text-left px-3 py-2">Data</th>
+                    <th className="text-left px-3 py-2">Categoria</th>
+                    <th className="text-left px-3 py-2">Produtor</th>
+                    <th className="text-left px-3 py-2 w-28">Complexidade</th>
+                    <th className="text-right px-3 py-2">Valor Final</th>
+                    <th className="text-right px-3 py-2 print:hidden">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {eventos.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">
+                        Nenhuma venda no período.
+                      </td>
+                    </tr>
+                  )}
+                  {eventos.map((e) => {
+                    const linhas = linhasPorVenda[e.vendaId] ?? [];
+                    const cat = catDe(e);
+                    return (
+                      <Fragment key={e.vendaId}>
+                        {linhas.map((l, idx) => (
+                          <tr key={l.key} className="border-t border-border/50 align-top">
+                            {idx === 0 ? (
+                              <>
+                                <td className="px-3 py-2" rowSpan={linhas.length}>{e.nomeEvento}</td>
+                                <td className="px-3 py-2" rowSpan={linhas.length}>
+                                  {e.dataEvento ? new Date(e.dataEvento + "T00:00:00").toLocaleDateString("pt-BR") : "-"}
+                                </td>
+                                <td className="px-3 py-2" rowSpan={linhas.length}>
+                                  <Select
+                                    value={cat && (TIPOS_EVENTO as readonly string[]).includes(cat) ? cat : ""}
+                                    onValueChange={(v) => setCategoriaOverride((prev) => ({ ...prev, [e.vendaId]: v }))}
+                                  >
+                                    <SelectTrigger className="h-8 w-40"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                                    <SelectContent>
+                                      {TIPOS_EVENTO.map((t) => (
+                                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </td>
+                              </>
+                            ) : null}
+                            <td className="px-3 py-2">
+                              <Select
+                                value={l.produtorId ?? ""}
+                                onValueChange={(v) => updateLinha(e, l.key, { produtorId: v })}
+                              >
+                                <SelectTrigger className="h-8 w-52"><SelectValue placeholder="Selecionar produtor" /></SelectTrigger>
+                                <SelectContent>
+                                  {produtores.map((p) => (
+                                    <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </td>
+                            <td className="px-3 py-2">
+                              <Input
+                                type="number"
+                                min={1}
+                                max={6}
+                                className="h-8 w-20"
+                                value={l.complexidade}
+                                onChange={(ev) => {
+                                  const n = Math.max(1, Math.min(6, Number(ev.target.value) || 1));
+                                  updateLinha(e, l.key, { complexidade: n });
+                                }}
+                              />
+                            </td>
+                            <td className="px-3 py-2 text-right tabular-nums">
+                              {fmtBRL(valorBonificacao(e, l.complexidade))}
+                            </td>
+                            <td className="px-3 py-2 text-right whitespace-nowrap print:hidden">
+                              <Button size="sm" variant="outline" onClick={() => salvarLinha(e, l)} disabled={upsert.isPending}>
+                                Salvar
+                              </Button>
+                              {idx === linhas.length - 1 && (
+                                <Button size="sm" variant="ghost" className="ml-1" onClick={() => addLinha(e)} title="Adicionar produtor">
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {linhas.length > 1 || l.bonifId ? (
+                                <Button size="sm" variant="ghost" className="ml-1 text-destructive" onClick={() => removeLinha(e, l)} title="Remover">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              ) : null}
+                            </td>
+                          </tr>
+                        ))}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <h3 className="text-sm font-semibold mb-2">Valor a pagar por produtor</h3>
+            {porProdutor.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum produtor atribuído no período.</p>
+            ) : (
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+                {porProdutor.map((p) => (
+                  <span key={p.nome} className="tabular-nums">
+                    <strong>{p.nome}</strong> — {fmtBRL(p.total)}
+                  </span>
+                ))}
+                <span className="ml-auto tabular-nums text-muted-foreground">
+                  Total: <strong>{fmtBRL(porProdutor.reduce((s, p) => s + p.total, 0))}</strong>
+                </span>
+              </div>
+            )}
+          </Card>
+        </>
+      )}
+    </div>
   );
 }
