@@ -58,8 +58,37 @@ async function loadImage(
         const c = document.createElement("canvas");
         c.width = img.naturalWidth;
         c.height = img.naturalHeight;
-        c.getContext("2d")!.drawImage(img, 0, 0);
-        resolve({ src: c.toDataURL("image/png"), w: img.naturalWidth, h: img.naturalHeight });
+        const ctx = c.getContext("2d")!;
+        ctx.drawImage(img, 0, 0);
+
+        // Recorta o bounding box do desenho visível (remove margem vazia branca/transparente)
+        const data = ctx.getImageData(0, 0, c.width, c.height).data;
+        let minX = c.width, minY = c.height, maxX = 0, maxY = 0;
+        for (let y = 0; y < c.height; y++) {
+          for (let x = 0; x < c.width; x++) {
+            const i = (y * c.width + x) * 4;
+            const alpha = data[i + 3];
+            // considera pixels não totalmente transparentes e não brancos puros
+            if (alpha > 10 && !(data[i] > 250 && data[i + 1] > 250 && data[i + 2] > 250)) {
+              if (x < minX) minX = x;
+              if (x > maxX) maxX = x;
+              if (y < minY) minY = y;
+              if (y > maxY) maxY = y;
+            }
+          }
+        }
+
+        if (maxX > minX && maxY > minY) {
+          const cropW = maxX - minX + 1;
+          const cropH = maxY - minY + 1;
+          const cropped = document.createElement("canvas");
+          cropped.width = cropW;
+          cropped.height = cropH;
+          cropped.getContext("2d")!.putImageData(ctx.getImageData(minX, minY, cropW, cropH), 0, 0);
+          resolve({ src: cropped.toDataURL("image/png"), w: cropW, h: cropH });
+        } else {
+          resolve({ src: c.toDataURL("image/png"), w: img.naturalWidth, h: img.naturalHeight });
+        }
       } catch {
         resolve({ src, w: img.naturalWidth, h: img.naturalHeight });
       }
@@ -146,10 +175,11 @@ async function drawCover(
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
 
-  // Logo centralizado no topo
+  // Logo centralizado no topo (recortada automaticamente para remover margem vazia,
+  // então o desenho visível ocupa a largura máxima sem ficar pequeno)
   if (logo) {
-    const maxW = 110;
-    const maxH = 60;
+    const maxW = 150;
+    const maxH = 150;
     const ratio = logo.w / logo.h;
     let w = maxW;
     let h = w / ratio;
@@ -158,7 +188,7 @@ async function drawCover(
       w = h * ratio;
     }
     try {
-      doc.addImage(logo.src, "PNG", (W - w) / 2, 14, w, h, undefined, "FAST");
+      doc.addImage(logo.src, "PNG", (W - w) / 2, 10, w, h, undefined, "FAST");
     } catch {
       /* ignore */
     }
@@ -166,35 +196,35 @@ async function drawCover(
     setText(doc, INK);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(28);
-    doc.text("LUMINART", W / 2, 36, { align: "center" });
+    doc.text("LUMINART", W / 2, 62, { align: "center" });
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     setText(doc, MUTED);
-    doc.text("CENOGRAFIA PARA EVENTOS", W / 2, 42, { align: "center" });
+    doc.text("CENOGRAFIA PARA EVENTOS", W / 2, 68, { align: "center" });
   }
 
   // Linha dourada
   setDraw(doc, GOLD);
   doc.setLineWidth(0.6);
-  doc.line(W / 2 - 70, 66, W / 2 + 70, 66);
+  doc.line(W / 2 - 70, 96, W / 2 + 70, 96);
 
   // Subtítulo
   setText(doc, INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text("Seu Sonho, Nosso Projeto", W / 2, 76, { align: "center" });
+  doc.text("Seu Sonho, Nosso Projeto", W / 2, 106, { align: "center" });
 
   // ORC
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   setText(doc, GOLD);
   const orc = `ORC-${p.numero}`;
-  doc.text(orc, W / 2, 84, { align: "center" });
+  doc.text(orc, W / 2, 114, { align: "center" });
   setDraw(doc, GOLD);
   doc.setLineWidth(0.2);
   const orcWidth = doc.getTextWidth(orc);
-  doc.line(W / 2 - orcWidth / 2 - 14, 83, W / 2 - orcWidth / 2 - 4, 83);
-  doc.line(W / 2 + orcWidth / 2 + 4, 83, W / 2 + orcWidth / 2 + 14, 83);
+  doc.line(W / 2 - orcWidth / 2 - 14, 113, W / 2 - orcWidth / 2 - 4, 113);
+  doc.line(W / 2 + orcWidth / 2 + 4, 113, W / 2 + orcWidth / 2 + 14, 113);
 
   // Bloco de campos centralizado
   const fields: [string, string][] = [
@@ -219,7 +249,7 @@ async function drawCover(
   const valueX = startX + labelW + gap;
   const colSepX = valueX - gap / 2;
 
-  let y = 100;
+  let y = 130;
   const lineH = 9;
   // linha vertical sutil entre label e valor
   setDraw(doc, GOLD);
@@ -406,7 +436,7 @@ function drawInvestimentoPage(doc: jsPDF, p: Proposta) {
     if (o.valor) rows.push([o.descricao || "Outro", o.valor]);
   }
 
-  const tableW = 150;
+  const tableW = 170;
   const tableX = (W - tableW) / 2;
   const labelX = tableX + 6;
   const valueX = tableX + tableW - 6;
@@ -417,14 +447,16 @@ function drawInvestimentoPage(doc: jsPDF, p: Proposta) {
   for (const [label, val] of rows) {
     setText(doc, INK);
     doc.setFont("helvetica", "bold");
-    const maxLabelW = (valueX - labelX) - 20;
+    const maxLabelW = (valueX - labelX) - 75;
     const labelLines = doc.splitTextToSize(label, maxLabelW);
     doc.text(labelLines, labelX, ry);
     doc.setFont("helvetica", "normal");
-    doc.text(brl(val), valueX, ry, { align: "right" });
+    const usedH = Math.max(rowH, labelLines.length * 5 + 2);
+    // valor centralizado verticalmente no bloco de linhas do rótulo
+    const valorY = ry + (labelLines.length - 1) * 2.5;
+    doc.text(brl(val), valueX, valorY, { align: "right" });
     setDraw(doc, SOFT);
     doc.setLineWidth(0.2);
-    const usedH = Math.max(rowH, labelLines.length * 5 + 2);
     doc.line(tableX, ry + usedH - 6.5, tableX + tableW, ry + usedH - 6.5);
     ry += usedH;
   }
