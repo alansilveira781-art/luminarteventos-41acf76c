@@ -58,8 +58,37 @@ async function loadImage(
         const c = document.createElement("canvas");
         c.width = img.naturalWidth;
         c.height = img.naturalHeight;
-        c.getContext("2d")!.drawImage(img, 0, 0);
-        resolve({ src: c.toDataURL("image/png"), w: img.naturalWidth, h: img.naturalHeight });
+        const ctx = c.getContext("2d")!;
+        ctx.drawImage(img, 0, 0);
+
+        // Recorta o bounding box do desenho visível (remove margem vazia branca/transparente)
+        const data = ctx.getImageData(0, 0, c.width, c.height).data;
+        let minX = c.width, minY = c.height, maxX = 0, maxY = 0;
+        for (let y = 0; y < c.height; y++) {
+          for (let x = 0; x < c.width; x++) {
+            const i = (y * c.width + x) * 4;
+            const alpha = data[i + 3];
+            // considera pixels não totalmente transparentes e não brancos puros
+            if (alpha > 10 && !(data[i] > 250 && data[i + 1] > 250 && data[i + 2] > 250)) {
+              if (x < minX) minX = x;
+              if (x > maxX) maxX = x;
+              if (y < minY) minY = y;
+              if (y > maxY) maxY = y;
+            }
+          }
+        }
+
+        if (maxX > minX && maxY > minY) {
+          const cropW = maxX - minX + 1;
+          const cropH = maxY - minY + 1;
+          const cropped = document.createElement("canvas");
+          cropped.width = cropW;
+          cropped.height = cropH;
+          cropped.getContext("2d")!.putImageData(ctx.getImageData(minX, minY, cropW, cropH), 0, 0);
+          resolve({ src: cropped.toDataURL("image/png"), w: cropW, h: cropH });
+        } else {
+          resolve({ src: c.toDataURL("image/png"), w: img.naturalWidth, h: img.naturalHeight });
+        }
       } catch {
         resolve({ src, w: img.naturalWidth, h: img.naturalHeight });
       }
