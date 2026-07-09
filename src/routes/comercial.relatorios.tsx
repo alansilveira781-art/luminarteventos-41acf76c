@@ -850,7 +850,11 @@ function DistribuicaoBonificacao({
         </Card>
       )}
 
-      {!isLoading && !error && (
+      {!isLoading && !error && isClosed && (
+        <FechamentoReadonlyBody fechamentoId={fechamentoMes!.id} />
+      )}
+
+      {!isLoading && !error && !isClosed && (
         <>
           <Card className="overflow-hidden">
             <div className="overflow-x-auto">
@@ -962,6 +966,9 @@ function DistribuicaoBonificacao({
           </Card>
         </>
       )}
+
+      <HistoricoFechamentosDialog open={historicoOpen} onOpenChange={setHistoricoOpen} />
     </div>
+
   );
 }
