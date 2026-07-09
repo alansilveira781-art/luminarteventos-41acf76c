@@ -543,6 +543,8 @@ function DistribuicaoBonificacao({
 
   // Hidratar (idempotente): faz merge com o estado anterior, preservando edições.
   useEffect(() => {
+    // Aguarda alçadas carregarem para não gerar sugestão com base vazia (retornaria 1).
+    if (alcadas.length === 0) return;
     setLinhasPorVenda((prev) => {
       const next: Record<string, LinhaAtribuicao[]> = { ...prev };
 
@@ -569,15 +571,22 @@ function DistribuicaoBonificacao({
         if (!jaTemPersistidas) next[vendaId] = linhasSalvas;
       }
 
-      // Garante 1 linha vazia para eventos ainda sem entrada
+      // Garante 1 linha por evento e recalcula sugestão em linhas automáticas ainda intactas
       for (const e of eventos) {
-        if (!next[e.vendaId] || next[e.vendaId].length === 0) {
+        const existentes = next[e.vendaId];
+        if (!existentes || existentes.length === 0) {
           next[e.vendaId] = [{
             key: `new-${e.vendaId}`,
             vendaId: e.vendaId,
             produtorId: null,
             complexidade: sugerirComplexidade(alcadas, e.categoria, e.valorFinal),
           }];
+        } else {
+          next[e.vendaId] = existentes.map((l) =>
+            !l.produtorId && !l.bonifId && !l.dirty
+              ? { ...l, complexidade: sugerirComplexidade(alcadas, e.categoria, e.valorFinal) }
+              : l,
+          );
         }
       }
 
@@ -585,6 +594,7 @@ function DistribuicaoBonificacao({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bonifKey, eventosKey, alcadasKey]);
+
 
 
   const valorBonificacao = (e: EventoBonif, complexidade: number) => {
