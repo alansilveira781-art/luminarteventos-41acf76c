@@ -1,39 +1,29 @@
-## Diagnóstico
+Ajustar a capa do PDF em `src/lib/comercial/pdf.ts` para corrigir a cor da onda, reduzir a logo e compactar o bloco de campos.
 
-Checagem direta no banco:
+### Alterações
 
-```
-select tipo, count(*), count(valor_total) fv, count(valor_unitario) fu from movimentacoes group by tipo;
-   tipo    | count | fv  | fu
------------+-------+-----+-----
- saida     |  1719 |   0 |   0
- devolucao |   150 |   0 |   0
- entrada   |  1535 | 394 | 500
-```
+1. **Cor da onda dourada**
+   - Em `drawCoverWaves`, garantir que a onda sobreposta use `GOLD` (verificar/substituir caso ainda esteja vermelho).
 
-Ou seja: **nenhuma saída tem `valor_total` preenchido**. A `AnaliseDetalhada` está lendo `movimentacoes.valor_total` diretamente (linha 666), então soma sempre = 0 e nada aparece. Não é problema de casamento categoria↔plano nem de evento↔centro; é a fonte do valor.
+2. **Tamanho da logo**
+   - Em `drawCover`, reduzir os limites da logo:
+     - `maxW`: 150 → 105
+     - `maxH`: 150 → 70
+   - A logo continua visível e centralizada, mas ocupa menos altura na capa.
 
-O valor real da saída = `movimentacoes.quantidade × itens.valor_unitario` (custo médio já mantido pelo trigger `apply_custo_medio_entrada` nas entradas). Todas as 1719 saídas têm `item_id` preenchido; `movimentacao_itens` tem só 28 linhas (composites raros).
+3. **Compactação do bloco de campos**
+   - Subir os elementos para garantir que os 6 campos fiquem acima da onda:
+     - Linha dourada: Y 96 → 92
+     - Subtítulo "Seu Sonho, Nosso Projeto": Y 106 → 102
+     - Texto ORC: Y 114 → 110
+     - Traços do ORC: Y 113 → 109
+     - Início do bloco de campos: Y 130 → 124
+     - Espaçamento entre linhas: lineH 9 → 11
 
-Também confirmei:
-- `ca_centros_custo.nome` começa com o mesmo código do `evento_projeto` (ex: "46158 - …" nos dois lados), então o casamento por prefixo do `centroNeedle` funciona.
-- `itens.categoria` usa nomes tipo "CV - ACRILICO" (maiúsculo, sem acento) e `ca_plano_contas.nome` usa "CV - Acrílico". A normalização que apliquei (lowercase + strip acento) casa esses casos; onde não casar, cai no fallback SC (visível como "(?) Sem classificação").
+### Validação
 
-## Correção
-
-Em `AnaliseDetalhada` de `src/components/financeiro/ContaAzulDashboard.tsx`:
-
-1. Trocar o `select` da query `saidasEstoque` para trazer `quantidade` e `itens(categoria, valor_unitario)` em vez de `valor_total`.
-2. No `stockAgg`, calcular `valor = quantidade × (itens.valor_unitario ?? 0)`.
-3. Também considerar as saídas de composite via `movimentacao_itens` (query adicional só das saídas dessa mov): buscar `movimentacao_itens(quantidade, itens(categoria, valor_unitario))` para as movimentações `tipo='saida'` cujo `item_id` é null (28 registros no total, custo baixíssimo). Somar cada linha à agregação usando o `evento_projeto` da movimentação-pai.
-4. Manter o resto igual: casamento por `evento_projeto` × `centroNeedle`, categoria por nome ↔ plano de contas, chave de detalhe = `external_id` do plano (mescla na linha existente), fallback SC quando não casar.
-
-## Escopo
-
-- Só `src/components/financeiro/ContaAzulDashboard.tsx` (componente `AnaliseDetalhada`).
-- Nenhuma mudança visual, de UI, layout ou de outras telas.
-- Sem migração / sem alteração no `sync.server.ts`.
-
-## Validação
-
-Após o ajuste, selecionar um centro de custo com evento que tenha saídas de estoque (ex.: um dos "46158 - …") e conferir se aparecem valores em Custos Variáveis / Custos Diretos na Análise Detalhada.
+- Rodar `bun run typecheck` para garantir que não há erros de compilação.
+- Gerar um PDF de teste a partir da tela de propostas/validações e confirmar:
+  1. A onda inferior está dourada, não vermelha.
+  2. A logo aparece grande, mas com folga vertical para o conteúdo.
+  3. Os 6 campos (Nome do Evento, Cliente, Local, Período, Data do Orçamento, Consultor Responsável) aparecem inteiros e legíveis, com espaço livre antes da onda.
