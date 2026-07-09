@@ -35,6 +35,7 @@ function Validacoes() {
 
   const { propostas } = useComercial();
   const [editProposta, setEditProposta] = useState<Proposta | null>(null);
+  const [validarProposta, setValidarProposta] = useState<Proposta | null>(null);
 
   const pendentes = useMemo(
     () => propostas.filter((p) => p.status === "aguardando_aprovacao" || p.status === "em_revisao"),
