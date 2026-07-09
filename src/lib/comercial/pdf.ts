@@ -177,25 +177,25 @@ async function drawCover(
   // Linha dourada
   setDraw(doc, GOLD);
   doc.setLineWidth(0.6);
-  doc.line(W / 2 - 70, 100, W / 2 + 70, 100);
+  doc.line(W / 2 - 70, 88, W / 2 + 70, 88);
 
   // Subtítulo
   setText(doc, INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text("Seu Sonho, Nosso Projeto", W / 2, 110, { align: "center" });
+  doc.text("Seu Sonho, Nosso Projeto", W / 2, 98, { align: "center" });
 
   // ORC
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   setText(doc, GOLD);
   const orc = `ORC-${p.numero}`;
-  doc.text(orc, W / 2, 118, { align: "center" });
+  doc.text(orc, W / 2, 106, { align: "center" });
   setDraw(doc, GOLD);
   doc.setLineWidth(0.2);
   const orcWidth = doc.getTextWidth(orc);
-  doc.line(W / 2 - orcWidth / 2 - 14, 117, W / 2 - orcWidth / 2 - 4, 117);
-  doc.line(W / 2 + orcWidth / 2 + 4, 117, W / 2 + orcWidth / 2 + 14, 117);
+  doc.line(W / 2 - orcWidth / 2 - 14, 105, W / 2 - orcWidth / 2 - 4, 105);
+  doc.line(W / 2 + orcWidth / 2 + 4, 105, W / 2 + orcWidth / 2 + 14, 105);
 
   // Bloco de campos centralizado
   const fields: [string, string][] = [
@@ -220,7 +220,7 @@ async function drawCover(
   const valueX = startX + labelW + gap;
   const colSepX = valueX - gap / 2;
 
-  let y = 134;
+  let y = 122;
   const lineH = 9;
   // linha vertical sutil entre label e valor
   setDraw(doc, GOLD);
