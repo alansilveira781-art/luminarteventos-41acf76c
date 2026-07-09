@@ -146,10 +146,11 @@ async function drawCover(
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
 
-  // Logo centralizado no topo
+  // Logo centralizado no topo (caixa ampla: a logo quadrada tem margem vazia,
+  // então o desenho visível ocupará aproximadamente 2/3 da largura da página)
   if (logo) {
-    const maxW = 110;
-    const maxH = 60;
+    const maxW = 150;
+    const maxH = 40;
     const ratio = logo.w / logo.h;
     let w = maxW;
     let h = w / ratio;
@@ -158,7 +159,7 @@ async function drawCover(
       w = h * ratio;
     }
     try {
-      doc.addImage(logo.src, "PNG", (W - w) / 2, 14, w, h, undefined, "FAST");
+      doc.addImage(logo.src, "PNG", (W - w) / 2, 10, w, h, undefined, "FAST");
     } catch {
       /* ignore */
     }
@@ -166,35 +167,35 @@ async function drawCover(
     setText(doc, INK);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(28);
-    doc.text("LUMINART", W / 2, 36, { align: "center" });
+    doc.text("LUMINART", W / 2, 62, { align: "center" });
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     setText(doc, MUTED);
-    doc.text("CENOGRAFIA PARA EVENTOS", W / 2, 42, { align: "center" });
+    doc.text("CENOGRAFIA PARA EVENTOS", W / 2, 68, { align: "center" });
   }
 
   // Linha dourada
   setDraw(doc, GOLD);
   doc.setLineWidth(0.6);
-  doc.line(W / 2 - 70, 66, W / 2 + 70, 66);
+  doc.line(W / 2 - 70, 100, W / 2 + 70, 100);
 
   // Subtítulo
   setText(doc, INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text("Seu Sonho, Nosso Projeto", W / 2, 76, { align: "center" });
+  doc.text("Seu Sonho, Nosso Projeto", W / 2, 110, { align: "center" });
 
   // ORC
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   setText(doc, GOLD);
   const orc = `ORC-${p.numero}`;
-  doc.text(orc, W / 2, 84, { align: "center" });
+  doc.text(orc, W / 2, 118, { align: "center" });
   setDraw(doc, GOLD);
   doc.setLineWidth(0.2);
   const orcWidth = doc.getTextWidth(orc);
-  doc.line(W / 2 - orcWidth / 2 - 14, 83, W / 2 - orcWidth / 2 - 4, 83);
-  doc.line(W / 2 + orcWidth / 2 + 4, 83, W / 2 + orcWidth / 2 + 14, 83);
+  doc.line(W / 2 - orcWidth / 2 - 14, 117, W / 2 - orcWidth / 2 - 4, 117);
+  doc.line(W / 2 + orcWidth / 2 + 4, 117, W / 2 + orcWidth / 2 + 14, 117);
 
   // Bloco de campos centralizado
   const fields: [string, string][] = [
@@ -219,7 +220,7 @@ async function drawCover(
   const valueX = startX + labelW + gap;
   const colSepX = valueX - gap / 2;
 
-  let y = 100;
+  let y = 134;
   const lineH = 9;
   // linha vertical sutil entre label e valor
   setDraw(doc, GOLD);
@@ -406,7 +407,7 @@ function drawInvestimentoPage(doc: jsPDF, p: Proposta) {
     if (o.valor) rows.push([o.descricao || "Outro", o.valor]);
   }
 
-  const tableW = 150;
+  const tableW = 170;
   const tableX = (W - tableW) / 2;
   const labelX = tableX + 6;
   const valueX = tableX + tableW - 6;
@@ -417,14 +418,16 @@ function drawInvestimentoPage(doc: jsPDF, p: Proposta) {
   for (const [label, val] of rows) {
     setText(doc, INK);
     doc.setFont("helvetica", "bold");
-    const maxLabelW = (valueX - labelX) - 20;
+    const maxLabelW = (valueX - labelX) - 75;
     const labelLines = doc.splitTextToSize(label, maxLabelW);
     doc.text(labelLines, labelX, ry);
     doc.setFont("helvetica", "normal");
-    doc.text(brl(val), valueX, ry, { align: "right" });
+    const usedH = Math.max(rowH, labelLines.length * 5 + 2);
+    // valor centralizado verticalmente no bloco de linhas do rótulo
+    const valorY = ry + (labelLines.length - 1) * 2.5;
+    doc.text(brl(val), valueX, valorY, { align: "right" });
     setDraw(doc, SOFT);
     doc.setLineWidth(0.2);
-    const usedH = Math.max(rowH, labelLines.length * 5 + 2);
     doc.line(tableX, ry + usedH - 6.5, tableX + tableW, ry + usedH - 6.5);
     ry += usedH;
   }
