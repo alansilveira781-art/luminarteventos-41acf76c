@@ -455,6 +455,83 @@ export type Database = {
         }
         Relationships: []
       }
+      comercial_bonificacao_fechamento: {
+        Row: {
+          ano: number
+          fechado_em: string
+          fechado_por: string | null
+          fechado_por_nome: string | null
+          id: string
+          mes: string
+          total_geral: number | null
+        }
+        Insert: {
+          ano: number
+          fechado_em?: string
+          fechado_por?: string | null
+          fechado_por_nome?: string | null
+          id?: string
+          mes: string
+          total_geral?: number | null
+        }
+        Update: {
+          ano?: number
+          fechado_em?: string
+          fechado_por?: string | null
+          fechado_por_nome?: string | null
+          id?: string
+          mes?: string
+          total_geral?: number | null
+        }
+        Relationships: []
+      }
+      comercial_bonificacao_fechamento_itens: {
+        Row: {
+          categoria: string | null
+          complexidade: number | null
+          data_evento: string | null
+          fechamento_id: string
+          id: string
+          nome_evento: string | null
+          produtor_id: string | null
+          produtor_nome: string | null
+          valor_final: number | null
+          venda_id: string | null
+        }
+        Insert: {
+          categoria?: string | null
+          complexidade?: number | null
+          data_evento?: string | null
+          fechamento_id: string
+          id?: string
+          nome_evento?: string | null
+          produtor_id?: string | null
+          produtor_nome?: string | null
+          valor_final?: number | null
+          venda_id?: string | null
+        }
+        Update: {
+          categoria?: string | null
+          complexidade?: number | null
+          data_evento?: string | null
+          fechamento_id?: string
+          id?: string
+          nome_evento?: string | null
+          produtor_id?: string | null
+          produtor_nome?: string | null
+          valor_final?: number | null
+          venda_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comercial_bonificacao_fechamento_itens_fechamento_id_fkey"
+            columns: ["fechamento_id"]
+            isOneToOne: false
+            referencedRelation: "comercial_bonificacao_fechamento"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comercial_bonificacao_producao: {
         Row: {
           ano: number | null

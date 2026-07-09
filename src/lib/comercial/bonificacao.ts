@@ -25,6 +25,119 @@ export type BonificacaoRow = {
   mes: string | null;
 };
 
+export type FechamentoRow = {
+  id: string;
+  ano: number;
+  mes: string;
+  fechado_em: string;
+  fechado_por: string | null;
+  fechado_por_nome: string | null;
+  total_geral: number | null;
+};
+
+export type FechamentoItemRow = {
+  id: string;
+  fechamento_id: string;
+  venda_id: string | null;
+  nome_evento: string | null;
+  data_evento: string | null;
+  categoria: string | null;
+  produtor_id: string | null;
+  produtor_nome: string | null;
+  complexidade: number | null;
+  valor_final: number | null;
+};
+
+export function useFechamentoMes(ano: number | "Todos", mes: string) {
+  const enabled = ano !== "Todos" && !!mes && mes !== "Todos";
+  return useQuery({
+    queryKey: ["comercial-bonif-fechamento", ano, mes],
+    enabled,
+    queryFn: async (): Promise<FechamentoRow | null> => {
+      const { data, error } = await sb
+        .from("comercial_bonificacao_fechamento")
+        .select("*")
+        .eq("ano", ano)
+        .eq("mes", (mes || "").toLowerCase())
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as FechamentoRow | null;
+    },
+    staleTime: 30_000,
+  });
+}
+
+export function useFechamentos() {
+  return useQuery({
+    queryKey: ["comercial-bonif-fechamentos"],
+    queryFn: async (): Promise<FechamentoRow[]> => {
+      const { data, error } = await sb
+        .from("comercial_bonificacao_fechamento")
+        .select("*")
+        .order("ano", { ascending: false })
+        .order("fechado_em", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as FechamentoRow[];
+    },
+    staleTime: 30_000,
+  });
+}
+
+export function useFechamentoItens(fechamentoId: string | null) {
+  return useQuery({
+    queryKey: ["comercial-bonif-fechamento-itens", fechamentoId],
+    enabled: !!fechamentoId,
+    queryFn: async (): Promise<FechamentoItemRow[]> => {
+      const { data, error } = await sb
+        .from("comercial_bonificacao_fechamento_itens")
+        .select("*")
+        .eq("fechamento_id", fechamentoId)
+        .order("data_evento", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as FechamentoItemRow[];
+    },
+    staleTime: 30_000,
+  });
+}
+
+export function useFecharMes() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      ano: number;
+      mes: string;
+      total_geral: number;
+      fechado_por: string | null;
+      fechado_por_nome: string | null;
+      itens: Array<Omit<FechamentoItemRow, "id" | "fechamento_id">>;
+    }) => {
+      const { data: fech, error: e1 } = await sb
+        .from("comercial_bonificacao_fechamento")
+        .insert({
+          ano: payload.ano,
+          mes: payload.mes.toLowerCase(),
+          total_geral: payload.total_geral,
+          fechado_por: payload.fechado_por,
+          fechado_por_nome: payload.fechado_por_nome,
+        })
+        .select("*")
+        .single();
+      if (e1) throw e1;
+
+      if (payload.itens.length) {
+        const rows = payload.itens.map((i) => ({ ...i, fechamento_id: fech.id }));
+        const { error: e2 } = await sb.from("comercial_bonificacao_fechamento_itens").insert(rows);
+        if (e2) throw e2;
+      }
+      return fech as FechamentoRow;
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["comercial-bonif-fechamentos"] });
+      qc.invalidateQueries({ queryKey: ["comercial-bonif-fechamento", vars.ano, vars.mes] });
+    },
+  });
+}
+
 export function useProdutores(onlyAtivos = false) {
   return useQuery({
     queryKey: ["comercial-produtores", onlyAtivos],

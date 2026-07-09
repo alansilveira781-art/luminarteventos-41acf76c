@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/PageHeader";
-import { Loader2, AlertTriangle, Download, FileBarChart, CalendarRange, Printer, Award, Plus, Trash2 } from "lucide-react";
+import { Loader2, AlertTriangle, Download, FileBarChart, CalendarRange, Printer, Award, Plus, Trash2, Lock, History, Save } from "lucide-react";
 import { listVendasDb } from "@/lib/comercial/vendas-db.functions";
 import { getAno, getMes, cleanText } from "@/lib/comercial/vendas-metrics";
 import { RelatorioVendasPeriodo } from "@/components/comercial/RelatorioVendasPeriodo";
@@ -24,9 +24,23 @@ import {
   useAlcadas,
   useBonificacoes,
   useBonificacaoMutations,
+  useFechamentoMes,
+  useFechamentos,
+  useFechamentoItens,
+  useFecharMes,
   sugerirComplexidade,
   multiplicadorDaCategoria,
+  type FechamentoRow,
+  type FechamentoItemRow,
 } from "@/lib/comercial/bonificacao";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/comercial/relatorios")({
@@ -464,10 +478,19 @@ function DistribuicaoBonificacao({
   anoDoRegistro: (r: any) => number | null;
   mesDoRegistro: (r: any) => string | null;
 }) {
+  const { user, isAdmin, modulos } = useAuth();
+  const isComercialAdmin = isAdmin || modulos.some((m) => m.slug === "comercial" && m.is_admin);
+
   const { data: produtoresData } = useProdutores(true);
   const { data: alcadasData } = useAlcadas();
   const { data: bonifData } = useBonificacoes(ano, mes);
   const { upsert, remove } = useBonificacaoMutations();
+
+  const { data: fechamentoMes } = useFechamentoMes(ano, mes);
+  const fecharMes = useFecharMes();
+  const isClosed = !!fechamentoMes;
+
+  const [historicoOpen, setHistoricoOpen] = useState(false);
 
   const produtores = useMemo(() => produtoresData ?? [], [produtoresData]);
   const alcadas = useMemo(() => alcadasData ?? [], [alcadasData]);
@@ -654,6 +677,89 @@ function DistribuicaoBonificacao({
     return [...map.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   }, [eventos, linhasPorVenda, produtores, alcadas]);
 
+  const totalGeralMes = useMemo(() => {
+    let s = 0;
+    for (const e of eventos) {
+      const linhas = linhasPorVenda[e.vendaId] ?? [];
+      for (const l of linhas) {
+        if (!l.produtorId) continue;
+        s += valorBonificacao(e, l.complexidade);
+      }
+    }
+    return s;
+  }, [eventos, linhasPorVenda, alcadas]);
+
+  const handleFechar = async () => {
+    if (ano === "Todos" || !mes || mes === "Todos") {
+      toast.error("Selecione um Ano e Mês específicos para fechar.");
+      return;
+    }
+    if (isClosed) {
+      toast.error("Este mês já foi fechado e não pode ser salvo novamente.");
+      return;
+    }
+    if (!isComercialAdmin) {
+      toast.error("Apenas administradores do Comercial podem fechar o mês.");
+      return;
+    }
+    // Valida eventos sem produtor
+    const semProdutor = eventos.filter((e) => {
+      const linhas = linhasPorVenda[e.vendaId] ?? [];
+      return !linhas.some((l) => !!l.produtorId);
+    });
+    if (semProdutor.length) {
+      toast.error(
+        `Existem ${semProdutor.length} evento(s) sem produtor: ${semProdutor
+          .slice(0, 3)
+          .map((e) => e.nomeEvento)
+          .join(", ")}${semProdutor.length > 3 ? "…" : ""}`,
+      );
+      return;
+    }
+    if (!eventos.length) {
+      toast.error("Não há vendas no período para fechar.");
+      return;
+    }
+
+    const itens: Array<Omit<FechamentoItemRow, "id" | "fechamento_id">> = [];
+    for (const e of eventos) {
+      const linhas = linhasPorVenda[e.vendaId] ?? [];
+      for (const l of linhas) {
+        if (!l.produtorId) continue;
+        const produtor = produtores.find((p) => p.id === l.produtorId);
+        itens.push({
+          venda_id: e.vendaId,
+          nome_evento: e.nomeEvento,
+          data_evento: e.dataEvento,
+          categoria: e.categoria,
+          produtor_id: l.produtorId,
+          produtor_nome: produtor?.nome ?? null,
+          complexidade: l.complexidade,
+          valor_final: valorBonificacao(e, l.complexidade),
+        });
+      }
+    }
+
+    try {
+      await fecharMes.mutateAsync({
+        ano: ano as number,
+        mes,
+        total_geral: totalGeralMes,
+        fechado_por: user?.id ?? null,
+        fechado_por_nome:
+          (user?.user_metadata as any)?.full_name ||
+          (user?.user_metadata as any)?.name ||
+          user?.email ||
+          null,
+        itens,
+      });
+      toast.success("Mês fechado com sucesso");
+    } catch (err: any) {
+      toast.error(err?.message || "Falha ao fechar o mês");
+    }
+  };
+
+
   return (
     <div className="print-area space-y-6">
       <style>{`
@@ -699,13 +805,38 @@ function DistribuicaoBonificacao({
               </SelectContent>
             </Select>
           </div>
-          <div className="flex justify-end gap-2 print:hidden">
+          <div className="flex flex-wrap justify-end gap-2 print:hidden">
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => setHistoricoOpen(true)}>
+              <History className="h-4 w-4" /> Ver períodos anteriores
+            </Button>
             <Button variant="outline" size="sm" className="gap-2" onClick={() => window.print()}>
               <Printer className="h-4 w-4" /> Imprimir
             </Button>
+            {isComercialAdmin && (
+              <Button
+                size="sm"
+                className="gap-2"
+                onClick={handleFechar}
+                disabled={isClosed || fecharMes.isPending || ano === "Todos" || mes === "Todos"}
+                title={isClosed ? "Mês já fechado" : "Fechar e salvar o mês"}
+              >
+                <Save className="h-4 w-4" /> {isClosed ? "Mês fechado" : "Salvar"}
+              </Button>
+            )}
           </div>
         </div>
+        {isClosed && (
+          <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-900 dark:text-amber-200">
+            <Lock className="h-3.5 w-3.5 mt-0.5" />
+            <span>
+              Este mês foi fechado em{" "}
+              {new Date(fechamentoMes!.fechado_em).toLocaleString("pt-BR")} por{" "}
+              <strong>{fechamentoMes!.fechado_por_nome || "—"}</strong>. Valores estão em modo somente leitura.
+            </span>
+          </div>
+        )}
       </Card>
+
 
       {isLoading && (
         <Card className="p-6 flex items-center gap-2 text-sm text-muted-foreground">
@@ -719,7 +850,11 @@ function DistribuicaoBonificacao({
         </Card>
       )}
 
-      {!isLoading && !error && (
+      {!isLoading && !error && isClosed && (
+        <FechamentoReadonlyBody fechamentoId={fechamentoMes!.id} />
+      )}
+
+      {!isLoading && !error && !isClosed && (
         <>
           <Card className="overflow-hidden">
             <div className="overflow-x-auto">
@@ -831,6 +966,224 @@ function DistribuicaoBonificacao({
           </Card>
         </>
       )}
+
+      <HistoricoFechamentosDialog open={historicoOpen} onOpenChange={setHistoricoOpen} />
     </div>
+
   );
 }
+
+/* -------------------- Visão somente leitura do mês fechado -------------------- */
+
+function FechamentoReadonlyBody({ fechamentoId }: { fechamentoId: string }) {
+  const { data, isLoading } = useFechamentoItens(fechamentoId);
+  const itens = data ?? [];
+
+  const porEvento = useMemo(() => {
+    const map = new Map<string, FechamentoItemRow[]>();
+    for (const i of itens) {
+      const key = i.venda_id || i.nome_evento || i.id;
+      const arr = map.get(key) ?? [];
+      arr.push(i);
+      map.set(key, arr);
+    }
+    return [...map.entries()].map(([k, arr]) => ({ key: k, itens: arr }));
+  }, [itens]);
+
+  const porProdutor = useMemo(() => {
+    const map = new Map<string, { nome: string; total: number }>();
+    for (const i of itens) {
+      const nome = i.produtor_nome || "?";
+      const key = i.produtor_id || nome;
+      const prev = map.get(key) ?? { nome, total: 0 };
+      prev.total += Number(i.valor_final || 0);
+      map.set(key, prev);
+    }
+    return [...map.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  }, [itens]);
+
+  if (isLoading) {
+    return (
+      <Card className="p-6 flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" /> Carregando fechamento…
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      <Card className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
+              <tr>
+                <th className="text-left px-3 py-2">Nome do evento</th>
+                <th className="text-left px-3 py-2">Data</th>
+                <th className="text-left px-3 py-2">Categoria</th>
+                <th className="text-left px-3 py-2">Produtor</th>
+                <th className="text-left px-3 py-2 w-28">Complexidade</th>
+                <th className="text-right px-3 py-2">Valor Final</th>
+              </tr>
+            </thead>
+            <tbody>
+              {porEvento.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">
+                    Nenhum item no fechamento.
+                  </td>
+                </tr>
+              )}
+              {porEvento.map((grp) => (
+                <Fragment key={grp.key}>
+                  {grp.itens.map((i, idx) => (
+                    <tr key={i.id} className="border-t border-border/50 align-top">
+                      {idx === 0 ? (
+                        <>
+                          <td className="px-3 py-2" rowSpan={grp.itens.length}>{i.nome_evento || "-"}</td>
+                          <td className="px-3 py-2" rowSpan={grp.itens.length}>
+                            {i.data_evento ? new Date(i.data_evento + "T00:00:00").toLocaleDateString("pt-BR") : "-"}
+                          </td>
+                          <td className="px-3 py-2" rowSpan={grp.itens.length}>{i.categoria || "—"}</td>
+                        </>
+                      ) : null}
+                      <td className="px-3 py-2">{i.produtor_nome || "—"}</td>
+                      <td className="px-3 py-2">{i.complexidade ?? "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{fmtBRL(Number(i.valor_final || 0))}</td>
+                    </tr>
+                  ))}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <Card className="p-4">
+        <h3 className="text-sm font-semibold mb-2">Valor a pagar por produtor</h3>
+        {porProdutor.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhum produtor no fechamento.</p>
+        ) : (
+          <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+            {porProdutor.map((p) => (
+              <span key={p.nome} className="tabular-nums">
+                <strong>{p.nome}</strong> — {fmtBRL(p.total)}
+              </span>
+            ))}
+            <span className="ml-auto tabular-nums text-muted-foreground">
+              Total: <strong>{fmtBRL(porProdutor.reduce((s, p) => s + p.total, 0))}</strong>
+            </span>
+          </div>
+        )}
+      </Card>
+    </>
+  );
+}
+
+/* -------------------- Dialog: períodos anteriores -------------------- */
+
+function HistoricoFechamentosDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const { data, isLoading } = useFechamentos();
+  const fechamentos = data ?? [];
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = fechamentos.find((f) => f.id === selectedId) || null;
+
+  useEffect(() => {
+    if (!open) setSelectedId(null);
+  }, [open]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Períodos anteriores — Bonificação</DialogTitle>
+          <DialogDescription>
+            Fechamentos mensais salvos. Selecione um período para consultar em modo somente leitura.
+          </DialogDescription>
+        </DialogHeader>
+
+        {!selected ? (
+          <div className="space-y-3">
+            {isLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
+              </div>
+            ) : fechamentos.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum fechamento salvo ainda.</p>
+            ) : (
+              <div className="overflow-x-auto rounded-md border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
+                    <tr>
+                      <th className="text-left px-3 py-2">Ano</th>
+                      <th className="text-left px-3 py-2">Mês</th>
+                      <th className="text-left px-3 py-2">Fechado em</th>
+                      <th className="text-left px-3 py-2">Por</th>
+                      <th className="text-right px-3 py-2">Total geral</th>
+                      <th className="px-3 py-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fechamentos.map((f) => (
+                      <tr key={f.id} className="border-t border-border/50">
+                        <td className="px-3 py-2">{f.ano}</td>
+                        <td className="px-3 py-2 capitalize">{f.mes}</td>
+                        <td className="px-3 py-2">{new Date(f.fechado_em).toLocaleString("pt-BR")}</td>
+                        <td className="px-3 py-2">{f.fechado_por_nome || "—"}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{fmtBRL(Number(f.total_geral || 0))}</td>
+                        <td className="px-3 py-2 text-right">
+                          <Button size="sm" variant="outline" onClick={() => setSelectedId(f.id)}>
+                            Consultar
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="print-area space-y-4">
+            <style>{`
+              @media print {
+                body * { visibility: hidden; }
+                .print-area, .print-area * { visibility: visible !important; }
+                .print-area { position: absolute; inset: 0; padding: 0; }
+                .print\\:hidden { display: none !important; }
+                body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+              }
+            `}</style>
+            <div className="flex items-center justify-between gap-2 print:hidden">
+              <Button size="sm" variant="outline" onClick={() => setSelectedId(null)}>
+                ← Voltar
+              </Button>
+              <div className="text-sm text-muted-foreground">
+                <strong>{selected.ano}</strong> · <span className="capitalize">{selected.mes}</span> · Fechado em{" "}
+                {new Date(selected.fechado_em).toLocaleString("pt-BR")} por{" "}
+                <strong>{selected.fechado_por_nome || "—"}</strong>
+              </div>
+              <Button size="sm" variant="outline" className="gap-2" onClick={() => window.print()}>
+                <Printer className="h-4 w-4" /> Imprimir
+              </Button>
+            </div>
+            <div className="hidden print:block mb-4">
+              <h1 className="text-2xl font-bold">Distribuição Bonificação — {selected.ano} / {selected.mes}</h1>
+              <p className="text-muted-foreground">
+                Fechado em {new Date(selected.fechado_em).toLocaleString("pt-BR")} por{" "}
+                {selected.fechado_por_nome || "—"}
+              </p>
+            </div>
+            <FechamentoReadonlyBody fechamentoId={selected.id} />
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
