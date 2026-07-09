@@ -805,13 +805,38 @@ function DistribuicaoBonificacao({
               </SelectContent>
             </Select>
           </div>
-          <div className="flex justify-end gap-2 print:hidden">
+          <div className="flex flex-wrap justify-end gap-2 print:hidden">
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => setHistoricoOpen(true)}>
+              <History className="h-4 w-4" /> Ver períodos anteriores
+            </Button>
             <Button variant="outline" size="sm" className="gap-2" onClick={() => window.print()}>
               <Printer className="h-4 w-4" /> Imprimir
             </Button>
+            {isComercialAdmin && (
+              <Button
+                size="sm"
+                className="gap-2"
+                onClick={handleFechar}
+                disabled={isClosed || fecharMes.isPending || ano === "Todos" || mes === "Todos"}
+                title={isClosed ? "Mês já fechado" : "Fechar e salvar o mês"}
+              >
+                <Save className="h-4 w-4" /> {isClosed ? "Mês fechado" : "Salvar"}
+              </Button>
+            )}
           </div>
         </div>
+        {isClosed && (
+          <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-900 dark:text-amber-200">
+            <Lock className="h-3.5 w-3.5 mt-0.5" />
+            <span>
+              Este mês foi fechado em{" "}
+              {new Date(fechamentoMes!.fechado_em).toLocaleString("pt-BR")} por{" "}
+              <strong>{fechamentoMes!.fechado_por_nome || "—"}</strong>. Valores estão em modo somente leitura.
+            </span>
+          </div>
+        )}
       </Card>
+
 
       {isLoading && (
         <Card className="p-6 flex items-center gap-2 text-sm text-muted-foreground">
