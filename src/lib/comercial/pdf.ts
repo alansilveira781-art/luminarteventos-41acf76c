@@ -175,11 +175,11 @@ async function drawCover(
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
 
-  // Logo centralizado no topo (caixa ampla: a logo quadrada tem margem vazia,
-  // então o desenho visível ocupará aproximadamente 2/3 da largura da página)
+  // Logo centralizado no topo (recortada automaticamente para remover margem vazia,
+  // então o desenho visível ocupa a largura máxima sem ficar pequeno)
   if (logo) {
     const maxW = 150;
-    const maxH = 65;
+    const maxH = 150;
     const ratio = logo.w / logo.h;
     let w = maxW;
     let h = w / ratio;
