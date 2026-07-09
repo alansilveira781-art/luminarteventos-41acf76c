@@ -150,7 +150,7 @@ async function drawCover(
   // então o desenho visível ocupará aproximadamente 2/3 da largura da página)
   if (logo) {
     const maxW = 150;
-    const maxH = 40;
+    const maxH = 55;
     const ratio = logo.w / logo.h;
     let w = maxW;
     let h = w / ratio;
