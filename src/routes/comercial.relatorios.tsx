@@ -745,7 +745,6 @@ function DistribuicaoBonificacao({
                   )}
                   {eventos.map((e) => {
                     const linhas = linhasPorVenda[e.vendaId] ?? [];
-                    const cat = catDe(e);
                     return (
                       <Fragment key={e.vendaId}>
                         {linhas.map((l, idx) => (
@@ -756,19 +755,7 @@ function DistribuicaoBonificacao({
                                 <td className="px-3 py-2" rowSpan={linhas.length}>
                                   {e.dataEvento ? new Date(e.dataEvento + "T00:00:00").toLocaleDateString("pt-BR") : "-"}
                                 </td>
-                                <td className="px-3 py-2" rowSpan={linhas.length}>
-                                  <Select
-                                    value={cat && (TIPOS_EVENTO as readonly string[]).includes(cat) ? cat : ""}
-                                    onValueChange={(v) => setCategoriaOverride((prev) => ({ ...prev, [e.vendaId]: v }))}
-                                  >
-                                    <SelectTrigger className="h-8 w-40"><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                                    <SelectContent>
-                                      {TIPOS_EVENTO.map((t) => (
-                                        <SelectItem key={t} value={t}>{t}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </td>
+                                <td className="px-3 py-2" rowSpan={linhas.length}>{e.categoria || "—"}</td>
                               </>
                             ) : null}
                             <td className="px-3 py-2">
