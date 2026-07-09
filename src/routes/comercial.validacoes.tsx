@@ -151,6 +151,11 @@ function Validacoes() {
         onOpenChange={(v) => { if (!v) setEditProposta(null); }}
         proposta={editProposta}
       />
+      <ValidacaoProposta
+        open={!!validarProposta}
+        onOpenChange={(v) => { if (!v) setValidarProposta(null); }}
+        proposta={validarProposta}
+      />
     </>
   );
 }
