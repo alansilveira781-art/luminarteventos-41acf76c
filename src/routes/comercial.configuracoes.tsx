@@ -16,6 +16,11 @@ import { toast } from "sonner";
 import {
   useVendedores, useCerimoniais, useDecoradores, useCadastroMutations,
 } from "@/lib/comercial/cadastros";
+import {
+  useProdutores, useProdutorMutations, useAlcadas, useAlcadaMutation,
+} from "@/lib/comercial/bonificacao";
+import { TIPOS_EVENTO } from "@/lib/comercial/types";
+import { Switch } from "@/components/ui/switch";
 
 export const Route = createFileRoute("/comercial/configuracoes")({
   component: ComercialConfiguracoes,
