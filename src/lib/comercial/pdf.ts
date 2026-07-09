@@ -134,7 +134,7 @@ function drawCoverWaves(doc: jsPDF, W: number, H: number) {
   fillPolygon(doc, points);
 
   // onda dourada (sobreposta)
-  setFill(doc, GOLD);
+  setFill(doc, [255, 0, 0]);
   const gold: [number, number][] = [];
   const base2 = H - 18;
   const peak2 = H - 48;
@@ -178,8 +178,8 @@ async function drawCover(
   // Logo centralizado no topo (recortada automaticamente para remover margem vazia,
   // então o desenho visível ocupa a largura máxima sem ficar pequeno)
   if (logo) {
-    const maxW = 150;
-    const maxH = 150;
+    const maxW = 120;
+    const maxH = 85;
     const ratio = logo.w / logo.h;
     let w = maxW;
     let h = w / ratio;
@@ -206,25 +206,25 @@ async function drawCover(
   // Linha dourada
   setDraw(doc, GOLD);
   doc.setLineWidth(0.6);
-  doc.line(W / 2 - 70, 96, W / 2 + 70, 96);
+  doc.line(W / 2 - 70, 100, W / 2 + 70, 100);
 
   // Subtítulo
   setText(doc, INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text("Seu Sonho, Nosso Projeto", W / 2, 106, { align: "center" });
+  doc.text("Seu Sonho, Nosso Projeto", W / 2, 110, { align: "center" });
 
   // ORC
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   setText(doc, GOLD);
   const orc = `ORC-${p.numero}`;
-  doc.text(orc, W / 2, 114, { align: "center" });
+  doc.text(orc, W / 2, 118, { align: "center" });
   setDraw(doc, GOLD);
   doc.setLineWidth(0.2);
   const orcWidth = doc.getTextWidth(orc);
-  doc.line(W / 2 - orcWidth / 2 - 14, 113, W / 2 - orcWidth / 2 - 4, 113);
-  doc.line(W / 2 + orcWidth / 2 + 4, 113, W / 2 + orcWidth / 2 + 14, 113);
+  doc.line(W / 2 - orcWidth / 2 - 14, 117, W / 2 - orcWidth / 2 - 4, 117);
+  doc.line(W / 2 + orcWidth / 2 + 4, 117, W / 2 + orcWidth / 2 + 14, 117);
 
   // Bloco de campos centralizado
   const fields: [string, string][] = [
@@ -249,8 +249,8 @@ async function drawCover(
   const valueX = startX + labelW + gap;
   const colSepX = valueX - gap / 2;
 
-  let y = 130;
-  const lineH = 9;
+  let y = 132;
+  const lineH = 11.5;
   // linha vertical sutil entre label e valor
   setDraw(doc, GOLD);
   doc.setLineWidth(0.2);
