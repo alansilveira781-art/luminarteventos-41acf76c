@@ -972,3 +972,218 @@ function DistribuicaoBonificacao({
 
   );
 }
+
+/* -------------------- Visão somente leitura do mês fechado -------------------- */
+
+function FechamentoReadonlyBody({ fechamentoId }: { fechamentoId: string }) {
+  const { data, isLoading } = useFechamentoItens(fechamentoId);
+  const itens = data ?? [];
+
+  const porEvento = useMemo(() => {
+    const map = new Map<string, FechamentoItemRow[]>();
+    for (const i of itens) {
+      const key = i.venda_id || i.nome_evento || i.id;
+      const arr = map.get(key) ?? [];
+      arr.push(i);
+      map.set(key, arr);
+    }
+    return [...map.entries()].map(([k, arr]) => ({ key: k, itens: arr }));
+  }, [itens]);
+
+  const porProdutor = useMemo(() => {
+    const map = new Map<string, { nome: string; total: number }>();
+    for (const i of itens) {
+      const nome = i.produtor_nome || "?";
+      const key = i.produtor_id || nome;
+      const prev = map.get(key) ?? { nome, total: 0 };
+      prev.total += Number(i.valor_final || 0);
+      map.set(key, prev);
+    }
+    return [...map.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  }, [itens]);
+
+  if (isLoading) {
+    return (
+      <Card className="p-6 flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" /> Carregando fechamento…
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      <Card className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
+              <tr>
+                <th className="text-left px-3 py-2">Nome do evento</th>
+                <th className="text-left px-3 py-2">Data</th>
+                <th className="text-left px-3 py-2">Categoria</th>
+                <th className="text-left px-3 py-2">Produtor</th>
+                <th className="text-left px-3 py-2 w-28">Complexidade</th>
+                <th className="text-right px-3 py-2">Valor Final</th>
+              </tr>
+            </thead>
+            <tbody>
+              {porEvento.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">
+                    Nenhum item no fechamento.
+                  </td>
+                </tr>
+              )}
+              {porEvento.map((grp) => (
+                <Fragment key={grp.key}>
+                  {grp.itens.map((i, idx) => (
+                    <tr key={i.id} className="border-t border-border/50 align-top">
+                      {idx === 0 ? (
+                        <>
+                          <td className="px-3 py-2" rowSpan={grp.itens.length}>{i.nome_evento || "-"}</td>
+                          <td className="px-3 py-2" rowSpan={grp.itens.length}>
+                            {i.data_evento ? new Date(i.data_evento + "T00:00:00").toLocaleDateString("pt-BR") : "-"}
+                          </td>
+                          <td className="px-3 py-2" rowSpan={grp.itens.length}>{i.categoria || "—"}</td>
+                        </>
+                      ) : null}
+                      <td className="px-3 py-2">{i.produtor_nome || "—"}</td>
+                      <td className="px-3 py-2">{i.complexidade ?? "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{fmtBRL(Number(i.valor_final || 0))}</td>
+                    </tr>
+                  ))}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <Card className="p-4">
+        <h3 className="text-sm font-semibold mb-2">Valor a pagar por produtor</h3>
+        {porProdutor.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhum produtor no fechamento.</p>
+        ) : (
+          <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+            {porProdutor.map((p) => (
+              <span key={p.nome} className="tabular-nums">
+                <strong>{p.nome}</strong> — {fmtBRL(p.total)}
+              </span>
+            ))}
+            <span className="ml-auto tabular-nums text-muted-foreground">
+              Total: <strong>{fmtBRL(porProdutor.reduce((s, p) => s + p.total, 0))}</strong>
+            </span>
+          </div>
+        )}
+      </Card>
+    </>
+  );
+}
+
+/* -------------------- Dialog: períodos anteriores -------------------- */
+
+function HistoricoFechamentosDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const { data, isLoading } = useFechamentos();
+  const fechamentos = data ?? [];
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = fechamentos.find((f) => f.id === selectedId) || null;
+
+  useEffect(() => {
+    if (!open) setSelectedId(null);
+  }, [open]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Períodos anteriores — Bonificação</DialogTitle>
+          <DialogDescription>
+            Fechamentos mensais salvos. Selecione um período para consultar em modo somente leitura.
+          </DialogDescription>
+        </DialogHeader>
+
+        {!selected ? (
+          <div className="space-y-3">
+            {isLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
+              </div>
+            ) : fechamentos.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum fechamento salvo ainda.</p>
+            ) : (
+              <div className="overflow-x-auto rounded-md border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
+                    <tr>
+                      <th className="text-left px-3 py-2">Ano</th>
+                      <th className="text-left px-3 py-2">Mês</th>
+                      <th className="text-left px-3 py-2">Fechado em</th>
+                      <th className="text-left px-3 py-2">Por</th>
+                      <th className="text-right px-3 py-2">Total geral</th>
+                      <th className="px-3 py-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fechamentos.map((f) => (
+                      <tr key={f.id} className="border-t border-border/50">
+                        <td className="px-3 py-2">{f.ano}</td>
+                        <td className="px-3 py-2 capitalize">{f.mes}</td>
+                        <td className="px-3 py-2">{new Date(f.fechado_em).toLocaleString("pt-BR")}</td>
+                        <td className="px-3 py-2">{f.fechado_por_nome || "—"}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{fmtBRL(Number(f.total_geral || 0))}</td>
+                        <td className="px-3 py-2 text-right">
+                          <Button size="sm" variant="outline" onClick={() => setSelectedId(f.id)}>
+                            Consultar
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="print-area space-y-4">
+            <style>{`
+              @media print {
+                body * { visibility: hidden; }
+                .print-area, .print-area * { visibility: visible !important; }
+                .print-area { position: absolute; inset: 0; padding: 0; }
+                .print\\:hidden { display: none !important; }
+                body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+              }
+            `}</style>
+            <div className="flex items-center justify-between gap-2 print:hidden">
+              <Button size="sm" variant="outline" onClick={() => setSelectedId(null)}>
+                ← Voltar
+              </Button>
+              <div className="text-sm text-muted-foreground">
+                <strong>{selected.ano}</strong> · <span className="capitalize">{selected.mes}</span> · Fechado em{" "}
+                {new Date(selected.fechado_em).toLocaleString("pt-BR")} por{" "}
+                <strong>{selected.fechado_por_nome || "—"}</strong>
+              </div>
+              <Button size="sm" variant="outline" className="gap-2" onClick={() => window.print()}>
+                <Printer className="h-4 w-4" /> Imprimir
+              </Button>
+            </div>
+            <div className="hidden print:block mb-4">
+              <h1 className="text-2xl font-bold">Distribuição Bonificação — {selected.ano} / {selected.mes}</h1>
+              <p className="text-muted-foreground">
+                Fechado em {new Date(selected.fechado_em).toLocaleString("pt-BR")} por{" "}
+                {selected.fechado_por_nome || "—"}
+              </p>
+            </div>
+            <FechamentoReadonlyBody fechamentoId={selected.id} />
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
