@@ -130,6 +130,9 @@ function Validacoes() {
                   <Button size="sm" variant="outline" onClick={() => setEditProposta(p)}>
                     <Pencil className="h-3.5 w-3.5 mr-1" /> Editar
                   </Button>
+                  <Button size="sm" variant="secondary" onClick={() => setValidarProposta(p)}>
+                    <ClipboardCheck className="h-3.5 w-3.5 mr-1" /> Validar
+                  </Button>
                   <Button size="sm" variant="destructive" onClick={() => { reprovarProposta(p.id); toast.success("Proposta enviada para revisão"); }}>
                     <X className="h-3.5 w-3.5 mr-1" /> Reprovar
                   </Button>
