@@ -24,9 +24,23 @@ import {
   useAlcadas,
   useBonificacoes,
   useBonificacaoMutations,
+  useFechamentoMes,
+  useFechamentos,
+  useFechamentoItens,
+  useFecharMes,
   sugerirComplexidade,
   multiplicadorDaCategoria,
+  type FechamentoRow,
+  type FechamentoItemRow,
 } from "@/lib/comercial/bonificacao";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/comercial/relatorios")({
