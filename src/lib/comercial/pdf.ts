@@ -148,8 +148,8 @@ async function drawCover(
 
   // Logo centralizado no topo
   if (logo) {
-    const maxW = 70;
-    const maxH = 40;
+    const maxW = 110;
+    const maxH = 60;
     const ratio = logo.w / logo.h;
     let w = maxW;
     let h = w / ratio;
@@ -158,7 +158,7 @@ async function drawCover(
       w = h * ratio;
     }
     try {
-      doc.addImage(logo.src, "PNG", (W - w) / 2, 18, w, h, undefined, "FAST");
+      doc.addImage(logo.src, "PNG", (W - w) / 2, 14, w, h, undefined, "FAST");
     } catch {
       /* ignore */
     }
