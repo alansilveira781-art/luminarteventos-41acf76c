@@ -134,7 +134,7 @@ function drawCoverWaves(doc: jsPDF, W: number, H: number) {
   fillPolygon(doc, points);
 
   // onda dourada (sobreposta)
-  setFill(doc, GOLD);
+  setFill(doc, [255, 0, 0]);
   const gold: [number, number][] = [];
   const base2 = H - 18;
   const peak2 = H - 48;
