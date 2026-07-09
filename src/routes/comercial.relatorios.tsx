@@ -478,10 +478,19 @@ function DistribuicaoBonificacao({
   anoDoRegistro: (r: any) => number | null;
   mesDoRegistro: (r: any) => string | null;
 }) {
+  const { user, isAdmin, modulos } = useAuth();
+  const isComercialAdmin = isAdmin || modulos.some((m) => m.slug === "comercial" && m.is_admin);
+
   const { data: produtoresData } = useProdutores(true);
   const { data: alcadasData } = useAlcadas();
   const { data: bonifData } = useBonificacoes(ano, mes);
   const { upsert, remove } = useBonificacaoMutations();
+
+  const { data: fechamentoMes } = useFechamentoMes(ano, mes);
+  const fecharMes = useFecharMes();
+  const isClosed = !!fechamentoMes;
+
+  const [historicoOpen, setHistoricoOpen] = useState(false);
 
   const produtores = useMemo(() => produtoresData ?? [], [produtoresData]);
   const alcadas = useMemo(() => alcadasData ?? [], [alcadasData]);
