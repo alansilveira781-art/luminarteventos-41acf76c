@@ -178,8 +178,8 @@ async function drawCover(
   // Logo centralizado no topo (recortada automaticamente para remover margem vazia,
   // então o desenho visível ocupa a largura máxima sem ficar pequeno)
   if (logo) {
-    const maxW = 150;
-    const maxH = 150;
+    const maxW = 105;
+    const maxH = 60;
     const ratio = logo.w / logo.h;
     let w = maxW;
     let h = w / ratio;
@@ -206,25 +206,25 @@ async function drawCover(
   // Linha dourada
   setDraw(doc, GOLD);
   doc.setLineWidth(0.6);
-  doc.line(W / 2 - 70, 96, W / 2 + 70, 96);
+  doc.line(W / 2 - 70, 92, W / 2 + 70, 92);
 
   // Subtítulo
   setText(doc, INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text("Seu Sonho, Nosso Projeto", W / 2, 106, { align: "center" });
+  doc.text("Seu Sonho, Nosso Projeto", W / 2, 102, { align: "center" });
 
   // ORC
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   setText(doc, GOLD);
   const orc = `ORC-${p.numero}`;
-  doc.text(orc, W / 2, 114, { align: "center" });
+  doc.text(orc, W / 2, 110, { align: "center" });
   setDraw(doc, GOLD);
   doc.setLineWidth(0.2);
   const orcWidth = doc.getTextWidth(orc);
-  doc.line(W / 2 - orcWidth / 2 - 14, 113, W / 2 - orcWidth / 2 - 4, 113);
-  doc.line(W / 2 + orcWidth / 2 + 4, 113, W / 2 + orcWidth / 2 + 14, 113);
+  doc.line(W / 2 - orcWidth / 2 - 14, 109, W / 2 - orcWidth / 2 - 4, 109);
+  doc.line(W / 2 + orcWidth / 2 + 4, 109, W / 2 + orcWidth / 2 + 14, 109);
 
   // Bloco de campos centralizado
   const fields: [string, string][] = [
@@ -249,8 +249,8 @@ async function drawCover(
   const valueX = startX + labelW + gap;
   const colSepX = valueX - gap / 2;
 
-  let y = 130;
-  const lineH = 9;
+  let y = 118;
+  const lineH = 8;
   // linha vertical sutil entre label e valor
   setDraw(doc, GOLD);
   doc.setLineWidth(0.2);
