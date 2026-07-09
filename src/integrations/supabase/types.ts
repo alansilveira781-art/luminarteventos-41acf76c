@@ -425,6 +425,92 @@ export type Database = {
         }
         Relationships: []
       }
+      comercial_alcadas_complexidade: {
+        Row: {
+          categoria: string
+          created_at: string
+          id: string
+          multiplicador: number
+          nivel: number
+          updated_at: string
+          valor_ate: number | null
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          id?: string
+          multiplicador?: number
+          nivel: number
+          updated_at?: string
+          valor_ate?: number | null
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          id?: string
+          multiplicador?: number
+          nivel?: number
+          updated_at?: string
+          valor_ate?: number | null
+        }
+        Relationships: []
+      }
+      comercial_bonificacao_producao: {
+        Row: {
+          ano: number | null
+          categoria: string | null
+          complexidade: number | null
+          created_at: string
+          data_evento: string | null
+          id: string
+          mes: string | null
+          nome_evento: string
+          produtor_id: string | null
+          produtor_nome: string | null
+          updated_at: string
+          valor_final: number | null
+          venda_id: string | null
+        }
+        Insert: {
+          ano?: number | null
+          categoria?: string | null
+          complexidade?: number | null
+          created_at?: string
+          data_evento?: string | null
+          id?: string
+          mes?: string | null
+          nome_evento: string
+          produtor_id?: string | null
+          produtor_nome?: string | null
+          updated_at?: string
+          valor_final?: number | null
+          venda_id?: string | null
+        }
+        Update: {
+          ano?: number | null
+          categoria?: string | null
+          complexidade?: number | null
+          created_at?: string
+          data_evento?: string | null
+          id?: string
+          mes?: string | null
+          nome_evento?: string
+          produtor_id?: string | null
+          produtor_nome?: string | null
+          updated_at?: string
+          valor_final?: number | null
+          venda_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comercial_bonificacao_producao_produtor_id_fkey"
+            columns: ["produtor_id"]
+            isOneToOne: false
+            referencedRelation: "comercial_produtores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comercial_cards: {
         Row: {
           cliente_id: string | null
@@ -688,6 +774,27 @@ export type Database = {
           mes?: number
           updated_at?: string
           valor_meta?: number
+        }
+        Relationships: []
+      }
+      comercial_produtores: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
         }
         Relationships: []
       }
