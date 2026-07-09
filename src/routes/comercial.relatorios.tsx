@@ -491,7 +491,7 @@ function DistribuicaoBonificacao({
         vendaId: r.id as string,
         nomeEvento: cleanText(r.nomeEvento) || "-",
         dataEvento: r.dataEvento || null,
-        categoria: cleanText(r.tipoEvento) || "",
+        categoria: cleanText(r.classificacao) || "",
         valorFinal: Number(r.valorFinal || 0),
         ano: anoDoRegistro(r),
         mes: mesDoRegistro(r),
