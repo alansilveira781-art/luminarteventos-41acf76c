@@ -159,14 +159,14 @@ export function descricaoMedidaLabel(d: DescricaoItem): string {
   const num = (x: number) => x.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   switch (d.tipoMedida) {
     case "dimensional":
-      return `${num(L)} × ${num(A)} × ${num(C)} m × ${q} un`;
+      return `${num(L)} × ${num(A)} × ${num(C)} × ${q}`;
     case "area":
-      return `${num(L)} × ${num(C)} m² × ${q}`;
+      return `${num(L)} × ${num(C)} × ${q}`;
     case "linear":
-      return `${num(C)} m × ${q}`;
+      return `${num(C)} × ${q}`;
     case "unidade":
     default:
-      return `${q} ${d.unidade || "un"}`;
+      return `${q}`;
   }
 }
 

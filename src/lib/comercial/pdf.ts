@@ -72,7 +72,8 @@ async function loadImage(
 function descricaoLinha(d: DescricaoItem): string {
   const medida = descricaoMedidaLabel(d);
   const desc = d.descricao || "—";
-  return `- ${desc}  (${medida})`;
+  const qtd = d.quantidade ?? 1;
+  return `- ${qtd}x ${desc}  (${medida})`;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -147,8 +148,8 @@ async function drawCover(
 
   // Logo centralizado no topo
   if (logo) {
-    const maxW = 70;
-    const maxH = 40;
+    const maxW = 110;
+    const maxH = 60;
     const ratio = logo.w / logo.h;
     let w = maxW;
     let h = w / ratio;
@@ -157,7 +158,7 @@ async function drawCover(
       w = h * ratio;
     }
     try {
-      doc.addImage(logo.src, "PNG", (W - w) / 2, 18, w, h, undefined, "FAST");
+      doc.addImage(logo.src, "PNG", (W - w) / 2, 14, w, h, undefined, "FAST");
     } catch {
       /* ignore */
     }
@@ -416,13 +417,16 @@ function drawInvestimentoPage(doc: jsPDF, p: Proposta) {
   for (const [label, val] of rows) {
     setText(doc, INK);
     doc.setFont("helvetica", "bold");
-    doc.text(label, labelX, ry);
+    const maxLabelW = (valueX - labelX) - 20;
+    const labelLines = doc.splitTextToSize(label, maxLabelW);
+    doc.text(labelLines, labelX, ry);
     doc.setFont("helvetica", "normal");
     doc.text(brl(val), valueX, ry, { align: "right" });
     setDraw(doc, SOFT);
     doc.setLineWidth(0.2);
-    doc.line(tableX, ry + 2.5, tableX + tableW, ry + 2.5);
-    ry += rowH;
+    const usedH = Math.max(rowH, labelLines.length * 5 + 2);
+    doc.line(tableX, ry + usedH - 6.5, tableX + tableW, ry + usedH - 6.5);
+    ry += usedH;
   }
 
   // Total Geral — faixa dourada com sombra

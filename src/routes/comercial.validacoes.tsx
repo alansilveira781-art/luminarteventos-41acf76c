@@ -4,11 +4,12 @@ import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, Pencil } from "lucide-react";
+import { Check, X, Pencil, ClipboardCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useComercial, aprovarProposta, reprovarProposta } from "@/lib/comercial/store";
 import { PROPOSTA_STATUS_LABEL, type Proposta, propostaTotal, ambienteSubtotal, descricaoSubtotal, descricaoMedidaLabel } from "@/lib/comercial/types";
 import { PropostaWizard } from "@/components/comercial/PropostaWizard";
+import { ValidacaoProposta } from "@/components/comercial/ValidacaoProposta";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export const Route = createFileRoute("/comercial/validacoes")({
@@ -34,6 +35,7 @@ function Validacoes() {
 
   const { propostas } = useComercial();
   const [editProposta, setEditProposta] = useState<Proposta | null>(null);
+  const [validarProposta, setValidarProposta] = useState<Proposta | null>(null);
 
   const pendentes = useMemo(
     () => propostas.filter((p) => p.status === "aguardando_aprovacao" || p.status === "em_revisao"),
@@ -128,6 +130,9 @@ function Validacoes() {
                   <Button size="sm" variant="outline" onClick={() => setEditProposta(p)}>
                     <Pencil className="h-3.5 w-3.5 mr-1" /> Editar
                   </Button>
+                  <Button size="sm" variant="secondary" onClick={() => setValidarProposta(p)}>
+                    <ClipboardCheck className="h-3.5 w-3.5 mr-1" /> Validar
+                  </Button>
                   <Button size="sm" variant="destructive" onClick={() => { reprovarProposta(p.id); toast.success("Proposta enviada para revisão"); }}>
                     <X className="h-3.5 w-3.5 mr-1" /> Reprovar
                   </Button>
@@ -145,6 +150,11 @@ function Validacoes() {
         open={!!editProposta}
         onOpenChange={(v) => { if (!v) setEditProposta(null); }}
         proposta={editProposta}
+      />
+      <ValidacaoProposta
+        open={!!validarProposta}
+        onOpenChange={(v) => { if (!v) setValidarProposta(null); }}
+        proposta={validarProposta}
       />
     </>
   );
