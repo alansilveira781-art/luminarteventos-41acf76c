@@ -49,6 +49,8 @@ function ComercialConfiguracoes() {
       <VendedoresCard />
       <CerimoniaisCard />
       <DecoradoresCard />
+      <ProdutoresCard />
+      <AlcadasCard isAdmin={isAdmin} />
     </div>
   );
 }
