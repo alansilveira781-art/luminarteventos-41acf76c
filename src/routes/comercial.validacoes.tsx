@@ -4,11 +4,12 @@ import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, Pencil } from "lucide-react";
+import { Check, X, Pencil, ClipboardCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useComercial, aprovarProposta, reprovarProposta } from "@/lib/comercial/store";
 import { PROPOSTA_STATUS_LABEL, type Proposta, propostaTotal, ambienteSubtotal, descricaoSubtotal, descricaoMedidaLabel } from "@/lib/comercial/types";
 import { PropostaWizard } from "@/components/comercial/PropostaWizard";
+import { ValidacaoProposta } from "@/components/comercial/ValidacaoProposta";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export const Route = createFileRoute("/comercial/validacoes")({
