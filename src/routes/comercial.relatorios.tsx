@@ -677,6 +677,89 @@ function DistribuicaoBonificacao({
     return [...map.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   }, [eventos, linhasPorVenda, produtores, alcadas]);
 
+  const totalGeralMes = useMemo(() => {
+    let s = 0;
+    for (const e of eventos) {
+      const linhas = linhasPorVenda[e.vendaId] ?? [];
+      for (const l of linhas) {
+        if (!l.produtorId) continue;
+        s += valorBonificacao(e, l.complexidade);
+      }
+    }
+    return s;
+  }, [eventos, linhasPorVenda, alcadas]);
+
+  const handleFechar = async () => {
+    if (ano === "Todos" || !mes || mes === "Todos") {
+      toast.error("Selecione um Ano e Mês específicos para fechar.");
+      return;
+    }
+    if (isClosed) {
+      toast.error("Este mês já foi fechado e não pode ser salvo novamente.");
+      return;
+    }
+    if (!isComercialAdmin) {
+      toast.error("Apenas administradores do Comercial podem fechar o mês.");
+      return;
+    }
+    // Valida eventos sem produtor
+    const semProdutor = eventos.filter((e) => {
+      const linhas = linhasPorVenda[e.vendaId] ?? [];
+      return !linhas.some((l) => !!l.produtorId);
+    });
+    if (semProdutor.length) {
+      toast.error(
+        `Existem ${semProdutor.length} evento(s) sem produtor: ${semProdutor
+          .slice(0, 3)
+          .map((e) => e.nomeEvento)
+          .join(", ")}${semProdutor.length > 3 ? "…" : ""}`,
+      );
+      return;
+    }
+    if (!eventos.length) {
+      toast.error("Não há vendas no período para fechar.");
+      return;
+    }
+
+    const itens: Array<Omit<FechamentoItemRow, "id" | "fechamento_id">> = [];
+    for (const e of eventos) {
+      const linhas = linhasPorVenda[e.vendaId] ?? [];
+      for (const l of linhas) {
+        if (!l.produtorId) continue;
+        const produtor = produtores.find((p) => p.id === l.produtorId);
+        itens.push({
+          venda_id: e.vendaId,
+          nome_evento: e.nomeEvento,
+          data_evento: e.dataEvento,
+          categoria: e.categoria,
+          produtor_id: l.produtorId,
+          produtor_nome: produtor?.nome ?? null,
+          complexidade: l.complexidade,
+          valor_final: valorBonificacao(e, l.complexidade),
+        });
+      }
+    }
+
+    try {
+      await fecharMes.mutateAsync({
+        ano: ano as number,
+        mes,
+        total_geral: totalGeralMes,
+        fechado_por: user?.id ?? null,
+        fechado_por_nome:
+          (user?.user_metadata as any)?.full_name ||
+          (user?.user_metadata as any)?.name ||
+          user?.email ||
+          null,
+        itens,
+      });
+      toast.success("Mês fechado com sucesso");
+    } catch (err: any) {
+      toast.error(err?.message || "Falha ao fechar o mês");
+    }
+  };
+
+
   return (
     <div className="print-area space-y-6">
       <style>{`
