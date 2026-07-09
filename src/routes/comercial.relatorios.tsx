@@ -464,10 +464,14 @@ function DistribuicaoBonificacao({
   anoDoRegistro: (r: any) => number | null;
   mesDoRegistro: (r: any) => string | null;
 }) {
-  const { data: produtores = [] } = useProdutores(true);
-  const { data: alcadas = [] } = useAlcadas();
-  const { data: bonifRows = [] } = useBonificacoes(ano, mes);
+  const { data: produtoresData } = useProdutores(true);
+  const { data: alcadasData } = useAlcadas();
+  const { data: bonifData } = useBonificacoes(ano, mes);
   const { upsert, remove } = useBonificacaoMutations();
+
+  const produtores = useMemo(() => produtoresData ?? [], [produtoresData]);
+  const alcadas = useMemo(() => alcadasData ?? [], [alcadasData]);
+  const bonifRows = useMemo(() => bonifData ?? [], [bonifData]);
 
   // Filtrar somente vendas do tipo VENDA (ignora EXTRA), no período
   const eventos = useMemo<EventoBonif[]>(() => {
@@ -493,39 +497,72 @@ function DistribuicaoBonificacao({
         mes: mesDoRegistro(r),
       }))
       .sort((a, b) => (a.dataEvento || "").localeCompare(b.dataEvento || ""));
-  }, [rows, ano, mes, anoDoRegistro, mesDoRegistro]);
+    // anoDoRegistro/mesDoRegistro são recriados a cada render do pai; ignoramos de propósito.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, ano, mes]);
 
   // Local state para linhas de atribuição por venda_id (permite múltiplos produtores)
   const [linhasPorVenda, setLinhasPorVenda] = useState<Record<string, LinhaAtribuicao[]>>({});
 
-  // Hidratar a partir do que já foi salvo
+  // Chaves estáveis: só mudam quando o conteúdo relevante muda.
+  const bonifKey = useMemo(
+    () => bonifRows.map((b) => `${b.id}:${b.venda_id}:${b.produtor_id}:${b.complexidade}`).join("|"),
+    [bonifRows],
+  );
+  const eventosKey = useMemo(
+    () => eventos.map((e) => `${e.vendaId}:${e.categoria}:${e.valorFinal}`).join("|"),
+    [eventos],
+  );
+  const alcadasKey = useMemo(
+    () => alcadas.map((a) => `${a.categoria}:${a.nivel}:${a.valor_ate}:${a.multiplicador}`).join("|"),
+    [alcadas],
+  );
+
+  // Hidratar (idempotente): faz merge com o estado anterior, preservando edições.
   useEffect(() => {
-    const map: Record<string, LinhaAtribuicao[]> = {};
-    for (const b of bonifRows) {
-      if (!b.venda_id) continue;
-      const arr = map[b.venda_id] ?? [];
-      arr.push({
-        key: b.id,
-        vendaId: b.venda_id,
-        produtorId: b.produtor_id,
-        complexidade: b.complexidade ?? 1,
-        bonifId: b.id,
-      });
-      map[b.venda_id] = arr;
-    }
-    // garantir 1 linha vazia para eventos sem atribuição
-    for (const e of eventos) {
-      if (!map[e.vendaId] || map[e.vendaId].length === 0) {
-        map[e.vendaId] = [{
-          key: `new-${e.vendaId}`,
-          vendaId: e.vendaId,
-          produtorId: null,
-          complexidade: sugerirComplexidade(alcadas, e.categoria, e.valorFinal),
-        }];
+    setLinhasPorVenda((prev) => {
+      const next: Record<string, LinhaAtribuicao[]> = { ...prev };
+
+      // Agrupar linhas salvas por venda_id
+      const salvasPorVenda = new Map<string, LinhaAtribuicao[]>();
+      for (const b of bonifRows) {
+        if (!b.venda_id) continue;
+        const arr = salvasPorVenda.get(b.venda_id) ?? [];
+        arr.push({
+          key: b.id,
+          vendaId: b.venda_id,
+          produtorId: b.produtor_id,
+          complexidade: b.complexidade ?? 1,
+          bonifId: b.id,
+        });
+        salvasPorVenda.set(b.venda_id, arr);
       }
-    }
-    setLinhasPorVenda(map);
-  }, [bonifRows, eventos, alcadas]);
+
+      // Substitui apenas quando o servidor tem dados e o estado local ainda não tem
+      // nenhuma linha persistida (bonifId) para aquela venda.
+      for (const [vendaId, linhasSalvas] of salvasPorVenda) {
+        const atual = next[vendaId] ?? [];
+        const jaTemPersistidas = atual.some((l) => l.bonifId);
+        if (!jaTemPersistidas) next[vendaId] = linhasSalvas;
+      }
+
+      // Garante 1 linha vazia para eventos ainda sem entrada
+      for (const e of eventos) {
+        if (!next[e.vendaId] || next[e.vendaId].length === 0) {
+          next[e.vendaId] = [{
+            key: `new-${e.vendaId}`,
+            vendaId: e.vendaId,
+            produtorId: null,
+            complexidade: sugerirComplexidade(alcadas, e.categoria, e.valorFinal),
+          }];
+        }
+      }
+
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bonifKey, eventosKey, alcadasKey]);
+
 
   const [categoriaOverride, setCategoriaOverride] = useState<Record<string, string>>({});
 
