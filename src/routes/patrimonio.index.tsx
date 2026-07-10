@@ -585,6 +585,21 @@ function PatFotoUpload({ value, onChange }: { value: string; onChange: (url: str
   );
 }
 
+function PatThumb({ url, alt }: { url: string; alt: string }) {
+  const signed = useSignedPhotoUrl(url);
+  const href = signed || url;
+  return (
+    <a href={href} target="_blank" rel="noreferrer">
+      <img src={href} alt={alt} className="h-9 w-9 rounded object-cover border border-border" />
+    </a>
+  );
+}
+
+function PatPreview({ url }: { url: string }) {
+  const signed = useSignedPhotoUrl(url);
+  return <img src={signed || url} alt="Prévia" className="h-24 w-24 rounded-md object-cover border border-border" />;
+}
+
 type MatchRow = {
   file: File;
   relPath: string;
