@@ -22,6 +22,7 @@ import { SortableTh, useSort } from "@/components/SortableTh";
 import { NumberInput } from "@/components/comercial/NumberInput";
 import { PeriodoFilter, filterByPeriodo, periodoFromPreset, type Periodo, type PeriodoPreset } from "@/components/PeriodoFilter";
 import { TablePagination } from "@/components/TablePagination";
+import { useSignedPhotoUrl } from "@/lib/storage-url";
 
 export const Route = createFileRoute("/patrimonio/")({ component: PatrimonioInventario });
 
@@ -258,9 +259,7 @@ function PatrimonioInventario() {
                 <tr key={i.id} className="border-t border-border hover:bg-muted/30">
                   <td className="px-2 py-1.5">
                     {i.imagem_url ? (
-                      <a href={i.imagem_url} target="_blank" rel="noreferrer">
-                        <img src={i.imagem_url} alt={i.nome} className="h-9 w-9 rounded object-cover border border-border" />
-                      </a>
+                      <PatThumb url={i.imagem_url} alt={i.nome} />
                     ) : (
                       <div className="h-9 w-9 rounded border border-dashed border-border flex items-center justify-center text-muted-foreground">
                         <ImagePlus className="h-3.5 w-3.5" />
@@ -563,7 +562,7 @@ function PatFotoUpload({ value, onChange }: { value: string; onChange: (url: str
       />
       <div className="flex flex-wrap items-center gap-3">
         {value ? (
-          <img src={value} alt="Prévia" className="h-24 w-24 rounded-md object-cover border border-border" />
+          <PatPreview url={value} />
         ) : (
           <div className="h-24 w-24 rounded-md border border-dashed border-border flex items-center justify-center text-muted-foreground">
             <ImagePlus className="h-6 w-6" />
@@ -584,6 +583,21 @@ function PatFotoUpload({ value, onChange }: { value: string; onChange: (url: str
       <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="ou cole uma URL https://…" className="text-xs" />
     </div>
   );
+}
+
+function PatThumb({ url, alt }: { url: string; alt: string }) {
+  const signed = useSignedPhotoUrl(url);
+  const href = signed || url;
+  return (
+    <a href={href} target="_blank" rel="noreferrer">
+      <img src={href} alt={alt} className="h-9 w-9 rounded object-cover border border-border" />
+    </a>
+  );
+}
+
+function PatPreview({ url }: { url: string }) {
+  const signed = useSignedPhotoUrl(url);
+  return <img src={signed || url} alt="Prévia" className="h-24 w-24 rounded-md object-cover border border-border" />;
 }
 
 type MatchRow = {

@@ -12,6 +12,7 @@ import { Upload, ImagePlus } from "lucide-react";
 import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
 import { useRef } from "react";
+import { useSignedPhotoUrl } from "@/lib/storage-url";
 
 const itemStatuses = [
   { v: "disponivel", l: "Disponível" },
@@ -123,6 +124,7 @@ export function ItemForm({
 function FotoUpload({ value, onChange }: { value: string; onChange: (url: string) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const previewUrl = useSignedPhotoUrl(value);
 
   async function handleFile(file: File) {
     if (!file.type.startsWith("image/")) {
@@ -142,6 +144,8 @@ function FotoUpload({ value, onChange }: { value: string; onChange: (url: string
         upsert: false,
       });
       if (error) throw error;
+      // Bucket é privado — armazenamos a URL /object/public/... como referência estável
+      // (bucket + path); a leitura resolve para signed URL via resolveStoragePhotoUrl.
       const { data } = supabase.storage.from("item-photos").getPublicUrl(path);
       onChange(data.publicUrl);
       toast.success("Foto enviada");
@@ -167,7 +171,7 @@ function FotoUpload({ value, onChange }: { value: string; onChange: (url: string
       />
       <div className="flex flex-wrap items-center gap-3">
         {value ? (
-          <img src={value} alt="Prévia" className="h-20 w-20 rounded-md object-cover border border-border" />
+          <img src={previewUrl || value} alt="Prévia" className="h-20 w-20 rounded-md object-cover border border-border" />
         ) : (
           <div className="h-20 w-20 rounded-md border border-dashed border-border flex items-center justify-center text-muted-foreground">
             <ImagePlus className="h-6 w-6" />
