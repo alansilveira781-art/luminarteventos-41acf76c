@@ -607,7 +607,13 @@ export function DemandaDialog({
               return (
                 <Button
                   variant="secondary"
-                  onClick={() => onAdvance({ ...form, id: demandaId })}
+                  onClick={() => {
+                    if (nextKey === "a_receber" && form.tem_nf !== false && !form.numero_nf?.trim()) {
+                      toast.error("Informe o Nº da NF antes de mover para A Receber (ou desmarque \"Tem NF\").");
+                      return;
+                    }
+                    onAdvance({ ...form, id: demandaId });
+                  }}
                 >
                   Avançar para "{nextLabel}" <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
