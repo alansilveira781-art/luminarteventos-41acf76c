@@ -6,6 +6,9 @@ import { cn, normalize } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { listEventos, type EventoSheetRow } from "@/lib/sheets.functions";
+import { supabase } from "@/integrations/supabase/client";
+
+type ComboRow = EventoSheetRow & { origem: "planilha" | "calendario" };
 
 /**
  * Combobox read-only com eventos lidos diretamente da planilha do Google Sheets.
