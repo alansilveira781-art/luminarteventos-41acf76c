@@ -3,19 +3,24 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, addMonths, subMonths,
-  format, isSameMonth, isSameDay,
+  format, isSameMonth, isSameDay, parseISO, isWithinInterval,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export type EventoCal = {
   id: string;
   codigo: string | null;
+  codigo_evento?: string | null;
   nome: string;
   local: string | null;
   tipo: string | null;
   data_evento: string;
+  data_evento_fim?: string | null;
   data_montagem: string | null;
+  data_montagem_fim?: string | null;
   data_desmontagem: string | null;
+  data_desmontagem_fim?: string | null;
+  produtor?: string | null;
   cor: string | null;
 };
 
@@ -28,10 +33,17 @@ const faseLabel: Record<Fase, string> = {
 };
 
 const faseStyle: Record<Fase, string> = {
-  montagem: "border-l-2 border-amber-500 bg-amber-500/10",
-  evento: "border-l-2 border-primary bg-primary/10",
-  desmontagem: "border-l-2 border-slate-400 bg-slate-400/10",
+  montagem: "border-l-2 border-amber-500 bg-amber-500/10 text-amber-900 dark:text-amber-200",
+  evento: "border-l-2 border-blue-600 bg-blue-600/10 text-blue-900 dark:text-blue-200",
+  desmontagem: "border-l-2 border-slate-400 bg-slate-400/10 text-slate-700 dark:text-slate-200",
 };
+
+function parseDay(iso: string): Date {
+  // Accepts YYYY-MM-DD (avoid TZ shift)
+  const d = iso.length >= 10 ? iso.slice(0, 10) : iso;
+  const [y, m, dd] = d.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, dd ?? 1);
+}
 
 export function CalendarioEventos({
   eventos,
@@ -55,17 +67,24 @@ export function CalendarioEventos({
 
   const porDia = useMemo(() => {
     const map = new Map<string, { ev: EventoCal; fase: Fase }[]>();
-    const push = (iso: string | null, ev: EventoCal, fase: Fase) => {
-      if (!iso) return;
-      const key = iso.slice(0, 10);
-      const arr = map.get(key) ?? [];
-      arr.push({ ev, fase });
-      map.set(key, arr);
+    const pushRange = (from: string | null | undefined, to: string | null | undefined, ev: EventoCal, fase: Fase) => {
+      if (!from) return;
+      const start = parseDay(from);
+      const end = to ? parseDay(to) : start;
+      const [a, b] = end < start ? [end, start] : [start, end];
+      let d = a;
+      while (d <= b) {
+        const key = format(d, "yyyy-MM-dd");
+        const arr = map.get(key) ?? [];
+        arr.push({ ev, fase });
+        map.set(key, arr);
+        d = addDays(d, 1);
+      }
     };
     for (const ev of eventos) {
-      push(ev.data_montagem, ev, "montagem");
-      push(ev.data_evento, ev, "evento");
-      push(ev.data_desmontagem, ev, "desmontagem");
+      pushRange(ev.data_montagem, ev.data_montagem_fim ?? ev.data_montagem, ev, "montagem");
+      pushRange(ev.data_evento, ev.data_evento_fim ?? ev.data_evento, ev, "evento");
+      pushRange(ev.data_desmontagem, ev.data_desmontagem_fim ?? ev.data_desmontagem, ev, "desmontagem");
     }
     return map;
   }, [eventos]);
@@ -104,17 +123,20 @@ export function CalendarioEventos({
                 {format(dia, "d")}
               </div>
               <div className="flex-1 space-y-0.5">
-                {itens.slice(0, 4).map((it, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => !readOnly && onSelectEvento?.(it.ev)}
-                    className={`w-full text-left text-[10px] leading-tight px-1 py-0.5 rounded truncate ${faseStyle[it.fase]} ${readOnly ? "cursor-default" : "hover:opacity-80"}`}
-                    title={`${it.ev.nome} — ${faseLabel[it.fase]}${it.ev.local ? ` (${it.ev.local})` : ""}`}
-                  >
-                    {faseLabel[it.fase].slice(0, 3)}: {it.ev.nome}
-                  </button>
-                ))}
+                {itens.slice(0, 4).map((it, i) => {
+                  const label = it.ev.codigo_evento ?? it.ev.nome;
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => !readOnly && onSelectEvento?.(it.ev)}
+                      className={`w-full text-left text-[10px] leading-tight px-1 py-0.5 rounded truncate ${faseStyle[it.fase]} ${readOnly ? "cursor-default" : "hover:opacity-80"}`}
+                      title={`${label} — ${faseLabel[it.fase]}${it.ev.local ? ` (${it.ev.local})` : ""}`}
+                    >
+                      {faseLabel[it.fase].slice(0, 3)}: {label}
+                    </button>
+                  );
+                })}
                 {itens.length > 4 && (
                   <div className="text-[10px] text-muted-foreground px-1">+{itens.length - 4} mais</div>
                 )}
@@ -126,7 +148,7 @@ export function CalendarioEventos({
 
       <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
         <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-amber-500/40 border-l-2 border-amber-500" /> Montagem</span>
-        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-primary/40 border-l-2 border-primary" /> Evento</span>
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-blue-600/40 border-l-2 border-blue-600" /> Evento</span>
         <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-slate-400/40 border-l-2 border-slate-400" /> Desmontagem</span>
       </div>
     </div>

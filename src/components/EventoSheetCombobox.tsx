@@ -6,6 +6,9 @@ import { cn, normalize } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { listEventos, type EventoSheetRow } from "@/lib/sheets.functions";
+import { supabase } from "@/integrations/supabase/client";
+
+type ComboRow = EventoSheetRow & { origem: "planilha" | "calendario" };
 
 /**
  * Combobox read-only com eventos lidos diretamente da planilha do Google Sheets.
@@ -34,7 +37,44 @@ export function EventoSheetCombobox({
     staleTime: 5 * 60 * 1000,
   });
 
-  const rows: EventoSheetRow[] = query.data?.rows ?? [];
+  const calendarQuery = useQuery({
+    queryKey: ["eventos-calendario-combo"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("eventos")
+        .select("codigo_evento, nome, local, cidade, produtor, data_evento, data_evento_fim")
+        .not("codigo_evento", "is", null)
+        .order("data_evento_fim", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        codigo_evento: string; nome: string; local: string | null; cidade: string | null;
+        produtor: string | null; data_evento: string | null; data_evento_fim: string | null;
+      }>;
+    },
+    staleTime: 60 * 1000,
+  });
+
+  const sheetRows: ComboRow[] = (query.data?.rows ?? []).map((r) => ({ ...r, origem: "planilha" as const }));
+  const calRows: ComboRow[] = (calendarQuery.data ?? []).map((r) => ({
+    id: r.codigo_evento,
+    nome: r.nome ?? "",
+    dataInicio: r.data_evento ?? "",
+    dataFim: r.data_evento_fim ?? "",
+    local: r.local ?? "",
+    uf: r.cidade ?? "",
+    produtor: r.produtor ?? "",
+    montagemInicio: "", montagemFim: "", desmontagemInicio: "", desmontagemFim: "",
+    observacoes: "",
+    origem: "calendario" as const,
+  }));
+
+  // Combine, dedupe by id
+  const seen = new Set<string>();
+  const rows: ComboRow[] = [...calRows, ...sheetRows].filter((r) => {
+    if (!r.id || seen.has(r.id)) return false;
+    seen.add(r.id);
+    return true;
+  });
   const error = query.data?.error;
 
   const filtered = useMemo(() => {
@@ -140,7 +180,17 @@ export function EventoSheetCombobox({
                       className="flex-1 px-2 py-2 text-left text-sm outline-none select-text"
                       onPointerDown={(e) => { e.preventDefault(); pick(r.id); }}
                     >
-                      <div className="truncate font-medium">{r.id}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="truncate font-medium">{r.id}</div>
+                        <span className={cn(
+                          "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium",
+                          r.origem === "calendario"
+                            ? "bg-blue-500/15 text-blue-700 dark:text-blue-300"
+                            : "bg-muted text-muted-foreground"
+                        )}>
+                          {r.origem === "calendario" ? "Calendário" : "Planilha"}
+                        </span>
+                      </div>
                       {sub && (
                         <div className="truncate text-xs text-muted-foreground">{sub}</div>
                       )}

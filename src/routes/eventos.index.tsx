@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Link2, Trash2 } from "lucide-react";
+import { Plus, Link2, Trash2, CalendarPlus } from "lucide-react";
 import { toast } from "sonner";
 import { CalendarioEventos, type EventoCal } from "@/components/eventos/CalendarioEventos";
 
@@ -76,49 +76,60 @@ function EventosPage() {
   );
 }
 
-const TIPOS = ["Social", "Corporativo", "Stand", "Cenografia", "Planejados", "Outro"];
+const TIPOS = ["Social", "Corporativo", "Cenografia", "Stand"];
+const PRODUTORES = ["Matheus Fernandes", "Romulo Manoel"];
 
 function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClose: () => void; onSaved: () => void }) {
   const { user } = useAuth();
+  const isNew = !evento?.id;
+  const [showMontagem, setShowMontagem] = useState(false);
+
   const [f, setF] = useState<any>(() => ({
     nome: evento?.nome ?? "",
     local: evento?.local ?? "",
     cidade: evento?.cidade ?? "",
-    tipo: evento?.tipo ?? "Social",
+    tipo: evento?.tipo && TIPOS.includes(evento.tipo) ? evento.tipo : "Social",
     data_evento: evento?.data_evento ?? "",
-    data_montagem: evento?.data_montagem ?? "",
-    data_desmontagem: evento?.data_desmontagem ?? "",
-    hora_inicio: evento?.hora_inicio ?? "",
-    hora_fim: evento?.hora_fim ?? "",
-    responsavel: evento?.responsavel ?? "",
+    data_evento_fim: evento?.data_evento_fim ?? "",
     observacoes: evento?.observacoes ?? "",
-    cor: evento?.cor ?? "#6366f1",
+    data_montagem: evento?.data_montagem ?? "",
+    data_montagem_fim: evento?.data_montagem_fim ?? "",
+    data_desmontagem: evento?.data_desmontagem ?? "",
+    data_desmontagem_fim: evento?.data_desmontagem_fim ?? "",
+    produtor: evento?.produtor ?? "",
   }));
   const set = (k: string, v: any) => setF((p: any) => ({ ...p, [k]: v }));
 
   const salvar = useMutation({
     mutationFn: async () => {
       if (!f.nome.trim()) throw new Error("Informe o nome do evento");
-      if (!f.data_evento) throw new Error("Informe a data do evento");
+      if (!f.data_evento) throw new Error("Informe a data inicial do evento");
+      if (!f.data_evento_fim) throw new Error("Informe a data final do evento");
 
-      const payload = {
+      const payload: any = {
         nome: f.nome.trim(),
         local: f.local || null,
         cidade: f.cidade || null,
         tipo: f.tipo || null,
         data_evento: f.data_evento,
-        data_montagem: f.data_montagem || null,
-        data_desmontagem: f.data_desmontagem || null,
-        hora_inicio: f.hora_inicio || null,
-        hora_fim: f.hora_fim || null,
-        responsavel: f.responsavel || null,
+        data_evento_fim: f.data_evento_fim,
         observacoes: f.observacoes || null,
-        cor: f.cor || "#6366f1",
       };
 
       if (evento?.id) {
+        payload.data_montagem = f.data_montagem || null;
+        payload.data_montagem_fim = f.data_montagem_fim || null;
+        payload.data_desmontagem = f.data_desmontagem || null;
+        payload.data_desmontagem_fim = f.data_desmontagem_fim || null;
+        payload.produtor = f.produtor || null;
+
         const { error } = await sb.from("eventos").update(payload).eq("id", evento.id);
-        if (error) throw error;
+        if (error) {
+          if ((error as any).code === "23505") {
+            throw new Error("Já existe um evento com este nome e local nesta data final.");
+          }
+          throw error;
+        }
       } else {
         const { data: codigo, error: codErr } = await sb.rpc("proximo_codigo_evento", { _data: f.data_evento });
         if (codErr) throw codErr;
@@ -128,7 +139,12 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
           origem: "manual",
           created_by: user?.id ?? null,
         });
-        if (error) throw error;
+        if (error) {
+          if ((error as any).code === "23505") {
+            throw new Error("Já existe um evento com este nome e local nesta data final.");
+          }
+          throw error;
+        }
       }
     },
     onSuccess: () => { toast.success("Evento salvo!"); onSaved(); onClose(); },
@@ -144,13 +160,20 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
     onError: (e: any) => toast.error(e.message ?? "Erro ao excluir"),
   });
 
+  const showMontagemSection = !isNew && (showMontagem
+    || f.data_montagem || f.data_montagem_fim
+    || f.data_desmontagem || f.data_desmontagem_fim
+    || f.produtor);
+
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {evento?.id ? "Editar evento" : "Novo evento"}
-            {evento?.codigo && <span className="text-sm text-muted-foreground font-mono">#{evento.codigo}</span>}
+          <DialogTitle className="flex items-center gap-2 flex-wrap">
+            {isNew ? "Novo evento" : "Editar evento"}
+            {evento?.codigo_evento && (
+              <span className="text-xs text-muted-foreground font-mono break-all">{evento.codigo_evento}</span>
+            )}
           </DialogTitle>
         </DialogHeader>
 
@@ -177,39 +200,63 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
               {TIPOS.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
+          <div />
           <div>
-            <Label>Cor no calendário</Label>
-            <Input type="color" value={f.cor} onChange={(e) => set("cor", e.target.value)} className="h-10 p-1" />
-          </div>
-          <div>
-            <Label>Data de montagem</Label>
-            <Input type="date" value={f.data_montagem} onChange={(e) => set("data_montagem", e.target.value)} />
-          </div>
-          <div>
-            <Label>Data do evento *</Label>
+            <Label>Data inicial do evento *</Label>
             <Input type="date" value={f.data_evento} onChange={(e) => set("data_evento", e.target.value)} />
           </div>
           <div>
-            <Label>Data de desmontagem</Label>
-            <Input type="date" value={f.data_desmontagem} onChange={(e) => set("data_desmontagem", e.target.value)} />
-          </div>
-          <div>
-            <Label>Responsável</Label>
-            <Input value={f.responsavel} onChange={(e) => set("responsavel", e.target.value)} />
-          </div>
-          <div>
-            <Label>Hora início</Label>
-            <Input type="time" value={f.hora_inicio} onChange={(e) => set("hora_inicio", e.target.value)} />
-          </div>
-          <div>
-            <Label>Hora fim</Label>
-            <Input type="time" value={f.hora_fim} onChange={(e) => set("hora_fim", e.target.value)} />
+            <Label>Data final do evento *</Label>
+            <Input type="date" value={f.data_evento_fim} onChange={(e) => set("data_evento_fim", e.target.value)} />
           </div>
           <div className="sm:col-span-2">
             <Label>Observações</Label>
             <Textarea value={f.observacoes} onChange={(e) => set("observacoes", e.target.value)} />
           </div>
         </div>
+
+        {!isNew && !showMontagemSection && (
+          <div className="pt-2">
+            <Button type="button" variant="outline" onClick={() => setShowMontagem(true)}>
+              <CalendarPlus className="h-4 w-4 mr-2" /> Adicionar montagem e desmontagem
+            </Button>
+          </div>
+        )}
+
+        {showMontagemSection && (
+          <div className="mt-2 rounded-md border p-4 space-y-4">
+            <div className="text-sm font-semibold">Montagem, desmontagem e produtor</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label>Montagem — data inicial</Label>
+                <Input type="date" value={f.data_montagem} onChange={(e) => set("data_montagem", e.target.value)} />
+              </div>
+              <div>
+                <Label>Montagem — data final</Label>
+                <Input type="date" value={f.data_montagem_fim} onChange={(e) => set("data_montagem_fim", e.target.value)} />
+              </div>
+              <div>
+                <Label>Desmontagem — data inicial</Label>
+                <Input type="date" value={f.data_desmontagem} onChange={(e) => set("data_desmontagem", e.target.value)} />
+              </div>
+              <div>
+                <Label>Desmontagem — data final</Label>
+                <Input type="date" value={f.data_desmontagem_fim} onChange={(e) => set("data_desmontagem_fim", e.target.value)} />
+              </div>
+              <div className="sm:col-span-2">
+                <Label>Produtor do evento</Label>
+                <select
+                  value={f.produtor}
+                  onChange={(e) => set("produtor", e.target.value)}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="">— Selecione —</option>
+                  {PRODUTORES.map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
 
         <DialogFooter className="sm:justify-between">
           {evento?.id ? (
