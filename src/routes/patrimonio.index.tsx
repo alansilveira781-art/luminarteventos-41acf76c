@@ -259,9 +259,7 @@ function PatrimonioInventario() {
                 <tr key={i.id} className="border-t border-border hover:bg-muted/30">
                   <td className="px-2 py-1.5">
                     {i.imagem_url ? (
-                      <a href={i.imagem_url} target="_blank" rel="noreferrer">
-                        <img src={i.imagem_url} alt={i.nome} className="h-9 w-9 rounded object-cover border border-border" />
-                      </a>
+                      <PatThumb url={i.imagem_url} alt={i.nome} />
                     ) : (
                       <div className="h-9 w-9 rounded border border-dashed border-border flex items-center justify-center text-muted-foreground">
                         <ImagePlus className="h-3.5 w-3.5" />
