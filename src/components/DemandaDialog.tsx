@@ -158,7 +158,12 @@ export function DemandaDialog({
   const save = useMutation({
     mutationFn: async () => {
       await ensureValidSession();
-      const payload: any = { ...form };
+      const nfList = (form.numeros_nf ?? []).map((n) => (n ?? "").trim()).filter(Boolean);
+      const payload: any = {
+        ...form,
+        numeros_nf: form.tem_nf === false ? [] : nfList,
+        numero_nf: form.tem_nf === false ? null : (nfList[0] ?? null),
+      };
       let id = demandaId;
       if (id) {
         const { data: upd, error } = await sb.from("demandas").update(payload).eq("id", id).select("id");
