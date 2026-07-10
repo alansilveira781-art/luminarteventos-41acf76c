@@ -169,7 +169,7 @@ function FotoUpload({ value, onChange }: { value: string; onChange: (url: string
       />
       <div className="flex flex-wrap items-center gap-3">
         {value ? (
-          <img src={value} alt="Prévia" className="h-20 w-20 rounded-md object-cover border border-border" />
+          <img src={previewUrl || value} alt="Prévia" className="h-20 w-20 rounded-md object-cover border border-border" />
         ) : (
           <div className="h-20 w-20 rounded-md border border-dashed border-border flex items-center justify-center text-muted-foreground">
             <ImagePlus className="h-6 w-6" />
