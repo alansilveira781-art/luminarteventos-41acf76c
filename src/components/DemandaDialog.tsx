@@ -339,6 +339,30 @@ export function DemandaDialog({
                 <SelectCreatable table="condicoes_pagamento" value={form.condicao_pagamento}
                   onChange={(v) => setForm({ ...form, condicao_pagamento: v })} />
               </FormField>
+              <FormField label="Tem Nota Fiscal (NF)?">
+                <label className="flex items-center gap-2 h-10 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.tem_nf !== false}
+                    onChange={(e) => setForm({
+                      ...form,
+                      tem_nf: e.target.checked,
+                      numero_nf: e.target.checked ? form.numero_nf : null,
+                    })}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-muted-foreground">Marque se esta despesa terá NF</span>
+                </label>
+              </FormField>
+              {form.tem_nf !== false && (
+                <FormField label="Nº da NF">
+                  <Input
+                    value={form.numero_nf ?? ""}
+                    onChange={(e) => setForm({ ...form, numero_nf: e.target.value })}
+                    placeholder="Ex.: 12345"
+                  />
+                </FormField>
+              )}
               <FormField label="Valor total (R$)">
                 <MoneyInput
                   value={form.valor_total ?? 0}
