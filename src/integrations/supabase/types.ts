@@ -1378,6 +1378,7 @@ export type Database = {
           solicitante: string | null
           solicitante_id: string | null
           status: Database["public"]["Enums"]["compra_status"]
+          tem_nf: boolean
           tipo_compra: string | null
           titulo: string | null
           updated_at: string
@@ -1407,6 +1408,7 @@ export type Database = {
           solicitante?: string | null
           solicitante_id?: string | null
           status?: Database["public"]["Enums"]["compra_status"]
+          tem_nf?: boolean
           tipo_compra?: string | null
           titulo?: string | null
           updated_at?: string
@@ -1436,6 +1438,7 @@ export type Database = {
           solicitante?: string | null
           solicitante_id?: string | null
           status?: Database["public"]["Enums"]["compra_status"]
+          tem_nf?: boolean
           tipo_compra?: string | null
           titulo?: string | null
           updated_at?: string
@@ -2085,6 +2088,7 @@ export type Database = {
           id: string
           motivo_negacao: string | null
           numero: number | null
+          numero_nf: string | null
           observacoes: string | null
           ordem: number
           parcelamento: string | null
@@ -2093,6 +2097,7 @@ export type Database = {
           solicitante: string | null
           solicitante_id: string | null
           status: Database["public"]["Enums"]["compra_status"]
+          tem_nf: boolean
           tipo_demanda: string | null
           titulo: string | null
           updated_at: string
@@ -2115,6 +2120,7 @@ export type Database = {
           id?: string
           motivo_negacao?: string | null
           numero?: number | null
+          numero_nf?: string | null
           observacoes?: string | null
           ordem?: number
           parcelamento?: string | null
@@ -2123,6 +2129,7 @@ export type Database = {
           solicitante?: string | null
           solicitante_id?: string | null
           status?: Database["public"]["Enums"]["compra_status"]
+          tem_nf?: boolean
           tipo_demanda?: string | null
           titulo?: string | null
           updated_at?: string
@@ -2145,6 +2152,7 @@ export type Database = {
           id?: string
           motivo_negacao?: string | null
           numero?: number | null
+          numero_nf?: string | null
           observacoes?: string | null
           ordem?: number
           parcelamento?: string | null
@@ -2153,6 +2161,7 @@ export type Database = {
           solicitante?: string | null
           solicitante_id?: string | null
           status?: Database["public"]["Enums"]["compra_status"]
+          tem_nf?: boolean
           tipo_demanda?: string | null
           titulo?: string | null
           updated_at?: string
