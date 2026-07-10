@@ -656,9 +656,12 @@ export function DemandaDialog({
                 <Button
                   variant="secondary"
                   onClick={() => {
-                    if (nextKey === "a_receber" && form.tem_nf !== false && !form.numero_nf?.trim()) {
-                      toast.error("Informe o Nº da NF antes de mover para A Receber (ou desmarque \"Tem NF\").");
-                      return;
+                    if (nextKey === "a_receber" && form.tem_nf !== false) {
+                      const hasNf = (form.numeros_nf ?? []).some((n) => (n ?? "").trim());
+                      if (!hasNf) {
+                        toast.error("Adicione pelo menos uma NF antes de mover para A Receber (ou desmarque \"Tem NF\").");
+                        return;
+                      }
                     }
                     onAdvance({ ...form, id: demandaId });
                   }}
