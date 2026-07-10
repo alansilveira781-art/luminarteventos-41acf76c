@@ -238,7 +238,18 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
               {TIPOS.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
-          <div />
+          <div>
+            <Label>Situação</Label>
+            <select
+              value={f.situacao}
+              onChange={(e) => set("situacao", e.target.value)}
+              className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              {["Aprovado", "Em Aprovação", "Reservado"].map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
           <div>
             <Label>Data inicial do evento *</Label>
             <Input type="date" value={f.data_evento} onChange={(e) => set("data_evento", e.target.value)} />
