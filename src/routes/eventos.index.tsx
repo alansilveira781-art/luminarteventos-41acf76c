@@ -55,14 +55,19 @@ function EventosPage() {
     },
   });
 
+  const urlCalendarioPublico = `${window.location.origin}/calendario-publico`;
+
   const copiarLinkPublico = async () => {
-    const url = `${window.location.origin}/calendario-publico`;
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success("Link público copiado! Já pode compartilhar com a empresa.");
-    } catch {
-      toast.info(`Link público: ${url}`, { duration: 8000 });
+    const ok = await copyTextRobust(urlCalendarioPublico);
+    if (ok) {
+      toast.success(`Link copiado: ${urlCalendarioPublico}`);
+    } else {
+      toast.info(`Link público: ${urlCalendarioPublico}`, { duration: 8000 });
     }
+  };
+
+  const abrirCalendarioPublico = () => {
+    window.open("/calendario-publico", "_blank");
   };
 
   return (
