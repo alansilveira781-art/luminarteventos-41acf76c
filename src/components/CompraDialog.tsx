@@ -190,7 +190,7 @@ export function CompraDialog({
     }
     (async () => {
       const { data: c } = await sb.from("compras").select("*").eq("id", compraId).maybeSingle();
-      if (c) { setForm(c as any); setStatusInicial(c.status as CompraStatus); }
+      if (c) { setForm({ ...(c as any), tem_nf: (c as any).tem_nf ?? true }); setStatusInicial(c.status as CompraStatus); }
       const { data: is } = await sb.from("compra_itens").select("*").eq("compra_id", compraId);
       setItens((is ?? []) as any);
     })();
