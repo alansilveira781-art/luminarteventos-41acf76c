@@ -22,6 +22,7 @@ import { SortableTh, useSort } from "@/components/SortableTh";
 import { NumberInput } from "@/components/comercial/NumberInput";
 import { PeriodoFilter, filterByPeriodo, periodoFromPreset, type Periodo, type PeriodoPreset } from "@/components/PeriodoFilter";
 import { TablePagination } from "@/components/TablePagination";
+import { useSignedPhotoUrl } from "@/lib/storage-url";
 
 export const Route = createFileRoute("/patrimonio/")({ component: PatrimonioInventario });
 
