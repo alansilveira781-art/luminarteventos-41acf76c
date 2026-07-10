@@ -13,6 +13,7 @@ export type EventoCal = {
   codigo_evento?: string | null;
   nome: string;
   local: string | null;
+  cidade?: string | null;
   tipo: string | null;
   data_evento: string;
   data_evento_fim?: string | null;
@@ -21,6 +22,7 @@ export type EventoCal = {
   data_desmontagem: string | null;
   data_desmontagem_fim?: string | null;
   produtor?: string | null;
+  observacoes?: string | null;
   cor: string | null;
 };
 
@@ -129,8 +131,8 @@ export function CalendarioEventos({
                     <button
                       key={i}
                       type="button"
-                      onClick={() => !readOnly && onSelectEvento?.(it.ev)}
-                      className={`w-full text-left text-[10px] leading-tight px-1 py-0.5 rounded truncate ${faseStyle[it.fase]} ${readOnly ? "cursor-default" : "hover:opacity-80"}`}
+                      onClick={() => onSelectEvento?.(it.ev)}
+                      className={`w-full text-left text-[10px] leading-tight px-1 py-0.5 rounded truncate ${faseStyle[it.fase]} hover:opacity-80`}
                       title={`${label} — ${faseLabel[it.fase]}${it.ev.local ? ` (${it.ev.local})` : ""}`}
                     >
                       {faseLabel[it.fase].slice(0, 3)}: {label}
