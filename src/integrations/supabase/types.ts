@@ -2172,12 +2172,16 @@ export type Database = {
         Row: {
           cidade: string | null
           codigo: string | null
+          codigo_evento: string | null
           cor: string | null
           created_at: string
           created_by: string | null
           data_desmontagem: string | null
+          data_desmontagem_fim: string | null
           data_evento: string
+          data_evento_fim: string | null
           data_montagem: string | null
+          data_montagem_fim: string | null
           hora_fim: string | null
           hora_inicio: string | null
           id: string
@@ -2185,6 +2189,7 @@ export type Database = {
           nome: string
           observacoes: string | null
           origem: string
+          produtor: string | null
           responsavel: string | null
           tipo: string | null
           updated_at: string
@@ -2193,12 +2198,16 @@ export type Database = {
         Insert: {
           cidade?: string | null
           codigo?: string | null
+          codigo_evento?: string | null
           cor?: string | null
           created_at?: string
           created_by?: string | null
           data_desmontagem?: string | null
+          data_desmontagem_fim?: string | null
           data_evento: string
+          data_evento_fim?: string | null
           data_montagem?: string | null
+          data_montagem_fim?: string | null
           hora_fim?: string | null
           hora_inicio?: string | null
           id?: string
@@ -2206,6 +2215,7 @@ export type Database = {
           nome: string
           observacoes?: string | null
           origem?: string
+          produtor?: string | null
           responsavel?: string | null
           tipo?: string | null
           updated_at?: string
@@ -2214,12 +2224,16 @@ export type Database = {
         Update: {
           cidade?: string | null
           codigo?: string | null
+          codigo_evento?: string | null
           cor?: string | null
           created_at?: string
           created_by?: string | null
           data_desmontagem?: string | null
+          data_desmontagem_fim?: string | null
           data_evento?: string
+          data_evento_fim?: string | null
           data_montagem?: string | null
+          data_montagem_fim?: string | null
           hora_fim?: string | null
           hora_inicio?: string | null
           id?: string
@@ -2227,6 +2241,7 @@ export type Database = {
           nome?: string
           observacoes?: string | null
           origem?: string
+          produtor?: string | null
           responsavel?: string | null
           tipo?: string | null
           updated_at?: string
