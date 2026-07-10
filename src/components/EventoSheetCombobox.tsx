@@ -37,7 +37,44 @@ export function EventoSheetCombobox({
     staleTime: 5 * 60 * 1000,
   });
 
-  const rows: EventoSheetRow[] = query.data?.rows ?? [];
+  const calendarQuery = useQuery({
+    queryKey: ["eventos-calendario-combo"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("eventos")
+        .select("codigo_evento, nome, local, cidade, produtor, data_evento, data_evento_fim")
+        .not("codigo_evento", "is", null)
+        .order("data_evento_fim", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        codigo_evento: string; nome: string; local: string | null; cidade: string | null;
+        produtor: string | null; data_evento: string | null; data_evento_fim: string | null;
+      }>;
+    },
+    staleTime: 60 * 1000,
+  });
+
+  const sheetRows: ComboRow[] = (query.data?.rows ?? []).map((r) => ({ ...r, origem: "planilha" as const }));
+  const calRows: ComboRow[] = (calendarQuery.data ?? []).map((r) => ({
+    id: r.codigo_evento,
+    nome: r.nome ?? "",
+    dataInicio: r.data_evento ?? "",
+    dataFim: r.data_evento_fim ?? "",
+    local: r.local ?? "",
+    uf: r.cidade ?? "",
+    produtor: r.produtor ?? "",
+    montagemInicio: "", montagemFim: "", desmontagemInicio: "", desmontagemFim: "",
+    observacoes: "",
+    origem: "calendario" as const,
+  }));
+
+  // Combine, dedupe by id
+  const seen = new Set<string>();
+  const rows: ComboRow[] = [...calRows, ...sheetRows].filter((r) => {
+    if (!r.id || seen.has(r.id)) return false;
+    seen.add(r.id);
+    return true;
+  });
   const error = query.data?.error;
 
   const filtered = useMemo(() => {
