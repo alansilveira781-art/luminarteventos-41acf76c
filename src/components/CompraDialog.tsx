@@ -63,6 +63,7 @@ export type Compra = {
   motivo_negacao?: string | null;
   tipo_compra?: string | null;
   numero_nf?: string | null;
+  numeros_nf?: string[] | null;
   empresa_faturada?: string | null;
   tem_nf?: boolean | null;
   responsavel_id?: string | null;
