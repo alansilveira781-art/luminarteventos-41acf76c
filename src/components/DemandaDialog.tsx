@@ -67,6 +67,8 @@ export type Demanda = {
   observacoes?: string | null;
   motivo_negacao?: string | null;
   categoria_external_id?: string | null;
+  tem_nf?: boolean | null;
+  numero_nf?: string | null;
 };
 
 export type DemandaAdvanceOpts = { approve?: boolean; deny?: boolean };
@@ -131,13 +133,13 @@ export function DemandaDialog({
     if (!open) return;
     setPendingFiles([]);
     if (!demandaId) {
-      setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10) });
+      setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10), tem_nf: true });
       setItens([]);
       return;
     }
     (async () => {
       const { data: c } = await sb.from("demandas").select("*").eq("id", demandaId).maybeSingle();
-      if (c) setForm(c as any);
+      if (c) setForm({ ...(c as any), tem_nf: (c as any).tem_nf ?? true });
       const { data: dItens } = await sb
         .from("demanda_itens")
         .select("id,item_id,descricao,unidade,quantidade,valor_unitario,desconto,frete,ipi,outros_custos")
@@ -337,6 +339,30 @@ export function DemandaDialog({
                 <SelectCreatable table="condicoes_pagamento" value={form.condicao_pagamento}
                   onChange={(v) => setForm({ ...form, condicao_pagamento: v })} />
               </FormField>
+              <FormField label="Tem Nota Fiscal (NF)?">
+                <label className="flex items-center gap-2 h-10 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.tem_nf !== false}
+                    onChange={(e) => setForm({
+                      ...form,
+                      tem_nf: e.target.checked,
+                      numero_nf: e.target.checked ? form.numero_nf : null,
+                    })}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-muted-foreground">Marque se esta despesa terá NF</span>
+                </label>
+              </FormField>
+              {form.tem_nf !== false && (
+                <FormField label="Nº da NF">
+                  <Input
+                    value={form.numero_nf ?? ""}
+                    onChange={(e) => setForm({ ...form, numero_nf: e.target.value })}
+                    placeholder="Ex.: 12345"
+                  />
+                </FormField>
+              )}
               <FormField label="Valor total (R$)">
                 <MoneyInput
                   value={form.valor_total ?? 0}
@@ -581,7 +607,13 @@ export function DemandaDialog({
               return (
                 <Button
                   variant="secondary"
-                  onClick={() => onAdvance({ ...form, id: demandaId })}
+                  onClick={() => {
+                    if (nextKey === "a_receber" && form.tem_nf !== false && !form.numero_nf?.trim()) {
+                      toast.error("Informe o Nº da NF antes de mover para A Receber (ou desmarque \"Tem NF\").");
+                      return;
+                    }
+                    onAdvance({ ...form, id: demandaId });
+                  }}
                 >
                   Avançar para "{nextLabel}" <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>

@@ -64,6 +64,7 @@ export type Compra = {
   tipo_compra?: string | null;
   numero_nf?: string | null;
   empresa_faturada?: string | null;
+  tem_nf?: boolean | null;
   responsavel_id?: string | null;
   responsavel_nome?: string | null;
   created_by?: string | null;
@@ -182,14 +183,14 @@ export function CompraDialog({
   useEffect(() => {
     if (!open) return;
     if (!compraId) {
-      setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10) });
+      setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10), tem_nf: true });
       setItens([]);
       setStatusInicial(defaultStatus);
       return;
     }
     (async () => {
       const { data: c } = await sb.from("compras").select("*").eq("id", compraId).maybeSingle();
-      if (c) { setForm(c as any); setStatusInicial(c.status as CompraStatus); }
+      if (c) { setForm({ ...(c as any), tem_nf: (c as any).tem_nf ?? true }); setStatusInicial(c.status as CompraStatus); }
       const { data: is } = await sb.from("compra_itens").select("*").eq("compra_id", compraId);
       setItens((is ?? []) as any);
     })();
@@ -214,8 +215,8 @@ export function CompraDialog({
         if (!form.tipo_compra) {
           throw new Error("Defina o tipo da compra antes de salvar como Compras a Receber.");
         }
-        if (!form.numero_nf?.trim()) {
-          throw new Error("Informe o Nº da NF antes de mover para Compras a Receber.");
+        if (form.tem_nf && !form.numero_nf?.trim()) {
+          throw new Error("Informe o Nº da NF antes de mover para Compras a Receber (ou desmarque \"Tem NF\").");
         }
         if (!form.empresa_faturada) {
           throw new Error("Informe a empresa faturada antes de mover para Compras a Receber.");
@@ -338,13 +339,30 @@ export function CompraDialog({
                   </SelectContent>
                 </Select>
               </FormField>
-              <FormField label="Nº da NF">
-                <Input
-                  value={form.numero_nf ?? ""}
-                  onChange={(e) => setForm({ ...form, numero_nf: e.target.value })}
-                  placeholder="Ex.: 12345"
-                />
+              <FormField label="Tem Nota Fiscal (NF)?">
+                <label className="flex items-center gap-2 h-10 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.tem_nf !== false}
+                    onChange={(e) => setForm({
+                      ...form,
+                      tem_nf: e.target.checked,
+                      numero_nf: e.target.checked ? form.numero_nf : null,
+                    })}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-muted-foreground">Marque se esta compra terá NF</span>
+                </label>
               </FormField>
+              {form.tem_nf !== false && (
+                <FormField label="Nº da NF">
+                  <Input
+                    value={form.numero_nf ?? ""}
+                    onChange={(e) => setForm({ ...form, numero_nf: e.target.value })}
+                    placeholder="Ex.: 12345"
+                  />
+                </FormField>
+              )}
               <FormField label="Empresa faturada">
                 <Select
                   value={form.empresa_faturada ?? ""}
