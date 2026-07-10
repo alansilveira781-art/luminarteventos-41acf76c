@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarioEventos, type EventoCal } from "@/components/eventos/CalendarioEventos";
+import { GanttEventos, type EventoCal } from "@/components/eventos/GanttEventos";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
@@ -40,7 +40,7 @@ function CalendarioPublico() {
       const { data } = await (supabase as any)
         .from("eventos")
         .select(
-          "id,codigo_evento,nome,local,cidade,tipo,data_evento,data_evento_fim,data_montagem,data_montagem_fim,data_desmontagem,data_desmontagem_fim,produtor,observacoes,cor"
+          "id,codigo_evento,nome,local,cidade,tipo,data_evento,data_evento_fim,data_montagem,data_montagem_fim,data_desmontagem,data_desmontagem_fim,produtor,observacoes,cor,situacao,hora_montagem,hora_desmontagem"
         )
         .order("data_evento");
       return (data ?? []) as EventoCal[];
@@ -78,10 +78,11 @@ function CalendarioPublico() {
           {isLoading ? (
             <p className="text-center text-muted-foreground py-16 text-xl">Carregando…</p>
           ) : (
-            <CalendarioEventos
+            <GanttEventos
               eventos={eventos}
               readOnly
-              onSelectEvento={(ev) => setSelecionado(ev)}
+              modoInicial="mensal"
+              onSelectEvento={(ev: EventoCal) => setSelecionado(ev)}
             />
           )}
         </div>

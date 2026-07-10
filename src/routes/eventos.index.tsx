@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Plus, Link2, ExternalLink, Trash2, CalendarPlus } from "lucide-react";
 import { toast } from "sonner";
-import { CalendarioEventos, type EventoCal } from "@/components/eventos/CalendarioEventos";
+import { GanttEventos, type EventoCal } from "@/components/eventos/GanttEventos";
 
 const sb = supabase as any;
 
@@ -91,9 +91,9 @@ function EventosPage() {
       />
 
       <Card className="p-4">
-        <CalendarioEventos
+        <GanttEventos
           eventos={eventos}
-          onSelectEvento={(e) => { setEditing(e); setOpen(true); }}
+          onSelectEvento={(e: EventoCal) => { setEditing(e); setOpen(true); }}
         />
       </Card>
 
@@ -129,6 +129,9 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
     data_desmontagem: evento?.data_desmontagem ?? "",
     data_desmontagem_fim: evento?.data_desmontagem_fim ?? "",
     produtor: evento?.produtor ?? "",
+    situacao: evento?.situacao ?? "Em Aprovação",
+    hora_montagem: evento?.hora_montagem ?? "",
+    hora_desmontagem: evento?.hora_desmontagem ?? "",
   }));
   const set = (k: string, v: any) => setF((p: any) => ({ ...p, [k]: v }));
 
@@ -146,6 +149,7 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
         data_evento: f.data_evento,
         data_evento_fim: f.data_evento_fim,
         observacoes: f.observacoes || null,
+        situacao: f.situacao || null,
       };
 
       if (evento?.id) {
@@ -154,6 +158,8 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
         payload.data_desmontagem = f.data_desmontagem || null;
         payload.data_desmontagem_fim = f.data_desmontagem_fim || null;
         payload.produtor = f.produtor || null;
+        payload.hora_montagem = f.hora_montagem || null;
+        payload.hora_desmontagem = f.hora_desmontagem || null;
 
         const { error } = await sb.from("eventos").update(payload).eq("id", evento.id);
         if (error) {
@@ -195,7 +201,7 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
   const showMontagemSection = !isNew && (showMontagem
     || f.data_montagem || f.data_montagem_fim
     || f.data_desmontagem || f.data_desmontagem_fim
-    || f.produtor);
+    || f.produtor || f.hora_montagem || f.hora_desmontagem);
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
@@ -232,7 +238,18 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
               {TIPOS.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
-          <div />
+          <div>
+            <Label>Situação</Label>
+            <select
+              value={f.situacao}
+              onChange={(e) => set("situacao", e.target.value)}
+              className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              {["Aprovado", "Em Aprovação", "Reservado"].map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
           <div>
             <Label>Data inicial do evento *</Label>
             <Input type="date" value={f.data_evento} onChange={(e) => set("data_evento", e.target.value)} />
@@ -268,12 +285,20 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
                 <Input type="date" value={f.data_montagem_fim} onChange={(e) => set("data_montagem_fim", e.target.value)} />
               </div>
               <div>
+                <Label>Hora da montagem</Label>
+                <Input type="time" value={f.hora_montagem} onChange={(e) => set("hora_montagem", e.target.value)} />
+              </div>
+              <div>
                 <Label>Desmontagem — data inicial</Label>
                 <Input type="date" value={f.data_desmontagem} onChange={(e) => set("data_desmontagem", e.target.value)} />
               </div>
               <div>
                 <Label>Desmontagem — data final</Label>
                 <Input type="date" value={f.data_desmontagem_fim} onChange={(e) => set("data_desmontagem_fim", e.target.value)} />
+              </div>
+              <div>
+                <Label>Hora da desmontagem</Label>
+                <Input type="time" value={f.hora_desmontagem} onChange={(e) => set("hora_desmontagem", e.target.value)} />
               </div>
               <div className="sm:col-span-2">
                 <Label>Produtor do evento</Label>
