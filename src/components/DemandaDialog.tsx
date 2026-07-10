@@ -69,6 +69,7 @@ export type Demanda = {
   categoria_external_id?: string | null;
   tem_nf?: boolean | null;
   numero_nf?: string | null;
+  numeros_nf?: string[] | null;
 };
 
 export type DemandaAdvanceOpts = { approve?: boolean; deny?: boolean };
