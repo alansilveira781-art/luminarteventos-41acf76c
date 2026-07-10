@@ -13,6 +13,7 @@ export type EventoCal = {
   codigo_evento?: string | null;
   nome: string;
   local: string | null;
+  cidade?: string | null;
   tipo: string | null;
   data_evento: string;
   data_evento_fim?: string | null;
@@ -21,6 +22,7 @@ export type EventoCal = {
   data_desmontagem: string | null;
   data_desmontagem_fim?: string | null;
   produtor?: string | null;
+  observacoes?: string | null;
   cor: string | null;
 };
 
