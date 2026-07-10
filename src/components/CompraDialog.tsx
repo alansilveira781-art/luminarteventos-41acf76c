@@ -215,8 +215,8 @@ export function CompraDialog({
         if (!form.tipo_compra) {
           throw new Error("Defina o tipo da compra antes de salvar como Compras a Receber.");
         }
-        if (!form.numero_nf?.trim()) {
-          throw new Error("Informe o Nº da NF antes de mover para Compras a Receber.");
+        if (form.tem_nf && !form.numero_nf?.trim()) {
+          throw new Error("Informe o Nº da NF antes de mover para Compras a Receber (ou desmarque \"Tem NF\").");
         }
         if (!form.empresa_faturada) {
           throw new Error("Informe a empresa faturada antes de mover para Compras a Receber.");
