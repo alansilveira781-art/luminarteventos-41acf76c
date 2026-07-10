@@ -134,13 +134,18 @@ export function DemandaDialog({
     if (!open) return;
     setPendingFiles([]);
     if (!demandaId) {
-      setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10), tem_nf: true });
+      setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10), tem_nf: true, numeros_nf: [] });
       setItens([]);
       return;
     }
     (async () => {
       const { data: c } = await sb.from("demandas").select("*").eq("id", demandaId).maybeSingle();
-      if (c) setForm({ ...(c as any), tem_nf: (c as any).tem_nf ?? true });
+      if (c) {
+        const raw = (c as any).numeros_nf as string[] | null | undefined;
+        const legacy = (c as any).numero_nf as string | null | undefined;
+        const numeros_nf = raw && raw.length > 0 ? raw : (legacy ? [legacy] : []);
+        setForm({ ...(c as any), tem_nf: (c as any).tem_nf ?? true, numeros_nf });
+      }
       const { data: dItens } = await sb
         .from("demanda_itens")
         .select("id,item_id,descricao,unidade,quantidade,valor_unitario,desconto,frete,ipi,outros_custos")
