@@ -12,6 +12,7 @@ import { Upload, ImagePlus } from "lucide-react";
 import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
 import { useRef } from "react";
+import { useSignedPhotoUrl } from "@/lib/storage-url";
 
 const itemStatuses = [
   { v: "disponivel", l: "Disponível" },
