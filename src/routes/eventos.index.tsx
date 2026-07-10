@@ -16,6 +16,30 @@ import { CalendarioEventos, type EventoCal } from "@/components/eventos/Calendar
 
 const sb = supabase as any;
 
+async function copyTextRobust(text: string): Promise<boolean> {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // fallback
+    }
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.cssText = "position:fixed;top:0;left:0;opacity:0;pointer-events:none";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 export const Route = createFileRoute("/eventos/")({ component: EventosPage });
 
 function EventosPage() {
