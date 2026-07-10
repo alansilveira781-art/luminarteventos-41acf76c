@@ -80,6 +80,9 @@ function EventosPage() {
             <Button variant="outline" onClick={copiarLinkPublico}>
               <Link2 className="h-4 w-4 mr-2" /> Copiar link público
             </Button>
+            <Button variant="outline" onClick={abrirCalendarioPublico}>
+              <ExternalLink className="h-4 w-4 mr-2" /> Abrir calendário público
+            </Button>
             <Button onClick={() => { setEditing(null); setOpen(true); }}>
               <Plus className="h-4 w-4 mr-2" /> Novo evento
             </Button>
