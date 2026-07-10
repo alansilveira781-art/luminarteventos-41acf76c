@@ -133,13 +133,13 @@ export function DemandaDialog({
     if (!open) return;
     setPendingFiles([]);
     if (!demandaId) {
-      setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10) });
+      setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10), tem_nf: true });
       setItens([]);
       return;
     }
     (async () => {
       const { data: c } = await sb.from("demandas").select("*").eq("id", demandaId).maybeSingle();
-      if (c) setForm(c as any);
+      if (c) setForm({ ...(c as any), tem_nf: (c as any).tem_nf ?? true });
       const { data: dItens } = await sb
         .from("demanda_itens")
         .select("id,item_id,descricao,unidade,quantidade,valor_unitario,desconto,frete,ipi,outros_custos")
