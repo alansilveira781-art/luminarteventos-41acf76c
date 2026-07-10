@@ -187,9 +187,13 @@ function ComprasKanban() {
         toast.error("Defina o tipo da compra antes de movê-la para Compras a Receber.");
         return;
       }
-      if (!(compra as any).numero_nf || !String((compra as any).numero_nf).trim()) {
-        toast.error("Informe o Nº da NF antes de mover para Compras a Receber.");
-        return;
+      if ((compra as any).tem_nf !== false) {
+        const nfs = ((compra as any).numeros_nf as string[] | null) ?? [];
+        const hasNf = nfs.some((n) => (n ?? "").trim()) || !!String((compra as any).numero_nf ?? "").trim();
+        if (!hasNf) {
+          toast.error("Adicione pelo menos uma NF antes de mover para Compras a Receber (ou desmarque \"Tem NF\").");
+          return;
+        }
       }
       if (!(compra as any).empresa_faturada) {
         toast.error("Informe a empresa faturada antes de mover para Compras a Receber.");
