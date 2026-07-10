@@ -184,14 +184,20 @@ export function CompraDialog({
   useEffect(() => {
     if (!open) return;
     if (!compraId) {
-      setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10), tem_nf: true });
+      setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10), tem_nf: true, numeros_nf: [] });
       setItens([]);
       setStatusInicial(defaultStatus);
       return;
     }
     (async () => {
       const { data: c } = await sb.from("compras").select("*").eq("id", compraId).maybeSingle();
-      if (c) { setForm({ ...(c as any), tem_nf: (c as any).tem_nf ?? true }); setStatusInicial(c.status as CompraStatus); }
+      if (c) {
+        const raw = (c as any).numeros_nf as string[] | null | undefined;
+        const legacy = (c as any).numero_nf as string | null | undefined;
+        const numeros_nf = raw && raw.length > 0 ? raw : (legacy ? [legacy] : []);
+        setForm({ ...(c as any), tem_nf: (c as any).tem_nf ?? true, numeros_nf });
+        setStatusInicial(c.status as CompraStatus);
+      }
       const { data: is } = await sb.from("compra_itens").select("*").eq("compra_id", compraId);
       setItens((is ?? []) as any);
     })();
