@@ -339,13 +339,30 @@ export function CompraDialog({
                   </SelectContent>
                 </Select>
               </FormField>
-              <FormField label="Nº da NF">
-                <Input
-                  value={form.numero_nf ?? ""}
-                  onChange={(e) => setForm({ ...form, numero_nf: e.target.value })}
-                  placeholder="Ex.: 12345"
-                />
+              <FormField label="Tem Nota Fiscal (NF)?">
+                <label className="flex items-center gap-2 h-10 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.tem_nf !== false}
+                    onChange={(e) => setForm({
+                      ...form,
+                      tem_nf: e.target.checked,
+                      numero_nf: e.target.checked ? form.numero_nf : null,
+                    })}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-muted-foreground">Marque se esta compra terá NF</span>
+                </label>
               </FormField>
+              {form.tem_nf !== false && (
+                <FormField label="Nº da NF">
+                  <Input
+                    value={form.numero_nf ?? ""}
+                    onChange={(e) => setForm({ ...form, numero_nf: e.target.value })}
+                    placeholder="Ex.: 12345"
+                  />
+                </FormField>
+              )}
               <FormField label="Empresa faturada">
                 <Select
                   value={form.empresa_faturada ?? ""}
