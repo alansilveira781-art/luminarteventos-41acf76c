@@ -129,6 +129,9 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
     data_desmontagem: evento?.data_desmontagem ?? "",
     data_desmontagem_fim: evento?.data_desmontagem_fim ?? "",
     produtor: evento?.produtor ?? "",
+    situacao: evento?.situacao ?? "Em Aprovação",
+    hora_montagem: evento?.hora_montagem ?? "",
+    hora_desmontagem: evento?.hora_desmontagem ?? "",
   }));
   const set = (k: string, v: any) => setF((p: any) => ({ ...p, [k]: v }));
 
