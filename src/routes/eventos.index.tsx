@@ -10,11 +10,35 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Link2, Trash2, CalendarPlus } from "lucide-react";
+import { Plus, Link2, ExternalLink, Trash2, CalendarPlus } from "lucide-react";
 import { toast } from "sonner";
 import { CalendarioEventos, type EventoCal } from "@/components/eventos/CalendarioEventos";
 
 const sb = supabase as any;
+
+async function copyTextRobust(text: string): Promise<boolean> {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // fallback
+    }
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.cssText = "position:fixed;top:0;left:0;opacity:0;pointer-events:none";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
 
 export const Route = createFileRoute("/eventos/")({ component: EventosPage });
 
@@ -31,14 +55,19 @@ function EventosPage() {
     },
   });
 
+  const urlCalendarioPublico = `${window.location.origin}/calendario-publico`;
+
   const copiarLinkPublico = async () => {
-    const url = `${window.location.origin}/calendario-publico`;
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success("Link público copiado! Já pode compartilhar com a empresa.");
-    } catch {
-      toast.info(`Link público: ${url}`, { duration: 8000 });
+    const ok = await copyTextRobust(urlCalendarioPublico);
+    if (ok) {
+      toast.success(`Link copiado: ${urlCalendarioPublico}`);
+    } else {
+      toast.info(`Link público: ${urlCalendarioPublico}`, { duration: 8000 });
     }
+  };
+
+  const abrirCalendarioPublico = () => {
+    window.open("/calendario-publico", "_blank");
   };
 
   return (
@@ -50,6 +79,9 @@ function EventosPage() {
           <>
             <Button variant="outline" onClick={copiarLinkPublico}>
               <Link2 className="h-4 w-4 mr-2" /> Copiar link público
+            </Button>
+            <Button variant="outline" onClick={abrirCalendarioPublico}>
+              <ExternalLink className="h-4 w-4 mr-2" /> Abrir calendário público
             </Button>
             <Button onClick={() => { setEditing(null); setOpen(true); }}>
               <Plus className="h-4 w-4 mr-2" /> Novo evento
