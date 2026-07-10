@@ -361,6 +361,7 @@ export function CompraDialog({
                       ...form,
                       tem_nf: e.target.checked,
                       numero_nf: e.target.checked ? form.numero_nf : null,
+                      numeros_nf: e.target.checked ? (form.numeros_nf ?? []) : [],
                     })}
                     className="h-4 w-4"
                   />
@@ -368,12 +369,48 @@ export function CompraDialog({
                 </label>
               </FormField>
               {form.tem_nf !== false && (
-                <FormField label="Nº da NF">
-                  <Input
-                    value={form.numero_nf ?? ""}
-                    onChange={(e) => setForm({ ...form, numero_nf: e.target.value })}
-                    placeholder="Ex.: 12345"
-                  />
+                <FormField label="Notas Fiscais" wide>
+                  <div className="space-y-2">
+                    {(form.numeros_nf ?? []).length === 0 && (
+                      <p className="text-xs text-muted-foreground italic">Nenhuma NF adicionada.</p>
+                    )}
+                    {(form.numeros_nf ?? []).map((nf, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <Input
+                          value={nf}
+                          onChange={(e) => {
+                            const next = [...(form.numeros_nf ?? [])];
+                            next[idx] = e.target.value;
+                            setForm({ ...form, numeros_nf: next, numero_nf: next[0]?.trim() || null });
+                          }}
+                          placeholder="Ex.: 12345"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            const next = (form.numeros_nf ?? []).filter((_, i) => i !== idx);
+                            setForm({ ...form, numeros_nf: next, numero_nf: next[0]?.trim() || null });
+                          }}
+                          aria-label="Remover NF"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const next = [...(form.numeros_nf ?? []), ""];
+                        setForm({ ...form, numeros_nf: next });
+                      }}
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar NF
+                    </Button>
+                  </div>
                 </FormField>
               )}
               <FormField label="Empresa faturada">
