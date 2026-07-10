@@ -562,7 +562,7 @@ function PatFotoUpload({ value, onChange }: { value: string; onChange: (url: str
       />
       <div className="flex flex-wrap items-center gap-3">
         {value ? (
-          <img src={value} alt="Prévia" className="h-24 w-24 rounded-md object-cover border border-border" />
+          <PatPreview url={value} />
         ) : (
           <div className="h-24 w-24 rounded-md border border-dashed border-border flex items-center justify-center text-muted-foreground">
             <ImagePlus className="h-6 w-6" />
