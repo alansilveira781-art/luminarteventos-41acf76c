@@ -78,10 +78,11 @@ function CalendarioPublico() {
           {isLoading ? (
             <p className="text-center text-muted-foreground py-16 text-xl">Carregando…</p>
           ) : (
-            <CalendarioEventos
+            <GanttEventos
               eventos={eventos}
               readOnly
-              onSelectEvento={(ev) => setSelecionado(ev)}
+              modoInicial="mensal"
+              onSelectEvento={(ev: EventoCal) => setSelecionado(ev)}
             />
           )}
         </div>
