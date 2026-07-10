@@ -285,12 +285,20 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
                 <Input type="date" value={f.data_montagem_fim} onChange={(e) => set("data_montagem_fim", e.target.value)} />
               </div>
               <div>
+                <Label>Hora da montagem</Label>
+                <Input type="time" value={f.hora_montagem} onChange={(e) => set("hora_montagem", e.target.value)} />
+              </div>
+              <div>
                 <Label>Desmontagem — data inicial</Label>
                 <Input type="date" value={f.data_desmontagem} onChange={(e) => set("data_desmontagem", e.target.value)} />
               </div>
               <div>
                 <Label>Desmontagem — data final</Label>
                 <Input type="date" value={f.data_desmontagem_fim} onChange={(e) => set("data_desmontagem_fim", e.target.value)} />
+              </div>
+              <div>
+                <Label>Hora da desmontagem</Label>
+                <Input type="time" value={f.hora_desmontagem} onChange={(e) => set("hora_desmontagem", e.target.value)} />
               </div>
               <div className="sm:col-span-2">
                 <Label>Produtor do evento</Label>
