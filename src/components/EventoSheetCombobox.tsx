@@ -180,7 +180,17 @@ export function EventoSheetCombobox({
                       className="flex-1 px-2 py-2 text-left text-sm outline-none select-text"
                       onPointerDown={(e) => { e.preventDefault(); pick(r.id); }}
                     >
-                      <div className="truncate font-medium">{r.id}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="truncate font-medium">{r.id}</div>
+                        <span className={cn(
+                          "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium",
+                          r.origem === "calendario"
+                            ? "bg-blue-500/15 text-blue-700 dark:text-blue-300"
+                            : "bg-muted text-muted-foreground"
+                        )}>
+                          {r.origem === "calendario" ? "Calendário" : "Planilha"}
+                        </span>
+                      </div>
                       {sub && (
                         <div className="truncate text-xs text-muted-foreground">{sub}</div>
                       )}
