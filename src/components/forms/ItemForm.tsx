@@ -122,7 +122,9 @@ export function ItemForm({
 
 function FotoUpload({ value, onChange }: { value: string; onChange: (url: string) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const previewUrl = useSignedPhotoUrl(value);
 
   async function handleFile(file: File) {
     if (!file.type.startsWith("image/")) {
