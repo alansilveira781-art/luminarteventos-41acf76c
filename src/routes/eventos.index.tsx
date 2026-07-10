@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Plus, Link2, ExternalLink, Trash2, CalendarPlus } from "lucide-react";
 import { toast } from "sonner";
-import { CalendarioEventos, type EventoCal } from "@/components/eventos/CalendarioEventos";
+import { GanttEventos, type EventoCal } from "@/components/eventos/GanttEventos";
 
 const sb = supabase as any;
 
