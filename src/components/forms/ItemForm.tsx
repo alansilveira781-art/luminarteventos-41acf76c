@@ -142,6 +142,8 @@ function FotoUpload({ value, onChange }: { value: string; onChange: (url: string
         upsert: false,
       });
       if (error) throw error;
+      // Bucket é privado — armazenamos a URL /object/public/... como referência estável
+      // (bucket + path); a leitura resolve para signed URL via resolveStoragePhotoUrl.
       const { data } = supabase.storage.from("item-photos").getPublicUrl(path);
       onChange(data.publicUrl);
       toast.success("Foto enviada");
