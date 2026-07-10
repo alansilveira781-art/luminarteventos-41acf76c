@@ -201,7 +201,7 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
   const showMontagemSection = !isNew && (showMontagem
     || f.data_montagem || f.data_montagem_fim
     || f.data_desmontagem || f.data_desmontagem_fim
-    || f.produtor);
+    || f.produtor || f.hora_montagem || f.hora_desmontagem);
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
