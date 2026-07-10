@@ -149,6 +149,7 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
         data_evento: f.data_evento,
         data_evento_fim: f.data_evento_fim,
         observacoes: f.observacoes || null,
+        situacao: f.situacao || null,
       };
 
       if (evento?.id) {
