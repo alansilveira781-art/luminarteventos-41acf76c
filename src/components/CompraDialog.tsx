@@ -63,6 +63,7 @@ export type Compra = {
   motivo_negacao?: string | null;
   tipo_compra?: string | null;
   numero_nf?: string | null;
+  numeros_nf?: string[] | null;
   empresa_faturada?: string | null;
   tem_nf?: boolean | null;
   responsavel_id?: string | null;
@@ -183,14 +184,20 @@ export function CompraDialog({
   useEffect(() => {
     if (!open) return;
     if (!compraId) {
-      setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10), tem_nf: true });
+      setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10), tem_nf: true, numeros_nf: [] });
       setItens([]);
       setStatusInicial(defaultStatus);
       return;
     }
     (async () => {
       const { data: c } = await sb.from("compras").select("*").eq("id", compraId).maybeSingle();
-      if (c) { setForm({ ...(c as any), tem_nf: (c as any).tem_nf ?? true }); setStatusInicial(c.status as CompraStatus); }
+      if (c) {
+        const raw = (c as any).numeros_nf as string[] | null | undefined;
+        const legacy = (c as any).numero_nf as string | null | undefined;
+        const numeros_nf = raw && raw.length > 0 ? raw : (legacy ? [legacy] : []);
+        setForm({ ...(c as any), tem_nf: (c as any).tem_nf ?? true, numeros_nf });
+        setStatusInicial(c.status as CompraStatus);
+      }
       const { data: is } = await sb.from("compra_itens").select("*").eq("compra_id", compraId);
       setItens((is ?? []) as any);
     })();
@@ -211,18 +218,24 @@ export function CompraDialog({
   const save = useMutation({
     mutationFn: async () => {
       await ensureValidSession();
+      const nfList = (form.numeros_nf ?? []).map((n) => (n ?? "").trim()).filter(Boolean);
       if (form.status === "a_receber") {
         if (!form.tipo_compra) {
           throw new Error("Defina o tipo da compra antes de salvar como Compras a Receber.");
         }
-        if (form.tem_nf && !form.numero_nf?.trim()) {
-          throw new Error("Informe o Nº da NF antes de mover para Compras a Receber (ou desmarque \"Tem NF\").");
+        if (form.tem_nf && nfList.length === 0) {
+          throw new Error("Adicione pelo menos uma NF antes de mover para Compras a Receber (ou desmarque \"Tem NF\").");
         }
         if (!form.empresa_faturada) {
           throw new Error("Informe a empresa faturada antes de mover para Compras a Receber.");
         }
       }
-      const payload: any = { ...form, valor_total: totalCalc };
+      const payload: any = {
+        ...form,
+        valor_total: totalCalc,
+        numeros_nf: form.tem_nf === false ? [] : nfList,
+        numero_nf: form.tem_nf === false ? null : (nfList[0] ?? null),
+      };
 
       let id = compraId;
       if (id) {
@@ -348,6 +361,7 @@ export function CompraDialog({
                       ...form,
                       tem_nf: e.target.checked,
                       numero_nf: e.target.checked ? form.numero_nf : null,
+                      numeros_nf: e.target.checked ? (form.numeros_nf ?? []) : [],
                     })}
                     className="h-4 w-4"
                   />
@@ -355,12 +369,48 @@ export function CompraDialog({
                 </label>
               </FormField>
               {form.tem_nf !== false && (
-                <FormField label="Nº da NF">
-                  <Input
-                    value={form.numero_nf ?? ""}
-                    onChange={(e) => setForm({ ...form, numero_nf: e.target.value })}
-                    placeholder="Ex.: 12345"
-                  />
+                <FormField label="Notas Fiscais" wide>
+                  <div className="space-y-2">
+                    {(form.numeros_nf ?? []).length === 0 && (
+                      <p className="text-xs text-muted-foreground italic">Nenhuma NF adicionada.</p>
+                    )}
+                    {(form.numeros_nf ?? []).map((nf, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <Input
+                          value={nf}
+                          onChange={(e) => {
+                            const next = [...(form.numeros_nf ?? [])];
+                            next[idx] = e.target.value;
+                            setForm({ ...form, numeros_nf: next, numero_nf: next[0]?.trim() || null });
+                          }}
+                          placeholder="Ex.: 12345"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            const next = (form.numeros_nf ?? []).filter((_, i) => i !== idx);
+                            setForm({ ...form, numeros_nf: next, numero_nf: next[0]?.trim() || null });
+                          }}
+                          aria-label="Remover NF"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const next = [...(form.numeros_nf ?? []), ""];
+                        setForm({ ...form, numeros_nf: next });
+                      }}
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar NF
+                    </Button>
+                  </div>
                 </FormField>
               )}
               <FormField label="Empresa faturada">

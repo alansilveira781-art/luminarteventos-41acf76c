@@ -1370,6 +1370,7 @@ export type Database = {
           motivo_negacao: string | null
           numero: number | null
           numero_nf: string | null
+          numeros_nf: string[]
           observacoes: string | null
           ordem: number
           parcelamento: string | null
@@ -1400,6 +1401,7 @@ export type Database = {
           motivo_negacao?: string | null
           numero?: number | null
           numero_nf?: string | null
+          numeros_nf?: string[]
           observacoes?: string | null
           ordem?: number
           parcelamento?: string | null
@@ -1430,6 +1432,7 @@ export type Database = {
           motivo_negacao?: string | null
           numero?: number | null
           numero_nf?: string | null
+          numeros_nf?: string[]
           observacoes?: string | null
           ordem?: number
           parcelamento?: string | null
@@ -2089,6 +2092,7 @@ export type Database = {
           motivo_negacao: string | null
           numero: number | null
           numero_nf: string | null
+          numeros_nf: string[]
           observacoes: string | null
           ordem: number
           parcelamento: string | null
@@ -2121,6 +2125,7 @@ export type Database = {
           motivo_negacao?: string | null
           numero?: number | null
           numero_nf?: string | null
+          numeros_nf?: string[]
           observacoes?: string | null
           ordem?: number
           parcelamento?: string | null
@@ -2153,6 +2158,7 @@ export type Database = {
           motivo_negacao?: string | null
           numero?: number | null
           numero_nf?: string | null
+          numeros_nf?: string[]
           observacoes?: string | null
           ordem?: number
           parcelamento?: string | null

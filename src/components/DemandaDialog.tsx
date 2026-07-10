@@ -69,6 +69,7 @@ export type Demanda = {
   categoria_external_id?: string | null;
   tem_nf?: boolean | null;
   numero_nf?: string | null;
+  numeros_nf?: string[] | null;
 };
 
 export type DemandaAdvanceOpts = { approve?: boolean; deny?: boolean };
@@ -133,13 +134,18 @@ export function DemandaDialog({
     if (!open) return;
     setPendingFiles([]);
     if (!demandaId) {
-      setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10), tem_nf: true });
+      setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10), tem_nf: true, numeros_nf: [] });
       setItens([]);
       return;
     }
     (async () => {
       const { data: c } = await sb.from("demandas").select("*").eq("id", demandaId).maybeSingle();
-      if (c) setForm({ ...(c as any), tem_nf: (c as any).tem_nf ?? true });
+      if (c) {
+        const raw = (c as any).numeros_nf as string[] | null | undefined;
+        const legacy = (c as any).numero_nf as string | null | undefined;
+        const numeros_nf = raw && raw.length > 0 ? raw : (legacy ? [legacy] : []);
+        setForm({ ...(c as any), tem_nf: (c as any).tem_nf ?? true, numeros_nf });
+      }
       const { data: dItens } = await sb
         .from("demanda_itens")
         .select("id,item_id,descricao,unidade,quantidade,valor_unitario,desconto,frete,ipi,outros_custos")
@@ -152,7 +158,12 @@ export function DemandaDialog({
   const save = useMutation({
     mutationFn: async () => {
       await ensureValidSession();
-      const payload: any = { ...form };
+      const nfList = (form.numeros_nf ?? []).map((n) => (n ?? "").trim()).filter(Boolean);
+      const payload: any = {
+        ...form,
+        numeros_nf: form.tem_nf === false ? [] : nfList,
+        numero_nf: form.tem_nf === false ? null : (nfList[0] ?? null),
+      };
       let id = demandaId;
       if (id) {
         const { data: upd, error } = await sb.from("demandas").update(payload).eq("id", id).select("id");
@@ -348,6 +359,7 @@ export function DemandaDialog({
                       ...form,
                       tem_nf: e.target.checked,
                       numero_nf: e.target.checked ? form.numero_nf : null,
+                      numeros_nf: e.target.checked ? (form.numeros_nf ?? []) : [],
                     })}
                     className="h-4 w-4"
                   />
@@ -355,12 +367,48 @@ export function DemandaDialog({
                 </label>
               </FormField>
               {form.tem_nf !== false && (
-                <FormField label="Nº da NF">
-                  <Input
-                    value={form.numero_nf ?? ""}
-                    onChange={(e) => setForm({ ...form, numero_nf: e.target.value })}
-                    placeholder="Ex.: 12345"
-                  />
+                <FormField label="Notas Fiscais" wide>
+                  <div className="space-y-2">
+                    {(form.numeros_nf ?? []).length === 0 && (
+                      <p className="text-xs text-muted-foreground italic">Nenhuma NF adicionada.</p>
+                    )}
+                    {(form.numeros_nf ?? []).map((nf, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <Input
+                          value={nf}
+                          onChange={(e) => {
+                            const next = [...(form.numeros_nf ?? [])];
+                            next[idx] = e.target.value;
+                            setForm({ ...form, numeros_nf: next, numero_nf: next[0]?.trim() || null });
+                          }}
+                          placeholder="Ex.: 12345"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            const next = (form.numeros_nf ?? []).filter((_, i) => i !== idx);
+                            setForm({ ...form, numeros_nf: next, numero_nf: next[0]?.trim() || null });
+                          }}
+                          aria-label="Remover NF"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const next = [...(form.numeros_nf ?? []), ""];
+                        setForm({ ...form, numeros_nf: next });
+                      }}
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar NF
+                    </Button>
+                  </div>
                 </FormField>
               )}
               <FormField label="Valor total (R$)">
@@ -608,9 +656,12 @@ export function DemandaDialog({
                 <Button
                   variant="secondary"
                   onClick={() => {
-                    if (nextKey === "a_receber" && form.tem_nf !== false && !form.numero_nf?.trim()) {
-                      toast.error("Informe o Nº da NF antes de mover para A Receber (ou desmarque \"Tem NF\").");
-                      return;
+                    if (nextKey === "a_receber" && form.tem_nf !== false) {
+                      const hasNf = (form.numeros_nf ?? []).some((n) => (n ?? "").trim());
+                      if (!hasNf) {
+                        toast.error("Adicione pelo menos uma NF antes de mover para A Receber (ou desmarque \"Tem NF\").");
+                        return;
+                      }
                     }
                     onAdvance({ ...form, id: demandaId });
                   }}
