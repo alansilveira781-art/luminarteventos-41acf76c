@@ -2197,8 +2197,10 @@ export type Database = {
           data_evento_fim: string | null
           data_montagem: string | null
           data_montagem_fim: string | null
+          hora_desmontagem: string | null
           hora_fim: string | null
           hora_inicio: string | null
+          hora_montagem: string | null
           id: string
           local: string | null
           nome: string
@@ -2206,6 +2208,7 @@ export type Database = {
           origem: string
           produtor: string | null
           responsavel: string | null
+          situacao: string | null
           tipo: string | null
           updated_at: string
           venda_id: string | null
@@ -2223,8 +2226,10 @@ export type Database = {
           data_evento_fim?: string | null
           data_montagem?: string | null
           data_montagem_fim?: string | null
+          hora_desmontagem?: string | null
           hora_fim?: string | null
           hora_inicio?: string | null
+          hora_montagem?: string | null
           id?: string
           local?: string | null
           nome: string
@@ -2232,6 +2237,7 @@ export type Database = {
           origem?: string
           produtor?: string | null
           responsavel?: string | null
+          situacao?: string | null
           tipo?: string | null
           updated_at?: string
           venda_id?: string | null
@@ -2249,8 +2255,10 @@ export type Database = {
           data_evento_fim?: string | null
           data_montagem?: string | null
           data_montagem_fim?: string | null
+          hora_desmontagem?: string | null
           hora_fim?: string | null
           hora_inicio?: string | null
+          hora_montagem?: string | null
           id?: string
           local?: string | null
           nome?: string
@@ -2258,6 +2266,7 @@ export type Database = {
           origem?: string
           produtor?: string | null
           responsavel?: string | null
+          situacao?: string | null
           tipo?: string | null
           updated_at?: string
           venda_id?: string | null
