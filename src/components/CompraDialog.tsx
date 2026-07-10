@@ -218,18 +218,24 @@ export function CompraDialog({
   const save = useMutation({
     mutationFn: async () => {
       await ensureValidSession();
+      const nfList = (form.numeros_nf ?? []).map((n) => (n ?? "").trim()).filter(Boolean);
       if (form.status === "a_receber") {
         if (!form.tipo_compra) {
           throw new Error("Defina o tipo da compra antes de salvar como Compras a Receber.");
         }
-        if (form.tem_nf && !form.numero_nf?.trim()) {
-          throw new Error("Informe o Nº da NF antes de mover para Compras a Receber (ou desmarque \"Tem NF\").");
+        if (form.tem_nf && nfList.length === 0) {
+          throw new Error("Adicione pelo menos uma NF antes de mover para Compras a Receber (ou desmarque \"Tem NF\").");
         }
         if (!form.empresa_faturada) {
           throw new Error("Informe a empresa faturada antes de mover para Compras a Receber.");
         }
       }
-      const payload: any = { ...form, valor_total: totalCalc };
+      const payload: any = {
+        ...form,
+        valor_total: totalCalc,
+        numeros_nf: form.tem_nf === false ? [] : nfList,
+        numero_nf: form.tem_nf === false ? null : (nfList[0] ?? null),
+      };
 
       let id = compraId;
       if (id) {
