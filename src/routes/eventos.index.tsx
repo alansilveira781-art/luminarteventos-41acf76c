@@ -91,9 +91,9 @@ function EventosPage() {
       />
 
       <Card className="p-4">
-        <CalendarioEventos
+        <GanttEventos
           eventos={eventos}
-          onSelectEvento={(e) => { setEditing(e); setOpen(true); }}
+          onSelectEvento={(e: EventoCal) => { setEditing(e); setOpen(true); }}
         />
       </Card>
 
