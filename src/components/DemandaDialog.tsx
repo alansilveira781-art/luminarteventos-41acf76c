@@ -278,7 +278,7 @@ export function DemandaDialog({
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {DEMANDA_STATUSES
-                      .filter((s) => s.key !== "a_receber" || TIPOS_QUE_VAO_PARA_ESTOQUE.includes(form.tipo_demanda ?? ""))
+                      .filter((s) => s.key !== "a_receber" || TIPOS_QUE_VAO_PARA_RECEBIMENTO.includes(form.tipo_demanda ?? ""))
                       .map((s) => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
