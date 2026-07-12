@@ -184,6 +184,7 @@ export function CompraDialog({
 
   useEffect(() => {
     if (!open) return;
+    setPendingFiles([]);
     if (!compraId) {
       setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10), tem_nf: true, numeros_nf: [] });
       setItens([]);
