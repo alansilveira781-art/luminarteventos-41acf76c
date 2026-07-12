@@ -1035,3 +1035,59 @@ function Anexos({ compraId, userId }: { compraId: string; userId?: string }) {
     </div>
   );
 }
+
+function PendingAnexos({ files, onChange }: { files: File[]; onChange: (f: File[]) => void }) {
+  function fmtSize(n: number) {
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / 1024 / 1024).toFixed(2)} MB`;
+  }
+  return (
+    <div className="space-y-3">
+      <p className="text-[11px] text-muted-foreground italic">
+        Os arquivos serão enviados quando você salvar a compra.
+      </p>
+      <label className="flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-md py-6 cursor-pointer hover:bg-muted/40 transition">
+        <Upload className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm text-muted-foreground">
+          Clique para anexar arquivos (PDF, Excel, imagens, etc.)
+        </span>
+        <input
+          type="file"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            const list = e.target.files ? Array.from(e.target.files) : [];
+            if (list.length) onChange([...files, ...list]);
+            e.target.value = "";
+          }}
+        />
+      </label>
+
+      {files.length === 0 ? (
+        <p className="text-xs text-muted-foreground italic">Nenhum anexo selecionado.</p>
+      ) : (
+        <div className="space-y-1.5">
+          {files.map((f, idx) => (
+            <div key={idx} className="flex items-center gap-2 rounded-md border border-border p-2 text-sm">
+              <FileIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="truncate font-medium">{f.name}</div>
+                <div className="text-[11px] text-muted-foreground">{fmtSize(f.size)}</div>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => onChange(files.filter((_, i) => i !== idx))}
+              >
+                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
