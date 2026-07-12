@@ -15,12 +15,28 @@ export const DEMANDA_STATUSES: { key: DemandaStatus; label: string; color: strin
   { key: "negada", label: "Despesa Negada", color: "bg-destructive" },
 ];
 
-// Tipos de despesa que geram entrada em estoque — ao sair de "Em Andamento"
-// vão primeiro para "A Receber" (validação de recebimento) antes de "Finalizado".
+// Tipos que exigem grid de ITENS no lugar do descritivo livre
+export const TIPOS_COM_ITENS: string[] = [
+  "fardamento",
+  "material_limpeza",
+  "material_escritorio",
+  "imobilizado",
+];
+
+// Tipos que geram entrada em ESTOQUE (validação em /estoque/a-receber)
 export const TIPOS_QUE_VAO_PARA_ESTOQUE: string[] = [
   "fardamento",
   "material_limpeza",
   "material_escritorio",
+];
+
+// Tipos que geram entrada em PATRIMÔNIO (validação em /patrimonio/a-receber)
+export const TIPOS_QUE_VAO_PARA_PATRIMONIO: string[] = ["imobilizado"];
+
+// Qualquer tipo que precise passar por "A Receber" antes de "Finalizado"
+export const TIPOS_QUE_VAO_PARA_RECEBIMENTO: string[] = [
+  ...TIPOS_QUE_VAO_PARA_ESTOQUE,
+  ...TIPOS_QUE_VAO_PARA_PATRIMONIO,
 ];
 
 export function proximoStatusDemanda(
