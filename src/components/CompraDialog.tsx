@@ -650,7 +650,7 @@ export function CompraDialog({
             {compraId ? (
               <Anexos compraId={compraId} userId={user?.id} />
             ) : (
-              <p className="text-xs text-muted-foreground italic">Salve a compra para anexar arquivos.</p>
+              <PendingAnexos files={pendingFiles} onChange={setPendingFiles} />
             )}
           </TabsContent>
 
