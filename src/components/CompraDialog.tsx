@@ -272,6 +272,26 @@ export function CompraDialog({
           throw new Error("Itens da compra não foram totalmente confirmados pelo banco.");
         }
       }
+      // Upload de anexos pendentes (anexados antes de salvar)
+      if (id && pendingFiles.length > 0) {
+        for (const file of pendingFiles) {
+          const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+          const path = `${id}/${Date.now()}_${safeName}`;
+          const { error: upErr } = await sb.storage.from("compra-anexos").upload(path, file, {
+            contentType: file.type || undefined,
+          });
+          if (upErr) throw upErr;
+          const { error: insErr } = await sb.from("compra_anexos").insert({
+            compra_id: id,
+            nome: file.name,
+            path,
+            mime_type: file.type || null,
+            tamanho: file.size,
+            uploaded_by: user?.id ?? null,
+          });
+          if (insErr) throw insErr;
+        }
+      }
       // Notificar responsáveis quando status muda
       if (form.status !== statusInicial) {
         await notifyResponsiblesForStatus(form.status, id!, form.titulo || form.fornecedor || "Compra");
@@ -280,6 +300,7 @@ export function CompraDialog({
     },
     onSuccess: async () => {
       toast.success("Compra salva");
+      setPendingFiles([]);
       await qc.refetchQueries({ queryKey: ["compras"] });
       qc.invalidateQueries({ queryKey: ["compras-receber"] });
       onOpenChange(false);
