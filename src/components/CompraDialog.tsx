@@ -90,6 +90,7 @@ export function CompraDialog({
   const { user, isAdmin: isGlobalAdmin, modulos } = useAuth();
   const [form, setForm] = useState<Compra>({ status: defaultStatus });
   const [itens, setItens] = useState<CompraItem[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [statusInicial, setStatusInicial] = useState<CompraStatus>(defaultStatus);
   const isAdmin = isGlobalAdmin || modulos.some((m) => m.slug === "compras" && m.is_admin);
   const canEdit = !compraId || canEditCompra(form as any, user?.id, isAdmin, user?.email);
@@ -183,6 +184,7 @@ export function CompraDialog({
 
   useEffect(() => {
     if (!open) return;
+    setPendingFiles([]);
     if (!compraId) {
       setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10), tem_nf: true, numeros_nf: [] });
       setItens([]);
@@ -270,6 +272,26 @@ export function CompraDialog({
           throw new Error("Itens da compra não foram totalmente confirmados pelo banco.");
         }
       }
+      // Upload de anexos pendentes (anexados antes de salvar)
+      if (id && pendingFiles.length > 0) {
+        for (const file of pendingFiles) {
+          const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+          const path = `${id}/${Date.now()}_${safeName}`;
+          const { error: upErr } = await sb.storage.from("compra-anexos").upload(path, file, {
+            contentType: file.type || undefined,
+          });
+          if (upErr) throw upErr;
+          const { error: insErr } = await sb.from("compra_anexos").insert({
+            compra_id: id,
+            nome: file.name,
+            path,
+            mime_type: file.type || null,
+            tamanho: file.size,
+            uploaded_by: user?.id ?? null,
+          });
+          if (insErr) throw insErr;
+        }
+      }
       // Notificar responsáveis quando status muda
       if (form.status !== statusInicial) {
         await notifyResponsiblesForStatus(form.status, id!, form.titulo || form.fornecedor || "Compra");
@@ -278,6 +300,7 @@ export function CompraDialog({
     },
     onSuccess: async () => {
       toast.success("Compra salva");
+      setPendingFiles([]);
       await qc.refetchQueries({ queryKey: ["compras"] });
       qc.invalidateQueries({ queryKey: ["compras-receber"] });
       onOpenChange(false);
@@ -627,7 +650,7 @@ export function CompraDialog({
             {compraId ? (
               <Anexos compraId={compraId} userId={user?.id} />
             ) : (
-              <p className="text-xs text-muted-foreground italic">Salve a compra para anexar arquivos.</p>
+              <PendingAnexos files={pendingFiles} onChange={setPendingFiles} />
             )}
           </TabsContent>
 
@@ -1012,3 +1035,59 @@ function Anexos({ compraId, userId }: { compraId: string; userId?: string }) {
     </div>
   );
 }
+
+function PendingAnexos({ files, onChange }: { files: File[]; onChange: (f: File[]) => void }) {
+  function fmtSize(n: number) {
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / 1024 / 1024).toFixed(2)} MB`;
+  }
+  return (
+    <div className="space-y-3">
+      <p className="text-[11px] text-muted-foreground italic">
+        Os arquivos serão enviados quando você salvar a compra.
+      </p>
+      <label className="flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-md py-6 cursor-pointer hover:bg-muted/40 transition">
+        <Upload className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm text-muted-foreground">
+          Clique para anexar arquivos (PDF, Excel, imagens, etc.)
+        </span>
+        <input
+          type="file"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            const list = e.target.files ? Array.from(e.target.files) : [];
+            if (list.length) onChange([...files, ...list]);
+            e.target.value = "";
+          }}
+        />
+      </label>
+
+      {files.length === 0 ? (
+        <p className="text-xs text-muted-foreground italic">Nenhum anexo selecionado.</p>
+      ) : (
+        <div className="space-y-1.5">
+          {files.map((f, idx) => (
+            <div key={idx} className="flex items-center gap-2 rounded-md border border-border p-2 text-sm">
+              <FileIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="truncate font-medium">{f.name}</div>
+                <div className="text-[11px] text-muted-foreground">{fmtSize(f.size)}</div>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => onChange(files.filter((_, i) => i !== idx))}
+              >
+                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+

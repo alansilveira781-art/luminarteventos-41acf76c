@@ -22,7 +22,7 @@ import { fetchAllRows } from "@/lib/fetch-all";
 import { toBRTInputDateTime, fromBRTInputDateTime } from "@/lib/datetime";
 import { toast } from "sonner";
 import { ensureValidSession, describeSupabaseError } from "@/lib/supabase-guard";
-import { DEMANDA_STATUSES, TIPO_DEMANDA_OPTIONS, TIPOS_QUE_VAO_PARA_ESTOQUE, proximoStatusDemanda, type DemandaStatus } from "@/lib/demandas";
+import { DEMANDA_STATUSES, TIPO_DEMANDA_OPTIONS, TIPOS_QUE_VAO_PARA_ESTOQUE, TIPOS_COM_ITENS, TIPOS_QUE_VAO_PARA_RECEBIMENTO, proximoStatusDemanda, type DemandaStatus } from "@/lib/demandas";
 import { useAuth } from "@/contexts/AuthContext";
 import { CopiarLinkButton } from "@/components/CopiarLinkButton";
 
@@ -94,7 +94,7 @@ export function DemandaDialog({
   const [itens, setItens] = useState<DemandaItem[]>([]);
 
   const tipoRequerItens = useMemo(
-    () => TIPOS_QUE_VAO_PARA_ESTOQUE.includes(form.tipo_demanda ?? ""),
+    () => TIPOS_COM_ITENS.includes(form.tipo_demanda ?? ""),
     [form.tipo_demanda],
   );
 
@@ -278,7 +278,7 @@ export function DemandaDialog({
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {DEMANDA_STATUSES
-                      .filter((s) => s.key !== "a_receber" || TIPOS_QUE_VAO_PARA_ESTOQUE.includes(form.tipo_demanda ?? ""))
+                      .filter((s) => s.key !== "a_receber" || TIPOS_QUE_VAO_PARA_RECEBIMENTO.includes(form.tipo_demanda ?? ""))
                       .map((s) => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
