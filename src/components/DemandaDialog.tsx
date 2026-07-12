@@ -94,7 +94,7 @@ export function DemandaDialog({
   const [itens, setItens] = useState<DemandaItem[]>([]);
 
   const tipoRequerItens = useMemo(
-    () => TIPOS_QUE_VAO_PARA_ESTOQUE.includes(form.tipo_demanda ?? ""),
+    () => TIPOS_COM_ITENS.includes(form.tipo_demanda ?? ""),
     [form.tipo_demanda],
   );
 
