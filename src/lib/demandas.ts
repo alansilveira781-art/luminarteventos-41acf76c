@@ -44,7 +44,7 @@ export function proximoStatusDemanda(
   tipo?: string | null,
 ): DemandaStatus | null {
   if (status === "em_andamento") {
-    return TIPOS_QUE_VAO_PARA_ESTOQUE.includes(tipo ?? "") ? "a_receber" : "finalizado";
+    return TIPOS_QUE_VAO_PARA_RECEBIMENTO.includes(tipo ?? "") ? "a_receber" : "finalizado";
   }
   const ordem: DemandaStatus[] = [
     "solicitacao",
