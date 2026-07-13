@@ -428,7 +428,7 @@ function VendasPage() {
     { key: "tipo", label: "Tipo", type: "text" },
     {
       key: "classificacao", label: "Classificação", type: "select", allowClear: true,
-      options: CLASSIFICACOES.map((v) => ({ value: v, label: v })),
+      options: classificacoes.map((c) => ({ value: c.nome, label: c.nome })),
     },
     { key: "consultor", label: "Consultor", type: "text" },
     { key: "cerimonial", label: "Cerimonial", type: "text" },
