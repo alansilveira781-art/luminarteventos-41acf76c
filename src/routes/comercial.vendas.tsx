@@ -218,6 +218,8 @@ function VendasPage() {
   const { data: vendedores = [] } = useVendedores();
   const { data: cerimoniais = [] } = useCerimoniais();
   const { data: decoradores = [] } = useDecoradores();
+  const { data: classificacoes = [] } = useClassificacoes();
+
 
   const derived = useMemo(() => {
     const valor_final = Math.max(0, (form.valor_proposta || 0) - (form.desconto || 0));
