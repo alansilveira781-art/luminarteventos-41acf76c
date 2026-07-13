@@ -66,7 +66,10 @@ type DemandaRow = {
   total: number;
 };
 
-const TIPOS_ESTOQUE_DESPESA = ["fardamento", "material_limpeza", "material_escritorio"];
+const TIPO_DEMANDA_LABEL: Record<string, string> = Object.fromEntries(
+  TIPO_DEMANDA_OPTIONS.map((o) => [o.value, o.label]),
+);
+
 
 function AReceberPage() {
   const qc = useQueryClient();
