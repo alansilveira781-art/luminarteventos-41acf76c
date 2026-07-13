@@ -6,6 +6,23 @@ const sb = supabase as any;
 export type Vendedor = { id: string; nome: string; percentual_comissao: number };
 export type Cerimonial = { id: string; nome: string; percentual_bv: number };
 export type Decorador = { id: string; nome: string };
+export type Classificacao = { id: string; nome: string };
+
+export function useClassificacoes() {
+  return useQuery({
+    queryKey: ["comercial-classificacoes"],
+    queryFn: async (): Promise<Classificacao[]> => {
+      const { data, error } = await sb
+        .from("comercial_classificacoes")
+        .select("id,nome")
+        .order("nome");
+      if (error) throw error;
+      return (data ?? []) as Classificacao[];
+    },
+    staleTime: 60_000,
+  });
+}
+
 
 export function useVendedores() {
   return useQuery({
