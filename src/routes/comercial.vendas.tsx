@@ -142,8 +142,10 @@ function emptyForm(): FormState {
 }
 
 function formFromRow(r: VendaRow): FormState {
+  const de = r.dataEvento ?? "";
   return {
     data_registro: r.dataRegistro ?? todayIso(),
+    data_evento: isLegacyEvento(de) ? "" : de,
     tipo: r.tipo ?? "",
     nome_evento: r.nomeEvento ?? "",
     local: r.local ?? "",
@@ -164,8 +166,11 @@ function buildDbPayload(
   derived: { valor_final: number; valor_bv: number; valor_comissao: number },
 ) {
   const data = f.data_registro || null;
+  const dataEvento = f.data_evento || null;
+  const baseEvento = dataEvento ?? data;
   return {
     data_registro: data,
+    data_evento: dataEvento,
     tipo: f.tipo || null,
     nome_evento: f.nome_evento || null,
     local: f.local || null,
@@ -183,11 +188,12 @@ function buildDbPayload(
     valor_comissao: derived.valor_comissao,
     ano: anoFrom(data),
     mes: mesNomeFrom(data),
-    mes_evento: mesNomeFrom(data),
-    ano_evento: anoFrom(data),
-    trimestre_evento: trimestreFrom(data),
+    mes_evento: mesNomeFrom(baseEvento),
+    ano_evento: anoFrom(baseEvento),
+    trimestre_evento: trimestreFrom(baseEvento),
   };
 }
+
 
 function VendasPage() {
   const { isAdmin, isModuleAdmin, loading: authLoading } = useAuth();
