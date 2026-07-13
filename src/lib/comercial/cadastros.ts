@@ -70,9 +70,14 @@ export function useDecoradores() {
 }
 
 export function useCadastroMutations(
-  table: "comercial_vendedores" | "comercial_cerimoniais" | "comercial_decoradores",
+  table:
+    | "comercial_vendedores"
+    | "comercial_cerimoniais"
+    | "comercial_decoradores"
+    | "comercial_classificacoes",
   queryKey: string,
 ) {
+
   const qc = useQueryClient();
   const invalidate = () => qc.invalidateQueries({ queryKey: [queryKey] });
   const upsert = useMutation({
