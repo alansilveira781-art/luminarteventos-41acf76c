@@ -583,7 +583,7 @@ function VendasPage() {
               <tbody>
                 {pageRows.length === 0 && (
                   <tr>
-                    <td colSpan={17} className="px-3 py-8 text-center text-muted-foreground">
+                    <td colSpan={18} className="px-3 py-8 text-center text-muted-foreground">
                       Nenhum registro encontrado com os filtros atuais.
                     </td>
                   </tr>
