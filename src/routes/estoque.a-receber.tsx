@@ -19,6 +19,8 @@ import { EMPRESAS } from "@/lib/empresas";
 import { toBRTInputDateTime, fromBRTInputDateTime } from "@/lib/datetime";
 import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 import { EntitySearchSelect } from "@/components/EntitySearchSelect";
+import { TIPOS_QUE_VAO_PARA_ESTOQUE, TIPO_DEMANDA_OPTIONS } from "@/lib/demandas";
+
 
 const sb = supabase as any;
 
