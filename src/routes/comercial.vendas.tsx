@@ -46,8 +46,18 @@ const MESES_PT = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
 
-const CLASSIFICACOES = ["Cenografia", "Social", "Stand", "Corporativo"];
 const EMPRESAS = ["Planejados", "Eventos"];
+
+// Registros legados usam '1900-01-01' como placeholder para data_evento.
+const LEGACY_EVENTO = "1900-01-01";
+function isLegacyEvento(iso: string | null | undefined): boolean {
+  return !!iso && iso.slice(0, 10) === LEGACY_EVENTO;
+}
+function formatDateOrLegacy(iso: string | null | undefined): string {
+  if (!iso || isLegacyEvento(iso)) return "—";
+  return formatDate(iso);
+}
+
 
 const brl = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
