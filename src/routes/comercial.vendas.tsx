@@ -394,7 +394,7 @@ function VendasPage() {
 
   function exportCsv() {
     const headers = [
-      "Data de Registro", "Tipo", "Nome do Evento", "Local", "Cidade", "Estado",
+      "Data do Evento", "Data de Registro", "Tipo", "Nome do Evento", "Local", "Cidade", "Estado",
       "Classificação", "Consultor", "Cerimonial", "Decorador", "Empresa",
       "Valor da Proposta", "Desconto", "Valor Final", "Valor BV",
     ];
@@ -405,12 +405,14 @@ function VendasPage() {
     const lines = [headers.join(";")];
     for (const r of sorted) {
       lines.push([
+        isLegacyEvento(r.dataEvento) ? "" : (r.dataEvento ?? ""),
         r.dataRegistro ?? "", r.tipo ?? "", r.nomeEvento ?? "",
         r.local ?? "", r.cidade ?? "", r.estado ?? "",
         r.classificacao ?? "", r.consultor ?? "", r.cerimonial ?? "", r.decorador ?? "", r.empresa ?? "",
         r.valorProposta, r.desconto, r.valorFinal, r.valorBV,
       ].map(esc).join(";"));
     }
+
     const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
