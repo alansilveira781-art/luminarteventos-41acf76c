@@ -98,7 +98,7 @@ function AReceberPage() {
         .from("demandas")
         .select("id,numero,titulo,tipo_demanda,solicitante,fornecedor,fornecedor_id,comprador,observacoes")
         .eq("status", "a_receber")
-        .in("tipo_demanda", TIPOS_ESTOQUE_DESPESA);
+        .in("tipo_demanda", TIPOS_QUE_VAO_PARA_ESTOQUE);
       if (error) throw error;
       const rows = (dm ?? []) as any[];
       const ids = rows.map((r) => r.id);
