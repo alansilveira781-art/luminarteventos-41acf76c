@@ -106,6 +106,7 @@ function unique<T>(arr: (T | null | undefined)[]): T[] {
 
 type FormState = {
   data_registro: string;
+  data_evento: string;
   tipo: string;
   nome_evento: string;
   local: string;
@@ -123,6 +124,8 @@ type FormState = {
 function emptyForm(): FormState {
   return {
     data_registro: todayIso(),
+    data_evento: "",
+
     tipo: "",
     nome_evento: "",
     local: "",
