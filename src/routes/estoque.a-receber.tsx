@@ -19,6 +19,8 @@ import { EMPRESAS } from "@/lib/empresas";
 import { toBRTInputDateTime, fromBRTInputDateTime } from "@/lib/datetime";
 import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 import { EntitySearchSelect } from "@/components/EntitySearchSelect";
+import { TIPOS_QUE_VAO_PARA_ESTOQUE, TIPO_DEMANDA_OPTIONS } from "@/lib/demandas";
+
 
 const sb = supabase as any;
 
@@ -64,7 +66,10 @@ type DemandaRow = {
   total: number;
 };
 
-const TIPOS_ESTOQUE_DESPESA = ["fardamento", "material_limpeza", "material_escritorio"];
+const TIPO_DEMANDA_LABEL: Record<string, string> = Object.fromEntries(
+  TIPO_DEMANDA_OPTIONS.map((o) => [o.value, o.label]),
+);
+
 
 function AReceberPage() {
   const qc = useQueryClient();
@@ -93,7 +98,7 @@ function AReceberPage() {
         .from("demandas")
         .select("id,numero,titulo,tipo_demanda,solicitante,fornecedor,fornecedor_id,comprador,observacoes")
         .eq("status", "a_receber")
-        .in("tipo_demanda", TIPOS_ESTOQUE_DESPESA);
+        .in("tipo_demanda", TIPOS_QUE_VAO_PARA_ESTOQUE);
       if (error) throw error;
       const rows = (dm ?? []) as any[];
       const ids = rows.map((r) => r.id);
@@ -164,7 +169,7 @@ function AReceberPage() {
               </span>
             </div>
             <div className="text-xs text-muted-foreground space-y-0.5">
-              {d.tipo_demanda && <div>Tipo: {d.tipo_demanda.replace(/_/g, " ")}</div>}
+              {d.tipo_demanda && <div>Tipo: {TIPO_DEMANDA_LABEL[d.tipo_demanda] ?? d.tipo_demanda.replace(/_/g, " ")}</div>}
               {d.solicitante && <div>Solicitante: {d.solicitante}</div>}
               {d.fornecedor && <div>Fornecedor: {d.fornecedor}</div>}
               {d.comprador && <div>Comprador: {d.comprador}</div>}

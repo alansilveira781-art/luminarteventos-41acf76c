@@ -28,7 +28,9 @@ export const TIPOS_QUE_VAO_PARA_ESTOQUE: string[] = [
   "fardamento",
   "material_limpeza",
   "material_escritorio",
+  "reposicao_estoque",
 ];
+
 
 // Tipos que geram entrada em PATRIMÔNIO (validação em /patrimonio/a-receber)
 export const TIPOS_QUE_VAO_PARA_PATRIMONIO: string[] = ["imobilizado"];
@@ -77,7 +79,11 @@ export const TIPO_DEMANDA_OPTIONS = [
   { value: "imobilizado", label: "Imobilizado" },
   { value: "material_limpeza", label: "Material de Limpeza" },
   { value: "material_escritorio", label: "Material de Escritório" },
+  { value: "reposicao_estoque", label: "Reposição de Estoque" },
 ] as const;
+
+
+
 
 // Valores legados que foram unificados em "reformas_construcoes" — usados só
 // para rotular registros antigos no dashboard. Não aparecem no <Select>.
