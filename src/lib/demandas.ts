@@ -28,7 +28,9 @@ export const TIPOS_QUE_VAO_PARA_ESTOQUE: string[] = [
   "fardamento",
   "material_limpeza",
   "material_escritorio",
+  "reposicao_estoque",
 ];
+
 
 // Tipos que geram entrada em PATRIMÔNIO (validação em /patrimonio/a-receber)
 export const TIPOS_QUE_VAO_PARA_PATRIMONIO: string[] = ["imobilizado"];
