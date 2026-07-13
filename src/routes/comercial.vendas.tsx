@@ -32,7 +32,9 @@ import {
   BulkEditDialog, normalizeBulkPatch, type BulkField,
 } from "@/components/BulkEditDialog";
 import { useSort, SortableTh } from "@/components/SortableTh";
-import { useVendedores, useCerimoniais, useDecoradores } from "@/lib/comercial/cadastros";
+import { useVendedores, useCerimoniais, useDecoradores, useClassificacoes } from "@/lib/comercial/cadastros";
+import { CadastroCombobox } from "@/components/comercial/CadastroCombobox";
+
 
 
 export const Route = createFileRoute("/comercial/vendas")({
@@ -44,8 +46,18 @@ const MESES_PT = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
 
-const CLASSIFICACOES = ["Cenografia", "Social", "Stand", "Corporativo"];
 const EMPRESAS = ["Planejados", "Eventos"];
+
+// Registros legados usam '1900-01-01' como placeholder para data_evento.
+const LEGACY_EVENTO = "1900-01-01";
+function isLegacyEvento(iso: string | null | undefined): boolean {
+  return !!iso && iso.slice(0, 10) === LEGACY_EVENTO;
+}
+function formatDateOrLegacy(iso: string | null | undefined): string {
+  if (!iso || isLegacyEvento(iso)) return "—";
+  return formatDate(iso);
+}
+
 
 const brl = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -94,6 +106,7 @@ function unique<T>(arr: (T | null | undefined)[]): T[] {
 
 type FormState = {
   data_registro: string;
+  data_evento: string;
   tipo: string;
   nome_evento: string;
   local: string;
@@ -111,6 +124,8 @@ type FormState = {
 function emptyForm(): FormState {
   return {
     data_registro: todayIso(),
+    data_evento: "",
+
     tipo: "",
     nome_evento: "",
     local: "",
@@ -127,8 +142,10 @@ function emptyForm(): FormState {
 }
 
 function formFromRow(r: VendaRow): FormState {
+  const de = r.dataEvento ?? "";
   return {
     data_registro: r.dataRegistro ?? todayIso(),
+    data_evento: isLegacyEvento(de) ? "" : de,
     tipo: r.tipo ?? "",
     nome_evento: r.nomeEvento ?? "",
     local: r.local ?? "",
@@ -149,8 +166,11 @@ function buildDbPayload(
   derived: { valor_final: number; valor_bv: number; valor_comissao: number },
 ) {
   const data = f.data_registro || null;
+  const dataEvento = f.data_evento || null;
+  const baseEvento = dataEvento ?? data;
   return {
     data_registro: data,
+    data_evento: dataEvento,
     tipo: f.tipo || null,
     nome_evento: f.nome_evento || null,
     local: f.local || null,
@@ -168,11 +188,12 @@ function buildDbPayload(
     valor_comissao: derived.valor_comissao,
     ano: anoFrom(data),
     mes: mesNomeFrom(data),
-    mes_evento: mesNomeFrom(data),
-    ano_evento: anoFrom(data),
-    trimestre_evento: trimestreFrom(data),
+    mes_evento: mesNomeFrom(baseEvento),
+    ano_evento: anoFrom(baseEvento),
+    trimestre_evento: trimestreFrom(baseEvento),
   };
 }
+
 
 function VendasPage() {
   const { isAdmin, isModuleAdmin, loading: authLoading } = useAuth();
@@ -197,6 +218,8 @@ function VendasPage() {
   const { data: vendedores = [] } = useVendedores();
   const { data: cerimoniais = [] } = useCerimoniais();
   const { data: decoradores = [] } = useDecoradores();
+  const { data: classificacoes = [] } = useClassificacoes();
+
 
   const derived = useMemo(() => {
     const valor_final = Math.max(0, (form.valor_proposta || 0) - (form.desconto || 0));
@@ -249,6 +272,8 @@ function VendasPage() {
       return applySort(filtered as any, (r: any, key: string) => {
         switch (key) {
           case "data_registro": return r.dataRegistro ?? "";
+          case "data_evento": return isLegacyEvento(r.dataEvento) ? "" : (r.dataEvento ?? "");
+
           case "tipo": return r.tipo ?? "";
           case "nome_evento": return r.nomeEvento ?? "";
           case "local": return r.local ?? "";
@@ -369,7 +394,7 @@ function VendasPage() {
 
   function exportCsv() {
     const headers = [
-      "Data de Registro", "Tipo", "Nome do Evento", "Local", "Cidade", "Estado",
+      "Data do Evento", "Data de Registro", "Tipo", "Nome do Evento", "Local", "Cidade", "Estado",
       "Classificação", "Consultor", "Cerimonial", "Decorador", "Empresa",
       "Valor da Proposta", "Desconto", "Valor Final", "Valor BV",
     ];
@@ -380,12 +405,14 @@ function VendasPage() {
     const lines = [headers.join(";")];
     for (const r of sorted) {
       lines.push([
+        isLegacyEvento(r.dataEvento) ? "" : (r.dataEvento ?? ""),
         r.dataRegistro ?? "", r.tipo ?? "", r.nomeEvento ?? "",
         r.local ?? "", r.cidade ?? "", r.estado ?? "",
         r.classificacao ?? "", r.consultor ?? "", r.cerimonial ?? "", r.decorador ?? "", r.empresa ?? "",
         r.valorProposta, r.desconto, r.valorFinal, r.valorBV,
       ].map(esc).join(";"));
     }
+
     const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -405,7 +432,7 @@ function VendasPage() {
     { key: "tipo", label: "Tipo", type: "text" },
     {
       key: "classificacao", label: "Classificação", type: "select", allowClear: true,
-      options: CLASSIFICACOES.map((v) => ({ value: v, label: v })),
+      options: classificacoes.map((c) => ({ value: c.nome, label: c.nome })),
     },
     { key: "consultor", label: "Consultor", type: "text" },
     { key: "cerimonial", label: "Cerimonial", type: "text" },
@@ -532,7 +559,9 @@ function VendasPage() {
                   <th className="px-3 py-2 w-8">
                     <Checkbox checked={sel.allSelected} onCheckedChange={() => sel.toggleAll()} />
                   </th>
+                  <SortableTh sort={sort} onToggle={toggleSort} k="data_evento" label="Data do Evento" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
                   <SortableTh sort={sort} onToggle={toggleSort} k="data_registro" label="Data de Registro" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
+
                   <SortableTh sort={sort} onToggle={toggleSort} k="tipo" label="Tipo" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
                   <SortableTh sort={sort} onToggle={toggleSort} k="nome_evento" label="Nome do Evento" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
                   <SortableTh sort={sort} onToggle={toggleSort} k="local" label="Local" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" />
@@ -554,7 +583,7 @@ function VendasPage() {
               <tbody>
                 {pageRows.length === 0 && (
                   <tr>
-                    <td colSpan={17} className="px-3 py-8 text-center text-muted-foreground">
+                    <td colSpan={18} className="px-3 py-8 text-center text-muted-foreground">
                       Nenhum registro encontrado com os filtros atuais.
                     </td>
                   </tr>
@@ -572,7 +601,9 @@ function VendasPage() {
                           />
                         )}
                       </td>
+                      <Td>{formatDateOrLegacy(r.dataEvento)}</Td>
                       <Td>{formatDate(r.dataRegistro)}</Td>
+
                       <Td>{r.tipo ?? "—"}</Td>
                       <Td className="font-medium">{r.nomeEvento ?? "—"}</Td>
                       <Td>{r.local ?? "—"}</Td>
@@ -605,7 +636,7 @@ function VendasPage() {
               </tbody>
               <tfoot className="bg-muted/30 border-t-2 border-border">
                 <tr>
-                  <Td colSpan={12} className="font-semibold">Totais ({sorted.length.toLocaleString("pt-BR")} registros)</Td>
+                  <Td colSpan={13} className="font-semibold">Totais ({sorted.length.toLocaleString("pt-BR")} registros)</Td>
                   <Td className="text-right font-semibold">{brl(totalProposta)}</Td>
                   <Td className="text-right font-semibold">{brl(totalDesc)}</Td>
                   <Td className="text-right font-semibold">{brl(totalValor)}</Td>
@@ -639,6 +670,10 @@ function VendasPage() {
             className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
             onSubmit={(e) => { e.preventDefault(); saveMut.mutate(); }}
           >
+            <Field label="Data do Evento">
+              <Input type="date" value={form.data_evento}
+                onChange={(e) => setForm({ ...form, data_evento: e.target.value })} required />
+            </Field>
             <Field label="Data de Registro">
               <Input type="date" value={form.data_registro}
                 onChange={(e) => setForm({ ...form, data_registro: e.target.value })} required />
@@ -664,27 +699,36 @@ function VendasPage() {
               <Input value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })} />
             </Field>
             <Field label="Classificação">
-              <SelectFree value={form.classificacao} options={CLASSIFICACOES}
-                onChange={(v) => setForm({ ...form, classificacao: v })} />
+              <CadastroCombobox
+                table="comercial_classificacoes"
+                queryKey="comercial-classificacoes"
+                value={form.classificacao}
+                onChange={(v) => setForm({ ...form, classificacao: v })}
+              />
             </Field>
             <Field label="Consultor(a)">
-              <SelectFree
+              <CadastroCombobox
+                table="comercial_vendedores"
+                queryKey="comercial-vendedores"
                 value={form.consultor}
-                options={vendedores.map((v) => v.nome)}
                 onChange={(v) => setForm({ ...form, consultor: v })}
+                extraFields={[{ key: "percentual_comissao", label: "% Comissão", type: "number", default: 0 }]}
               />
             </Field>
             <Field label="Cerimonial">
-              <SelectFree
+              <CadastroCombobox
+                table="comercial_cerimoniais"
+                queryKey="comercial-cerimoniais"
                 value={form.cerimonial}
-                options={cerimoniais.map((c) => c.nome)}
                 onChange={(v) => setForm({ ...form, cerimonial: v })}
+                extraFields={[{ key: "percentual_bv", label: "% BV", type: "number", default: 0 }]}
               />
             </Field>
             <Field label="Decorador(a)/Agência">
-              <SelectFree
+              <CadastroCombobox
+                table="comercial_decoradores"
+                queryKey="comercial-decoradores"
                 value={form.decorador}
-                options={decoradores.map((d) => d.nome)}
                 onChange={(v) => setForm({ ...form, decorador: v })}
               />
             </Field>
@@ -714,11 +758,11 @@ function VendasPage() {
             <div className="sm:col-span-2 lg:col-span-3 text-xs text-muted-foreground flex items-start gap-1">
               <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
               <span>
-                Valor Final = Proposta − Desconto. BV e Comissão usam os percentuais cadastrados em
-                Configurações (vendedor/cerimonial). Se o nome for digitado como "Outro...", o percentual
-                fica zerado.
+                Valor Final = Proposta − Desconto. BV e Comissão usam os percentuais cadastrados no
+                consultor/cerimonial.
               </span>
             </div>
+
             <div className="sm:col-span-2 lg:col-span-3 flex justify-end gap-2 pt-2 border-t border-border">
               <Button type="button" variant="ghost" onClick={() => setFormOpen(false)}>Cancelar</Button>
               <Button type="submit" disabled={saveMut.isPending}>

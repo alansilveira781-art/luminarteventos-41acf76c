@@ -701,6 +701,24 @@ export type Database = {
         }
         Relationships: []
       }
+      comercial_classificacoes: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
       comercial_clientes: {
         Row: {
           created_at: string
