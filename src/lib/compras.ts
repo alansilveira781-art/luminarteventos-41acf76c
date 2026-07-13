@@ -145,7 +145,7 @@ export function canMoveCompra(
     return false;
   }
 
-  return canEditCompra(compra, userId, isAdmin, userEmail);
+  return canEditCompra(compra, userId, isAdmin, userEmail, currentStatusResponsavelId);
 }
 
 
