@@ -93,8 +93,7 @@ export function CompraDialog({
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [statusInicial, setStatusInicial] = useState<CompraStatus>(defaultStatus);
   const isAdmin = isGlobalAdmin || modulos.some((m) => m.slug === "compras" && m.is_admin);
-  const canEdit = !compraId || canEditCompra(form as any, user?.id, isAdmin, user?.email);
-  const editBlockedMsg = canEdit ? null : moveBlockedMessage(form as any);
+  // canEdit é calculado abaixo, após `responsavelDoStatus` estar disponível.
   const [excluirOpen, setExcluirOpen] = useState(false);
   const [motivoExclusao, setMotivoExclusao] = useState("");
 
@@ -140,6 +139,8 @@ export function CompraDialog({
   };
 
   const statusRespId = responsavelDoStatus(form.status);
+  const canEdit = !compraId || canEditCompra(form as any, user?.id, isAdmin, user?.email, statusRespId);
+  const editBlockedMsg = canEdit ? null : moveBlockedMessage(form as any);
   // Permissão de exclusão é avaliada contra o status persistido (statusInicial),
   // não contra o valor atual do dropdown no formulário — evita que mudar o Status
   // no form desabilite o botão silenciosamente.

@@ -60,6 +60,7 @@ export function canEditCompra(
   userId: string | undefined | null,
   isAdmin: boolean,
   userEmail?: string | undefined | null,
+  statusResponsavelId?: string | null,
 ): boolean {
   if (isAdmin) return true;
   const isPedro = !!userEmail && userEmail.trim().toLowerCase() === PEDRO_EMAIL;
@@ -67,6 +68,9 @@ export function canEditCompra(
   if (!userId) return false;
   if (compra.responsavel_id && compra.responsavel_id === userId) return true;
   if (compra.created_by && compra.created_by === userId) return true;
+  // Responsável configurado para o status atual do card pode editar,
+  // mesmo que o responsavel_id do card aponte para outra pessoa.
+  if (statusResponsavelId && statusResponsavelId === userId) return true;
   // Cards antigos sem responsável nem criador conhecidos: liberar para evitar travar dados legados.
   if (!compra.responsavel_id && !compra.created_by) return true;
   return false;
@@ -141,7 +145,7 @@ export function canMoveCompra(
     return false;
   }
 
-  return canEditCompra(compra, userId, isAdmin, userEmail);
+  return canEditCompra(compra, userId, isAdmin, userEmail, currentStatusResponsavelId);
 }
 
 
