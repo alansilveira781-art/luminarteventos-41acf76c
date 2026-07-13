@@ -79,7 +79,8 @@ export const TIPO_DEMANDA_OPTIONS = [
   { value: "imobilizado", label: "Imobilizado" },
   { value: "material_limpeza", label: "Material de Limpeza" },
   { value: "material_escritorio", label: "Material de Escritório" },
-] as const;
+  { value: "reposicao_estoque", label: "Reposição de Estoque" },
+
 
 // Valores legados que foram unificados em "reformas_construcoes" — usados só
 // para rotular registros antigos no dashboard. Não aparecem no <Select>.
