@@ -272,6 +272,8 @@ function VendasPage() {
       return applySort(filtered as any, (r: any, key: string) => {
         switch (key) {
           case "data_registro": return r.dataRegistro ?? "";
+          case "data_evento": return isLegacyEvento(r.dataEvento) ? "" : (r.dataEvento ?? "");
+
           case "tipo": return r.tipo ?? "";
           case "nome_evento": return r.nomeEvento ?? "";
           case "local": return r.local ?? "";
