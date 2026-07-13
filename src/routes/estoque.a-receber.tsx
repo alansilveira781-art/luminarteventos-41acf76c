@@ -169,7 +169,7 @@ function AReceberPage() {
               </span>
             </div>
             <div className="text-xs text-muted-foreground space-y-0.5">
-              {d.tipo_demanda && <div>Tipo: {d.tipo_demanda.replace(/_/g, " ")}</div>}
+              {d.tipo_demanda && <div>Tipo: {TIPO_DEMANDA_LABEL[d.tipo_demanda] ?? d.tipo_demanda.replace(/_/g, " ")}</div>}
               {d.solicitante && <div>Solicitante: {d.solicitante}</div>}
               {d.fornecedor && <div>Fornecedor: {d.fornecedor}</div>}
               {d.comprador && <div>Comprador: {d.comprador}</div>}
