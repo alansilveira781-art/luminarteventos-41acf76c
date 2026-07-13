@@ -93,8 +93,7 @@ export function CompraDialog({
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [statusInicial, setStatusInicial] = useState<CompraStatus>(defaultStatus);
   const isAdmin = isGlobalAdmin || modulos.some((m) => m.slug === "compras" && m.is_admin);
-  const canEdit = !compraId || canEditCompra(form as any, user?.id, isAdmin, user?.email, responsavelDoStatus(form.status));
-  const editBlockedMsg = canEdit ? null : moveBlockedMessage(form as any);
+  // canEdit é calculado abaixo, após `responsavelDoStatus` estar disponível.
   const [excluirOpen, setExcluirOpen] = useState(false);
   const [motivoExclusao, setMotivoExclusao] = useState("");
 
