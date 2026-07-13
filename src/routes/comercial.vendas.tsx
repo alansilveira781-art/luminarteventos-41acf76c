@@ -601,7 +601,9 @@ function VendasPage() {
                           />
                         )}
                       </td>
+                      <Td>{formatDateOrLegacy(r.dataEvento)}</Td>
                       <Td>{formatDate(r.dataRegistro)}</Td>
+
                       <Td>{r.tipo ?? "—"}</Td>
                       <Td className="font-medium">{r.nomeEvento ?? "—"}</Td>
                       <Td>{r.local ?? "—"}</Td>
