@@ -662,6 +662,10 @@ function VendasPage() {
             className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
             onSubmit={(e) => { e.preventDefault(); saveMut.mutate(); }}
           >
+            <Field label="Data do Evento">
+              <Input type="date" value={form.data_evento}
+                onChange={(e) => setForm({ ...form, data_evento: e.target.value })} required />
+            </Field>
             <Field label="Data de Registro">
               <Input type="date" value={form.data_registro}
                 onChange={(e) => setForm({ ...form, data_registro: e.target.value })} required />
@@ -687,27 +691,36 @@ function VendasPage() {
               <Input value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })} />
             </Field>
             <Field label="Classificação">
-              <SelectFree value={form.classificacao} options={CLASSIFICACOES}
-                onChange={(v) => setForm({ ...form, classificacao: v })} />
+              <CadastroCombobox
+                table="comercial_classificacoes"
+                queryKey="comercial-classificacoes"
+                value={form.classificacao}
+                onChange={(v) => setForm({ ...form, classificacao: v })}
+              />
             </Field>
             <Field label="Consultor(a)">
-              <SelectFree
+              <CadastroCombobox
+                table="comercial_vendedores"
+                queryKey="comercial-vendedores"
                 value={form.consultor}
-                options={vendedores.map((v) => v.nome)}
                 onChange={(v) => setForm({ ...form, consultor: v })}
+                extraFields={[{ key: "percentual_comissao", label: "% Comissão", type: "number", default: 0 }]}
               />
             </Field>
             <Field label="Cerimonial">
-              <SelectFree
+              <CadastroCombobox
+                table="comercial_cerimoniais"
+                queryKey="comercial-cerimoniais"
                 value={form.cerimonial}
-                options={cerimoniais.map((c) => c.nome)}
                 onChange={(v) => setForm({ ...form, cerimonial: v })}
+                extraFields={[{ key: "percentual_bv", label: "% BV", type: "number", default: 0 }]}
               />
             </Field>
             <Field label="Decorador(a)/Agência">
-              <SelectFree
+              <CadastroCombobox
+                table="comercial_decoradores"
+                queryKey="comercial-decoradores"
                 value={form.decorador}
-                options={decoradores.map((d) => d.nome)}
                 onChange={(v) => setForm({ ...form, decorador: v })}
               />
             </Field>
@@ -737,11 +750,11 @@ function VendasPage() {
             <div className="sm:col-span-2 lg:col-span-3 text-xs text-muted-foreground flex items-start gap-1">
               <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
               <span>
-                Valor Final = Proposta − Desconto. BV e Comissão usam os percentuais cadastrados em
-                Configurações (vendedor/cerimonial). Se o nome for digitado como "Outro...", o percentual
-                fica zerado.
+                Valor Final = Proposta − Desconto. BV e Comissão usam os percentuais cadastrados no
+                consultor/cerimonial.
               </span>
             </div>
+
             <div className="sm:col-span-2 lg:col-span-3 flex justify-end gap-2 pt-2 border-t border-border">
               <Button type="button" variant="ghost" onClick={() => setFormOpen(false)}>Cancelar</Button>
               <Button type="submit" disabled={saveMut.isPending}>
