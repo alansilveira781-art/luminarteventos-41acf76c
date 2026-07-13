@@ -636,7 +636,7 @@ function VendasPage() {
               </tbody>
               <tfoot className="bg-muted/30 border-t-2 border-border">
                 <tr>
-                  <Td colSpan={12} className="font-semibold">Totais ({sorted.length.toLocaleString("pt-BR")} registros)</Td>
+                  <Td colSpan={13} className="font-semibold">Totais ({sorted.length.toLocaleString("pt-BR")} registros)</Td>
                   <Td className="text-right font-semibold">{brl(totalProposta)}</Td>
                   <Td className="text-right font-semibold">{brl(totalDesc)}</Td>
                   <Td className="text-right font-semibold">{brl(totalValor)}</Td>
