@@ -201,7 +201,8 @@ function summarize<T>(f: FieldDef<T>, v: FilterValue): string {
     if (from && to) return `${from} → ${to}`;
     if (from) return `a partir de ${from}`;
     if (to) return `até ${to}`;
-    return "—";
+    return "Definir período…";
+
   }
   if (v.type === "number-range") {
     const min = v.min != null ? v.min.toLocaleString("pt-BR") : "";
