@@ -1884,6 +1884,45 @@ export type Database = {
           },
         ]
       }
+      contabil_tomadores: {
+        Row: {
+          created_at: string
+          documento: string | null
+          email: string | null
+          endereco: string | null
+          id: string
+          inscricao_municipal: string | null
+          nome: string
+          observacoes: string | null
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          documento?: string | null
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          inscricao_municipal?: string | null
+          nome: string
+          observacoes?: string | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          documento?: string | null
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          inscricao_municipal?: string | null
+          nome?: string
+          observacoes?: string | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       demanda_anexos: {
         Row: {
           created_at: string

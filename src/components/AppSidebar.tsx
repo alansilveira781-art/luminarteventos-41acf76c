@@ -85,6 +85,7 @@ const allItems: NavItem[] = [
   { title: "Dashboard", url: "/contabil", icon: BarChart3, group: "Contábil", module: "contabil" },
   { title: "Notas fiscais", url: "/contabil/notas", icon: FileText, group: "Contábil", module: "contabil" },
   { title: "Recebimentos", url: "/contabil/recebimentos", icon: FileText, group: "Contábil", module: "contabil" },
+  { title: "Tomadores", url: "/contabil/tomadores", icon: FileText, group: "Contábil", module: "contabil" },
   { title: "Apurações de impostos", url: "/contabil/apuracoes", icon: Search, group: "Contábil", module: "contabil" },
   { title: "Configuração", url: "/contabil/configuracao", icon: Settings, group: "Contábil", module: "contabil" },
   { title: "Contratos", url: "/juridico", icon: Scale, group: "Jurídico", module: "juridico" },

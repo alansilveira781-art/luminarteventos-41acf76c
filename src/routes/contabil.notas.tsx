@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FormField, FormSection, FormActions } from "@/components/FormSection";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Save } from "lucide-react";
 import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -20,6 +20,8 @@ import { calcularImpostosPresumido, type Aliquota } from "@/lib/contabil/calculo
 import { SortableTh, useSort } from "@/components/SortableTh";
 import { PeriodoFilter, periodoDoMes, filterByPeriodo, type Periodo, type PeriodoPreset } from "@/components/PeriodoFilter";
 import { usePersistedState } from "@/hooks/usePersistedState";
+import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
+import { EntitySearchSelect } from "@/components/EntitySearchSelect";
 
 const sb = supabase as any;
 
@@ -274,9 +276,11 @@ function NotaForm({
   onSubmit: (p: any) => void;
   submitting: boolean;
 }) {
+  const qc = useQueryClient();
   const [empresa, setEmpresa] = useState<string>(initial?.empresa ?? EMPRESAS[0]);
   const [numero, setNumero] = useState(initial?.numero ?? "");
   const [tipoServico, setTipoServico] = useState(initial?.tipo_servico ?? "");
+  const [tomadorId, setTomadorId] = useState<string>("");
   const [tomadorNome, setTomadorNome] = useState(initial?.tomador_nome ?? "");
   const [tomadorDoc, setTomadorDoc] = useState(initial?.tomador_documento ?? "");
   const [tomadorEmail, setTomadorEmail] = useState(initial?.tomador_email ?? "");
@@ -285,6 +289,57 @@ function NotaForm({
   const [dataEmissao, setDataEmissao] = useState(initial?.data_emissao ?? format(new Date(), "yyyy-MM-dd"));
   const [status, setStatus] = useState(initial?.status ?? "rascunho");
   const [observacoes, setObservacoes] = useState(initial?.observacoes ?? "");
+
+  const { data: tomadores } = useQuery({
+    queryKey: ["contabil-tomadores"],
+    queryFn: async () => {
+      const { data, error } = await sb
+        .from("contabil_tomadores")
+        .select("id, nome, documento, email, telefone")
+        .order("nome", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; nome: string; documento: string | null; email: string | null; telefone: string | null }>;
+    },
+  });
+
+  const salvarTomadorMut = useMutation({
+    mutationFn: async () => {
+      if (!tomadorNome.trim()) throw new Error("Informe o nome do tomador");
+      const payload = {
+        nome: tomadorNome.trim(),
+        documento: tomadorDoc?.trim() || null,
+        email: tomadorEmail?.trim() || null,
+      };
+      const doc = payload.documento;
+      if (doc) {
+        const existing = (tomadores ?? []).find((t) => (t.documento ?? "").trim() === doc);
+        if (existing) {
+          const { error } = await sb.from("contabil_tomadores").update(payload).eq("id", existing.id);
+          if (error) throw error;
+          return existing.id;
+        }
+      }
+      const { data, error } = await sb.from("contabil_tomadores").insert(payload).select("id").single();
+      if (error) throw error;
+      return data.id as string;
+    },
+    onSuccess: (id) => {
+      qc.invalidateQueries({ queryKey: ["contabil-tomadores"] });
+      setTomadorId(id);
+      toast.success("Tomador salvo no cadastro");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  function handleSelectTomador(id: string) {
+    setTomadorId(id);
+    const t = (tomadores ?? []).find((x) => x.id === id);
+    if (t) {
+      setTomadorNome(t.nome);
+      setTomadorDoc(t.documento ?? "");
+      setTomadorEmail(t.email ?? "");
+    }
+  }
 
   const regime = EMPRESA_REGIME[empresa as Empresa];
   const aliquotasEmpresa: Aliquota[] = useMemo(() => {
@@ -361,19 +416,40 @@ function NotaForm({
           </Select>
         </FormField>
         <FormField label="Evento" wide>
-          <Input value={nomeEvento} onChange={(e) => setNomeEvento(e.target.value)} placeholder="Nome do evento vinculado" />
+          <EventoSheetCombobox value={nomeEvento} onChange={(v) => setNomeEvento(v ?? "")} />
         </FormField>
         <FormField label="Tipo de serviço" wide>
           <Input value={tipoServico} onChange={(e) => setTipoServico(e.target.value)} placeholder="Ex.: Locação cenografia, Desenvolvimento de software…" />
         </FormField>
+        <FormField label="Tomador cadastrado" wide>
+          <EntitySearchSelect
+            options={(tomadores ?? []).map((t) => ({ id: t.id, nome: t.nome, documento: t.documento ?? undefined, email: t.email ?? undefined }))}
+            value={tomadorId}
+            onChange={handleSelectTomador}
+            placeholder="Selecione um tomador cadastrado (ou preencha abaixo)…"
+            searchPlaceholder="Buscar por nome, documento…"
+          />
+        </FormField>
         <FormField label="Tomador*">
-          <Input value={tomadorNome} onChange={(e) => setTomadorNome(e.target.value)} required />
+          <Input value={tomadorNome} onChange={(e) => { setTomadorNome(e.target.value); setTomadorId(""); }} required />
         </FormField>
         <FormField label="CNPJ/CPF do tomador">
-          <Input value={tomadorDoc} onChange={(e) => setTomadorDoc(e.target.value)} />
+          <div className="flex gap-2">
+            <Input value={tomadorDoc} onChange={(e) => { setTomadorDoc(e.target.value); setTomadorId(""); }} />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              title="Salvar como tomador cadastrado"
+              disabled={salvarTomadorMut.isPending || !tomadorNome.trim()}
+              onClick={() => salvarTomadorMut.mutate()}
+            >
+              <Save className="h-4 w-4" />
+            </Button>
+          </div>
         </FormField>
         <FormField label="E-mail do tomador" wide>
-          <Input type="email" value={tomadorEmail} onChange={(e) => setTomadorEmail(e.target.value)} />
+          <Input type="email" value={tomadorEmail} onChange={(e) => { setTomadorEmail(e.target.value); setTomadorId(""); }} />
         </FormField>
         <FormField label="Valor bruto (R$)*">
           <MoneyInput value={Number(valorBruto || 0)} onChange={(n) => setValorBruto(n ? String(n) : "")} />

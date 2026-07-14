@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FormField, FormSection, FormActions } from "@/components/FormSection";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -365,7 +366,7 @@ function RecebimentoForm({
           <Input value={banco} onChange={(e) => setBanco(e.target.value)} placeholder="Ex.: Itaú" />
         </FormField>
         <FormField label="Evento" wide>
-          <Input value={evento} onChange={(e) => setEvento(e.target.value)} placeholder="Nome do evento" />
+          <EventoSheetCombobox value={evento} onChange={(v) => setEvento(v ?? "")} />
         </FormField>
       </FormSection>
       <FormField label="Observações">
