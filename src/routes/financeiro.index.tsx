@@ -102,15 +102,28 @@ function DemandasKanban() {
     },
   });
 
+  const filterFields = useMemo<FieldDef<Demanda>[]>(() => [
+    { key: "status", label: "Status", type: "multi", getValue: (r) => r.status, formatValue: (v) => DEMANDA_STATUSES.find((s) => s.key === v)?.label ?? v },
+    { key: "fornecedor", label: "Fornecedor", type: "multi", getValue: (r) => r.fornecedor },
+    { key: "solicitante", label: "Solicitante", type: "multi", getValue: (r) => r.solicitante },
+    { key: "comprador", label: "Comprador", type: "multi", getValue: (r) => r.comprador },
+    { key: "responsavel_nome", label: "Responsável", type: "multi", getValue: (r) => r.responsavel_nome },
+    { key: "tipo_demanda", label: "Tipo", type: "multi", getValue: (r) => r.tipo_demanda },
+    { key: "data_compra", label: "Data de compra/serviço", type: "date-range", getValue: (r) => r.data_compra },
+    { key: "data_solicitacao", label: "Data de solicitação", type: "date-range", getValue: (r) => r.data_solicitacao },
+    { key: "valor_total", label: "Valor total", type: "number-range", getValue: (r) => r.valor_total },
+  ], []);
+
   const filtered = useMemo(() => {
+    let base = applyKanbanFilters(demandas, filters, filterFields);
     const s = q.toLowerCase().trim();
-    if (!s) return demandas;
-    return demandas.filter((c) => {
+    if (!s) return base;
+    return base.filter((c) => {
       const num = c.numero != null ? `demanda-${c.numero}` : "";
       return [num, String(c.numero ?? ""), c.titulo, c.solicitante, c.fornecedor, c.comprador]
         .some((v) => String(v ?? "").toLowerCase().includes(s));
     });
-  }, [demandas, q]);
+  }, [demandas, q, filters, filterFields]);
 
   const byStatus = useMemo(() => {
     const m: Record<DemandaStatus, Demanda[]> = {} as any;
