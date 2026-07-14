@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FormField, FormSection } from "@/components/FormSection";
 import { SelectCreatable } from "@/components/SelectCreatable";
 import { DbComboboxCreatable } from "@/components/DbComboboxCreatable";
+import { SearchableSelect } from "@/components/SearchableSelect";
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { MentionInput, renderCommentText } from "@/components/MentionInput";
 import { Trash2, Upload, Download, FileIcon, ChevronRight, CheckCircle2, XCircle, Plus } from "lucide-react";
@@ -284,12 +285,13 @@ export function DemandaDialog({
                 </Select>
               </FormField>
               <FormField label="Tipo de Despesa">
-                <Select value={form.tipo_demanda ?? ""} onValueChange={(v) => setForm({ ...form, tipo_demanda: v })}>
-                  <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
-                  <SelectContent>
-                    {TIPO_DEMANDA_OPTIONS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={form.tipo_demanda ?? ""}
+                  onChange={(v) => setForm({ ...form, tipo_demanda: v })}
+                  options={TIPO_DEMANDA_OPTIONS}
+                  placeholder="Selecione…"
+                  searchPlaceholder="Buscar tipo…"
+                />
               </FormField>
               <FormField label="Categoria (DRE)">
                 <Select
