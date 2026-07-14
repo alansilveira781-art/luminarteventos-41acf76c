@@ -416,19 +416,40 @@ function NotaForm({
           </Select>
         </FormField>
         <FormField label="Evento" wide>
-          <Input value={nomeEvento} onChange={(e) => setNomeEvento(e.target.value)} placeholder="Nome do evento vinculado" />
+          <EventoSheetCombobox value={nomeEvento} onChange={(v) => setNomeEvento(v ?? "")} />
         </FormField>
         <FormField label="Tipo de serviço" wide>
           <Input value={tipoServico} onChange={(e) => setTipoServico(e.target.value)} placeholder="Ex.: Locação cenografia, Desenvolvimento de software…" />
         </FormField>
+        <FormField label="Tomador cadastrado" wide>
+          <EntitySearchSelect
+            options={(tomadores ?? []).map((t) => ({ id: t.id, nome: t.nome, documento: t.documento ?? undefined, email: t.email ?? undefined }))}
+            value={tomadorId}
+            onChange={handleSelectTomador}
+            placeholder="Selecione um tomador cadastrado (ou preencha abaixo)…"
+            searchPlaceholder="Buscar por nome, documento…"
+          />
+        </FormField>
         <FormField label="Tomador*">
-          <Input value={tomadorNome} onChange={(e) => setTomadorNome(e.target.value)} required />
+          <Input value={tomadorNome} onChange={(e) => { setTomadorNome(e.target.value); setTomadorId(""); }} required />
         </FormField>
         <FormField label="CNPJ/CPF do tomador">
-          <Input value={tomadorDoc} onChange={(e) => setTomadorDoc(e.target.value)} />
+          <div className="flex gap-2">
+            <Input value={tomadorDoc} onChange={(e) => { setTomadorDoc(e.target.value); setTomadorId(""); }} />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              title="Salvar como tomador cadastrado"
+              disabled={salvarTomadorMut.isPending || !tomadorNome.trim()}
+              onClick={() => salvarTomadorMut.mutate()}
+            >
+              <Save className="h-4 w-4" />
+            </Button>
+          </div>
         </FormField>
         <FormField label="E-mail do tomador" wide>
-          <Input type="email" value={tomadorEmail} onChange={(e) => setTomadorEmail(e.target.value)} />
+          <Input type="email" value={tomadorEmail} onChange={(e) => { setTomadorEmail(e.target.value); setTomadorId(""); }} />
         </FormField>
         <FormField label="Valor bruto (R$)*">
           <MoneyInput value={Number(valorBruto || 0)} onChange={(n) => setValorBruto(n ? String(n) : "")} />
