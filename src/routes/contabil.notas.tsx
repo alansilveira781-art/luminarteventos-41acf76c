@@ -276,9 +276,11 @@ function NotaForm({
   onSubmit: (p: any) => void;
   submitting: boolean;
 }) {
+  const qc = useQueryClient();
   const [empresa, setEmpresa] = useState<string>(initial?.empresa ?? EMPRESAS[0]);
   const [numero, setNumero] = useState(initial?.numero ?? "");
   const [tipoServico, setTipoServico] = useState(initial?.tipo_servico ?? "");
+  const [tomadorId, setTomadorId] = useState<string>("");
   const [tomadorNome, setTomadorNome] = useState(initial?.tomador_nome ?? "");
   const [tomadorDoc, setTomadorDoc] = useState(initial?.tomador_documento ?? "");
   const [tomadorEmail, setTomadorEmail] = useState(initial?.tomador_email ?? "");
@@ -287,6 +289,57 @@ function NotaForm({
   const [dataEmissao, setDataEmissao] = useState(initial?.data_emissao ?? format(new Date(), "yyyy-MM-dd"));
   const [status, setStatus] = useState(initial?.status ?? "rascunho");
   const [observacoes, setObservacoes] = useState(initial?.observacoes ?? "");
+
+  const { data: tomadores } = useQuery({
+    queryKey: ["contabil-tomadores"],
+    queryFn: async () => {
+      const { data, error } = await sb
+        .from("contabil_tomadores")
+        .select("id, nome, documento, email, telefone")
+        .order("nome", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; nome: string; documento: string | null; email: string | null; telefone: string | null }>;
+    },
+  });
+
+  const salvarTomadorMut = useMutation({
+    mutationFn: async () => {
+      if (!tomadorNome.trim()) throw new Error("Informe o nome do tomador");
+      const payload = {
+        nome: tomadorNome.trim(),
+        documento: tomadorDoc?.trim() || null,
+        email: tomadorEmail?.trim() || null,
+      };
+      const doc = payload.documento;
+      if (doc) {
+        const existing = (tomadores ?? []).find((t) => (t.documento ?? "").trim() === doc);
+        if (existing) {
+          const { error } = await sb.from("contabil_tomadores").update(payload).eq("id", existing.id);
+          if (error) throw error;
+          return existing.id;
+        }
+      }
+      const { data, error } = await sb.from("contabil_tomadores").insert(payload).select("id").single();
+      if (error) throw error;
+      return data.id as string;
+    },
+    onSuccess: (id) => {
+      qc.invalidateQueries({ queryKey: ["contabil-tomadores"] });
+      setTomadorId(id);
+      toast.success("Tomador salvo no cadastro");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  function handleSelectTomador(id: string) {
+    setTomadorId(id);
+    const t = (tomadores ?? []).find((x) => x.id === id);
+    if (t) {
+      setTomadorNome(t.nome);
+      setTomadorDoc(t.documento ?? "");
+      setTomadorEmail(t.email ?? "");
+    }
+  }
 
   const regime = EMPRESA_REGIME[empresa as Empresa];
   const aliquotasEmpresa: Aliquota[] = useMemo(() => {
