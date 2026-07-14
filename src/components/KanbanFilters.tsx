@@ -79,9 +79,10 @@ export function KanbanFilters<T>({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [editingKey, setEditingKey] = useState<string | null>(null);
 
-  const activeEntries = Object.entries(value).filter(([, v]) => isActive(v));
-  const activeKeys = new Set(activeEntries.map(([k]) => k));
-  const availableFields = fields.filter((f) => !activeKeys.has(f.key));
+  const allEntries = Object.entries(value);
+  const usedKeys = new Set(allEntries.map(([k]) => k));
+  const availableFields = fields.filter((f) => !usedKeys.has(f.key));
+
 
   function startField(f: FieldDef<T>) {
     const init: FilterValue =
@@ -140,7 +141,7 @@ export function KanbanFilters<T>({
         </PopoverContent>
       </Popover>
 
-      {activeEntries.map(([key, val]) => {
+      {allEntries.map(([key, val]) => {
         const f = fields.find((x) => x.key === key);
         if (!f) return null;
         const summary = summarize(f, val);
@@ -177,7 +178,7 @@ export function KanbanFilters<T>({
         );
       })}
 
-      {activeEntries.length > 0 && (
+      {allEntries.length > 0 && (
         <Button variant="ghost" size="sm" className="h-9 text-xs" onClick={clearAll}>
           Limpar
         </Button>
@@ -188,7 +189,8 @@ export function KanbanFilters<T>({
 
 function summarize<T>(f: FieldDef<T>, v: FilterValue): string {
   if (v.type === "multi") {
-    if (v.values.length === 0) return "—";
+    if (v.values.length === 0) return "Selecionar…";
+
     const fmt = (s: string) => (s === "__empty__" ? "(vazio)" : f.formatValue ? f.formatValue(s) : s);
     if (v.values.length <= 2) return v.values.map(fmt).join(", ");
     return `${v.values.length} selecionados`;
@@ -199,7 +201,8 @@ function summarize<T>(f: FieldDef<T>, v: FilterValue): string {
     if (from && to) return `${from} → ${to}`;
     if (from) return `a partir de ${from}`;
     if (to) return `até ${to}`;
-    return "—";
+    return "Definir período…";
+
   }
   if (v.type === "number-range") {
     const min = v.min != null ? v.min.toLocaleString("pt-BR") : "";
@@ -207,7 +210,7 @@ function summarize<T>(f: FieldDef<T>, v: FilterValue): string {
     if (min && max) return `${min} – ${max}`;
     if (min) return `≥ ${min}`;
     if (max) return `≤ ${max}`;
-    return "—";
+    return "Definir intervalo…";
   }
   return "";
 }
