@@ -10,6 +10,8 @@ import { DemandaDialog } from "@/components/DemandaDialog";
 import { AvancarCardDialog } from "@/components/AvancarCardDialog";
 import { notifyResponsavel } from "@/lib/notify";
 import { DEMANDA_STATUSES, TIPOS_QUE_VAO_PARA_ESTOQUE, proximoStatusDemanda, type DemandaStatus } from "@/lib/demandas";
+import { KanbanFilters, applyKanbanFilters, type FieldDef, type Filters } from "@/components/KanbanFilters";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import {
   DndContext,
   PointerSensor,
@@ -49,6 +51,7 @@ function DemandasKanban() {
   const [editId, setEditId] = useState<string | null>(null);
   const [defaultStatus, setDefaultStatus] = useState<DemandaStatus>("solicitacao");
   const [q, setQ] = useState("");
+  const [filters, setFilters] = usePersistedState<Filters>("demandas.kanban", {});
   const [pendingMove, setPendingMove] = useState<{ id: string; status: DemandaStatus; titulo: string } | null>(null);
 
   // Abre o card automaticamente quando a URL tem ?id=...
@@ -99,15 +102,28 @@ function DemandasKanban() {
     },
   });
 
+  const filterFields = useMemo<FieldDef<Demanda>[]>(() => [
+    { key: "status", label: "Status", type: "multi", getValue: (r) => r.status, formatValue: (v) => DEMANDA_STATUSES.find((s) => s.key === v)?.label ?? v },
+    { key: "fornecedor", label: "Fornecedor", type: "multi", getValue: (r) => r.fornecedor },
+    { key: "solicitante", label: "Solicitante", type: "multi", getValue: (r) => r.solicitante },
+    { key: "comprador", label: "Comprador", type: "multi", getValue: (r) => r.comprador },
+    { key: "responsavel_nome", label: "Responsável", type: "multi", getValue: (r) => r.responsavel_nome },
+    { key: "tipo_demanda", label: "Tipo", type: "multi", getValue: (r) => r.tipo_demanda },
+    { key: "data_compra", label: "Data de compra/serviço", type: "date-range", getValue: (r) => r.data_compra },
+    { key: "data_solicitacao", label: "Data de solicitação", type: "date-range", getValue: (r) => r.data_solicitacao },
+    { key: "valor_total", label: "Valor total", type: "number-range", getValue: (r) => r.valor_total },
+  ], []);
+
   const filtered = useMemo(() => {
+    let base = applyKanbanFilters(demandas, filters, filterFields);
     const s = q.toLowerCase().trim();
-    if (!s) return demandas;
-    return demandas.filter((c) => {
+    if (!s) return base;
+    return base.filter((c) => {
       const num = c.numero != null ? `demanda-${c.numero}` : "";
       return [num, String(c.numero ?? ""), c.titulo, c.solicitante, c.fornecedor, c.comprador]
         .some((v) => String(v ?? "").toLowerCase().includes(s));
     });
-  }, [demandas, q]);
+  }, [demandas, q, filters, filterFields]);
 
   const byStatus = useMemo(() => {
     const m: Record<DemandaStatus, Demanda[]> = {} as any;
@@ -217,14 +233,17 @@ function DemandasKanban() {
         }
       />
 
-      <div className="mb-3 relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar por código, título, fornecedor, solicitante…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          className="pl-9"
-        />
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative w-full sm:max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por código, título, fornecedor, solicitante…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <KanbanFilters rows={demandas} fields={filterFields} value={filters} onChange={setFilters} />
       </div>
 
       {q.trim() ? (

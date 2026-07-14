@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { usePersistedState } from "@/hooks/usePersistedState";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Plus, Search, ChevronRight } from "lucide-react";
 import { CompraDialog } from "@/components/CompraDialog";
 import { COMPRA_STATUSES, canMoveCompra, moveBlockedMessage, nextCompraStatus, PEDRO_EMAIL, PEDRO_MOVE_BLOCKED_MSG, type CompraStatus } from "@/lib/compras";
+import { KanbanFilters, applyKanbanFilters, type FieldDef, type Filters } from "@/components/KanbanFilters";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   DndContext,
@@ -58,6 +60,7 @@ function ComprasKanban() {
   const [editId, setEditId] = useState<string | null>(null);
   const [defaultStatus, setDefaultStatus] = useState<CompraStatus>("solicitacao");
   const [q, setQ] = useState<string>(""); const qd = useDebouncedValue(q, 300);
+  const [filters, setFilters] = usePersistedState<Filters>("compras.kanban", {});
 
   // Abre o card automaticamente quando a URL tem ?id=...
   useEffect(() => {
@@ -110,15 +113,30 @@ function ComprasKanban() {
       : `Apenas o responsável pelo status atual pode mover para "${targetLabel}".`;
   };
 
+  const filterFields = useMemo<FieldDef<Compra>[]>(() => [
+    { key: "status", label: "Status", type: "multi", getValue: (r) => r.status, formatValue: (v) => COMPRA_STATUSES.find((s) => s.key === v)?.label ?? v },
+    { key: "fornecedor", label: "Fornecedor", type: "multi", getValue: (r) => r.fornecedor },
+    { key: "solicitante", label: "Solicitante", type: "multi", getValue: (r) => r.solicitante },
+    { key: "comprador", label: "Comprador", type: "multi", getValue: (r) => r.comprador },
+    { key: "responsavel_nome", label: "Responsável", type: "multi", getValue: (r) => r.responsavel_nome },
+    { key: "tipo_compra", label: "Tipo", type: "multi", getValue: (r) => r.tipo_compra },
+    { key: "empresa_faturada", label: "Empresa faturada", type: "multi", getValue: (r) => (r as any).empresa_faturada },
+    { key: "tem_nf", label: "Tem NF", type: "multi", getValue: (r) => ((r as any).tem_nf === false ? "Não" : (r as any).tem_nf === true ? "Sim" : null) },
+    { key: "data_compra", label: "Data de compra", type: "date-range", getValue: (r) => r.data_compra },
+    { key: "data_servico", label: "Data de serviço", type: "date-range", getValue: (r) => r.data_servico },
+    { key: "valor_total", label: "Valor total", type: "number-range", getValue: (r) => r.valor_total },
+  ], []);
+
   const filteredCompras = useMemo(() => {
+    let base = applyKanbanFilters(compras, filters, filterFields);
     const s = qd.toLowerCase().trim();
-    if (!s) return compras;
-    return compras.filter((c) => {
+    if (!s) return base;
+    return base.filter((c) => {
       const num = c.numero != null ? `compra-${c.numero}` : "";
       return [num, String(c.numero ?? ""), c.titulo, c.solicitante, c.fornecedor, c.comprador]
         .some((v) => String(v ?? "").toLowerCase().includes(s));
     });
-  }, [compras, qd]);
+  }, [compras, qd, filters, filterFields]);
 
   const byStatus = useMemo(() => {
     const m: Record<CompraStatus, Compra[]> = {} as any;
@@ -288,14 +306,17 @@ function ComprasKanban() {
         }
       />
 
-      <div className="mb-3 relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar por código (ex: 12), título, fornecedor, solicitante…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          className="pl-9"
-        />
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative w-full sm:max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por código (ex: 12), título, fornecedor, solicitante…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <KanbanFilters rows={compras} fields={filterFields} value={filters} onChange={setFilters} />
       </div>
 
       {q.trim() ? (
