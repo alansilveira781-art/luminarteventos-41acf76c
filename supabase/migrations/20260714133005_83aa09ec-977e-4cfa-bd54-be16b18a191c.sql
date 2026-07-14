@@ -1,0 +1,1 @@
+ALTER TABLE public.contabil_recebimentos ADD COLUMN IF NOT EXISTS nome_evento text;

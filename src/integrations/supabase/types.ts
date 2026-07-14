@@ -1839,6 +1839,7 @@ export type Database = {
           data_recebimento: string
           empresa: string
           id: string
+          nome_evento: string | null
           nota_id: string | null
           numero_nf: string | null
           observacoes: string | null
@@ -1852,6 +1853,7 @@ export type Database = {
           data_recebimento: string
           empresa: string
           id?: string
+          nome_evento?: string | null
           nota_id?: string | null
           numero_nf?: string | null
           observacoes?: string | null
@@ -1865,6 +1867,7 @@ export type Database = {
           data_recebimento?: string
           empresa?: string
           id?: string
+          nome_evento?: string | null
           nota_id?: string | null
           numero_nf?: string | null
           observacoes?: string | null
