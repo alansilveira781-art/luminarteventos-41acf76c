@@ -210,7 +210,7 @@ function summarize<T>(f: FieldDef<T>, v: FilterValue): string {
     if (min && max) return `${min} – ${max}`;
     if (min) return `≥ ${min}`;
     if (max) return `≤ ${max}`;
-    return "—";
+    return "Definir intervalo…";
   }
   return "";
 }
