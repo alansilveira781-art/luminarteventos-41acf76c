@@ -113,15 +113,30 @@ function ComprasKanban() {
       : `Apenas o responsável pelo status atual pode mover para "${targetLabel}".`;
   };
 
+  const filterFields = useMemo<FieldDef<Compra>[]>(() => [
+    { key: "status", label: "Status", type: "multi", getValue: (r) => r.status, formatValue: (v) => COMPRA_STATUSES.find((s) => s.key === v)?.label ?? v },
+    { key: "fornecedor", label: "Fornecedor", type: "multi", getValue: (r) => r.fornecedor },
+    { key: "solicitante", label: "Solicitante", type: "multi", getValue: (r) => r.solicitante },
+    { key: "comprador", label: "Comprador", type: "multi", getValue: (r) => r.comprador },
+    { key: "responsavel_nome", label: "Responsável", type: "multi", getValue: (r) => r.responsavel_nome },
+    { key: "tipo_compra", label: "Tipo", type: "multi", getValue: (r) => r.tipo_compra },
+    { key: "empresa_faturada", label: "Empresa faturada", type: "multi", getValue: (r) => (r as any).empresa_faturada },
+    { key: "tem_nf", label: "Tem NF", type: "multi", getValue: (r) => ((r as any).tem_nf === false ? "Não" : (r as any).tem_nf === true ? "Sim" : null) },
+    { key: "data_compra", label: "Data de compra", type: "date-range", getValue: (r) => r.data_compra },
+    { key: "data_servico", label: "Data de serviço", type: "date-range", getValue: (r) => r.data_servico },
+    { key: "valor_total", label: "Valor total", type: "number-range", getValue: (r) => r.valor_total },
+  ], []);
+
   const filteredCompras = useMemo(() => {
+    let base = applyKanbanFilters(compras, filters, filterFields);
     const s = qd.toLowerCase().trim();
-    if (!s) return compras;
-    return compras.filter((c) => {
+    if (!s) return base;
+    return base.filter((c) => {
       const num = c.numero != null ? `compra-${c.numero}` : "";
       return [num, String(c.numero ?? ""), c.titulo, c.solicitante, c.fornecedor, c.comprador]
         .some((v) => String(v ?? "").toLowerCase().includes(s));
     });
-  }, [compras, qd]);
+  }, [compras, qd, filters, filterFields]);
 
   const byStatus = useMemo(() => {
     const m: Record<CompraStatus, Compra[]> = {} as any;
