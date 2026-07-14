@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMemo, useState } from "react";
+import { subMonths } from "date-fns";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,9 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { EMPRESAS, EMPRESA_REGIME, REGIME_LABEL, IMPOSTOS_POR_REGIME, type Empresa } from "@/lib/empresas";
 import { calcularImpostosPresumido, type Aliquota } from "@/lib/contabil/calculo";
+import { SortableTh, useSort } from "@/components/SortableTh";
+import { PeriodoFilter, periodoDoMes, filterByPeriodo, type Periodo, type PeriodoPreset } from "@/components/PeriodoFilter";
+import { usePersistedState } from "@/hooks/usePersistedState";
 
 const sb = supabase as any;
 
@@ -31,6 +35,7 @@ type Nota = {
   tomador_nome: string;
   tomador_documento: string | null;
   tomador_email: string | null;
+  nome_evento: string | null;
   valor_bruto: number;
   valor_liquido: number | null;
   impostos: Record<string, number> | null;
@@ -46,6 +51,8 @@ const STATUS_LABEL: Record<string, string> = {
   cancelada: "Cancelada",
 };
 
+const MES_ANTERIOR = periodoDoMes(subMonths(new Date(), 1));
+
 function NotasFiscaisPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -53,6 +60,9 @@ function NotasFiscaisPage() {
   const [q, setQ] = useState("");
   const [filtroEmpresa, setFiltroEmpresa] = useState<string>("__all");
   const [filtroStatus, setFiltroStatus] = useState<string>("__all");
+  const [periodoPreset, setPeriodoPreset] = usePersistedState<PeriodoPreset>("contabil-notas-preset", "mes");
+  const [periodo, setPeriodo] = useState<Periodo>(MES_ANTERIOR);
+  const { sort, toggleSort, applySort } = useSort();
 
   const { data: notas } = useQuery({
     queryKey: ["contabil-notas"],
@@ -88,15 +98,20 @@ function NotasFiscaisPage() {
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return (notas ?? []).filter((n) => {
+    let rows = (notas ?? []).filter((n) => {
       if (filtroEmpresa !== "__all" && n.empresa !== filtroEmpresa) return false;
       if (filtroStatus !== "__all" && n.status !== filtroStatus) return false;
       if (!s) return true;
-      return [n.numero, n.tomador_nome, n.tomador_documento, n.tipo_servico]
+      return [n.numero, n.tomador_nome, n.tomador_documento, n.tipo_servico, n.nome_evento]
         .filter(Boolean)
         .some((x) => String(x).toLowerCase().includes(s));
     });
-  }, [notas, q, filtroEmpresa, filtroStatus]);
+    rows = filterByPeriodo(rows, periodo, (n) => n.data_emissao);
+    return applySort(rows as any, (n: any, k) => {
+      if (k === "tomador") return n.tomador_nome;
+      return n[k];
+    });
+  }, [notas, q, filtroEmpresa, filtroStatus, periodo, sort, applySort]);
 
   const upsertMut = useMutation({
     mutationFn: async (p: Partial<Nota> & { id?: string }) => {
@@ -150,7 +165,7 @@ function NotasFiscaisPage() {
         <div className="relative flex-1 min-w-[240px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por número, tomador, serviço…"
+            placeholder="Buscar por número, tomador, serviço, evento…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             className="pl-9"
@@ -170,27 +185,33 @@ function NotasFiscaisPage() {
             {STATUS.map((s) => <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>)}
           </SelectContent>
         </Select>
+        <PeriodoFilter
+          preset={periodoPreset}
+          periodo={periodo}
+          onChange={(p, per) => { setPeriodoPreset(p); setPeriodo(per); }}
+        />
       </Card>
 
       <Card className="overflow-hidden">
         <div className="overflow-auto max-h-[calc(100vh-260px)]">
           <table className="min-w-full text-sm">
             <thead className="bg-muted/40">
-              <tr className="text-left text-xs uppercase text-muted-foreground">
-                <th className="px-4 py-3">Data</th>
-                <th className="px-4 py-3">Número</th>
-                <th className="px-4 py-3">Empresa</th>
-                <th className="px-4 py-3">Tomador</th>
-                <th className="px-4 py-3">Serviço</th>
-                <th className="px-4 py-3 text-right">Bruto</th>
-                <th className="px-4 py-3 text-right">Líquido</th>
-                <th className="px-4 py-3">Status</th>
+              <tr className="text-xs uppercase text-muted-foreground">
+                <SortableTh sort={sort} onToggle={toggleSort} k="data_emissao" label="Data" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="numero" label="Número" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="empresa" label="Empresa" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="tomador" label="Tomador" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="nome_evento" label="Evento" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="tipo_servico" label="Serviço" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="valor_bruto" label="Bruto" align="right" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="valor_liquido" label="Líquido" align="right" />
+                <SortableTh sort={sort} onToggle={toggleSort} k="status" label="Status" />
                 <th className="px-4 py-3 text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-8 text-muted-foreground">Nenhuma nota encontrada.</td></tr>
+                <tr><td colSpan={10} className="text-center py-8 text-muted-foreground">Nenhuma nota encontrada.</td></tr>
               ) : filtered.map((n) => (
                 <tr key={n.id} className="border-t border-border hover:bg-muted/30">
                   <td className="px-4 py-3 whitespace-nowrap">{n.data_emissao ? format(new Date(n.data_emissao), "dd/MM/yyyy") : "—"}</td>
@@ -200,6 +221,7 @@ function NotasFiscaisPage() {
                     <div>{n.tomador_nome}</div>
                     {n.tomador_documento && <div className="text-xs text-muted-foreground">{n.tomador_documento}</div>}
                   </td>
+                  <td className="px-4 py-3">{n.nome_evento ?? "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">{n.tipo_servico ?? "—"}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{fmtBRL(Number(n.valor_bruto || 0))}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{n.valor_liquido != null ? fmtBRL(Number(n.valor_liquido)) : "—"}</td>
@@ -258,6 +280,7 @@ function NotaForm({
   const [tomadorNome, setTomadorNome] = useState(initial?.tomador_nome ?? "");
   const [tomadorDoc, setTomadorDoc] = useState(initial?.tomador_documento ?? "");
   const [tomadorEmail, setTomadorEmail] = useState(initial?.tomador_email ?? "");
+  const [nomeEvento, setNomeEvento] = useState(initial?.nome_evento ?? "");
   const [valorBruto, setValorBruto] = useState<string>(initial ? String(initial.valor_bruto) : "");
   const [dataEmissao, setDataEmissao] = useState(initial?.data_emissao ?? format(new Date(), "yyyy-MM-dd"));
   const [status, setStatus] = useState(initial?.status ?? "rascunho");
@@ -303,6 +326,7 @@ function NotaForm({
           tomador_nome: tomadorNome,
           tomador_documento: tomadorDoc || null,
           tomador_email: tomadorEmail || null,
+          nome_evento: nomeEvento || null,
           valor_bruto: valorBrutoNum,
           valor_liquido: valorLiquido,
           impostos: impostosCalc,
@@ -335,6 +359,9 @@ function NotaForm({
               {STATUS.map((s) => <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>)}
             </SelectContent>
           </Select>
+        </FormField>
+        <FormField label="Evento" wide>
+          <Input value={nomeEvento} onChange={(e) => setNomeEvento(e.target.value)} placeholder="Nome do evento vinculado" />
         </FormField>
         <FormField label="Tipo de serviço" wide>
           <Input value={tipoServico} onChange={(e) => setTipoServico(e.target.value)} placeholder="Ex.: Locação cenografia, Desenvolvimento de software…" />

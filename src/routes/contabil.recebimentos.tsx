@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMemo, useState } from "react";
+import { subMonths } from "date-fns";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,9 @@ import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { EMPRESAS } from "@/lib/empresas";
+import { SortableTh, useSort } from "@/components/SortableTh";
+import { PeriodoFilter, periodoDoMes, filterByPeriodo, type Periodo, type PeriodoPreset } from "@/components/PeriodoFilter";
+import { usePersistedState } from "@/hooks/usePersistedState";
 
 const sb = supabase as any;
 
@@ -27,6 +31,7 @@ type Recebimento = {
   empresa: string;
   nota_id: string | null;
   numero_nf: string | null;
+  nome_evento: string | null;
   data_recebimento: string;
   valor_recebido: number;
   banco: string | null;
@@ -38,11 +43,16 @@ type NotaOpt = { id: string; numero: string | null; empresa: string; valor_bruto
 const fmtBRL = (v: number) =>
   Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+const MES_ANTERIOR = periodoDoMes(subMonths(new Date(), 1));
+
 function RecebimentosPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Recebimento | null>(null);
   const [filtroEmpresa, setFiltroEmpresa] = useState<string>("__all");
+  const [periodoPreset, setPeriodoPreset] = usePersistedState<PeriodoPreset>("contabil-recebimentos-preset", "mes");
+  const [periodo, setPeriodo] = useState<Periodo>(MES_ANTERIOR);
+  const { sort, toggleSort, applySort } = useSort();
 
   const { data: recebimentos } = useQuery({
     queryKey: ["contabil-recebimentos"],
@@ -74,10 +84,15 @@ function RecebimentosPage() {
     return m;
   }, [notas]);
 
-  const filtered = useMemo(
-    () => (recebimentos ?? []).filter((r) => filtroEmpresa === "__all" || r.empresa === filtroEmpresa),
-    [recebimentos, filtroEmpresa],
-  );
+  const filtered = useMemo(() => {
+    let rows = (recebimentos ?? []).filter((r) => filtroEmpresa === "__all" || r.empresa === filtroEmpresa);
+    rows = filterByPeriodo(rows, periodo, (r) => r.data_recebimento);
+    return applySort(rows as any, (r: any, k) => {
+      if (k === "evento") return r.nome_evento ?? notasMap.get(r.nota_id ?? "")?.nome_evento ?? "";
+      if (k === "numero_nf") return r.numero_nf ?? notasMap.get(r.nota_id ?? "")?.numero ?? "";
+      return r[k];
+    });
+  }, [recebimentos, filtroEmpresa, periodo, sort, notasMap, applySort]);
 
   const totalFiltrado = filtered.reduce((s, r) => s + Number(r.valor_recebido || 0), 0);
 
@@ -135,30 +150,37 @@ function RecebimentosPage() {
         }
       />
 
-      <Card className="p-4 mb-4">
-        <FormSection>
-          <FormField label="Empresa">
-            <Select value={filtroEmpresa} onValueChange={setFiltroEmpresa}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">Todas</SelectItem>
-                {EMPRESAS.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </FormField>
-        </FormSection>
+      <Card className="p-4 mb-4 flex flex-wrap items-end gap-3">
+        <div className="min-w-[180px]">
+          <div className="text-xs uppercase text-muted-foreground mb-1">Empresa</div>
+          <Select value={filtroEmpresa} onValueChange={setFiltroEmpresa}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todas</SelectItem>
+              {EMPRESAS.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <div className="text-xs uppercase text-muted-foreground mb-1">Período</div>
+          <PeriodoFilter
+            preset={periodoPreset}
+            periodo={periodo}
+            onChange={(p, per) => { setPeriodoPreset(p); setPeriodo(per); }}
+          />
+        </div>
       </Card>
 
       <Card className="overflow-hidden">
         <table className="min-w-full text-sm">
           <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
             <tr>
-              <th className="px-4 py-2 text-left">Data</th>
-              <th className="px-4 py-2 text-left">Empresa</th>
-              <th className="px-4 py-2 text-left">Nº NF</th>
-              <th className="px-4 py-2 text-left">Evento</th>
-              <th className="px-4 py-2 text-left">Banco</th>
-              <th className="px-4 py-2 text-right">Valor recebido</th>
+              <SortableTh sort={sort} onToggle={toggleSort} k="data_recebimento" label="Data" />
+              <SortableTh sort={sort} onToggle={toggleSort} k="empresa" label="Empresa" />
+              <SortableTh sort={sort} onToggle={toggleSort} k="numero_nf" label="Nº NF" />
+              <SortableTh sort={sort} onToggle={toggleSort} k="evento" label="Evento" />
+              <SortableTh sort={sort} onToggle={toggleSort} k="banco" label="Banco" />
+              <SortableTh sort={sort} onToggle={toggleSort} k="valor_recebido" label="Valor recebido" align="right" />
               <th className="px-4 py-2 text-right">Ações</th>
             </tr>
           </thead>
@@ -167,12 +189,14 @@ function RecebimentosPage() {
               <tr><td colSpan={7} className="text-center py-6 text-muted-foreground text-xs">Nenhum recebimento registrado.</td></tr>
             ) : filtered.map((r) => {
               const nota = r.nota_id ? notasMap.get(r.nota_id) : null;
+              const evento = r.nome_evento ?? nota?.nome_evento ?? "—";
+              const numeroNF = r.numero_nf ?? nota?.numero ?? "—";
               return (
                 <tr key={r.id} className="border-t border-border hover:bg-muted/30">
                   <td className="px-4 py-2 text-xs">{format(new Date(r.data_recebimento), "dd/MM/yyyy")}</td>
                   <td className="px-4 py-2">{r.empresa}</td>
-                  <td className="px-4 py-2 font-mono text-xs">{r.numero_nf ?? nota?.numero ?? "—"}</td>
-                  <td className="px-4 py-2">{nota?.nome_evento ?? "—"}</td>
+                  <td className="px-4 py-2 font-mono text-xs">{numeroNF}</td>
+                  <td className="px-4 py-2">{evento}</td>
                   <td className="px-4 py-2 text-xs">{r.banco ?? "—"}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{fmtBRL(Number(r.valor_recebido))}</td>
                   <td className="px-4 py-2 text-right">
@@ -233,6 +257,7 @@ function RecebimentoForm({
   const [data, setData] = useState<string>(initial?.data_recebimento ?? new Date().toISOString().slice(0, 10));
   const [valor, setValor] = useState<string>(String(initial?.valor_recebido ?? ""));
   const [banco, setBanco] = useState<string>(initial?.banco ?? "");
+  const [evento, setEvento] = useState<string>(initial?.nome_evento ?? "");
   const [obs, setObs] = useState<string>(initial?.observacoes ?? "");
 
   // Soma já recebida por nota (excluindo o registro em edição)
@@ -262,6 +287,7 @@ function RecebimentoForm({
         const ja = recebidoPorNota.get(n.id) ?? 0;
         const rest = +(Number(n.valor_bruto) - ja).toFixed(2);
         if (!valor || Number(valor) === 0) setValor(String(Math.max(0, rest)));
+        if (!evento && n.nome_evento) setEvento(n.nome_evento);
       }
     }
   }
@@ -285,6 +311,7 @@ function RecebimentoForm({
       data_recebimento: data,
       valor_recebido: Number(valor),
       banco: banco.trim() || null,
+      nome_evento: evento.trim() || null,
       observacoes: obs.trim() || null,
     });
   }
@@ -336,6 +363,9 @@ function RecebimentoForm({
         </FormField>
         <FormField label="Banco">
           <Input value={banco} onChange={(e) => setBanco(e.target.value)} placeholder="Ex.: Itaú" />
+        </FormField>
+        <FormField label="Evento" wide>
+          <Input value={evento} onChange={(e) => setEvento(e.target.value)} placeholder="Nome do evento" />
         </FormField>
       </FormSection>
       <FormField label="Observações">
