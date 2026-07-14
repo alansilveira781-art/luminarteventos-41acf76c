@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { usePersistedState } from "@/hooks/usePersistedState";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Plus, Search, ChevronRight } from "lucide-react";
 import { CompraDialog } from "@/components/CompraDialog";
 import { COMPRA_STATUSES, canMoveCompra, moveBlockedMessage, nextCompraStatus, PEDRO_EMAIL, PEDRO_MOVE_BLOCKED_MSG, type CompraStatus } from "@/lib/compras";
+import { KanbanFilters, applyKanbanFilters, type FieldDef, type Filters } from "@/components/KanbanFilters";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   DndContext,
