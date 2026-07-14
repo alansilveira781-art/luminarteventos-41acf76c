@@ -284,12 +284,13 @@ export function DemandaDialog({
                 </Select>
               </FormField>
               <FormField label="Tipo de Despesa">
-                <Select value={form.tipo_demanda ?? ""} onValueChange={(v) => setForm({ ...form, tipo_demanda: v })}>
-                  <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
-                  <SelectContent>
-                    {TIPO_DEMANDA_OPTIONS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={form.tipo_demanda ?? ""}
+                  onChange={(v) => setForm({ ...form, tipo_demanda: v })}
+                  options={TIPO_DEMANDA_OPTIONS}
+                  placeholder="Selecione…"
+                  searchPlaceholder="Buscar tipo…"
+                />
               </FormField>
               <FormField label="Categoria (DRE)">
                 <Select
