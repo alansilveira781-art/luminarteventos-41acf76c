@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FormField, FormSection, FormActions } from "@/components/FormSection";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Save } from "lucide-react";
 import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -20,6 +20,8 @@ import { calcularImpostosPresumido, type Aliquota } from "@/lib/contabil/calculo
 import { SortableTh, useSort } from "@/components/SortableTh";
 import { PeriodoFilter, periodoDoMes, filterByPeriodo, type Periodo, type PeriodoPreset } from "@/components/PeriodoFilter";
 import { usePersistedState } from "@/hooks/usePersistedState";
+import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
+import { EntitySearchSelect } from "@/components/EntitySearchSelect";
 
 const sb = supabase as any;
 
