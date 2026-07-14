@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormField, FormSection } from "@/components/FormSection";
-import { Trash2, Save } from "lucide-react";
+import { Trash2, Save, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { EMPRESAS } from "@/lib/empresas";
