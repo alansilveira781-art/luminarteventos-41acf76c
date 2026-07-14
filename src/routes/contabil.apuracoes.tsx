@@ -254,13 +254,17 @@ function ApuracoesPage() {
                 (recebimentos ?? []).length === 0 ? (
                   <tr><td colSpan={4} className="text-center py-6 text-muted-foreground text-xs">Nenhum recebimento no período.</td></tr>
                 ) : (recebimentos ?? []).map((r) => {
-                  const ev = (r.nota_id && notasMap?.map.get(r.nota_id)?.nome_evento)
+                  const notaLinked = r.nota_id ? notasMap?.map.get(r.nota_id) : null;
+                  const numeroNF = r.numero_nf
+                    ?? notaLinked?.numero
+                    ?? "—";
+                  const ev = notaLinked?.nome_evento
                     || (r.numero_nf && notasMap?.byNum.get(String(r.numero_nf))?.nome_evento)
                     || "—";
                   return (
                     <tr key={r.id} className="border-t border-border">
                       <td className="px-4 py-2 text-xs">{format(new Date(r.data_recebimento), "dd/MM/yyyy")}</td>
-                      <td className="px-4 py-2 font-mono text-xs">{r.numero_nf ?? "—"}</td>
+                      <td className="px-4 py-2 font-mono text-xs">{numeroNF}</td>
                       <td className="px-4 py-2">{ev}</td>
                       <td className="px-4 py-2 text-right tabular-nums">{fmtBRL(Number(r.valor_recebido))}</td>
                     </tr>

@@ -1,21 +1,59 @@
-## Mudanças no módulo Despesas — campo "Tipo de Despesa"
 
-### 1. Novas opções
-Adicionar em `src/lib/demandas.ts` → `TIPO_DEMANDA_OPTIONS`:
-- `departamento_pessoal` → "Departamento Pessoal"
-- `recursos_humanos` → "Recursos Humanos"
+## Objetivo
 
-Ambos seguem o fluxo padrão (descritivo livre, sem grid de itens, sem passar por "A Receber").
+Ajustes na aba Contábil (Notas Fiscais, Recebimentos e Apurações).
 
-### 2. Busca digitável no campo
-Hoje o campo em `src/components/DemandaDialog.tsx` usa um `<Select>` puro do shadcn, que não filtra por digitação. Vou trocá-lo por um combobox pesquisável (mesmo padrão já usado no projeto — busca tolerante a acentos via `normalize()`), mantendo:
-- as mesmas opções de `TIPO_DEMANDA_OPTIONS`
-- a mesma lógica de troca de tipo (limpar itens/descritivo conforme `TIPOS_COM_ITENS`)
-- o mesmo valor persistido em `tipo_demanda`
+## 1. Campo Evento nos formulários
 
-Não haverá criação inline (a lista de tipos é fixa no código), apenas filtro por texto.
+**Notas Fiscais (`src/routes/contabil.notas.tsx`)**
+- Adicionar campo "Evento" (input de texto) no `NotaForm`, mapeado para a coluna já existente `nome_evento`. Enviar no payload de insert/update.
+- Exibir uma coluna "Evento" na tabela de notas.
 
-### Fora do escopo
-- Nenhuma migration (coluna `tipo_demanda` é texto livre).
-- Nenhuma alteração em fluxo de estoque/patrimônio/a-receber.
-- Nenhuma alteração em Compras.
+**Recebimentos (`src/routes/contabil.recebimentos.tsx`)**
+- Hoje o evento aparece só derivado da NF vinculada. Adicionar no `RecebimentoForm` um campo "Evento" (input texto) mapeado para uma nova coluna `nome_evento` em `contabil_recebimentos` (migration necessária — coluna text nullable).
+- Ao selecionar uma NF vinculada, pré-preencher com `nota.nome_evento` (permitindo editar).
+- Coluna "Evento" da tabela passa a mostrar `r.nome_evento ?? nota?.nome_evento`.
+
+## 2. Ordenação por clique nas colunas
+
+Usar o utilitário existente `SortableTh` / `useSort` (`src/components/SortableTh.tsx`) que já implementa o ciclo pedido: 1º clique = desc, 2º = asc, 3º = sem ordenação.
+
+Aplicar em:
+- Tabela de Notas Fiscais: Data, Número, Empresa, Tomador, Evento, Bruto, Líquido, Status.
+- Tabela de Recebimentos: Data, Empresa, Nº NF, Evento, Banco, Valor recebido.
+
+## 3. Filtro por mês (default: mês anterior)
+
+Adicionar `PeriodoFilter` (`src/components/PeriodoFilter.tsx`) no topo de **Notas Fiscais** e **Recebimentos**, preset default `mes` com `periodo = periodoDoMes(subMonths(new Date(), 1))` para abrir sempre no **mês anterior ao atual**.
+
+- Notas filtram por `data_emissao`.
+- Recebimentos filtram por `data_recebimento`.
+- Preset persistido via `usePersistedState` para lembrar entre sessões.
+
+## 4. Correção do Nº NF na Apuração
+
+Em `contabil.apuracoes.tsx`, quando o regime é "caixa" a coluna Nº NF só usa `r.numero_nf`, que muitas vezes está em branco quando a NF foi vinculada via `nota_id`. Corrigir para:
+
+```
+r.numero_nf ?? (r.nota_id && notasMap?.map.get(r.nota_id)?.numero) ?? "—"
+```
+
+Mesma lógica já usada para o Evento na mesma tabela. Assim o Nº NF é sempre puxado dos recebimentos (com fallback para a NF vinculada).
+
+## Detalhes técnicos
+
+**Migration**
+```sql
+ALTER TABLE public.contabil_recebimentos ADD COLUMN nome_evento text;
+```
+
+**Arquivos alterados**
+- `src/routes/contabil.notas.tsx` — campo evento no form, coluna evento, SortableTh, PeriodoFilter.
+- `src/routes/contabil.recebimentos.tsx` — campo evento no form, SortableTh, PeriodoFilter, coluna evento com fallback.
+- `src/routes/contabil.apuracoes.tsx` — fallback do Nº NF via `notasMap`.
+- `src/integrations/supabase/types.ts` — regenerado após a migration.
+
+## Fora de escopo
+
+- Cálculo de impostos, alíquotas, regime caixa/competência.
+- Fluxo de outras abas do módulo.
