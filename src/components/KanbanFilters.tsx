@@ -141,7 +141,7 @@ export function KanbanFilters<T>({
         </PopoverContent>
       </Popover>
 
-      {activeEntries.map(([key, val]) => {
+      {allEntries.map(([key, val]) => {
         const f = fields.find((x) => x.key === key);
         if (!f) return null;
         const summary = summarize(f, val);
@@ -178,7 +178,7 @@ export function KanbanFilters<T>({
         );
       })}
 
-      {activeEntries.length > 0 && (
+      {allEntries.length > 0 && (
         <Button variant="ghost" size="sm" className="h-9 text-xs" onClick={clearAll}>
           Limpar
         </Button>
