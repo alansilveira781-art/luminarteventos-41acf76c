@@ -168,6 +168,92 @@ function ApuracoesPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const imprimirRascunho = () => {
+    const rows: Array<{ data: string; nf: string; evento: string; valor: number; banco: string }> = [];
+    if (regime === "caixa") {
+      for (const r of recebimentos ?? []) {
+        const notaLinked = r.nota_id ? notasMap?.map.get(r.nota_id) : null;
+        const nf = String(r.numero_nf ?? notaLinked?.numero ?? "—");
+        const ev = (notaLinked?.nome_evento
+          || (r.numero_nf && notasMap?.byNum.get(String(r.numero_nf))?.nome_evento)
+          || "—") as string;
+        rows.push({
+          data: format(new Date(r.data_recebimento), "dd/MM/yyyy"),
+          nf,
+          evento: ev,
+          valor: Number(r.valor_recebido || 0),
+          banco: r.banco ?? "—",
+        });
+      }
+    } else {
+      for (const n of notasEmitidas ?? []) {
+        rows.push({
+          data: format(new Date(n.data_emissao), "dd/MM/yyyy"),
+          nf: String(n.numero ?? "—"),
+          evento: (n.nome_evento ?? n.tomador_nome ?? "—") as string,
+          valor: Number(n.valor_bruto || 0),
+          banco: "—",
+        });
+      }
+    }
+
+    const esc = (s: string) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+    const impostosRows = (apuracao.itens ?? []).map((i: any) =>
+      `<tr><td>${esc(i.imposto)}</td><td style="text-align:right">${fmtBRL(Number(i.valor || 0))}</td></tr>`
+    ).join("");
+
+    const html = `<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Rascunho de Apuração — ${esc(empresa)} ${esc(mes)}/${ano}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: #111; margin: 24px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .meta { font-size: 12px; color: #444; margin-bottom: 16px; }
+  .meta span { margin-right: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border-bottom: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+  th { background: #f4f4f5; text-transform: uppercase; font-size: 10px; letter-spacing: .04em; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tfoot td { font-weight: 600; border-top: 2px solid #333; }
+  .impostos { margin-top: 20px; max-width: 320px; }
+  .impostos th, .impostos td { border-bottom: 1px solid #eee; }
+  .foot { margin-top: 24px; font-size: 10px; color: #666; }
+  @media print { body { margin: 12mm; } .noprint { display: none; } }
+</style></head><body>
+<h1>Rascunho de Apuração</h1>
+<div class="meta">
+  <span><b>Empresa:</b> ${esc(empresa)}</span>
+  <span><b>Referência:</b> ${esc(mes)}/${ano}</span>
+  <span><b>Regime:</b> ${regime === "caixa" ? "Caixa" : "Competência"}</span>
+  <span><b>Gerado em:</b> ${format(new Date(), "dd/MM/yyyy HH:mm")}</span>
+</div>
+<table>
+  <thead><tr>
+    <th>Data</th><th>Nº NF</th><th>Evento</th><th class="num">Valor</th><th>Banco</th>
+  </tr></thead>
+  <tbody>
+    ${rows.length === 0
+      ? `<tr><td colspan="5" style="text-align:center;padding:16px;color:#666">Nenhum registro no período.</td></tr>`
+      : rows.map(r => `<tr><td>${esc(r.data)}</td><td>${esc(r.nf)}</td><td>${esc(r.evento)}</td><td class="num">${fmtBRL(r.valor)}</td><td>${esc(r.banco)}</td></tr>`).join("")}
+  </tbody>
+  <tfoot><tr>
+    <td colspan="3">Faturamento (${regime === "caixa" ? "caixa" : "competência"})</td>
+    <td class="num">${fmtBRL(faturamento)}</td>
+    <td></td>
+  </tr></tfoot>
+</table>
+${impostosRows ? `<table class="impostos"><thead><tr><th>Imposto</th><th class="num">Valor</th></tr></thead><tbody>${impostosRows}<tr><td><b>Total</b></td><td class="num"><b>${fmtBRL(Number(apuracao.totalImpostos || 0))}</b></td></tr></tbody></table>` : ""}
+<div class="foot">Documento de rascunho — não possui valor fiscal.</div>
+<script>window.onload = () => { window.print(); };</script>
+</body></html>`;
+
+    const w = window.open("", "_blank");
+    if (!w) { toast.error("Bloqueado pelo navegador. Permita pop-ups."); return; }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  };
+
   return (
     <>
       <PageHeader
@@ -176,12 +262,16 @@ function ApuracoesPage() {
         actions={
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground hidden sm:block">Salva no histórico abaixo</span>
+            <Button variant="outline" onClick={imprimirRascunho} title="Abre um relatório para impressão com os filtros atuais">
+              <Printer className="h-4 w-4 mr-1" /> Imprimir rascunho
+            </Button>
             <Button onClick={() => salvarMut.mutate()} disabled={salvarMut.isPending || faturamento <= 0} title="Salva esta apuração no card 'Apurações registradas' abaixo">
               <Save className="h-4 w-4 mr-1" /> Registrar apuração
             </Button>
           </div>
         }
       />
+
 
       <Card className="p-4 mb-4">
         <FormSection>
