@@ -10,6 +10,8 @@ import { DemandaDialog } from "@/components/DemandaDialog";
 import { AvancarCardDialog } from "@/components/AvancarCardDialog";
 import { notifyResponsavel } from "@/lib/notify";
 import { DEMANDA_STATUSES, TIPOS_QUE_VAO_PARA_ESTOQUE, proximoStatusDemanda, type DemandaStatus } from "@/lib/demandas";
+import { KanbanFilters, applyKanbanFilters, type FieldDef, type Filters } from "@/components/KanbanFilters";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import {
   DndContext,
   PointerSensor,
