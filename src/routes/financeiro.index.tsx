@@ -51,6 +51,7 @@ function DemandasKanban() {
   const [editId, setEditId] = useState<string | null>(null);
   const [defaultStatus, setDefaultStatus] = useState<DemandaStatus>("solicitacao");
   const [q, setQ] = useState("");
+  const [filters, setFilters] = usePersistedState<Filters>("demandas.kanban", {});
   const [pendingMove, setPendingMove] = useState<{ id: string; status: DemandaStatus; titulo: string } | null>(null);
 
   // Abre o card automaticamente quando a URL tem ?id=...
