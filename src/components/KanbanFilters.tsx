@@ -79,9 +79,10 @@ export function KanbanFilters<T>({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [editingKey, setEditingKey] = useState<string | null>(null);
 
-  const activeEntries = Object.entries(value).filter(([, v]) => isActive(v));
-  const activeKeys = new Set(activeEntries.map(([k]) => k));
-  const availableFields = fields.filter((f) => !activeKeys.has(f.key));
+  const allEntries = Object.entries(value);
+  const usedKeys = new Set(allEntries.map(([k]) => k));
+  const availableFields = fields.filter((f) => !usedKeys.has(f.key));
+
 
   function startField(f: FieldDef<T>) {
     const init: FilterValue =
