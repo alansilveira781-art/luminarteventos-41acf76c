@@ -189,7 +189,8 @@ export function KanbanFilters<T>({
 
 function summarize<T>(f: FieldDef<T>, v: FilterValue): string {
   if (v.type === "multi") {
-    if (v.values.length === 0) return "—";
+    if (v.values.length === 0) return "Selecionar…";
+
     const fmt = (s: string) => (s === "__empty__" ? "(vazio)" : f.formatValue ? f.formatValue(s) : s);
     if (v.values.length <= 2) return v.values.map(fmt).join(", ");
     return `${v.values.length} selecionados`;
