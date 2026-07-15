@@ -965,9 +965,41 @@ function AnaliseDetalhada() {
     <div className="space-y-4 analise-print-root">
       <style>{`
         @media print {
-          @page { size: A4; margin: 14mm; }
-          body { background: white !important; }
-          .analise-print-root .max-h-\\[600px\\] { max-height: none !important; overflow: visible !important; }
+          @page { size: A4 landscape; margin: 10mm; }
+          html, body { background: white !important; }
+          .analise-print-root, .analise-print-root * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .analise-print-root .max-h-\\[600px\\],
+          .analise-print-root .max-h-\\[300px\\] {
+            max-height: none !important;
+            overflow: visible !important;
+          }
+          .analise-print-root .overflow-hidden { overflow: visible !important; }
+          .analise-print-root .kpi-grid {
+            display: grid !important;
+            grid-template-columns: repeat(5, 1fr) !important;
+            gap: 6px !important;
+          }
+          .analise-print-root .kpi-grid > * {
+            padding: 6px !important;
+            page-break-inside: avoid;
+          }
+          .analise-print-root .print-two-cols {
+            display: grid !important;
+            grid-template-columns: 2fr 3fr !important;
+            gap: 8px !important;
+          }
+          .analise-print-root .print-two-cols > * {
+            grid-column: auto !important;
+          }
+          .analise-print-root {
+            font-size: 9pt;
+          }
+          .analise-print-root .print-header h1 { font-size: 14pt; }
+          .analise-print-root button { break-inside: avoid; page-break-inside: avoid; }
+          .analise-print-root [class*="grid-cols-["] > * { break-inside: avoid; }
         }
       `}</style>
       <div className="flex flex-wrap gap-3 items-end justify-between print:hidden">
