@@ -875,8 +875,7 @@ function AnaliseDetalhada() {
     const list: LancRow[] = [];
     const push = (rows: any[], isReceber: boolean) => {
       rows.forEach((c) => {
-        if (c.status !== "pago") return;
-        const dataRef = c.data_pagamento ?? c.data_vencimento;
+        const dataRef = c.data_vencimento;
         const plano = c.categoria_external_id ? planoMap.get(c.categoria_external_id) : undefined;
         if (isTransferencia(plano?.nome, c.descricao)) return;
         const v = Number(c.valor || 0);
