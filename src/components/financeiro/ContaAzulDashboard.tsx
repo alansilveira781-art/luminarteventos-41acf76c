@@ -951,55 +951,80 @@ function AnaliseDetalhada() {
   }, [ccs, centroSearch]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-3 items-end justify-between">
+    <div className="space-y-4 analise-print-root">
+      <style>{`
+        @media print {
+          @page { size: A4; margin: 14mm; }
+          body { background: white !important; }
+          .analise-print-root .max-h-\\[600px\\] { max-height: none !important; overflow: visible !important; }
+        }
+      `}</style>
+      <div className="flex flex-wrap gap-3 items-end justify-between print:hidden">
         <h2 className="text-xl font-bold">Análise Detalhada</h2>
-        <div className="relative w-[360px]">
-          <label className="text-xs text-muted-foreground">Evento/Projeto</label>
-          <button
-            type="button"
-            onClick={() => setCentroOpen((o) => !o)}
-            className="w-full h-9 px-3 rounded-md border bg-transparent text-sm text-left flex items-center justify-between"
+        <div className="flex items-end gap-2">
+          <div className="relative w-[360px]">
+            <label className="text-xs text-muted-foreground">Evento/Projeto</label>
+            <button
+              type="button"
+              onClick={() => setCentroOpen((o) => !o)}
+              className="w-full h-9 px-3 rounded-md border bg-transparent text-sm text-left flex items-center justify-between"
+            >
+              <span className={centroId ? "" : "text-muted-foreground"}>
+                {centroSelNome || "Selecione um projeto…"}
+              </span>
+              <span className="text-muted-foreground text-xs">▾</span>
+            </button>
+            {centroOpen && (
+              <div className="absolute z-50 mt-1 w-full bg-popover border rounded-md shadow-md">
+                <div className="p-2 border-b">
+                  <input
+                    autoFocus
+                    value={centroSearch}
+                    onChange={(e) => setCentroSearch(e.target.value)}
+                    placeholder="Buscar evento/projeto…"
+                    className="w-full h-8 px-2 text-sm bg-transparent outline-none border rounded"
+                  />
+                </div>
+                <div className="max-h-[280px] overflow-y-auto p-1">
+                  {centroId && (
+                    <button
+                      className="w-full text-left px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent rounded-sm"
+                      onClick={() => { setCentroId(""); setCentroOpen(false); }}
+                    >— Limpar seleção —</button>
+                  )}
+                  {ccsFiltrados.length === 0 ? (
+                    <div className="px-2 py-4 text-center text-sm text-muted-foreground">Nenhum encontrado.</div>
+                  ) : ccsFiltrados.map((c) => (
+                    <button
+                      key={c.external_id}
+                      className={`w-full text-left px-2 py-1.5 text-sm hover:bg-accent rounded-sm ${c.external_id === centroId ? "bg-accent" : ""}`}
+                      onClick={() => { setCentroId(c.external_id); setCentroOpen(false); setCentroSearch(""); }}
+                    >{c.nome}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => window.print()}
+            disabled={!centroId}
           >
-            <span className={centroId ? "" : "text-muted-foreground"}>
-              {centroSelNome || "Selecione um projeto…"}
-            </span>
-            <span className="text-muted-foreground text-xs">▾</span>
-          </button>
-          {centroOpen && (
-            <div className="absolute z-50 mt-1 w-full bg-popover border rounded-md shadow-md">
-              <div className="p-2 border-b">
-                <input
-                  autoFocus
-                  value={centroSearch}
-                  onChange={(e) => setCentroSearch(e.target.value)}
-                  placeholder="Buscar evento/projeto…"
-                  className="w-full h-8 px-2 text-sm bg-transparent outline-none border rounded"
-                />
-              </div>
-              <div className="max-h-[280px] overflow-y-auto p-1">
-                {centroId && (
-                  <button
-                    className="w-full text-left px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent rounded-sm"
-                    onClick={() => { setCentroId(""); setCentroOpen(false); }}
-                  >— Limpar seleção —</button>
-                )}
-                {ccsFiltrados.length === 0 ? (
-                  <div className="px-2 py-4 text-center text-sm text-muted-foreground">Nenhum encontrado.</div>
-                ) : ccsFiltrados.map((c) => (
-                  <button
-                    key={c.external_id}
-                    className={`w-full text-left px-2 py-1.5 text-sm hover:bg-accent rounded-sm ${c.external_id === centroId ? "bg-accent" : ""}`}
-                    onClick={() => { setCentroId(c.external_id); setCentroOpen(false); setCentroSearch(""); }}
-                  >{c.nome}</button>
-                ))}
-              </div>
-            </div>
-          )}
+            <Printer className="h-4 w-4 mr-2" />
+            Imprimir
+          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      {/* Cabeçalho de impressão */}
+      <div className="hidden print:block mb-4">
+        <h1 className="text-xl font-bold">Luminarte Eventos</h1>
+        <div className="text-sm">Demonstrativo por Evento/Projeto — {centroSelNome || "—"}</div>
+        <div className="text-xs text-muted-foreground">
+          Regime de competência · Emitido em {new Date().toLocaleDateString("pt-BR")}
+        </div>
+      </div>
+
         <KpiCard
           icon={Piggy} label="Receita Bruta" value={fmtMoney(rb)}
         />
