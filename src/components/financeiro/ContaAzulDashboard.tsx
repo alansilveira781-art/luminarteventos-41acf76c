@@ -94,7 +94,7 @@ function rowMatchesText(c: any, needle: string): boolean {
 export function ContaAzulDashboard() {
   return (
     <Tabs defaultValue="painel" className="w-full">
-      <TabsList className="mb-4">
+      <TabsList className="mb-4 print:hidden">
         <TabsTrigger value="painel">Painel Financeiro</TabsTrigger>
         <TabsTrigger value="analise">Análise Detalhada</TabsTrigger>
         <TabsTrigger value="fluxo">Fluxo de Caixa</TabsTrigger>
