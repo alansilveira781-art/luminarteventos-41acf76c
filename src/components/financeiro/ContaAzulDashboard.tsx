@@ -965,41 +965,43 @@ function AnaliseDetalhada() {
     <div className="space-y-4 analise-print-root">
       <style>{`
         @media print {
-          @page { size: A4 landscape; margin: 10mm; }
+          @page { size: A4 portrait; margin: 12mm; }
           html, body { background: white !important; }
-          .analise-print-root, .analise-print-root * {
+          /* Esconde tudo — só o card do Demonstrativo (marcado com .print-dre-card) é exibido */
+          body * { visibility: hidden !important; }
+          .print-dre-card, .print-dre-card * { visibility: visible !important; }
+          .print-dre-card {
+            position: absolute !important;
+            left: 0; top: 0;
+            width: 100% !important;
+            box-shadow: none !important;
+            border: none !important;
+            font-size: 10pt;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          .analise-print-root .max-h-\\[600px\\],
-          .analise-print-root .max-h-\\[300px\\] {
+          .print-dre-card * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .print-dre-card .max-h-\\[600px\\] {
             max-height: none !important;
             overflow: visible !important;
           }
-          .analise-print-root .overflow-hidden { overflow: visible !important; }
-          .analise-print-root .kpi-grid {
-            display: grid !important;
-            grid-template-columns: repeat(5, 1fr) !important;
-            gap: 6px !important;
-          }
-          .analise-print-root .kpi-grid > * {
-            padding: 6px !important;
+          .print-dre-card .overflow-hidden { overflow: visible !important; }
+          .print-dre-card > div,
+          .print-dre-card button,
+          .print-dre-card [class*="grid-cols-["] > * {
+            break-inside: avoid;
             page-break-inside: avoid;
           }
-          .analise-print-root .print-two-cols {
-            display: grid !important;
-            grid-template-columns: 2fr 3fr !important;
-            gap: 8px !important;
+          .print-dre-header {
+            padding: 0 12px 8px 12px;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 4px;
           }
-          .analise-print-root .print-two-cols > * {
-            grid-column: auto !important;
-          }
-          .analise-print-root {
-            font-size: 9pt;
-          }
-          .analise-print-root .print-header h1 { font-size: 14pt; }
-          .analise-print-root button { break-inside: avoid; page-break-inside: avoid; }
-          .analise-print-root [class*="grid-cols-["] > * { break-inside: avoid; }
+          .print-dre-header h1 { font-size: 14pt; font-weight: 700; margin: 0; }
+          .print-dre-header .sub { font-size: 9pt; color: #555; }
         }
       `}</style>
       <div className="flex flex-wrap gap-3 items-end justify-between print:hidden">
