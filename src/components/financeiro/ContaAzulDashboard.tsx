@@ -906,6 +906,15 @@ function AnaliseDetalhada() {
   const totalLanc = lancFiltrados.reduce((s, l) => s + l.valor, 0);
   const categoriaSelNome = categoriaSel ? planoMap.get(categoriaSel)?.nome ?? "" : "";
 
+  // Agrupa parcelamentos (N/M - ... N/M) em uma linha única, expansível.
+  // Só ativa quando uma rubrica está selecionada (evita agrupar globalmente).
+  const lancAgrupados = useMemo<GroupedLancRow[]>(
+    () => (categoriaSel ? agruparParcelamentos(lancFiltrados) : lancFiltrados.map((l) => ({ kind: "single" as const, ...l }))),
+    [lancFiltrados, categoriaSel],
+  );
+  const toggleGroupExpanded = (chave: string) =>
+    setExpandedGroups((s) => ({ ...s, [chave]: !s[chave] }));
+
   const linhasDre = useMemo(() => {
     const out: { kind: "header" | "calc" | "detail"; id: string; label: string; valor: number; pct: number; catId?: string; groupId?: DreGroupId }[] = [];
     const pct = (v: number) => (rb > 0 ? v / rb : 0);
