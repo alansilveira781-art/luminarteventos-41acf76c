@@ -1080,26 +1080,7 @@ function AnaliseDetalhada() {
         </div>
       </div>
 
-      {/* Cabeçalho de impressão */}
-      <div className="hidden print:block mb-4 print-header">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-xl font-bold">Luminarte Eventos</h1>
-            <div className="text-sm">Demonstrativo por Evento/Projeto — <strong>{centroSelNome || "—"}</strong></div>
-            <div className="text-xs text-muted-foreground">
-              Regime de competência · Emitido em {new Date().toLocaleDateString("pt-BR")}
-            </div>
-          </div>
-          <div className="text-right text-xs">
-            <div>Receita Bruta: <strong>{fmtMoney(rb)}</strong></div>
-            <div>Custos: <strong>{fmtMoney(custos)}</strong></div>
-            <div>Despesas: <strong>{fmtMoney(desp)}</strong></div>
-            <div className={lucro >= 0 ? "text-emerald-700" : "text-rose-600"}>
-              Lucro: <strong>{fmtMoney(lucro)}</strong>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Cabeçalho de impressão fica dentro do próprio card do Demonstrativo (ver print-dre-card) */}
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 kpi-grid">
 
