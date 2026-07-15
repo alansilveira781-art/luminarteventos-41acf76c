@@ -568,6 +568,7 @@ function AnaliseDetalhada() {
   const [centroOpen, setCentroOpen] = useState(false);
   const [categoriaSel, setCategoriaSel] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   // Planos e centros são pequenos — carrega sempre.
   const planos = useQuery({
