@@ -440,8 +440,10 @@ function SyncAutomaticoCard({ canManage }: { canManage: boolean }) {
 function CargaHistoricaCard({ canManage, connected }: { canManage: boolean; connected: boolean }) {
   const [from, setFrom] = useState("2023-01-01");
   const [to, setTo] = useState(() => {
+    // Horizonte estendido: hoje + 3 anos, para trazer parcelas futuras
+    // de compromissos parcelados (ex: 10x com vencimentos em 2027).
     const d = new Date();
-    d.setDate(d.getDate() - 1);
+    d.setFullYear(d.getFullYear() + 3);
     return d.toISOString().slice(0, 10);
   });
   const [jobId, setJobId] = useState<string | null>(null);
