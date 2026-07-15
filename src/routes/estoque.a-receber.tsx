@@ -597,15 +597,37 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
                   </div>
                 </div>
 
-                {!it.item_id && !itemMap[it.id] && (
-                  <div className="rounded border border-dashed border-warning/60 bg-warning/5 p-2 space-y-2">
-                    <div className="text-xs text-warning">Item não associado ao estoque — escolha uma opção:</div>
+                {!it.item_id && (
+                  <div className={`rounded border p-2 space-y-2 ${itemMap[it.id] ? "border-success/40 bg-success/5" : "border-dashed border-warning/60 bg-warning/5"}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className={`text-xs ${itemMap[it.id] ? "text-success" : "text-warning"}`}>
+                        {itemMap[it.id] ? "✓ Item associado — você pode trocar se necessário" : "Item não associado ao estoque — escolha uma opção:"}
+                      </div>
+                      {itemMap[it.id] && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-xs"
+                          onClick={() => {
+                            setItemMap((m) => {
+                              const next = { ...m };
+                              delete next[it.id];
+                              return next;
+                            });
+                            toast.success("Associação desfeita");
+                          }}
+                        >
+                          Desfazer associação
+                        </Button>
+                      )}
+                    </div>
                     <div className="grid gap-2 sm:grid-cols-2">
                       <div>
                         <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Selecionar item existente</label>
                         <ItemSearchSelect
                           itens={estoqueItens as any}
-                          value=""
+                          value={itemMap[it.id] ?? ""}
                           onChange={(id) => {
                             setItemMap((m) => ({ ...m, [it.id]: id }));
                             toast.success("Item associado");
@@ -627,9 +649,6 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
                       </div>
                     </div>
                   </div>
-                )}
-                {(it.item_id || itemMap[it.id]) && !it.item_id && (
-                  <div className="text-xs text-success">✓ Item associado</div>
                 )}
               </div>
             );

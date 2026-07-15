@@ -17,7 +17,7 @@ import { fetchAllRows } from "@/lib/fetch-all";
 
 const sb = supabase as any;
 
-export const Route = createFileRoute("/financeiro/relatorios")({
+export const Route = createFileRoute("/financeiro-op/relatorios")({
   component: RelatoriosPage,
 });
 
