@@ -1095,7 +1095,7 @@ function AnaliseDetalhada() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 print-two-cols">
         <Card className="p-0 overflow-hidden lg:col-span-2">
           <div className="grid grid-cols-[1fr,140px,70px] text-xs uppercase text-muted-foreground bg-muted/60 px-3 py-2 font-semibold">
             <div>Demonstrativo</div>
