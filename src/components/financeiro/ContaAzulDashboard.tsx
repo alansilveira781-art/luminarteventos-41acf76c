@@ -1062,15 +1062,30 @@ function AnaliseDetalhada() {
                 if (l.kind === "group") allGroups[l.chave] = true;
               });
               setExpandedGroups(allGroups);
-              // Aguarda o React renderizar antes de imprimir.
+              // Aguarda o React renderizar, clona o card do Demonstrativo em um portal
+              // isolado e imprime somente ele — sem folhas em branco das outras seções.
               setTimeout(() => {
-                window.print();
-                // Restaura o estado após o diálogo de impressão fechar.
-                setTimeout(() => {
+                const card = document.querySelector(".print-dre-card") as HTMLElement | null;
+                if (!card) { window.print(); return; }
+                const portal = document.createElement("div");
+                portal.className = "print-portal";
+                const clone = card.cloneNode(true) as HTMLElement;
+                clone.style.position = "static";
+                portal.appendChild(clone);
+                document.body.appendChild(portal);
+                document.body.classList.add("printing-dre");
+                const cleanup = () => {
+                  document.body.classList.remove("printing-dre");
+                  portal.remove();
+                  window.removeEventListener("afterprint", cleanup);
                   setCollapsed(prevCollapsed);
                   setExpandedGroups(prevExpanded);
-                }, 300);
-              }, 150);
+                };
+                window.addEventListener("afterprint", cleanup);
+                window.print();
+                // Fallback: alguns navegadores não disparam afterprint.
+                setTimeout(cleanup, 1500);
+              }, 200);
             }}
             disabled={!centroId}
           >
