@@ -1110,8 +1110,14 @@ function AnaliseDetalhada() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 print-two-cols">
-        <Card className="p-0 overflow-hidden lg:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <Card className="p-0 overflow-hidden lg:col-span-2 print-dre-card">
+          <div className="hidden print:block print-dre-header">
+            <h1>Luminarte Eventos — Demonstrativo</h1>
+            <div className="sub">
+              Projeto: <strong>{centroSelNome || "—"}</strong> · Emitido em {new Date().toLocaleDateString("pt-BR")}
+            </div>
+          </div>
           <div className="grid grid-cols-[1fr,140px,70px] text-xs uppercase text-muted-foreground bg-muted/60 px-3 py-2 font-semibold">
             <div>Demonstrativo</div>
             <div className="text-right">Valores</div>
