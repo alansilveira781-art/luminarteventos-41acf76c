@@ -1018,7 +1018,26 @@ function AnaliseDetalhada() {
           </div>
           <Button
             variant="outline"
-            onClick={() => window.print()}
+            onClick={() => {
+              // Expande todos os grupos DRE e todos os grupos de parcelamento antes de imprimir.
+              const prevCollapsed = collapsed;
+              const prevExpanded = expandedGroups;
+              setCollapsed({});
+              const allGroups: Record<string, boolean> = {};
+              lancAgrupados.forEach((l) => {
+                if (l.kind === "group") allGroups[l.chave] = true;
+              });
+              setExpandedGroups(allGroups);
+              // Aguarda o React renderizar antes de imprimir.
+              setTimeout(() => {
+                window.print();
+                // Restaura o estado após o diálogo de impressão fechar.
+                setTimeout(() => {
+                  setCollapsed(prevCollapsed);
+                  setExpandedGroups(prevExpanded);
+                }, 300);
+              }, 150);
+            }}
             disabled={!centroId}
           >
             <Printer className="h-4 w-4 mr-2" />
@@ -1028,15 +1047,27 @@ function AnaliseDetalhada() {
       </div>
 
       {/* Cabeçalho de impressão */}
-      <div className="hidden print:block mb-4">
-        <h1 className="text-xl font-bold">Luminarte Eventos</h1>
-        <div className="text-sm">Demonstrativo por Evento/Projeto — {centroSelNome || "—"}</div>
-        <div className="text-xs text-muted-foreground">
-          Regime de competência · Emitido em {new Date().toLocaleDateString("pt-BR")}
+      <div className="hidden print:block mb-4 print-header">
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-xl font-bold">Luminarte Eventos</h1>
+            <div className="text-sm">Demonstrativo por Evento/Projeto — <strong>{centroSelNome || "—"}</strong></div>
+            <div className="text-xs text-muted-foreground">
+              Regime de competência · Emitido em {new Date().toLocaleDateString("pt-BR")}
+            </div>
+          </div>
+          <div className="text-right text-xs">
+            <div>Receita Bruta: <strong>{fmtMoney(rb)}</strong></div>
+            <div>Custos: <strong>{fmtMoney(custos)}</strong></div>
+            <div>Despesas: <strong>{fmtMoney(desp)}</strong></div>
+            <div className={lucro >= 0 ? "text-emerald-700" : "text-rose-600"}>
+              Lucro: <strong>{fmtMoney(lucro)}</strong>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 kpi-grid">
 
 
         <KpiCard
