@@ -35,6 +35,7 @@ type Row = {
   comprador: string | null;
   descritivo_fallback: string | null;
   valor_total: number | null;
+  parcelamento: string | null;
   itens: { descricao: string | null; quantidade: number | null }[];
 };
 
