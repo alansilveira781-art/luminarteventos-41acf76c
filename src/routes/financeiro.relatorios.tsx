@@ -157,7 +157,7 @@ function RelatoriosPage() {
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div className="print:hidden">
-        <PageHeader title="Relatórios — Despesas" subtitle="Relatórios do módulo Financeiro" />
+        <PageHeader title="Relatórios — Despesas" description="Relatórios do módulo Financeiro" />
       </div>
 
       <div className="flex flex-wrap items-end gap-3 print:hidden">
