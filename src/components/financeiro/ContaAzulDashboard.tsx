@@ -965,41 +965,43 @@ function AnaliseDetalhada() {
     <div className="space-y-4 analise-print-root">
       <style>{`
         @media print {
-          @page { size: A4 landscape; margin: 10mm; }
+          @page { size: A4 portrait; margin: 12mm; }
           html, body { background: white !important; }
-          .analise-print-root, .analise-print-root * {
+          /* Esconde tudo — só o card do Demonstrativo (marcado com .print-dre-card) é exibido */
+          body * { visibility: hidden !important; }
+          .print-dre-card, .print-dre-card * { visibility: visible !important; }
+          .print-dre-card {
+            position: absolute !important;
+            left: 0; top: 0;
+            width: 100% !important;
+            box-shadow: none !important;
+            border: none !important;
+            font-size: 10pt;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          .analise-print-root .max-h-\\[600px\\],
-          .analise-print-root .max-h-\\[300px\\] {
+          .print-dre-card * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .print-dre-card .max-h-\\[600px\\] {
             max-height: none !important;
             overflow: visible !important;
           }
-          .analise-print-root .overflow-hidden { overflow: visible !important; }
-          .analise-print-root .kpi-grid {
-            display: grid !important;
-            grid-template-columns: repeat(5, 1fr) !important;
-            gap: 6px !important;
-          }
-          .analise-print-root .kpi-grid > * {
-            padding: 6px !important;
+          .print-dre-card .overflow-hidden { overflow: visible !important; }
+          .print-dre-card > div,
+          .print-dre-card button,
+          .print-dre-card [class*="grid-cols-["] > * {
+            break-inside: avoid;
             page-break-inside: avoid;
           }
-          .analise-print-root .print-two-cols {
-            display: grid !important;
-            grid-template-columns: 2fr 3fr !important;
-            gap: 8px !important;
+          .print-dre-header {
+            padding: 0 12px 8px 12px;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 4px;
           }
-          .analise-print-root .print-two-cols > * {
-            grid-column: auto !important;
-          }
-          .analise-print-root {
-            font-size: 9pt;
-          }
-          .analise-print-root .print-header h1 { font-size: 14pt; }
-          .analise-print-root button { break-inside: avoid; page-break-inside: avoid; }
-          .analise-print-root [class*="grid-cols-["] > * { break-inside: avoid; }
+          .print-dre-header h1 { font-size: 14pt; font-weight: 700; margin: 0; }
+          .print-dre-header .sub { font-size: 9pt; color: #555; }
         }
       `}</style>
       <div className="flex flex-wrap gap-3 items-end justify-between print:hidden">
@@ -1078,26 +1080,7 @@ function AnaliseDetalhada() {
         </div>
       </div>
 
-      {/* Cabeçalho de impressão */}
-      <div className="hidden print:block mb-4 print-header">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-xl font-bold">Luminarte Eventos</h1>
-            <div className="text-sm">Demonstrativo por Evento/Projeto — <strong>{centroSelNome || "—"}</strong></div>
-            <div className="text-xs text-muted-foreground">
-              Regime de competência · Emitido em {new Date().toLocaleDateString("pt-BR")}
-            </div>
-          </div>
-          <div className="text-right text-xs">
-            <div>Receita Bruta: <strong>{fmtMoney(rb)}</strong></div>
-            <div>Custos: <strong>{fmtMoney(custos)}</strong></div>
-            <div>Despesas: <strong>{fmtMoney(desp)}</strong></div>
-            <div className={lucro >= 0 ? "text-emerald-700" : "text-rose-600"}>
-              Lucro: <strong>{fmtMoney(lucro)}</strong>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Cabeçalho de impressão fica dentro do próprio card do Demonstrativo (ver print-dre-card) */}
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 kpi-grid">
 
@@ -1127,8 +1110,14 @@ function AnaliseDetalhada() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 print-two-cols">
-        <Card className="p-0 overflow-hidden lg:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <Card className="p-0 overflow-hidden lg:col-span-2 print-dre-card">
+          <div className="hidden print:block print-dre-header">
+            <h1>Luminarte Eventos — Demonstrativo</h1>
+            <div className="sub">
+              Projeto: <strong>{centroSelNome || "—"}</strong> · Emitido em {new Date().toLocaleDateString("pt-BR")}
+            </div>
+          </div>
           <div className="grid grid-cols-[1fr,140px,70px] text-xs uppercase text-muted-foreground bg-muted/60 px-3 py-2 font-semibold">
             <div>Demonstrativo</div>
             <div className="text-right">Valores</div>
