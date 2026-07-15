@@ -49,6 +49,7 @@ import { Route as PatrimonioDashboardRouteImport } from './routes/patrimonio.das
 import { Route as PatrimonioAReceberRouteImport } from './routes/patrimonio.a-receber'
 import { Route as JuridicoModelosRouteImport } from './routes/juridico.modelos'
 import { Route as FinanceiroRotinasRouteImport } from './routes/financeiro.rotinas'
+import { Route as FinanceiroRelatoriosRouteImport } from './routes/financeiro.relatorios'
 import { Route as FinanceiroDashboardRouteImport } from './routes/financeiro.dashboard'
 import { Route as FinanceiroContaAzulRouteImport } from './routes/financeiro.conta-azul'
 import { Route as FinanceiroConfiguracoesRouteImport } from './routes/financeiro.configuracoes'
@@ -293,6 +294,11 @@ const JuridicoModelosRoute = JuridicoModelosRouteImport.update({
 const FinanceiroRotinasRoute = FinanceiroRotinasRouteImport.update({
   id: '/rotinas',
   path: '/rotinas',
+  getParentRoute: () => FinanceiroRoute,
+} as any)
+const FinanceiroRelatoriosRoute = FinanceiroRelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
   getParentRoute: () => FinanceiroRoute,
 } as any)
 const FinanceiroDashboardRoute = FinanceiroDashboardRouteImport.update({
@@ -581,6 +587,7 @@ export interface FileRoutesByFullPath {
   '/financeiro/configuracoes': typeof FinanceiroConfiguracoesRoute
   '/financeiro/conta-azul': typeof FinanceiroContaAzulRoute
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
+  '/financeiro/relatorios': typeof FinanceiroRelatoriosRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
   '/patrimonio/a-receber': typeof PatrimonioAReceberRoute
@@ -657,6 +664,7 @@ export interface FileRoutesByTo {
   '/financeiro/configuracoes': typeof FinanceiroConfiguracoesRoute
   '/financeiro/conta-azul': typeof FinanceiroContaAzulRoute
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
+  '/financeiro/relatorios': typeof FinanceiroRelatoriosRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
   '/patrimonio/a-receber': typeof PatrimonioAReceberRoute
@@ -745,6 +753,7 @@ export interface FileRoutesById {
   '/financeiro/configuracoes': typeof FinanceiroConfiguracoesRoute
   '/financeiro/conta-azul': typeof FinanceiroContaAzulRoute
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
+  '/financeiro/relatorios': typeof FinanceiroRelatoriosRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
   '/patrimonio/a-receber': typeof PatrimonioAReceberRoute
@@ -834,6 +843,7 @@ export interface FileRouteTypes {
     | '/financeiro/configuracoes'
     | '/financeiro/conta-azul'
     | '/financeiro/dashboard'
+    | '/financeiro/relatorios'
     | '/financeiro/rotinas'
     | '/juridico/modelos'
     | '/patrimonio/a-receber'
@@ -910,6 +920,7 @@ export interface FileRouteTypes {
     | '/financeiro/configuracoes'
     | '/financeiro/conta-azul'
     | '/financeiro/dashboard'
+    | '/financeiro/relatorios'
     | '/financeiro/rotinas'
     | '/juridico/modelos'
     | '/patrimonio/a-receber'
@@ -997,6 +1008,7 @@ export interface FileRouteTypes {
     | '/financeiro/configuracoes'
     | '/financeiro/conta-azul'
     | '/financeiro/dashboard'
+    | '/financeiro/relatorios'
     | '/financeiro/rotinas'
     | '/juridico/modelos'
     | '/patrimonio/a-receber'
@@ -1353,6 +1365,13 @@ declare module '@tanstack/react-router' {
       path: '/rotinas'
       fullPath: '/financeiro/rotinas'
       preLoaderRoute: typeof FinanceiroRotinasRouteImport
+      parentRoute: typeof FinanceiroRoute
+    }
+    '/financeiro/relatorios': {
+      id: '/financeiro/relatorios'
+      path: '/relatorios'
+      fullPath: '/financeiro/relatorios'
+      preLoaderRoute: typeof FinanceiroRelatoriosRouteImport
       parentRoute: typeof FinanceiroRoute
     }
     '/financeiro/dashboard': {
@@ -1792,6 +1811,7 @@ interface FinanceiroRouteChildren {
   FinanceiroConfiguracoesRoute: typeof FinanceiroConfiguracoesRoute
   FinanceiroContaAzulRoute: typeof FinanceiroContaAzulRoute
   FinanceiroDashboardRoute: typeof FinanceiroDashboardRoute
+  FinanceiroRelatoriosRoute: typeof FinanceiroRelatoriosRoute
   FinanceiroRotinasRoute: typeof FinanceiroRotinasRoute
   FinanceiroIndexRoute: typeof FinanceiroIndexRoute
 }
@@ -1800,6 +1820,7 @@ const FinanceiroRouteChildren: FinanceiroRouteChildren = {
   FinanceiroConfiguracoesRoute: FinanceiroConfiguracoesRoute,
   FinanceiroContaAzulRoute: FinanceiroContaAzulRoute,
   FinanceiroDashboardRoute: FinanceiroDashboardRoute,
+  FinanceiroRelatoriosRoute: FinanceiroRelatoriosRoute,
   FinanceiroRotinasRoute: FinanceiroRotinasRoute,
   FinanceiroIndexRoute: FinanceiroIndexRoute,
 }
@@ -1915,13 +1936,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
