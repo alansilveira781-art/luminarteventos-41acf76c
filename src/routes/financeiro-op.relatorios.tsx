@@ -128,6 +128,7 @@ function RelatoriosPage() {
         comprador: c.comprador,
         descritivo_fallback: c.observacoes ?? c.titulo ?? null,
         valor_total: c.valor_total,
+        parcelamento: c.parcelamento ?? null,
         itens: groupC.get(c.id) ?? [],
       }));
       const dRows: Row[] = demandas.map((d) => ({
@@ -139,6 +140,7 @@ function RelatoriosPage() {
         comprador: d.comprador,
         descritivo_fallback: d.descritivo ?? d.observacoes ?? d.titulo ?? null,
         valor_total: d.valor_total,
+        parcelamento: d.parcelamento ?? null,
         itens: groupD.get(d.id) ?? [],
       }));
 
