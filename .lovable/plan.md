@@ -1,57 +1,56 @@
-
 ## Diagnóstico
 
-**Por que só 7/10 parcelas do COMPRA-755 estão no banco?**
-Não é filtro por status. O sync do Conta Azul usa um range `date_from → date_to` sobre a **data de vencimento**. O último sync foi rodado com `date_to = 2026-12-31`, então as parcelas 8, 9 e 10 (vencimento jan/fev/mar 2027) nunca foram trazidas. O default do formulário de Carga Histórica é `to = ontem`, o que é ruim para compromissos parcelados com vencimentos futuros.
+**1. "Só 2026" na Análise Detalhada**
+Não é filtro de código — verifiquei em `AnaliseDetalhada` (`ContaAzulDashboard.tsx`) e não há restrição por ano; `calcularDRECaixa` é chamado com `ano=0` (aceita qualquer data). O problema é que o **banco realmente não tem dados de 2027**:
+
+| Tabela | 2023 | 2024 | 2025 | 2026 | 2027 |
+|---|---|---|---|---|---|
+| `ca_contas_pagar` | 10.835 | 13.943 | 12.838 | 6.968 | **0** |
+| `ca_contas_receber` | 713 | 830 | 722 | 514 | **0** |
+
+O último sync foi rodado com `date_to = 2026-12-31`. Já atualizei o default do formulário de Carga Histórica para `hoje + 3y` na última mudança, mas o sync ainda precisa ser disparado uma vez com essa nova janela pra trazer 2027+.
+
+**2. Impressão do demonstrativo**
+As regras de `@media print` atuais são mínimas: só ajustam A4, escondem filtros e removem `max-h`. Problemas visuais na impressão:
+- Layout usa `lg:grid-cols-5` (KPIs) e `lg:grid-cols-5` com `col-span-2 / col-span-3`. No modo impressão a largura fica < 1024px → tudo colapsa em coluna única e o PDF fica gigante.
+- Backgrounds cinza dos cabeçalhos/somas somem (Chrome não imprime background por padrão).
+- Sem quebra de página controlada — cabeçalho da tabela some nas páginas seguintes.
+- Coluna "%" e "Valores" ficam apertadas.
+- Grupos colapsados / grupos de parcelas colapsados imprimem sem detalhe.
 
 ## Escopo
 
-### 1. Estender o horizonte de sincronização (backend + UI)
+### 1. Trazer 2027+ para o banco
+Disparar imediatamente um sync de `contas_pagar` e `contas_receber` com `date_to = 2029-12-31` (a UI já tem o default correto; falta rodar). Após o sync:
+- `ca_contas_pagar` e `ca_contas_receber` passam a conter 2027+.
+- COMPRA-755 volta com as 10 parcelas.
+- Nada é duplicado — reconciliação por `external_id` já está implementada.
 
-- Em `src/routes/financeiro-op.conta-azul.tsx` (e `financeiro.conta-azul.tsx`), mudar o default de `to` no `CargaHistoricaCard` para **hoje + 3 anos**, garantindo que parcelamentos longos sejam trazidos por padrão.
-- Adicionar uma nota curta no card: "Inclua datas futuras para trazer parcelas ainda não vencidas."
-- Rodar imediatamente uma sincronização de `contas_pagar` e `contas_receber` com `to = 2029-12-31` para trazer as 3 parcelas faltantes do COMPRA-755 (e qualquer outro parcelamento longo). Essa sincronização também aproveita a reconciliação já implementada, então nada será duplicado.
-
-### 2. Agrupar parcelamentos ao clicar em rubrica
-
-Aplica-se **somente** na tabela de lançamentos exibida na "Análise Detalhada" do `ContaAzulDashboard.tsx` — KPIs e Painel Financeiro continuam contando parcela a parcela (competência/caixa).
-
-**Regra de agrupamento** (via descrição, já que o CA não expõe um id de parcelamento):
-- Regex de detecção: `^(\d+)\/(\d+) - (.+?) \1\/\2$` na `descricao`.
-- Se casar → chave de grupo = `${fornecedor_nome}||${descricao_base}||${valor_arredondado}` (o valor pode variar em centavos entre parcelas; arredondar para agrupar).
-- Se não casar → o lançamento fica sozinho (não agrupa).
-
-**Linha agregada exibida:**
-- **Descrição**: `descricao_base` + badge cinza `10x` (mostra o `M` do padrão N/M).
-- **Valor**: soma de **todas** as parcelas encontradas no banco. Se `linhas.length < M` (faltam parcelas no banco), badge amarelo `Faltam N parcelas` para o usuário saber que o horizonte de sync não cobriu tudo.
-- **Data**: range `10/06/2026 → 10/03/2027` (primeira → última parcela).
-- **Status agregado**:
-  - Todas pagas → verde "Pago"
-  - Todas em aberto → cinza "Em aberto"
-  - Misto → azul `X/M pagas`
-- **Expansível**: clicar na linha revela as parcelas individuais (mantém rastreabilidade).
+### 2. Print-friendly demonstrativo (`ContaAzulDashboard.tsx` → `AnaliseDetalhada`)
+Ampliar o bloco `<style>{@media print}</style>` já existente:
+- `@page { size: A4 landscape; margin: 10mm; }` — paisagem cabe as 2 colunas + KPIs sem quebrar.
+- `-webkit-print-color-adjust: exact; print-color-adjust: exact;` no root para imprimir fundos cinza (cabeçalhos, linhas de total).
+- Forçar `grid-template-columns: 2fr 3fr` no wrapper das duas Cards no print, independente de breakpoint.
+- Forçar `grid-template-columns: repeat(5, 1fr)` nos KPIs no print.
+- `max-h-[600px]` já removido; adicionar `overflow: visible` nos containers e `page-break-inside: avoid` em cada linha da DRE e da tabela de lançamentos.
+- `thead`/cabeçalho da tabela como `display: table-header-group` não se aplica aqui (é grid); em vez disso adicionar uma classe `.print-repeat-header` só visível em print que aparece no topo de cada Card, com `position: running(header)` fallback simples (repetir manualmente é complexo — solução prática: reduzir font-size e evitar quebras).
+- Fonte reduzida (`font-size: 10pt`) e padding menor em modo print para caber mais linhas.
+- Ao clicar "Imprimir": expandir automaticamente todos os grupos DRE (`collapsed = {}`) e todos os grupos de parcelamento (`expandedGroups[c] = true` para cada chave), para que o PDF mostre o detalhe completo. Após `window.print()` retornar (ou 500ms depois), restaurar o estado anterior.
+- Cabeçalho de impressão (já existe em `hidden print:block`): incluir também o total do lucro (Rodapé) e a data de emissão. Manter Luminarte + centro.
+- Esconder o botão "limpar" e demais controles interativos no print (`print:hidden`).
 
 ### 3. Fora de escopo
-
-- Não alterar KPIs, Painel Financeiro, DRE Caixa, gráficos — todos continuam somando parcela a parcela pela data de vencimento/pagamento.
-- Não mexer em `contas_receber` para agrupamento (mesma lógica pode ser adicionada depois; aplicando o mesmo padrão de descrição).
-
-## Detalhes técnicos
-
-- Novo helper `agruparParcelamentos(rows)` em `src/lib/conta-azul/agrupar-parcelas.ts` (função pura, testável, sem side effects).
-- No `ContaAzulDashboard.tsx`, apenas a tabela detalhada por rubrica passa `rows` pela função antes de renderizar. Um `useMemo` cuida disso.
-- A linha agregada usa um id sintético `grp:${chave}` para o `key` do React; ao expandir, mapeia para os `external_id` originais.
-- Não requer migração de banco.
+- KPIs, Painel Financeiro, DRE Caixa continuam intocados.
+- Sem migração de banco.
+- Sem alteração de lógica de agregação — só CSS + expansão automática + trigger de sync.
 
 ## Arquivos a editar
 
-- `src/routes/financeiro-op.conta-azul.tsx` — default `to = hoje + 3y`, nota no card.
-- `src/routes/financeiro.conta-azul.tsx` — idem.
-- `src/lib/conta-azul/agrupar-parcelas.ts` — novo helper.
-- `src/components/financeiro/conta-azul/ContaAzulDashboard.tsx` (ou onde estiver a tabela da Análise Detalhada) — aplicar agrupamento + linha expansível.
+- `src/components/financeiro/ContaAzulDashboard.tsx` — ampliar bloco `<style>` de print, ajustar handler do botão Imprimir para expandir tudo antes de `window.print()`, garantir cabeçalho de impressão completo.
+- Rodar sync manual (via botão do próprio app "Carga Histórica" com `to = 2029-12-31`) — **ação do usuário**; ou, se preferir, posso disparar direto na API interna do sync via server function.
 
 ## Verificação
 
-1. Após rodar o sync com `to = 2029-12-31`, `SELECT COUNT(*) FROM ca_contas_pagar WHERE descricao ILIKE '%COMPRA-755%'` deve retornar **10**.
-2. Na Análise Detalhada, ao clicar na rubrica "Móveis planejados", aparece **1 linha** "Móveis planejados - Armários - COMPRA-755" com valor R$ 12.370,58, range jun/2026 → mar/2027, badge "1/10 paga".
-3. Expandindo a linha, aparecem as 10 parcelas originais.
+1. `SELECT COUNT(*) FROM ca_contas_pagar WHERE data_vencimento >= '2027-01-01'` > 0 após o sync.
+2. Na Análise Detalhada do projeto que tinha parcelamento longo, aparecem linhas em 2027.
+3. Ctrl+P na Análise Detalhada abre preview em paisagem, com KPIs em 5 colunas, demonstrativo + lançamentos lado a lado, cabeçalhos cinza visíveis, todas as rubricas e parcelas expandidas.
