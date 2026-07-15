@@ -500,7 +500,9 @@ function PainelFinanceiro() {
   );
 }
 
-/** DRE em regime de caixa (status='pago', por data_pagamento), excluindo transferências.
+/** DRE por regime configurável, excluindo transferências.
+ * - "caixa": só lançamentos pagos, período por data_pagamento (fallback vencimento).
+ * - "competencia": todos os lançamentos, período por data_vencimento.
  * Retorna totais por grupo (já com sinal aplicado) e detalhamento por categoria (valor absoluto). */
 function calcularDRECaixa(
   pagar: any[],
@@ -511,14 +513,19 @@ function calcularDRECaixa(
   estrutura: DreLine[] = DRE_STRUCTURE,
   centroCustoId?: string,
   idsPermitidos?: Set<string>,
+  regime: "caixa" | "competencia" = "caixa",
 ): { totais: Partial<Record<DreGroupId, number>>; grupos: Map<DreGroupId, Map<string, number>> } {
   const grupos = new Map<DreGroupId, Map<string, number>>();
   const totalSum = new Map<DreGroupId, number>();
   const prefixIndex = buildPrefixIndex(estrutura);
   const acumula = (rows: any[]) => {
     rows.forEach((c) => {
-      if (c.status !== "pago") return;
-      if (!inPeriodo(c.data_pagamento ?? c.data_vencimento, ano, mes)) return;
+      if (regime === "caixa") {
+        if (c.status !== "pago") return;
+        if (!inPeriodo(c.data_pagamento ?? c.data_vencimento, ano, mes)) return;
+      } else {
+        if (!inPeriodo(c.data_vencimento, ano, mes)) return;
+      }
       if (centroCustoId && c.centro_custo_external_id && c.centro_custo_external_id !== centroCustoId) return;
       if (idsPermitidos && !(c.centro_custo_external_id && idsPermitidos.has(c.centro_custo_external_id))) return;
       const plano = c.categoria_external_id ? planoMap.get(c.categoria_external_id) : undefined;
