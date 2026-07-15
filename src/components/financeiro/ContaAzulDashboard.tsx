@@ -12,6 +12,7 @@ import { PiggyBank as Piggy, Building2, BarChart3, Sprout, Users, X, ChevronRigh
 import { Button } from "@/components/ui/button";
 import { DRE_STRUCTURE, grupoDoPlanoNome, isTransferencia, buildPrefixIndex, type DreGroupId, type DreLine } from "@/lib/conta-azul/dre";
 import { useDreEstrutura } from "@/hooks/useDreEstrutura";
+import { agruparParcelamentos, type GroupedLancRow } from "@/lib/conta-azul/agrupar-parcelas";
 
 
 const sb = supabase as any;
