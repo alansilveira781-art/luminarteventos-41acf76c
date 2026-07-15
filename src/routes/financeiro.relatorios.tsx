@@ -168,7 +168,7 @@ function RelatoriosPage() {
               <SelectValue placeholder="Selecione um cartão…" />
             </SelectTrigger>
             <SelectContent>
-              {cartoes.map((n) => (
+              {cartoes.map((n: string) => (
                 <SelectItem key={n} value={n}>{n}</SelectItem>
               ))}
             </SelectContent>
