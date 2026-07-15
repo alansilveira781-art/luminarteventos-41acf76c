@@ -557,6 +557,40 @@ async function persistRateios(items: any[], tipo: "pagar" | "receber", syncedAt:
   await upsertBatched("ca_lancamento_rateios", allRateios, "lancamento_external_id,tipo,ordem");
 }
 
+/** Remove do banco os registros com data_vencimento em [from,to] que não vieram
+ *  na resposta da API — significa que foram excluídos no Conta Azul. Cascateia
+ *  para ca_lancamento_rateios. Retorna a quantidade removida.
+ */
+async function reconciliarExclusoes(
+  tabela: "ca_contas_pagar" | "ca_contas_receber",
+  tipoRateio: "pagar" | "receber",
+  from: string,
+  to: string,
+  activeIds: Set<string>,
+): Promise<{ removidos: number; ids: string[] }> {
+  const { data: existentes, error } = await sb
+    .from(tabela)
+    .select("external_id")
+    .gte("data_vencimento", from)
+    .lte("data_vencimento", to);
+  if (error) throw error;
+  const toDelete = (existentes ?? [])
+    .map((r: any) => String(r.external_id))
+    .filter((id: string) => !activeIds.has(id));
+  if (toDelete.length === 0) return { removidos: 0, ids: [] };
+  // Apaga em chunks (evita URL/param muito grande).
+  for (let i = 0; i < toDelete.length; i += 500) {
+    const chunk = toDelete.slice(i, i + 500);
+    await sb
+      .from("ca_lancamento_rateios")
+      .delete()
+      .eq("tipo", tipoRateio)
+      .in("lancamento_external_id", chunk);
+    await sb.from(tabela).delete().in("external_id", chunk);
+  }
+  return { removidos: toDelete.length, ids: toDelete };
+}
+
 export async function syncContasPagar(from: string, to: string) {
   const logId = await logStart("contas_pagar", from, to);
   try {
@@ -570,6 +604,35 @@ export async function syncContasPagar(from: string, to: string) {
       const rows = items.map((it: any) => mapEvento(it, syncedAt, "fornecedor_nome"));
       await upsertBatched("ca_contas_pagar", rows, "external_id");
       await persistRateios(items, "pagar", syncedAt);
+    }
+
+    // Reconciliação: remove fantasmas (excluídos no CA) do range.
+    try {
+      const activeIds = new Set(items.map((it: any) => String(it.id)));
+      const rec = await reconciliarExclusoes("ca_contas_pagar", "pagar", from, to, activeIds);
+      if (rec.removidos > 0) {
+        await sb.from("ca_sync_log").insert({
+          recurso: "reconciliacao_pagar",
+          status: "ok",
+          started_at: new Date().toISOString(),
+          finished_at: new Date().toISOString(),
+          date_from: from,
+          date_to: to,
+          qtd_registros: rec.removidos,
+          mensagem: `Removidos ${rec.removidos} registro(s) excluídos no Conta Azul: ${rec.ids.slice(0, 20).join(", ")}${rec.ids.length > 20 ? "..." : ""}`,
+        });
+      }
+    } catch (e: any) {
+      await sb.from("ca_sync_log").insert({
+        recurso: "reconciliacao_pagar",
+        status: "erro",
+        started_at: new Date().toISOString(),
+        finished_at: new Date().toISOString(),
+        date_from: from,
+        date_to: to,
+        qtd_registros: 0,
+        mensagem: String(e?.message ?? e),
+      });
     }
 
     await logFinish(logId, "ok", items.length);
@@ -595,6 +658,36 @@ export async function syncContasReceber(from: string, to: string) {
       await upsertBatched("ca_contas_receber", rows, "external_id");
       await persistRateios(items, "receber", syncedAt);
     }
+
+    // Reconciliação: remove fantasmas (excluídos no CA) do range.
+    try {
+      const activeIds = new Set(items.map((it: any) => String(it.id)));
+      const rec = await reconciliarExclusoes("ca_contas_receber", "receber", from, to, activeIds);
+      if (rec.removidos > 0) {
+        await sb.from("ca_sync_log").insert({
+          recurso: "reconciliacao_receber",
+          status: "ok",
+          started_at: new Date().toISOString(),
+          finished_at: new Date().toISOString(),
+          date_from: from,
+          date_to: to,
+          qtd_registros: rec.removidos,
+          mensagem: `Removidos ${rec.removidos} registro(s) excluídos no Conta Azul: ${rec.ids.slice(0, 20).join(", ")}${rec.ids.length > 20 ? "..." : ""}`,
+        });
+      }
+    } catch (e: any) {
+      await sb.from("ca_sync_log").insert({
+        recurso: "reconciliacao_receber",
+        status: "erro",
+        started_at: new Date().toISOString(),
+        finished_at: new Date().toISOString(),
+        date_from: from,
+        date_to: to,
+        qtd_registros: 0,
+        mensagem: String(e?.message ?? e),
+      });
+    }
+
     await logFinish(logId, "ok", items.length);
     return items.length;
   } catch (e: any) {
