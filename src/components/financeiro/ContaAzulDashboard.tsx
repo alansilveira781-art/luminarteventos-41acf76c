@@ -1147,19 +1147,60 @@ function AnaliseDetalhada() {
                 {centroId ? "Nenhum lançamento neste projeto." : "Selecione um evento/projeto para ver os lançamentos."}
               </div>
             )}
-            {lancFiltrados.slice(0, 1000).map((l, i) => (
-              <div key={i} className="grid grid-cols-[110px,1fr,1.4fr,130px] px-3 py-1.5 text-sm border-t border-border">
-                <div className="text-muted-foreground">{l.data?.slice(0, 10) ?? "—"}</div>
-                <div className="truncate">{l.nome ?? "—"}</div>
-                <div className="truncate text-muted-foreground" title={l.descricao ?? ""}>{l.descricao ?? "—"}</div>
-                <div className={`text-right tabular-nums ${l.valor < 0 ? "text-rose-600" : "text-emerald-700"}`}>{fmtMoney(l.valor)}</div>
-              </div>
-            ))}
+            {lancAgrupados.slice(0, 1000).map((l, i) => {
+              if (l.kind === "single") {
+                return (
+                  <div key={`s-${i}`} className="grid grid-cols-[110px,1fr,1.4fr,130px] px-3 py-1.5 text-sm border-t border-border">
+                    <div className="text-muted-foreground">{l.data?.slice(0, 10) ?? "—"}</div>
+                    <div className="truncate">{l.nome ?? "—"}</div>
+                    <div className="truncate text-muted-foreground" title={l.descricao ?? ""}>{l.descricao ?? "—"}</div>
+                    <div className={`text-right tabular-nums ${l.valor < 0 ? "text-rose-600" : "text-emerald-700"}`}>{fmtMoney(l.valor)}</div>
+                  </div>
+                );
+              }
+              const isOpen = !!expandedGroups[l.chave];
+              const encontradas = l.parcelas.length;
+              const faltam = l.totalParcelas - encontradas;
+              const rangeLabel = l.dataInicio && l.dataFim && l.dataInicio !== l.dataFim
+                ? `${l.dataInicio.slice(0, 10)} → ${l.dataFim.slice(0, 10)}`
+                : (l.dataInicio ?? "—").slice(0, 10);
+              return (
+                <div key={`g-${l.chave}`}>
+                  <button
+                    onClick={() => toggleGroupExpanded(l.chave)}
+                    className="w-full grid grid-cols-[110px,1fr,1.4fr,130px] px-3 py-1.5 text-sm border-t border-border text-left hover:bg-accent/50"
+                  >
+                    <div className="text-muted-foreground text-xs truncate" title={rangeLabel}>{rangeLabel}</div>
+                    <div className="truncate">{l.nome ?? "—"}</div>
+                    <div className="truncate flex items-center gap-1.5" title={l.descricaoBase}>
+                      {isOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
+                      <span className="truncate">{l.descricaoBase}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">{l.totalParcelas}x</span>
+                      {faltam > 0 && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 shrink-0" title="Sincronize com data futura para trazer as parcelas restantes.">
+                          faltam {faltam}
+                        </span>
+                      )}
+                    </div>
+                    <div className={`text-right tabular-nums font-medium ${l.valor < 0 ? "text-rose-600" : "text-emerald-700"}`}>{fmtMoney(l.valor)}</div>
+                  </button>
+                  {isOpen && l.parcelas.map((p, j) => (
+                    <div key={`g-${l.chave}-${j}`} className="grid grid-cols-[110px,1fr,1.4fr,130px] px-3 py-1 text-xs border-t border-border/50 bg-muted/20">
+                      <div className="text-muted-foreground pl-4">{p.data?.slice(0, 10) ?? "—"}</div>
+                      <div className="truncate text-muted-foreground">{p.nome ?? "—"}</div>
+                      <div className="truncate text-muted-foreground" title={p.descricao ?? ""}>{p.descricao ?? "—"}</div>
+                      <div className={`text-right tabular-nums ${p.valor < 0 ? "text-rose-600" : "text-emerald-700"}`}>{fmtMoney(p.valor)}</div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
           </div>
           <div className="grid grid-cols-[1fr,130px] px-3 py-2 text-sm font-bold bg-muted/40 border-t">
-            <div>Total ({lancFiltrados.length})</div>
+            <div>Total ({lancFiltrados.length}{categoriaSel && lancAgrupados.length !== lancFiltrados.length ? ` em ${lancAgrupados.length} grupos` : ""})</div>
             <div className={`text-right tabular-nums ${totalLanc < 0 ? "text-rose-600" : "text-emerald-700"}`}>{fmtMoney(totalLanc)}</div>
           </div>
+
         </Card>
       </div>
     </div>
