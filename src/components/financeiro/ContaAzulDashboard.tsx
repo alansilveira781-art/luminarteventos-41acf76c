@@ -823,7 +823,7 @@ function AnaliseDetalhada() {
   // Servidor já fatiou pelo centro de custo — sem filtro client-side adicional.
   // Depois, soma por cima as saídas de estoque (não altera lógica do Conta Azul).
   const { totais, grupos } = useMemo(() => {
-    const base = calcularDRECaixa(pagarRows, receberRows, planoMap, 0, 0, estruturaEfetiva);
+    const base = calcularDRECaixa(pagarRows, receberRows, planoMap, 0, 0, estruturaEfetiva, undefined, undefined, "competencia");
     if (stockAgg.agg.size === 0) return base;
     const grupos = new Map(base.grupos);
     const totais: Partial<Record<DreGroupId, number>> = { ...base.totais };
