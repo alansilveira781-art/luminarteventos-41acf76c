@@ -8,7 +8,8 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   ComposedChart, Line, Legend,
 } from "recharts";
-import { PiggyBank as Piggy, Building2, BarChart3, Sprout, Users, X, ChevronRight, ChevronDown } from "lucide-react";
+import { PiggyBank as Piggy, Building2, BarChart3, Sprout, Users, X, ChevronRight, ChevronDown, Printer } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { DRE_STRUCTURE, grupoDoPlanoNome, isTransferencia, buildPrefixIndex, type DreGroupId, type DreLine } from "@/lib/conta-azul/dre";
 import { useDreEstrutura } from "@/hooks/useDreEstrutura";
 
@@ -93,7 +94,7 @@ function rowMatchesText(c: any, needle: string): boolean {
 export function ContaAzulDashboard() {
   return (
     <Tabs defaultValue="painel" className="w-full">
-      <TabsList className="mb-4">
+      <TabsList className="mb-4 print:hidden">
         <TabsTrigger value="painel">Painel Financeiro</TabsTrigger>
         <TabsTrigger value="analise">Análise Detalhada</TabsTrigger>
         <TabsTrigger value="fluxo">Fluxo de Caixa</TabsTrigger>
@@ -499,7 +500,9 @@ function PainelFinanceiro() {
   );
 }
 
-/** DRE em regime de caixa (status='pago', por data_pagamento), excluindo transferências.
+/** DRE por regime configurável, excluindo transferências.
+ * - "caixa": só lançamentos pagos, período por data_pagamento (fallback vencimento).
+ * - "competencia": todos os lançamentos, período por data_vencimento.
  * Retorna totais por grupo (já com sinal aplicado) e detalhamento por categoria (valor absoluto). */
 function calcularDRECaixa(
   pagar: any[],
@@ -510,14 +513,19 @@ function calcularDRECaixa(
   estrutura: DreLine[] = DRE_STRUCTURE,
   centroCustoId?: string,
   idsPermitidos?: Set<string>,
+  regime: "caixa" | "competencia" = "caixa",
 ): { totais: Partial<Record<DreGroupId, number>>; grupos: Map<DreGroupId, Map<string, number>> } {
   const grupos = new Map<DreGroupId, Map<string, number>>();
   const totalSum = new Map<DreGroupId, number>();
   const prefixIndex = buildPrefixIndex(estrutura);
   const acumula = (rows: any[]) => {
     rows.forEach((c) => {
-      if (c.status !== "pago") return;
-      if (!inPeriodo(c.data_pagamento ?? c.data_vencimento, ano, mes)) return;
+      if (regime === "caixa") {
+        if (c.status !== "pago") return;
+        if (!inPeriodo(c.data_pagamento ?? c.data_vencimento, ano, mes)) return;
+      } else {
+        if (!inPeriodo(c.data_vencimento, ano, mes)) return;
+      }
       if (centroCustoId && c.centro_custo_external_id && c.centro_custo_external_id !== centroCustoId) return;
       if (idsPermitidos && !(c.centro_custo_external_id && idsPermitidos.has(c.centro_custo_external_id))) return;
       const plano = c.categoria_external_id ? planoMap.get(c.categoria_external_id) : undefined;
@@ -815,7 +823,7 @@ function AnaliseDetalhada() {
   // Servidor já fatiou pelo centro de custo — sem filtro client-side adicional.
   // Depois, soma por cima as saídas de estoque (não altera lógica do Conta Azul).
   const { totais, grupos } = useMemo(() => {
-    const base = calcularDRECaixa(pagarRows, receberRows, planoMap, 0, 0, estruturaEfetiva);
+    const base = calcularDRECaixa(pagarRows, receberRows, planoMap, 0, 0, estruturaEfetiva, undefined, undefined, "competencia");
     if (stockAgg.agg.size === 0) return base;
     const grupos = new Map(base.grupos);
     const totais: Partial<Record<DreGroupId, number>> = { ...base.totais };
@@ -867,8 +875,7 @@ function AnaliseDetalhada() {
     const list: LancRow[] = [];
     const push = (rows: any[], isReceber: boolean) => {
       rows.forEach((c) => {
-        if (c.status !== "pago") return;
-        const dataRef = c.data_pagamento ?? c.data_vencimento;
+        const dataRef = c.data_vencimento;
         const plano = c.categoria_external_id ? planoMap.get(c.categoria_external_id) : undefined;
         if (isTransferencia(plano?.nome, c.descricao)) return;
         const v = Number(c.valor || 0);
@@ -944,55 +951,83 @@ function AnaliseDetalhada() {
   }, [ccs, centroSearch]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-3 items-end justify-between">
+    <div className="space-y-4 analise-print-root">
+      <style>{`
+        @media print {
+          @page { size: A4; margin: 14mm; }
+          body { background: white !important; }
+          .analise-print-root .max-h-\\[600px\\] { max-height: none !important; overflow: visible !important; }
+        }
+      `}</style>
+      <div className="flex flex-wrap gap-3 items-end justify-between print:hidden">
         <h2 className="text-xl font-bold">Análise Detalhada</h2>
-        <div className="relative w-[360px]">
-          <label className="text-xs text-muted-foreground">Evento/Projeto</label>
-          <button
-            type="button"
-            onClick={() => setCentroOpen((o) => !o)}
-            className="w-full h-9 px-3 rounded-md border bg-transparent text-sm text-left flex items-center justify-between"
+        <div className="flex items-end gap-2">
+          <div className="relative w-[360px]">
+            <label className="text-xs text-muted-foreground">Evento/Projeto</label>
+            <button
+              type="button"
+              onClick={() => setCentroOpen((o) => !o)}
+              className="w-full h-9 px-3 rounded-md border bg-transparent text-sm text-left flex items-center justify-between"
+            >
+              <span className={centroId ? "" : "text-muted-foreground"}>
+                {centroSelNome || "Selecione um projeto…"}
+              </span>
+              <span className="text-muted-foreground text-xs">▾</span>
+            </button>
+            {centroOpen && (
+              <div className="absolute z-50 mt-1 w-full bg-popover border rounded-md shadow-md">
+                <div className="p-2 border-b">
+                  <input
+                    autoFocus
+                    value={centroSearch}
+                    onChange={(e) => setCentroSearch(e.target.value)}
+                    placeholder="Buscar evento/projeto…"
+                    className="w-full h-8 px-2 text-sm bg-transparent outline-none border rounded"
+                  />
+                </div>
+                <div className="max-h-[280px] overflow-y-auto p-1">
+                  {centroId && (
+                    <button
+                      className="w-full text-left px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent rounded-sm"
+                      onClick={() => { setCentroId(""); setCentroOpen(false); }}
+                    >— Limpar seleção —</button>
+                  )}
+                  {ccsFiltrados.length === 0 ? (
+                    <div className="px-2 py-4 text-center text-sm text-muted-foreground">Nenhum encontrado.</div>
+                  ) : ccsFiltrados.map((c) => (
+                    <button
+                      key={c.external_id}
+                      className={`w-full text-left px-2 py-1.5 text-sm hover:bg-accent rounded-sm ${c.external_id === centroId ? "bg-accent" : ""}`}
+                      onClick={() => { setCentroId(c.external_id); setCentroOpen(false); setCentroSearch(""); }}
+                    >{c.nome}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => window.print()}
+            disabled={!centroId}
           >
-            <span className={centroId ? "" : "text-muted-foreground"}>
-              {centroSelNome || "Selecione um projeto…"}
-            </span>
-            <span className="text-muted-foreground text-xs">▾</span>
-          </button>
-          {centroOpen && (
-            <div className="absolute z-50 mt-1 w-full bg-popover border rounded-md shadow-md">
-              <div className="p-2 border-b">
-                <input
-                  autoFocus
-                  value={centroSearch}
-                  onChange={(e) => setCentroSearch(e.target.value)}
-                  placeholder="Buscar evento/projeto…"
-                  className="w-full h-8 px-2 text-sm bg-transparent outline-none border rounded"
-                />
-              </div>
-              <div className="max-h-[280px] overflow-y-auto p-1">
-                {centroId && (
-                  <button
-                    className="w-full text-left px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent rounded-sm"
-                    onClick={() => { setCentroId(""); setCentroOpen(false); }}
-                  >— Limpar seleção —</button>
-                )}
-                {ccsFiltrados.length === 0 ? (
-                  <div className="px-2 py-4 text-center text-sm text-muted-foreground">Nenhum encontrado.</div>
-                ) : ccsFiltrados.map((c) => (
-                  <button
-                    key={c.external_id}
-                    className={`w-full text-left px-2 py-1.5 text-sm hover:bg-accent rounded-sm ${c.external_id === centroId ? "bg-accent" : ""}`}
-                    onClick={() => { setCentroId(c.external_id); setCentroOpen(false); setCentroSearch(""); }}
-                  >{c.nome}</button>
-                ))}
-              </div>
-            </div>
-          )}
+            <Printer className="h-4 w-4 mr-2" />
+            Imprimir
+          </Button>
+        </div>
+      </div>
+
+      {/* Cabeçalho de impressão */}
+      <div className="hidden print:block mb-4">
+        <h1 className="text-xl font-bold">Luminarte Eventos</h1>
+        <div className="text-sm">Demonstrativo por Evento/Projeto — {centroSelNome || "—"}</div>
+        <div className="text-xs text-muted-foreground">
+          Regime de competência · Emitido em {new Date().toLocaleDateString("pt-BR")}
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+
+
         <KpiCard
           icon={Piggy} label="Receita Bruta" value={fmtMoney(rb)}
         />
