@@ -967,33 +967,31 @@ function AnaliseDetalhada() {
         @media print {
           @page { size: A4 portrait; margin: 12mm; }
           html, body { background: white !important; }
-          /* Esconde tudo — só o card do Demonstrativo (marcado com .print-dre-card) é exibido */
-          body * { visibility: hidden !important; }
-          .print-dre-card, .print-dre-card * { visibility: visible !important; }
-          .print-dre-card {
-            position: absolute !important;
-            left: 0; top: 0;
-            width: 100% !important;
-            box-shadow: none !important;
-            border: none !important;
+          /* Quando .printing-dre está no body, mostra apenas o portal clonado.
+             Isso elimina folhas em branco geradas pelas outras seções. */
+          body.printing-dre > *:not(.print-portal) { display: none !important; }
+          body.printing-dre .print-portal,
+          body.printing-dre .print-portal * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          body.printing-dre .print-portal {
             font-size: 10pt;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
           }
-          .print-dre-card * {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          .print-dre-card .max-h-\\[600px\\] {
+          body.printing-dre .print-portal .max-h-\\[600px\\] {
             max-height: none !important;
             overflow: visible !important;
           }
-          .print-dre-card .overflow-hidden { overflow: visible !important; }
-          .print-dre-card > div,
-          .print-dre-card button,
-          .print-dre-card [class*="grid-cols-["] > * {
+          body.printing-dre .print-portal .overflow-hidden { overflow: visible !important; }
+          body.printing-dre .print-portal > div,
+          body.printing-dre .print-portal button,
+          body.printing-dre .print-portal [class*="grid-cols-["] > * {
             break-inside: avoid;
             page-break-inside: avoid;
+          }
+          body.printing-dre .print-portal .print-dre-card {
+            box-shadow: none !important;
+            border: none !important;
           }
           .print-dre-header {
             padding: 0 12px 8px 12px;
