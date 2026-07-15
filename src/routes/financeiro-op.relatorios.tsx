@@ -78,11 +78,11 @@ function RelatoriosPage() {
 
       const [comprasRes, demandasRes] = await Promise.all([
         buildFilter(
-          sb.from("compras").select("id, numero, titulo, solicitante, comprador, observacoes, valor_total, data_compra"),
+          sb.from("compras").select("id, numero, titulo, solicitante, comprador, observacoes, valor_total, data_compra, parcelamento"),
           "data_compra",
         ),
         buildFilter(
-          sb.from("demandas").select("id, numero, titulo, solicitante, comprador, descritivo, observacoes, valor_total, data_solicitacao"),
+          sb.from("demandas").select("id, numero, titulo, solicitante, comprador, descritivo, observacoes, valor_total, data_solicitacao, parcelamento"),
           "data_solicitacao",
         ),
       ]);
