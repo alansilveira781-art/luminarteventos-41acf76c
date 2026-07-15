@@ -1,54 +1,57 @@
+
 ## Diagnóstico
 
-O "2/2 - STAND WIND 2/2" aparece duplicado porque:
-- `f3b62bf3-...` foi sincronizado em **15/06/2026** (`em_aberto`)
-- `f4376b6f-...` foi sincronizado em **08/07/2026** (`pago`)
+**Por que só 7/10 parcelas do COMPRA-755 estão no banco?**
+Não é filtro por status. O sync do Conta Azul usa um range `date_from → date_to` sobre a **data de vencimento**. O último sync foi rodado com `date_to = 2026-12-31`, então as parcelas 8, 9 e 10 (vencimento jan/fev/mar 2027) nunca foram trazidas. O default do formulário de Carga Histórica é `to = ontem`, o que é ruim para compromissos parcelados com vencimentos futuros.
 
-No Conta Azul só existe o segundo — o primeiro foi excluído/substituído lá. Mas o sync do app faz apenas `upsert` (`syncContasPagar`, `syncContasReceber`, `persistRateios` em `src/lib/conta-azul/sync.server.ts`), sem detectar exclusões. Toda vez que um lançamento é apagado no CA, ele fica como fantasma no nosso banco e infla os totais do dashboard.
+## Escopo
 
-## Correção
+### 1. Estender o horizonte de sincronização (backend + UI)
 
-**Reconciliação por range em cada sync.** Para cada janela `from..to` que o sync consulta na API do CA, montar o `Set<external_id>` do que a API retornou e apagar do banco os registros dessa mesma janela que **não** estão no Set. Aplica em `ca_contas_pagar`, `ca_contas_receber` e cascateia para `ca_lancamento_rateios`.
+- Em `src/routes/financeiro-op.conta-azul.tsx` (e `financeiro.conta-azul.tsx`), mudar o default de `to` no `CargaHistoricaCard` para **hoje + 3 anos**, garantindo que parcelamentos longos sejam trazidos por padrão.
+- Adicionar uma nota curta no card: "Inclua datas futuras para trazer parcelas ainda não vencidas."
+- Rodar imediatamente uma sincronização de `contas_pagar` e `contas_receber` com `to = 2029-12-31` para trazer as 3 parcelas faltantes do COMPRA-755 (e qualquer outro parcelamento longo). Essa sincronização também aproveita a reconciliação já implementada, então nada será duplicado.
 
-### Alterações em `src/lib/conta-azul/sync.server.ts`
+### 2. Agrupar parcelamentos ao clicar em rubrica
 
-1. **`syncContasPagar(from, to)`** — depois do `upsertBatched`, executar:
-   ```ts
-   const activeIds = new Set(items.map((it: any) => String(it.id)));
-   const { data: existentes } = await sb
-     .from("ca_contas_pagar")
-     .select("external_id")
-     .gte("data_vencimento", from)
-     .lte("data_vencimento", to);
-   const toDelete = (existentes ?? [])
-     .map((r: any) => r.external_id)
-     .filter((id: string) => !activeIds.has(id));
-   if (toDelete.length > 0) {
-     // apaga rateios primeiro (FK lógica), depois o pai
-     await sb.from("ca_lancamento_rateios")
-       .delete().eq("tipo", "pagar").in("lancamento_external_id", toDelete);
-     await sb.from("ca_contas_pagar")
-       .delete().in("external_id", toDelete);
-     await logInfo("contas_pagar_reconciliacao", `${toDelete.length} registros removidos (excluídos no CA)`);
-   }
-   ```
-2. **`syncContasReceber(from, to)`** — idem para `ca_contas_receber` + rateios `tipo='receber'`.
-3. Fazer log em `ca_sync_log` com o `recurso: "reconciliacao_pagar"` / `"reconciliacao_receber"` e a lista de external_ids removidos (ou só a contagem, se ficar grande).
+Aplica-se **somente** na tabela de lançamentos exibida na "Análise Detalhada" do `ContaAzulDashboard.tsx` — KPIs e Painel Financeiro continuam contando parcela a parcela (competência/caixa).
 
-### Limpeza imediata (uma vez)
+**Regra de agrupamento** (via descrição, já que o CA não expõe um id de parcelamento):
+- Regex de detecção: `^(\d+)\/(\d+) - (.+?) \1\/\2$` na `descricao`.
+- Se casar → chave de grupo = `${fornecedor_nome}||${descricao_base}||${valor_arredondado}` (o valor pode variar em centavos entre parcelas; arredondar para agrupar).
+- Se não casar → o lançamento fica sozinho (não agrupa).
 
-Migration ou `supabase--insert` para remover **agora** os fantasmas conhecidos no range já sincronizado, sem esperar o próximo cron. Estratégia segura: rodar a mesma lógica para o range `[data mínima, hoje]` na próxima execução do sync — basta rodar manualmente uma vez pelo botão de sync após deploy. Não precisa migration.
+**Linha agregada exibida:**
+- **Descrição**: `descricao_base` + badge cinza `10x` (mostra o `M` do padrão N/M).
+- **Valor**: soma de **todas** as parcelas encontradas no banco. Se `linhas.length < M` (faltam parcelas no banco), badge amarelo `Faltam N parcelas` para o usuário saber que o horizonte de sync não cobriu tudo.
+- **Data**: range `10/06/2026 → 10/03/2027` (primeira → última parcela).
+- **Status agregado**:
+  - Todas pagas → verde "Pago"
+  - Todas em aberto → cinza "Em aberto"
+  - Misto → azul `X/M pagas`
+- **Expansível**: clicar na linha revela as parcelas individuais (mantém rastreabilidade).
 
-Alternativa mais agressiva: deletar diretamente o `f3b62bf3-...` agora via `supabase--insert`, mas o correto é confiar na reconciliação automática rodando um sync do mês de junho.
+### 3. Fora de escopo
 
-## Fora de escopo
+- Não alterar KPIs, Painel Financeiro, DRE Caixa, gráficos — todos continuam somando parcela a parcela pela data de vencimento/pagamento.
+- Não mexer em `contas_receber` para agrupamento (mesma lógica pode ser adicionada depois; aplicando o mesmo padrão de descrição).
 
-- Detectar mudanças de `data_vencimento` que movam o lançamento para fora do range: coberto naturalmente porque o próximo sync do range novo vai encontrar o registro; e o range antigo vai apagá-lo, mas o external_id ainda existe — **risco**: se o CA mover um lançamento de junho para agosto, o sync de junho vai apagar e o sync de agosto vai recriar. Isso é aceitável (temporariamente somem, reaparecem no próximo cron). Se for preocupação, adicionar checagem: só apagar se o external_id não existe em **nenhum** range recente. Fica para depois.
-- Interface manual para "ignorar" lançamentos (plano anterior descartado — o problema é sync, não usuário).
+## Detalhes técnicos
+
+- Novo helper `agruparParcelamentos(rows)` em `src/lib/conta-azul/agrupar-parcelas.ts` (função pura, testável, sem side effects).
+- No `ContaAzulDashboard.tsx`, apenas a tabela detalhada por rubrica passa `rows` pela função antes de renderizar. Um `useMemo` cuida disso.
+- A linha agregada usa um id sintético `grp:${chave}` para o `key` do React; ao expandir, mapeia para os `external_id` originais.
+- Não requer migração de banco.
+
+## Arquivos a editar
+
+- `src/routes/financeiro-op.conta-azul.tsx` — default `to = hoje + 3y`, nota no card.
+- `src/routes/financeiro.conta-azul.tsx` — idem.
+- `src/lib/conta-azul/agrupar-parcelas.ts` — novo helper.
+- `src/components/financeiro/conta-azul/ContaAzulDashboard.tsx` (ou onde estiver a tabela da Análise Detalhada) — aplicar agrupamento + linha expansível.
 
 ## Verificação
 
-1. Rodar sync manual do mês 06/2026 (contas a receber).
-2. Consultar: `SELECT external_id FROM ca_contas_receber WHERE descricao ILIKE '%STAND WIND 2/2%'` — deve retornar só `f4376b6f-...`.
-3. Recarregar o dashboard: "Receita sobre Stand" mostra 1 linha só de R$ 36.500.
-4. Log em `ca_sync_log` mostra a reconciliação com 1 registro removido.
+1. Após rodar o sync com `to = 2029-12-31`, `SELECT COUNT(*) FROM ca_contas_pagar WHERE descricao ILIKE '%COMPRA-755%'` deve retornar **10**.
+2. Na Análise Detalhada, ao clicar na rubrica "Móveis planejados", aparece **1 linha** "Móveis planejados - Armários - COMPRA-755" com valor R$ 12.370,58, range jun/2026 → mar/2027, badge "1/10 paga".
+3. Expandindo a linha, aparecem as 10 parcelas originais.
