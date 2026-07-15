@@ -35,6 +35,7 @@ type Row = {
   comprador: string | null;
   descritivo_fallback: string | null;
   valor_total: number | null;
+  parcelamento: string | null;
   itens: { descricao: string | null; quantidade: number | null }[];
 };
 
@@ -77,11 +78,11 @@ function RelatoriosPage() {
 
       const [comprasRes, demandasRes] = await Promise.all([
         buildFilter(
-          sb.from("compras").select("id, numero, titulo, solicitante, comprador, observacoes, valor_total, data_compra"),
+          sb.from("compras").select("id, numero, titulo, solicitante, comprador, observacoes, valor_total, data_compra, parcelamento"),
           "data_compra",
         ),
         buildFilter(
-          sb.from("demandas").select("id, numero, titulo, solicitante, comprador, descritivo, observacoes, valor_total, data_solicitacao"),
+          sb.from("demandas").select("id, numero, titulo, solicitante, comprador, descritivo, observacoes, valor_total, data_solicitacao, parcelamento"),
           "data_solicitacao",
         ),
       ]);
@@ -127,6 +128,7 @@ function RelatoriosPage() {
         comprador: c.comprador,
         descritivo_fallback: c.observacoes ?? c.titulo ?? null,
         valor_total: c.valor_total,
+        parcelamento: c.parcelamento ?? null,
         itens: groupC.get(c.id) ?? [],
       }));
       const dRows: Row[] = demandas.map((d) => ({
@@ -138,6 +140,7 @@ function RelatoriosPage() {
         comprador: d.comprador,
         descritivo_fallback: d.descritivo ?? d.observacoes ?? d.titulo ?? null,
         valor_total: d.valor_total,
+        parcelamento: d.parcelamento ?? null,
         itens: groupD.get(d.id) ?? [],
       }));
 
@@ -222,6 +225,7 @@ function RelatoriosPage() {
                 <th className="text-left px-3 py-2 font-medium">Solicitante</th>
                 <th className="text-left px-3 py-2 font-medium">Comprador</th>
                 <th className="text-left px-3 py-2 font-medium">Itens ou Descritivo</th>
+                <th className="text-left px-3 py-2 font-medium">Parcelamento</th>
                 <th className="text-right px-3 py-2 font-medium">Valor total</th>
               </tr>
             </thead>
@@ -247,19 +251,20 @@ function RelatoriosPage() {
                       <span className="whitespace-pre-wrap">{r.descritivo_fallback ?? "—"}</span>
                     )}
                   </td>
+                  <td className="px-3 py-2 whitespace-nowrap">{r.parcelamento ?? "—"}</td>
                   <td className="px-3 py-2 text-right whitespace-nowrap">{brl(r.valor_total)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr className="border-t bg-muted/30 print:bg-transparent">
-                <td colSpan={5} className="px-3 py-2 text-right text-xs text-muted-foreground">
+                <td colSpan={6} className="px-3 py-2 text-right text-xs text-muted-foreground">
                   Subtotal Compras: {brl(totalCompras)} · Subtotal Despesas: {brl(totalDemandas)}
                 </td>
                 <td className="px-3 py-2 text-right font-mono text-xs text-muted-foreground">&nbsp;</td>
               </tr>
               <tr className="border-t bg-muted/60 print:bg-transparent">
-                <td colSpan={5} className="px-3 py-2 text-right font-semibold">Total geral</td>
+                <td colSpan={6} className="px-3 py-2 text-right font-semibold">Total geral</td>
                 <td className="px-3 py-2 text-right font-semibold whitespace-nowrap">{brl(totalGeral)}</td>
               </tr>
             </tfoot>
