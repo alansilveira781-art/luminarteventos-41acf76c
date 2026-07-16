@@ -958,7 +958,7 @@ function AnaliseDetalhada() {
     }
 
     return list.sort((a, b) => (a.data ?? "").localeCompare(b.data ?? ""));
-  }, [pagarRows, receberRows, planoMap, saidasEstoque.data, enabled, centroSelNomeEarly, planoPorNome]);
+  }, [pagarRows, receberRows, planoMap, saidasEstoque.data, enabled, centroSelNomeEarly]);
 
 
 
