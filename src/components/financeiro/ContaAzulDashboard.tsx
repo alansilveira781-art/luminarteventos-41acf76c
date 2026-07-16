@@ -237,6 +237,7 @@ const GROUP_LABEL: Record<string, string> = {
   IN: "(-) Investimentos",
   LU: "(=) Lucro",
   SC: "(?) Sem classificação",
+  ES: "(-) Estoque — Saídas do evento",
 };
 
 function PainelFinanceiro() {
@@ -791,62 +792,59 @@ function AnaliseDetalhada() {
   // Nome do centro selecionado — usado no casamento de saídas de estoque.
   const centroSelNomeEarly = centroId ? (ccs.find((c) => c.external_id === centroId)?.nome ?? "") : "";
 
-  // Índice nome-do-plano (normalizado) -> { external_id, grupo }.
-  // Casamento por nome é o critério pedido: itens.categoria == ca_plano_contas.nome.
-  const planoPorNome = useMemo(() => {
-    const norm = (s: string) =>
-      s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
-    const prefixIndex = buildPrefixIndex(dreEstrutura);
-    const m = new Map<string, { external_id: string; grupo: DreGroupId | null }>();
-    planosArr.forEach((p) => {
-      if (!p?.nome) return;
-      m.set(norm(p.nome), {
-        external_id: p.external_id,
-        grupo: grupoDoPlanoNome(p.nome, prefixIndex),
-      });
-    });
-    return m;
-  }, [planosArr, dreEstrutura]);
 
-  // Agrega saídas de estoque do evento; mescla direto na linha do plano de contas
-  // (mesmo detail key usado pelos rateios do Conta Azul), sem criar linha "(estoque)".
+
+
+  // Agrega saídas de estoque do evento em um bloco próprio ("ES"), com uma linha
+  // de detalhe por categoria de item. Nunca mescla com rubricas do Conta Azul,
+  // para manter as saídas de estoque sempre identificáveis no Demonstrativo.
   const stockAgg = useMemo(() => {
     const agg = new Map<DreGroupId, Map<string, number>>();
-    const catNames = new Map<string, string>(); // só para fallback SC
+    const catNames = new Map<string, string>();
     if (!enabled) return { agg, catNames };
     const needle = centroNeedle(centroSelNomeEarly);
     if (!needle) return { agg, catNames };
-    const norm = (s: string) =>
-      s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
     (saidasEstoque.data ?? []).forEach((m) => {
       if (!rowMatchesText({ descricao: m.evento_projeto }, needle)) return;
       const valor = Number(m.valor_total || 0);
       if (!valor) return;
-      const catNome = m.itens?.categoria?.trim() || "";
-      const hit = catNome ? planoPorNome.get(norm(catNome)) : undefined;
-      let g: DreGroupId;
-      let key: string;
-      if (hit && hit.grupo) {
-        g = hit.grupo;
-        key = hit.external_id; // mescla com o rateio do Conta Azul da mesma categoria
-      } else {
-        g = "SC";
-        const label = catNome || "Sem categoria";
-        key = `stock:${label}`;
-        catNames.set(key, label);
-      }
+      const catNome = m.itens?.categoria?.trim() || "Sem categoria";
+      const key = `stock:${catNome}`;
+      catNames.set(key, catNome);
+      const g = "ES" as DreGroupId;
       const det = agg.get(g) ?? new Map<string, number>();
       det.set(key, (det.get(key) ?? 0) + valor);
       agg.set(g, det);
     });
     return { agg, catNames };
-  }, [saidasEstoque.data, enabled, centroSelNomeEarly, planoPorNome]);
+  }, [saidasEstoque.data, enabled, centroSelNomeEarly]);
 
-  // Estrutura efetiva do DRE: se houver saídas em SC, adiciona a linha SC (sum, sign -1).
+  // Estrutura efetiva do DRE: se houver saídas de estoque, injeta o bloco "ES"
+  // logo antes de LU e recompõe a fórmula de LU para incluí-lo.
   const estruturaEfetiva = useMemo<DreLine[]>(() => {
-    if (!stockAgg.agg.has("SC")) return dreEstrutura;
-    if (dreEstrutura.some((l) => l.id === "SC")) return dreEstrutura;
-    return [...dreEstrutura, { id: "SC", label: "(?) Sem classificação", kind: "sum", sign: -1, prefixes: [] }];
+    if (!stockAgg.agg.has("ES" as DreGroupId)) return dreEstrutura;
+    const esLine: DreLine = {
+      id: "ES" as DreGroupId,
+      label: "(-) Estoque — Saídas do evento",
+      kind: "sum",
+      sign: -1,
+      prefixes: [],
+    };
+    const out: DreLine[] = [];
+    for (const l of dreEstrutura) {
+      if (l.id === "LU") {
+        out.push(esLine);
+        out.push({
+          ...l,
+          formula: [...(l.formula ?? []), "ES" as DreGroupId],
+        });
+      } else {
+        out.push(l);
+      }
+    }
+    // Se não havia LU (defesa), garante ES no fim.
+    if (!out.some((l) => l.id === ("ES" as DreGroupId))) out.push(esLine);
+    return out;
   }, [dreEstrutura, stockAgg.agg]);
 
   // Servidor já fatiou pelo centro de custo — sem filtro client-side adicional.
@@ -895,7 +893,7 @@ function AnaliseDetalhada() {
   const rb = totais.RB ?? 0;
   const pv = (totais.AC ?? 0) + (totais.DM ?? 0) + (totais.DC ?? 0);
   const desp = (totais.DS ?? 0) + (totais.DA ?? 0) + (totais.DT ?? 0);
-  const custos = (totais.CV ?? 0) + (totais.CD ?? 0) + (totais.CI ?? 0);
+  const custos = (totais.CV ?? 0) + (totais.CD ?? 0) + (totais.CI ?? 0) + (totais["ES" as DreGroupId] ?? 0);
   const lucro = totais.LU ?? 0;
 
   const isLoadingLanc = enabled && (rateios.isLoading || pagarParents.isLoading || receberParents.isLoading);
@@ -923,16 +921,13 @@ function AnaliseDetalhada() {
     // Saídas de estoque do evento — mesma chave usada em stockAgg para permitir o filtro por categoria.
     if (enabled && centroSelNomeEarly) {
       const needle = centroNeedle(centroSelNomeEarly);
-      const norm = (s: string) =>
-        s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
       (saidasEstoque.data ?? []).forEach((m) => {
         if (!needle) return;
         if (!rowMatchesText({ descricao: m.evento_projeto }, needle)) return;
         const valor = Number(m.valor_total || 0);
         if (!valor) return;
-        const catNome = m.itens?.categoria?.trim() || "";
-        const hit = catNome ? planoPorNome.get(norm(catNome)) : undefined;
-        const key = hit && hit.grupo ? hit.external_id : `stock:${catNome || "Sem categoria"}`;
+        const catNome = m.itens?.categoria?.trim() || "Sem categoria";
+        const key = `stock:${catNome}`;
         const partes = [
           m.item_nome ? `${m.item_nome} × ${m.quantidade}` : `Saída × ${m.quantidade}`,
           catNome ? `(${catNome})` : "",
@@ -949,7 +944,7 @@ function AnaliseDetalhada() {
     }
 
     return list.sort((a, b) => (a.data ?? "").localeCompare(b.data ?? ""));
-  }, [pagarRows, receberRows, planoMap, saidasEstoque.data, enabled, centroSelNomeEarly, planoPorNome]);
+  }, [pagarRows, receberRows, planoMap, saidasEstoque.data, enabled, centroSelNomeEarly]);
 
 
 
@@ -989,7 +984,7 @@ function AnaliseDetalhada() {
                 out.push({
                   kind: "detail",
                   id: `${line.id}:${catId}`,
-                  label: planoMapExt.get(catId)?.nome ?? "Sem categoria",
+                  label: (planoMapExt.get(catId)?.nome ?? "Sem categoria") + (catId.startsWith("stock:") ? " (estoque)" : ""),
                   valor: signed,
                   pct: pct(signed),
                   catId,
