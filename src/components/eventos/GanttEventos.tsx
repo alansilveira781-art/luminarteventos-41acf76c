@@ -214,7 +214,7 @@ export function GanttEventos({
 
       {/* Gantt */}
       <div className="border rounded-lg overflow-x-auto bg-background">
-        <div className="min-w-[900px]">
+        <div className="min-w-[970px]">
           {/* Eixo tempo */}
           <div className="flex sticky top-0 z-10 bg-muted/50 border-b">
             <div
