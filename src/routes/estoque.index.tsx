@@ -20,6 +20,7 @@ import { Plus, Search, History, Pencil, Upload, Trash2, ArrowUp, ArrowDown, Arro
 import { ItemForm } from "@/components/forms/ItemForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ImportDialog } from "@/components/ImportDialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConferenciaEgestorDialog } from "@/components/estoque/ConferenciaEgestorDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ChevronDown, FileCheck2 } from "lucide-react";
