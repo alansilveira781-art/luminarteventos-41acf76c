@@ -1,36 +1,50 @@
-## Objetivo
+## 1. Campo Evento / Projeto nos itens da compra
 
-Ao clicar em "Imprimir" na Análise Detalhada, o PDF deve conter **apenas o card do Demonstrativo (DRE)** — sem KPIs, sem tabela de lançamentos, sem filtros, sem cabeçalho da tela, sem sidebar.
+No `CompraDialog` (aba **Itens**), substituir o input+datalist atual do campo "Evento / Projeto" por:
 
-## Diagnóstico atual
+- Um toggle por item: **"É para um evento?"** (Sim / Não), default Sim.
+- **Se Sim:** renderizar `EventoSheetCombobox` (mesmo componente já usado em outras telas — lê a planilha do Google Sheets e o calendário, mostra ID + nome + local + produtor, permite busca). O valor selecionado (ID do evento) é salvo em `evento_projeto`.
+- **Se Não:** o combobox some e aparece um `Input` livre para digitação (ex.: "Manutenção Galpão", "Uso interno"). O texto é salvo em `evento_projeto`.
 
-Hoje o `window.print()` imprime a página inteira e o CSS `@media print` só ajusta layout, sem esconder as outras seções. Resultado: sai um "screenshot" da tela com sidebar, KPIs, filtros e tabela de lançamentos misturados.
+O toggle é apenas de UI (para escolher qual campo mostrar) — não precisa nova coluna no banco. Ao abrir um item existente, decidimos o modo automaticamente: se `evento_projeto` bate com algum ID da planilha/calendário → modo Evento; caso contrário → modo Livre.
 
-## Mudanças em `src/components/financeiro/ContaAzulDashboard.tsx`
+Remover a lista fixa `EVENTOS_FIXOS` e o datalist antigo.
 
-1. **Marcar o card do Demonstrativo com uma classe alvo** (ex: `print-target`) e envolver todo o resto da Análise Detalhada (KPIs, filtros, botão imprimir, card de lançamentos, cabeçalho de página) com `print:hidden` — ou aplicar via CSS `@media print { body > *:not(.print-root) { display: none } }` usando um wrapper controlado.
+## 2. Admin master ignora todas as regras
 
-2. **Abordagem escolhida (mais robusta):** no clique de Imprimir, adicionar temporariamente uma classe `printing-dre` no `<body>`. O CSS `@media print` com `body.printing-dre` esconde tudo (`body.printing-dre *:not(.print-keep):not(.print-keep *) { display: none }`) e mostra apenas o card `.print-keep` (o Demonstrativo) posicionado no topo da página. Após `window.print()` (ou no evento `afterprint`), remove a classe.
+Hoje algumas restrições ainda atingem o admin global no diálogo de edição:
 
-3. **Manter o cabeçalho de impressão** (Luminarte + data) apenas dentro do próprio card `.print-keep`, para aparecer acima do DRE no PDF.
+- O `<Select>` de Status usa `disabled={!!compraId || !canEdit}` — ou seja, mesmo admin não muda status pelo dropdown depois de criado. Ajustar para: se `isGlobalAdmin` (admin master), o Select fica sempre habilitado e mostra **todos** os status (inclusive negada e voltar para trás).
+- Confirmar que `canEditCompra`, `canDeleteCompra` e `canMoveCompra` já retornam `true` para admin (retornam) — não mexer nessas.
+- O botão "Avançar / Aprovar / Reprovar" no rodapé: para admin, ignorar bloqueios de responsável (já ocorre via `canMoveCompra`, mas garantir que a mensagem/tooltip não confunda).
 
-4. **Manter expansão automática** dos grupos DRE antes de imprimir e restauração depois (já implementado).
+Escopo: apenas admin master (`isGlobalAdmin` do `useAuth`). "Admin do módulo compras" continua com as regras atuais.
 
-5. **Ajustes de CSS `@media print`:**
-   - `@page { size: A4 portrait; margin: 12mm; }` (retrato basta, é só uma coluna).
-   - `-webkit-print-color-adjust: exact; print-color-adjust: exact;` para preservar fundos cinza dos cabeçalhos das rubricas.
-   - `.print-keep { width: 100%; box-shadow: none; border: none; }`
-   - `page-break-inside: avoid` em cada linha de rubrica.
-   - Font-size 10pt, padding reduzido.
-   - Remover as regras antigas `.kpi-grid` / `.print-two-cols` que forçavam grid — não são mais necessárias.
+## 3. Bloqueio de movimentação (drag + botão lateral)
 
-6. **Remover** o bloco de KPIs do "print header" atual (foi adicionado na iteração anterior) — o usuário quer só o DRE.
+Sintoma: mesmo quem não é o responsável consegue arrastar o card ou clicar no `ChevronRight` para avançar.
 
-## Verificação
+Causa: na função `canMoveCompra` (src/lib/compras.ts), quando **nem** o status de origem **nem** o de destino têm responsável configurado, cai no `canEditCompra`, que retorna `true` para cards legados sem `responsavel_id` e sem `created_by`. Isso libera qualquer usuário.
 
-Ctrl+P na Análise Detalhada → preview mostra apenas o Demonstrativo em uma página A4 retrato, com todas as rubricas expandidas, cabeçalhos cinza visíveis, sem sidebar, sem KPIs, sem tabela de lançamentos.
+Ajustes:
 
-## Fora de escopo
+- Em `canMoveCompra`: se existe **qualquer** `statusResponsavelId` (destino ou origem), só permitir quem é resp. de origem, resp. de destino, criador ou admin — **nunca** cair no fallback permissivo.
+- Se nenhum status tem responsável configurado, manter regra atual (fallback em `canEdit`), mas remover a "porta dos fundos" `if (!responsavel_id && !created_by) return true` do `canEditCompra` **para efeito de movimentação** (mantendo apenas para edição de dados legados) — extrair um helper `canEditFieldsCompra` vs `canMoveCompraFallback`.
+- Em `compras.index.tsx` (Card + drag handle): já usa `canMove` para desabilitar. Após a correção acima, o botão lateral e o handle "⋮⋮" ficarão realmente cinzas para quem não pode mover. Nada mais a mudar no componente Card.
+- Verificação: com o Pedro logado num card em "análise", o botão avança normalmente (regra Pedro). Com um usuário aleatório logado, botão lateral e drag ficam desabilitados com tooltip "Apenas <fulano> pode mover…".
 
-- Sync de dados 2027+ (assunto separado, pendente de ação do usuário).
-- Layout da tela (não-print) permanece igual.
+## Detalhes técnicos (para quem for revisar o código)
+
+Arquivos a editar:
+
+- `src/components/CompraDialog.tsx`
+  - novo estado local por item (ou derivado): `modoEvento[idx]: "evento" | "livre"`
+  - trocar bloco do datalist (linhas 621‑634) pela renderização condicional (`EventoSheetCombobox` ou `Input`)
+  - remover import/uso de `EVENTOS_FIXOS`, `listEventos`, `eventosOptions` (o combobox já busca sozinho)
+  - `<Select>` de Status (linha 364): `disabled={!isGlobalAdmin && (!!compraId || !canEdit)}`; `statusOptions` também: se `isGlobalAdmin`, retornar `COMPRA_STATUSES` inteiro
+- `src/lib/compras.ts`
+  - endurecer `canMoveCompra` conforme descrito
+- `src/routes/compras.index.tsx`
+  - nenhuma mudança estrutural — `canMove` já é aplicado ao drag handle e ao `ChevronRight`
+
+Fora de escopo: schema do banco, permissões RLS, tela pública, notificações.

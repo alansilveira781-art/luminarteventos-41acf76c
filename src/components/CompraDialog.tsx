@@ -22,8 +22,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { notifyResponsiblesForStatus, notifyMentions } from "@/lib/notify";
 import { CopiarLinkButton } from "@/components/CopiarLinkButton";
 import { listEventos } from "@/lib/sheets.functions";
-
-const EVENTOS_FIXOS = ["Manutenção do Galpão", "Reposição de Estoque", "Showroom", "Placas do Zé"];
+import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 
 const sb = supabase as any;
 
@@ -178,10 +177,14 @@ export function CompraDialog({
     queryFn: async () => await listEventos(),
     staleTime: 5 * 60 * 1000,
   });
-  const eventosOptions = useMemo(() => {
-    const fromSheet = (eventosData?.eventos ?? []) as string[];
-    return Array.from(new Set([...fromSheet, ...EVENTOS_FIXOS])).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const eventosValidosSet = useMemo(() => {
+    return new Set((eventosData?.eventos ?? []) as string[]);
   }, [eventosData]);
+
+  // Modo por item: true = texto livre; false/undefined = seleção pela planilha.
+  const [itemLivreMode, setItemLivreMode] = useState<Record<number, boolean>>({});
+  const setModoLivre = (idx: number, livre: boolean) =>
+    setItemLivreMode((p) => ({ ...p, [idx]: livre }));
 
   useEffect(() => {
     if (!open) return;
@@ -361,10 +364,10 @@ export function CompraDialog({
                 <Input value={form.titulo ?? ""} onChange={(e) => setForm({ ...form, titulo: e.target.value })} placeholder="Ex.: Compra de tintas" />
               </FormField>
               <FormField label="Status">
-                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as CompraStatus })} disabled={!!compraId || !canEdit}>
+                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as CompraStatus })} disabled={!isGlobalAdmin && (!!compraId || !canEdit)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {statusOptions.map((s) => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}
+                    {(isGlobalAdmin ? COMPRA_STATUSES : statusOptions).map((s) => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </FormField>
@@ -618,19 +621,55 @@ export function CompraDialog({
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Evento / Projeto</label>
-                  <Input
-                    list={`eventos-list-${idx}`}
-                    value={it.evento_projeto ?? ""}
-                    onChange={(e) => updateItem(idx, { evento_projeto: e.target.value || null })}
-                    placeholder="Digite ou escolha…"
-                  />
-                  <datalist id={`eventos-list-${idx}`}>
-                    {eventosOptions.map((ev) => (
-                      <option key={ev} value={ev} />
-                    ))}
-                  </datalist>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-4">
+                    <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Evento / Projeto</label>
+                    <label className="flex items-center gap-2 text-xs">
+                      <span className="text-muted-foreground">É para um evento?</span>
+                      <Select
+                        value={(() => {
+                          const explicit = itemLivreMode[idx];
+                          if (explicit !== undefined) return explicit ? "nao" : "sim";
+                          const v = (it.evento_projeto ?? "").trim();
+                          if (!v) return "sim";
+                          return eventosValidosSet.has(v) ? "sim" : "nao";
+                        })()}
+                        onValueChange={(v) => {
+                          const livre = v === "nao";
+                          setModoLivre(idx, livre);
+                          updateItem(idx, { evento_projeto: null });
+                        }}
+                      >
+                        <SelectTrigger className="h-7 w-24"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sim">Sim</SelectItem>
+                          <SelectItem value="nao">Não</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </label>
+                  </div>
+                  {(() => {
+                    const explicit = itemLivreMode[idx];
+                    const v = (it.evento_projeto ?? "").trim();
+                    const livre = explicit !== undefined
+                      ? explicit
+                      : (v ? !eventosValidosSet.has(v) : false);
+                    if (livre) {
+                      return (
+                        <Input
+                          value={it.evento_projeto ?? ""}
+                          onChange={(e) => updateItem(idx, { evento_projeto: e.target.value || null })}
+                          placeholder="Ex.: Manutenção do galpão, uso interno…"
+                        />
+                      );
+                    }
+                    return (
+                      <EventoSheetCombobox
+                        value={it.evento_projeto ?? null}
+                        onChange={(v) => updateItem(idx, { evento_projeto: v })}
+                      />
+                    );
+                  })()}
                 </div>
                 <div className="flex justify-end">
                   <Button type="button" variant="ghost" size="sm" onClick={() => removeItem(idx)}>

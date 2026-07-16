@@ -138,10 +138,17 @@ export function canMoveCompra(
     }
 
     if (isRespDestino || isRespOrigem) return true;
-    // Se nenhum dos dois tem responsável configurado, cai na regra padrão de edição.
-    if (!statusResponsavelId && !currentStatusResponsavelId) {
-      return canEditCompra(compra, userId, isAdmin, userEmail);
-    }
+
+    // Se algum dos status (origem OU destino) tem responsável configurado,
+    // NÃO cair no fallback permissivo — apenas responsáveis/admin podem mover.
+    if (statusResponsavelId || currentStatusResponsavelId) return false;
+
+    // Sem nenhum responsável configurado: exigir vínculo explícito com o card
+    // (criador ou responsável do card). Cards legados sem vínculo não podem
+    // ser movidos por qualquer usuário.
+    if (!userId) return false;
+    if (compra.created_by && compra.created_by === userId) return true;
+    if (compra.responsavel_id && compra.responsavel_id === userId) return true;
     return false;
   }
 
