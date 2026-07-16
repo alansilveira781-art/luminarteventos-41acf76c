@@ -89,7 +89,8 @@ function rowMatchesText(c: any, needle: string): boolean {
   if (hay.includes(needle)) return true;
   const tokens = needleTokens(needle);
   if (tokens.length === 0) return false;
-  return tokens.every((t) => hay.includes(t));
+  const hits = tokens.filter((t) => hay.includes(t)).length;
+  return hits / tokens.length >= 0.6;
 }
 
 export function ContaAzulDashboard() {
