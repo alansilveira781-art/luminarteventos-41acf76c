@@ -20,6 +20,7 @@ import { Plus, Search, History, Pencil, Upload, Trash2, ArrowUp, ArrowDown, Arro
 import { ItemForm } from "@/components/forms/ItemForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ImportDialog } from "@/components/ImportDialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConferenciaEgestorDialog } from "@/components/estoque/ConferenciaEgestorDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ChevronDown, FileCheck2 } from "lucide-react";
@@ -64,6 +65,7 @@ function EstoquePage() {
   const [importing, setImporting] = useState(false);
   const [conferindo, setConferindo] = useState(false);
   const [hideZero, setHideZero] = useState<boolean>(false);
+  const [categoriaFilter, setCategoriaFilter] = useState<string>("all");
   const [sort, setSort] = useState<{ key: string; dir: "desc" | "asc" } | null>(null);
   const [periodoPreset, setPeriodoPreset] = useState<PeriodoPreset>("todos");
   const [periodo, setPeriodo] = useState<Periodo>(() => periodoFromPreset("todos"));
@@ -190,6 +192,7 @@ function EstoquePage() {
       );
     }
     if (hideZero) arr = arr.filter((i) => Number(i.quantidade_atual) > 0);
+    if (categoriaFilter !== "all") arr = arr.filter((i) => (i.categoria ?? "") === categoriaFilter);
     arr = filterByPeriodo(arr, periodo, (i: any) => i.created_at);
     if (sort) {
       const { key, dir } = sort;
@@ -207,11 +210,19 @@ function EstoquePage() {
       });
     }
     return arr;
-  }, [itens, qd, hideZero, sort, periodo]);
+  }, [itens, qd, hideZero, categoriaFilter, sort, periodo]);
 
-  useEffect(() => { setPage(1); }, [qd, hideZero, sort, periodo]);
+  useEffect(() => { setPage(1); }, [qd, hideZero, categoriaFilter, sort, periodo]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageItems = useMemo(() => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [filtered, page]);
+
+  const categorias = useMemo(() => {
+    if (!itens) return [] as string[];
+    return Array.from(new Set((itens as any[]).map((i) => i.categoria).filter(Boolean))).sort((a, b) =>
+      String(a).localeCompare(String(b), "pt-BR"),
+    ) as string[];
+  }, [itens]);
+
 
   const sel = useBulkSelection(pageItems);
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -299,6 +310,17 @@ function EstoquePage() {
             periodo={periodo}
             onChange={(p, per) => { setPeriodoPreset(p); setPeriodo(per); }}
           />
+          <Select value={categoriaFilter} onValueChange={setCategoriaFilter}>
+            <SelectTrigger className="w-56">
+              <SelectValue placeholder="Categoria" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as categorias</SelectItem>
+              {categorias.map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="text-xs text-muted-foreground mt-2">
           {filtered.length === 0
