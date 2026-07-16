@@ -229,33 +229,6 @@ function ApuracoesPage() {
 
   const exportarPDF = () => {
     const rows = buildRows();
-    const rows: Array<{ data: string; nf: string; evento: string; valor: number; banco: string }> = [];
-    if (regime === "caixa") {
-      for (const r of recebimentos ?? []) {
-        const notaLinked = r.nota_id ? notasMap?.map.get(r.nota_id) : null;
-        const nf = String(r.numero_nf ?? notaLinked?.numero ?? "—");
-        const ev = (notaLinked?.nome_evento
-          || (r.numero_nf && notasMap?.byNum.get(String(r.numero_nf))?.nome_evento)
-          || "—") as string;
-        rows.push({
-          data: format(new Date(r.data_recebimento), "dd/MM/yyyy"),
-          nf,
-          evento: ev,
-          valor: Number(r.valor_recebido || 0),
-          banco: r.banco ?? "—",
-        });
-      }
-    } else {
-      for (const n of notasEmitidas ?? []) {
-        rows.push({
-          data: format(new Date(n.data_emissao), "dd/MM/yyyy"),
-          nf: String(n.numero ?? "—"),
-          evento: (n.nome_evento ?? n.tomador_nome ?? "—") as string,
-          valor: Number(n.valor_bruto || 0),
-          banco: "—",
-        });
-      }
-    }
 
     const esc = (s: string) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
     const impostosRows = (apuracao.itens ?? []).map((i: any) =>
