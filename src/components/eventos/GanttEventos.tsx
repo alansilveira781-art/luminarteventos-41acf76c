@@ -257,7 +257,7 @@ export function GanttEventos({
                   className="shrink-0 border-r px-3 py-1.5 flex flex-col justify-center gap-0.5 bg-background"
                   style={{ width: LEFT_COL }}
                 >
-                  <div className="text-sm font-semibold truncate" title={ev.nome}>
+                  <div className="text-xs font-semibold whitespace-normal leading-tight line-clamp-2" title={ev.nome}>
                     {ev.codigo_evento ?? ev.nome}
                   </div>
                   <div className="flex items-center gap-1.5 flex-wrap">
