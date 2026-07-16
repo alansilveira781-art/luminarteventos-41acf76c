@@ -857,7 +857,7 @@ function AnaliseDetalhada() {
       }
     }
     // Se não havia LU (defesa), garante ES no fim.
-    if (!out.some((l) => l.id === "ES")) out.push(esLine);
+    if (!out.some((l) => l.id === ("ES" as DreGroupId))) out.push(esLine);
     return out;
   }, [dreEstrutura, stockAgg.agg]);
 
