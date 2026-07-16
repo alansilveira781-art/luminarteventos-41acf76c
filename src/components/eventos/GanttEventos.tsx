@@ -304,7 +304,7 @@ export function GanttEventos({
                     label="Montagem"
                     hora={ev.hora_montagem}
                     horaPos="start"
-                    top={6}
+                    top={7}
                   />
                   <Barra
                     from={ev.data_evento}
@@ -314,7 +314,7 @@ export function GanttEventos({
                     totalMs={totalMs}
                     color={COR_EVENTO}
                     label="Evento"
-                    top={22}
+                    top={25}
                   />
                   <Barra
                     from={ev.data_desmontagem}
@@ -326,7 +326,7 @@ export function GanttEventos({
                     label="Desmontagem"
                     hora={ev.hora_desmontagem}
                     horaPos="end"
-                    top={38}
+                    top={43}
                   />
                 </div>
               </div>
