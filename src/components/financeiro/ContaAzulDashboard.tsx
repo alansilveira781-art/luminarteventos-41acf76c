@@ -237,6 +237,7 @@ const GROUP_LABEL: Record<string, string> = {
   IN: "(-) Investimentos",
   LU: "(=) Lucro",
   SC: "(?) Sem classificação",
+  ES: "(-) Estoque — Saídas do evento",
 };
 
 function PainelFinanceiro() {
