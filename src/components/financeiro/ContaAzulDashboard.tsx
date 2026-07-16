@@ -942,9 +942,8 @@ function AnaliseDetalhada() {
         if (!rowMatchesText({ descricao: m.evento_projeto }, needle)) return;
         const valor = Number(m.valor_total || 0);
         if (!valor) return;
-        const catNome = m.itens?.categoria?.trim() || "";
-        const hit = catNome ? planoPorNome.get(norm(catNome)) : undefined;
-        const key = hit && hit.grupo ? hit.external_id : `stock:${catNome || "Sem categoria"}`;
+        const catNome = m.itens?.categoria?.trim() || "Sem categoria";
+        const key = `stock:${catNome}`;
         const partes = [
           m.item_nome ? `${m.item_nome} × ${m.quantidade}` : `Saída × ${m.quantidade}`,
           catNome ? `(${catNome})` : "",
