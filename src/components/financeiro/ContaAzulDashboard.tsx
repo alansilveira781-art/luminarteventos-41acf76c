@@ -919,8 +919,38 @@ function AnaliseDetalhada() {
     };
     push(receberRows, true);
     push(pagarRows, false);
+
+    // Saídas de estoque do evento — mesma chave usada em stockAgg para permitir o filtro por categoria.
+    if (enabled && centroSelNomeEarly) {
+      const needle = centroNeedle(centroSelNomeEarly);
+      const norm = (s: string) =>
+        s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+      (saidasEstoque.data ?? []).forEach((m) => {
+        if (!needle) return;
+        if (!rowMatchesText({ descricao: m.evento_projeto }, needle)) return;
+        const valor = Number(m.valor_total || 0);
+        if (!valor) return;
+        const catNome = m.itens?.categoria?.trim() || "";
+        const hit = catNome ? planoPorNome.get(norm(catNome)) : undefined;
+        const key = hit && hit.grupo ? hit.external_id : `stock:${catNome || "Sem categoria"}`;
+        const partes = [
+          m.item_nome ? `${m.item_nome} × ${m.quantidade}` : `Saída × ${m.quantidade}`,
+          catNome ? `(${catNome})` : "",
+          m.observacao ?? "",
+        ].filter(Boolean);
+        list.push({
+          data: m.data ? String(m.data).slice(0, 10) : null,
+          nome: m.responsavel || "Estoque",
+          descricao: `[Estoque] ${partes.join(" — ")}`,
+          valor: -valor,
+          categoria_external_id: key,
+        });
+      });
+    }
+
     return list.sort((a, b) => (a.data ?? "").localeCompare(b.data ?? ""));
-  }, [pagarRows, receberRows, planoMap]);
+  }, [pagarRows, receberRows, planoMap, saidasEstoque.data, enabled, centroSelNomeEarly, planoPorNome]);
+
 
 
 
