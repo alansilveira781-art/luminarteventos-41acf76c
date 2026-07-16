@@ -172,8 +172,8 @@ export function GanttEventos({
     return ((t - inicio.getTime()) / totalMs) * 100;
   }, [inicio, fim, totalMs]);
 
-  const LEFT_COL = 210;
-  const rowHeight = 56;
+  const LEFT_COL = 280;
+  const rowHeight = 64;
 
   return (
     <div className="space-y-3">
