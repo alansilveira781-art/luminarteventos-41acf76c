@@ -679,44 +679,81 @@ function AnaliseDetalhada() {
       const simples = await fetchPaged<{
         id: string;
         quantidade: number | null;
+        data_movimento: string | null;
         evento_projeto: string | null;
         item_id: string | null;
-        itens: { categoria: string | null; valor_unitario: number | null } | null;
+        requisicao_numero: number | null;
+        observacoes: string | null;
+        itens: { nome: string | null; categoria: string | null; valor_unitario: number | null } | null;
       }>((from, to) =>
         sb
           .from("movimentacoes")
-          .select("id, quantidade, evento_projeto, item_id, itens(categoria, valor_unitario)")
+          .select("id, quantidade, data_movimento, evento_projeto, item_id, requisicao_numero, observacoes, itens(nome, categoria, valor_unitario)")
           .eq("tipo", "saida")
+          .order("id")
           .range(from, to),
       );
 
       // (b) saídas compostas (movimentacao_itens) — raras; buscamos linhas cujo pai é saida.
       const composites = await fetchPaged<{
         quantidade: number | null;
-        itens: { categoria: string | null; valor_unitario: number | null } | null;
-        movimentacoes: { evento_projeto: string | null; tipo: string | null; item_id: string | null } | null;
+        itens: { nome: string | null; categoria: string | null; valor_unitario: number | null } | null;
+        movimentacoes: {
+          evento_projeto: string | null;
+          tipo: string | null;
+          item_id: string | null;
+          data_movimento: string | null;
+          requisicao_numero: number | null;
+          observacoes: string | null;
+        } | null;
       }>((from, to) =>
         sb
           .from("movimentacao_itens")
-          .select("quantidade, itens(categoria, valor_unitario), movimentacoes!inner(evento_projeto, tipo, item_id)")
+          .select(
+            "quantidade, itens(nome, categoria, valor_unitario), movimentacoes!inner(evento_projeto, tipo, item_id, data_movimento, requisicao_numero, observacoes)",
+          )
           .eq("movimentacoes.tipo", "saida")
+          .order("id")
           .range(from, to),
       );
 
-      const rows: { valor_total: number; evento_projeto: string | null; itens: { categoria: string | null } | null }[] = [];
+      const rows: {
+        valor_total: number;
+        data_movimento: string | null;
+        evento_projeto: string | null;
+        requisicao_numero: number | null;
+        item_nome: string | null;
+        quantidade: number;
+        observacao: string | null;
+        categoria: string | null;
+      }[] = [];
       simples.forEach((m) => {
         if (!m.item_id) return; // composite: valor virá em (b)
         const q = Number(m.quantidade || 0);
         const vu = Number(m.itens?.valor_unitario || 0);
-        rows.push({ valor_total: q * vu, evento_projeto: m.evento_projeto, itens: m.itens });
+        rows.push({
+          valor_total: q * vu,
+          data_movimento: m.data_movimento,
+          evento_projeto: m.evento_projeto,
+          requisicao_numero: m.requisicao_numero ?? null,
+          item_nome: m.itens?.nome ?? null,
+          quantidade: q,
+          observacao: m.observacoes ?? null,
+          categoria: m.itens?.categoria ?? null,
+        });
       });
       composites.forEach((mi) => {
         const q = Number(mi.quantidade || 0);
         const vu = Number(mi.itens?.valor_unitario || 0);
         rows.push({
           valor_total: q * vu,
+          data_movimento: mi.movimentacoes?.data_movimento ?? null,
           evento_projeto: mi.movimentacoes?.evento_projeto ?? null,
-          itens: mi.itens,
+          requisicao_numero: mi.movimentacoes?.requisicao_numero ?? null,
+          item_nome: mi.itens?.nome ?? null,
+          quantidade: q,
+          observacao: mi.movimentacoes?.observacoes ?? null,
+          categoria: mi.itens?.categoria ?? null,
         });
       });
       return rows;
@@ -800,7 +837,7 @@ function AnaliseDetalhada() {
       matched++;
       const valor = Number(m.valor_total || 0);
       if (!valor) { zeroed++; return; }
-      const catNome = m.itens?.categoria?.trim() || "";
+      const catNome = m.categoria?.trim() || "";
       const hit = catNome ? planoPorNome.get(norm(catNome)) : undefined;
       let g: DreGroupId;
       let key: string;
@@ -906,8 +943,35 @@ function AnaliseDetalhada() {
     };
     push(receberRows, true);
     push(pagarRows, false);
+
+    // Saídas de estoque do evento/projeto selecionado.
+    const needle = centroNeedle(centroSelNomeEarly);
+    (saidasEstoque.data ?? []).forEach((m) => {
+      if (!needle) return;
+      if (!rowMatchesText({ descricao: m.evento_projeto }, needle)) return;
+      const valor = Number(m.valor_total || 0);
+      if (!valor) return;
+      const catNome = m.categoria?.trim() || "";
+      const hit = catNome ? planoPorNome.get(normTxt(catNome)) : undefined;
+      const categoria_external_id = hit ? hit.external_id : `stock:${catNome || "Sem categoria"}`;
+      const reqTag = m.requisicao_numero != null ? `REQ ${m.requisicao_numero}` : null;
+      const partes = [
+        reqTag,
+        m.item_nome ? `${m.item_nome} × ${m.quantidade}` : `Saída × ${m.quantidade}`,
+        catNome ? `(${catNome})` : "",
+        m.observacao ?? "",
+      ].filter(Boolean);
+      list.push({
+        data: m.data_movimento,
+        nome: null,
+        descricao: `[Estoque] ${partes.join(" — ")}`,
+        valor: -valor,
+        categoria_external_id,
+      });
+    });
+
     return list.sort((a, b) => (a.data ?? "").localeCompare(b.data ?? ""));
-  }, [pagarRows, receberRows, planoMap]);
+  }, [pagarRows, receberRows, planoMap, saidasEstoque.data, centroSelNomeEarly, planoPorNome]);
 
 
 
