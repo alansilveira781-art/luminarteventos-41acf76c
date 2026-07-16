@@ -961,7 +961,7 @@ function AnaliseDetalhada() {
     [lancamentos, categoriaSel],
   );
   const totalLanc = lancFiltrados.reduce((s, l) => s + l.valor, 0);
-  const categoriaSelNome = categoriaSel ? planoMap.get(categoriaSel)?.nome ?? "" : "";
+  const categoriaSelNome = categoriaSel ? planoMapExt.get(categoriaSel)?.nome ?? "" : "";
 
   // Agrupa parcelamentos (N/M - ... N/M) em uma linha única, expansível.
   // Só ativa quando uma rubrica está selecionada (evita agrupar globalmente).
