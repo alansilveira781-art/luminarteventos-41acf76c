@@ -935,8 +935,6 @@ function AnaliseDetalhada() {
     // Saídas de estoque do evento — mesma chave usada em stockAgg para permitir o filtro por categoria.
     if (enabled && centroSelNomeEarly) {
       const needle = centroNeedle(centroSelNomeEarly);
-      const norm = (s: string) =>
-        s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
       (saidasEstoque.data ?? []).forEach((m) => {
         if (!needle) return;
         if (!rowMatchesText({ descricao: m.evento_projeto }, needle)) return;
