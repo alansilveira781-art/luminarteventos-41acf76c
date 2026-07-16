@@ -1,18 +1,39 @@
-## Filtro por Categoria — aba Estoque
+## Objetivo
+Fazer as saídas de estoque aparecerem na aba "Análise Detalhada" do Conta Azul quando um evento/projeto é selecionado, afrouxando o casamento por texto e adicionando log de diagnóstico.
 
-Adicionar um filtro por Categoria na página `/estoque` (arquivo `src/routes/estoque.index.tsx`), ao lado dos filtros já existentes (busca, período, ocultar zerados).
+## Mudanças (apenas em `src/components/financeiro/ContaAzulDashboard.tsx`)
 
-### Comportamento
-- Novo `Select` "Categoria" com as opções derivadas dinamicamente da lista de itens carregados (valores únicos do campo `categoria`, ordenados alfabeticamente).
-- Opção padrão "Todas as categorias".
-- Ao selecionar uma categoria, a listagem/tabela passa a exibir apenas os itens daquela categoria.
-- Combina com os demais filtros (busca textual, período, ocultar sem estoque) — aplicados em conjunto.
-- Reset de página para 1 ao alterar o filtro.
+### 1. `rowMatchesText` (~linha 84) — casamento majoritário
+Substituir a exigência de `tokens.every(...)` por um limiar de 60%:
 
-### Detalhes técnicos
-- Estado local: `const [categoriaFilter, setCategoriaFilter] = useState<string>("all")`.
-- Lista de categorias via `useMemo` sobre `itens`: `Array.from(new Set(itens.map(i => i.categoria).filter(Boolean))).sort()`.
-- Aplicar `categoriaFilter !== "all" && i.categoria === categoriaFilter` no pipeline de filtros existente.
-- UI usando `Select`/`SelectTrigger`/`SelectContent`/`SelectItem` de `@/components/ui/select`, coerente com o estilo da página.
+```ts
+function rowMatchesText(c: any, needle: string): boolean {
+  if (!needle) return true;
+  const hay = normTxt(
+    [c.descricao, c.observacoes, c.fornecedor_nome, c.cliente_nome].filter(Boolean).join(" | "),
+  );
+  if (hay.includes(needle)) return true;
+  const tokens = needleTokens(needle);
+  if (tokens.length === 0) return false;
+  const hits = tokens.filter((t) => hay.includes(t)).length;
+  return hits / tokens.length >= 0.6;
+}
+```
 
-Somente alterações de frontend em `src/routes/estoque.index.tsx`. Nenhuma mudança de schema ou backend.
+Atalho `hay.includes(needle)` preservado — nenhum caso que casava antes deixa de casar (every ≥ 60%).
+
+### 2. Diagnóstico em `stockAgg` (~linha 801)
+Após montar o `agg`, adicionar um `console.log` com:
+- nome do centro selecionado
+- `needle` calculado
+- total de linhas em `saidasEstoque.data`
+- quantas passaram no filtro de texto
+- quantas foram descartadas por `valor_total === 0`
+
+Contadores calculados no mesmo loop que gera `agg`, sem alterar o resultado.
+
+### 3. Sem outras alterações
+Lógica do Conta Azul intocada. Nenhuma mudança de estilo, layout ou schema.
+
+## Teste
+Selecionar um evento com saídas de estoque conhecidas e conferir no console qual cenário ocorre (nenhuma linha casou o nome × casaram mas custo zero).
