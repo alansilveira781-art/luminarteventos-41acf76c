@@ -792,10 +792,14 @@ function AnaliseDetalhada() {
     if (!needle) return { agg, catNames };
     const norm = (s: string) =>
       s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
-    (saidasEstoque.data ?? []).forEach((m) => {
+    const rows = saidasEstoque.data ?? [];
+    let matched = 0;
+    let zeroed = 0;
+    rows.forEach((m) => {
       if (!rowMatchesText({ descricao: m.evento_projeto }, needle)) return;
+      matched++;
       const valor = Number(m.valor_total || 0);
-      if (!valor) return;
+      if (!valor) { zeroed++; return; }
       const catNome = m.itens?.categoria?.trim() || "";
       const hit = catNome ? planoPorNome.get(norm(catNome)) : undefined;
       let g: DreGroupId;
@@ -812,6 +816,15 @@ function AnaliseDetalhada() {
       const det = agg.get(g) ?? new Map<string, number>();
       det.set(key, (det.get(key) ?? 0) + valor);
       agg.set(g, det);
+    });
+    // eslint-disable-next-line no-console
+    console.log("[stockAgg diag]", {
+      centroSelecionado: centroSelNomeEarly,
+      needle,
+      totalLinhas: rows.length,
+      passaramNoFiltroTexto: matched,
+      descartadasPorValorZero: zeroed,
+      linhasAgregadas: matched - zeroed,
     });
     return { agg, catNames };
   }, [saidasEstoque.data, enabled, centroSelNomeEarly, planoPorNome]);
