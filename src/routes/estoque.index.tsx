@@ -310,6 +310,17 @@ function EstoquePage() {
             periodo={periodo}
             onChange={(p, per) => { setPeriodoPreset(p); setPeriodo(per); }}
           />
+          <Select value={categoriaFilter} onValueChange={setCategoriaFilter}>
+            <SelectTrigger className="w-56">
+              <SelectValue placeholder="Categoria" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as categorias</SelectItem>
+              {categorias.map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="text-xs text-muted-foreground mt-2">
           {filtered.length === 0
