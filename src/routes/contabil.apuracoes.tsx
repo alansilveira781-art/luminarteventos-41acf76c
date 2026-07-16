@@ -295,9 +295,17 @@ ${impostosRows ? `<table class="impostos"><thead><tr><th>Imposto</th><th class="
         actions={
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground hidden sm:block">Salva no histórico abaixo</span>
-            <Button variant="outline" onClick={imprimirRascunho} title="Abre um relatório para impressão com os filtros atuais">
-              <Printer className="h-4 w-4 mr-1" /> Imprimir rascunho
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" title="Exportar rascunho da apuração">
+                  <Download className="h-4 w-4 mr-1" /> Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={exportarPDF}>PDF</DropdownMenuItem>
+                <DropdownMenuItem onClick={exportarExcel}>Excel</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button onClick={() => salvarMut.mutate()} disabled={salvarMut.isPending || faturamento <= 0} title="Salva esta apuração no card 'Apurações registradas' abaixo">
               <Save className="h-4 w-4 mr-1" /> Registrar apuração
             </Button>
