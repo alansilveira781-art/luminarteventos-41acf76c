@@ -907,7 +907,7 @@ function AnaliseDetalhada() {
   const rb = totais.RB ?? 0;
   const pv = (totais.AC ?? 0) + (totais.DM ?? 0) + (totais.DC ?? 0);
   const desp = (totais.DS ?? 0) + (totais.DA ?? 0) + (totais.DT ?? 0);
-  const custos = (totais.CV ?? 0) + (totais.CD ?? 0) + (totais.CI ?? 0);
+  const custos = (totais.CV ?? 0) + (totais.CD ?? 0) + (totais.CI ?? 0) + (totais["ES" as DreGroupId] ?? 0);
   const lucro = totais.LU ?? 0;
 
   const isLoadingLanc = enabled && (rateios.isLoading || pagarParents.isLoading || receberParents.isLoading);
