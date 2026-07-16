@@ -7,7 +7,9 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormField, FormSection } from "@/components/FormSection";
-import { Trash2, Save, Printer } from "lucide-react";
+import { Trash2, Save, Download } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { EMPRESAS } from "@/lib/empresas";
@@ -168,7 +170,7 @@ function ApuracoesPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const imprimirRascunho = () => {
+  const buildRows = () => {
     const rows: Array<{ data: string; nf: string; evento: string; valor: number; banco: string }> = [];
     if (regime === "caixa") {
       for (const r of recebimentos ?? []) {
@@ -179,10 +181,7 @@ function ApuracoesPage() {
           || "—") as string;
         rows.push({
           data: format(new Date(r.data_recebimento), "dd/MM/yyyy"),
-          nf,
-          evento: ev,
-          valor: Number(r.valor_recebido || 0),
-          banco: r.banco ?? "—",
+          nf, evento: ev, valor: Number(r.valor_recebido || 0), banco: r.banco ?? "—",
         });
       }
     } else {
@@ -196,6 +195,40 @@ function ApuracoesPage() {
         });
       }
     }
+    return rows;
+  };
+
+  const exportarExcel = () => {
+    const rows = buildRows();
+    const wb = XLSX.utils.book_new();
+    const header = [
+      ["Rascunho de Apuração"],
+      ["Empresa", empresa],
+      ["Referência", `${mes}/${ano}`],
+      ["Regime", regime === "caixa" ? "Caixa" : "Competência"],
+      ["Gerado em", format(new Date(), "dd/MM/yyyy HH:mm")],
+      [],
+      ["Data", "Nº NF", "Evento", "Valor", "Banco"],
+    ];
+    const body = rows.map(r => [r.data, r.nf, r.evento, r.valor, r.banco]);
+    const footer = [[], ["", "", `Faturamento (${regime === "caixa" ? "caixa" : "competência"})`, faturamento, ""]];
+    const ws1 = XLSX.utils.aoa_to_sheet([...header, ...body, ...footer]);
+    ws1["!cols"] = [{ wch: 12 }, { wch: 12 }, { wch: 40 }, { wch: 14 }, { wch: 16 }];
+    XLSX.utils.book_append_sheet(wb, ws1, "Lançamentos");
+
+    const impostos: any[][] = [["Imposto", "Valor"]];
+    for (const i of (apuracao.itens ?? [])) impostos.push([i.imposto, Number(i.valor || 0)]);
+    impostos.push(["Total", Number(apuracao.totalImpostos || 0)]);
+    const ws2 = XLSX.utils.aoa_to_sheet(impostos);
+    ws2["!cols"] = [{ wch: 20 }, { wch: 16 }];
+    XLSX.utils.book_append_sheet(wb, ws2, "Impostos");
+
+    const safe = (s: string) => s.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+    XLSX.writeFile(wb, `apuracao-${safe(empresa)}-${safe(mes)}-${ano}.xlsx`);
+  };
+
+  const exportarPDF = () => {
+    const rows = buildRows();
 
     const esc = (s: string) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
     const impostosRows = (apuracao.itens ?? []).map((i: any) =>
@@ -262,9 +295,17 @@ ${impostosRows ? `<table class="impostos"><thead><tr><th>Imposto</th><th class="
         actions={
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground hidden sm:block">Salva no histórico abaixo</span>
-            <Button variant="outline" onClick={imprimirRascunho} title="Abre um relatório para impressão com os filtros atuais">
-              <Printer className="h-4 w-4 mr-1" /> Imprimir rascunho
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" title="Exportar rascunho da apuração">
+                  <Download className="h-4 w-4 mr-1" /> Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={exportarPDF}>PDF</DropdownMenuItem>
+                <DropdownMenuItem onClick={exportarExcel}>Excel</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button onClick={() => salvarMut.mutate()} disabled={salvarMut.isPending || faturamento <= 0} title="Salva esta apuração no card 'Apurações registradas' abaixo">
               <Save className="h-4 w-4 mr-1" /> Registrar apuração
             </Button>
