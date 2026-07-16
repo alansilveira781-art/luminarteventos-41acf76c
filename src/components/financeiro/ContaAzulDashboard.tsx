@@ -998,7 +998,7 @@ function AnaliseDetalhada() {
                 out.push({
                   kind: "detail",
                   id: `${line.id}:${catId}`,
-                  label: planoMapExt.get(catId)?.nome ?? "Sem categoria",
+                  label: (planoMapExt.get(catId)?.nome ?? "Sem categoria") + (catId.startsWith("stock:") ? " (estoque)" : ""),
                   valor: signed,
                   pct: pct(signed),
                   catId,
