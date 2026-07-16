@@ -178,10 +178,14 @@ export function CompraDialog({
     queryFn: async () => await listEventos(),
     staleTime: 5 * 60 * 1000,
   });
-  const eventosOptions = useMemo(() => {
-    const fromSheet = (eventosData?.eventos ?? []) as string[];
-    return Array.from(new Set([...fromSheet, ...EVENTOS_FIXOS])).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const eventosValidosSet = useMemo(() => {
+    return new Set((eventosData?.eventos ?? []) as string[]);
   }, [eventosData]);
+
+  // Modo por item: true = texto livre; false/undefined = seleção pela planilha.
+  const [itemLivreMode, setItemLivreMode] = useState<Record<number, boolean>>({});
+  const setModoLivre = (idx: number, livre: boolean) =>
+    setItemLivreMode((p) => ({ ...p, [idx]: livre }));
 
   useEffect(() => {
     if (!open) return;
