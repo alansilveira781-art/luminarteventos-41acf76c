@@ -216,6 +216,14 @@ function EstoquePage() {
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageItems = useMemo(() => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [filtered, page]);
 
+  const categorias = useMemo(() => {
+    if (!itens) return [] as string[];
+    return Array.from(new Set((itens as any[]).map((i) => i.categoria).filter(Boolean))).sort((a, b) =>
+      String(a).localeCompare(String(b), "pt-BR"),
+    ) as string[];
+  }, [itens]);
+
+
   const sel = useBulkSelection(pageItems);
   const [bulkOpen, setBulkOpen] = useState(false);
   const bulkMut = useMutation({
