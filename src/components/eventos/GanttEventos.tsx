@@ -172,8 +172,8 @@ export function GanttEventos({
     return ((t - inicio.getTime()) / totalMs) * 100;
   }, [inicio, fim, totalMs]);
 
-  const LEFT_COL = 210;
-  const rowHeight = 56;
+  const LEFT_COL = 280;
+  const rowHeight = 64;
 
   return (
     <div className="space-y-3">
@@ -214,7 +214,7 @@ export function GanttEventos({
 
       {/* Gantt */}
       <div className="border rounded-lg overflow-x-auto bg-background">
-        <div className="min-w-[900px]">
+        <div className="min-w-[970px]">
           {/* Eixo tempo */}
           <div className="flex sticky top-0 z-10 bg-muted/50 border-b">
             <div
@@ -257,7 +257,7 @@ export function GanttEventos({
                   className="shrink-0 border-r px-3 py-1.5 flex flex-col justify-center gap-0.5 bg-background"
                   style={{ width: LEFT_COL }}
                 >
-                  <div className="text-sm font-semibold truncate" title={ev.nome}>
+                  <div className="text-xs font-semibold whitespace-normal leading-tight line-clamp-2" title={ev.nome}>
                     {ev.codigo_evento ?? ev.nome}
                   </div>
                   <div className="flex items-center gap-1.5 flex-wrap">
@@ -304,7 +304,7 @@ export function GanttEventos({
                     label="Montagem"
                     hora={ev.hora_montagem}
                     horaPos="start"
-                    top={6}
+                    top={7}
                   />
                   <Barra
                     from={ev.data_evento}
@@ -314,7 +314,7 @@ export function GanttEventos({
                     totalMs={totalMs}
                     color={COR_EVENTO}
                     label="Evento"
-                    top={22}
+                    top={25}
                   />
                   <Barra
                     from={ev.data_desmontagem}
@@ -326,7 +326,7 @@ export function GanttEventos({
                     label="Desmontagem"
                     hora={ev.hora_desmontagem}
                     horaPos="end"
-                    top={38}
+                    top={43}
                   />
                 </div>
               </div>
