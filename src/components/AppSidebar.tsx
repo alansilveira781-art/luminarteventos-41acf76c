@@ -41,6 +41,7 @@ import {
   Target,
   FileBarChart,
   CalendarDays,
+  ClipboardList,
 
 } from "lucide-react";
 import logo from "@/assets/luminart-logo-white.png";
@@ -52,6 +53,7 @@ type NavItem = { title: string; url: string; icon: any; group: string; module?: 
 
 const allItems: NavItem[] = [
   { title: "Início", url: "/", icon: LayoutDashboard, group: "Visão geral" },
+  { title: "Meus Pedidos", url: "/meus-pedidos", icon: ClipboardList, group: "Visão geral" },
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, group: "Estoque", module: "estoque" },
   { title: "Estoque", url: "/estoque", icon: Package, group: "Estoque", module: "estoque" },
   { title: "Solicitantes", url: "/solicitantes", icon: Users, group: "Estoque", module: "estoque" },
