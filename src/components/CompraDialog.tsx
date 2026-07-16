@@ -22,8 +22,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { notifyResponsiblesForStatus, notifyMentions } from "@/lib/notify";
 import { CopiarLinkButton } from "@/components/CopiarLinkButton";
 import { listEventos } from "@/lib/sheets.functions";
-
-const EVENTOS_FIXOS = ["Manutenção do Galpão", "Reposição de Estoque", "Showroom", "Placas do Zé"];
+import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 
 const sb = supabase as any;
 
