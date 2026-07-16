@@ -170,7 +170,65 @@ function ApuracoesPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const imprimirRascunho = () => {
+  const buildRows = () => {
+    const rows: Array<{ data: string; nf: string; evento: string; valor: number; banco: string }> = [];
+    if (regime === "caixa") {
+      for (const r of recebimentos ?? []) {
+        const notaLinked = r.nota_id ? notasMap?.map.get(r.nota_id) : null;
+        const nf = String(r.numero_nf ?? notaLinked?.numero ?? "—");
+        const ev = (notaLinked?.nome_evento
+          || (r.numero_nf && notasMap?.byNum.get(String(r.numero_nf))?.nome_evento)
+          || "—") as string;
+        rows.push({
+          data: format(new Date(r.data_recebimento), "dd/MM/yyyy"),
+          nf, evento: ev, valor: Number(r.valor_recebido || 0), banco: r.banco ?? "—",
+        });
+      }
+    } else {
+      for (const n of notasEmitidas ?? []) {
+        rows.push({
+          data: format(new Date(n.data_emissao), "dd/MM/yyyy"),
+          nf: String(n.numero ?? "—"),
+          evento: (n.nome_evento ?? n.tomador_nome ?? "—") as string,
+          valor: Number(n.valor_bruto || 0),
+          banco: "—",
+        });
+      }
+    }
+    return rows;
+  };
+
+  const exportarExcel = () => {
+    const rows = buildRows();
+    const wb = XLSX.utils.book_new();
+    const header = [
+      ["Rascunho de Apuração"],
+      ["Empresa", empresa],
+      ["Referência", `${mes}/${ano}`],
+      ["Regime", regime === "caixa" ? "Caixa" : "Competência"],
+      ["Gerado em", format(new Date(), "dd/MM/yyyy HH:mm")],
+      [],
+      ["Data", "Nº NF", "Evento", "Valor", "Banco"],
+    ];
+    const body = rows.map(r => [r.data, r.nf, r.evento, r.valor, r.banco]);
+    const footer = [[], ["", "", `Faturamento (${regime === "caixa" ? "caixa" : "competência"})`, faturamento, ""]];
+    const ws1 = XLSX.utils.aoa_to_sheet([...header, ...body, ...footer]);
+    ws1["!cols"] = [{ wch: 12 }, { wch: 12 }, { wch: 40 }, { wch: 14 }, { wch: 16 }];
+    XLSX.utils.book_append_sheet(wb, ws1, "Lançamentos");
+
+    const impostos: any[][] = [["Imposto", "Valor"]];
+    for (const i of (apuracao.itens ?? [])) impostos.push([i.imposto, Number(i.valor || 0)]);
+    impostos.push(["Total", Number(apuracao.totalImpostos || 0)]);
+    const ws2 = XLSX.utils.aoa_to_sheet(impostos);
+    ws2["!cols"] = [{ wch: 20 }, { wch: 16 }];
+    XLSX.utils.book_append_sheet(wb, ws2, "Impostos");
+
+    const safe = (s: string) => s.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+    XLSX.writeFile(wb, `apuracao-${safe(empresa)}-${safe(mes)}-${ano}.xlsx`);
+  };
+
+  const exportarPDF = () => {
+    const rows = buildRows();
     const rows: Array<{ data: string; nf: string; evento: string; valor: number; banco: string }> = [];
     if (regime === "caixa") {
       for (const r of recebimentos ?? []) {
