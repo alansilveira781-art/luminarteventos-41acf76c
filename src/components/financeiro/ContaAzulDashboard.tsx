@@ -713,6 +713,7 @@ function AnaliseDetalhada() {
             "quantidade, itens(nome, categoria, valor_unitario), movimentacoes!inner(evento_projeto, tipo, item_id, data_movimento, requisicao_numero, observacoes)",
           )
           .eq("movimentacoes.tipo", "saida")
+          .order("id")
           .range(from, to),
       );
 
