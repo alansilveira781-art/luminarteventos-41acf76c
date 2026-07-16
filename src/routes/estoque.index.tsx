@@ -65,6 +65,7 @@ function EstoquePage() {
   const [importing, setImporting] = useState(false);
   const [conferindo, setConferindo] = useState(false);
   const [hideZero, setHideZero] = useState<boolean>(false);
+  const [categoriaFilter, setCategoriaFilter] = useState<string>("all");
   const [sort, setSort] = useState<{ key: string; dir: "desc" | "asc" } | null>(null);
   const [periodoPreset, setPeriodoPreset] = useState<PeriodoPreset>("todos");
   const [periodo, setPeriodo] = useState<Periodo>(() => periodoFromPreset("todos"));
