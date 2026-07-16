@@ -792,22 +792,8 @@ function AnaliseDetalhada() {
   // Nome do centro selecionado — usado no casamento de saídas de estoque.
   const centroSelNomeEarly = centroId ? (ccs.find((c) => c.external_id === centroId)?.nome ?? "") : "";
 
-  // Índice nome-do-plano (normalizado) -> { external_id, grupo }.
-  // Casamento por nome é o critério pedido: itens.categoria == ca_plano_contas.nome.
-  const planoPorNome = useMemo(() => {
-    const norm = (s: string) =>
-      s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
-    const prefixIndex = buildPrefixIndex(dreEstrutura);
-    const m = new Map<string, { external_id: string; grupo: DreGroupId | null }>();
-    planosArr.forEach((p) => {
-      if (!p?.nome) return;
-      m.set(norm(p.nome), {
-        external_id: p.external_id,
-        grupo: grupoDoPlanoNome(p.nome, prefixIndex),
-      });
-    });
-    return m;
-  }, [planosArr, dreEstrutura]);
+
+
 
   // Agrega saídas de estoque do evento em um bloco próprio ("ES"), com uma linha
   // de detalhe por categoria de item. Nunca mescla com rubricas do Conta Azul,
