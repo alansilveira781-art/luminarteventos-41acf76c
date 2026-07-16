@@ -680,11 +680,14 @@ function AnaliseDetalhada() {
         quantidade: number | null;
         evento_projeto: string | null;
         item_id: string | null;
-        itens: { categoria: string | null; valor_unitario: number | null } | null;
+        data_movimento: string | null;
+        observacao: string | null;
+        responsavel: string | null;
+        itens: { nome: string | null; categoria: string | null; valor_unitario: number | null } | null;
       }>((from, to) =>
         sb
           .from("movimentacoes")
-          .select("id, quantidade, evento_projeto, item_id, itens(categoria, valor_unitario)")
+          .select("id, quantidade, evento_projeto, item_id, data_movimento, observacao, responsavel, itens(nome, categoria, valor_unitario)")
           .eq("tipo", "saida")
           .range(from, to),
       );
@@ -692,22 +695,40 @@ function AnaliseDetalhada() {
       // (b) saídas compostas (movimentacao_itens) — raras; buscamos linhas cujo pai é saida.
       const composites = await fetchPaged<{
         quantidade: number | null;
-        itens: { categoria: string | null; valor_unitario: number | null } | null;
-        movimentacoes: { evento_projeto: string | null; tipo: string | null; item_id: string | null } | null;
+        itens: { nome: string | null; categoria: string | null; valor_unitario: number | null } | null;
+        movimentacoes: { evento_projeto: string | null; tipo: string | null; item_id: string | null; data_movimento: string | null; observacao: string | null; responsavel: string | null } | null;
       }>((from, to) =>
         sb
           .from("movimentacao_itens")
-          .select("quantidade, itens(categoria, valor_unitario), movimentacoes!inner(evento_projeto, tipo, item_id)")
+          .select("quantidade, itens(nome, categoria, valor_unitario), movimentacoes!inner(evento_projeto, tipo, item_id, data_movimento, observacao, responsavel)")
           .eq("movimentacoes.tipo", "saida")
           .range(from, to),
       );
 
-      const rows: { valor_total: number; evento_projeto: string | null; itens: { categoria: string | null } | null }[] = [];
+      const rows: {
+        valor_total: number;
+        evento_projeto: string | null;
+        data: string | null;
+        item_nome: string | null;
+        quantidade: number;
+        observacao: string | null;
+        responsavel: string | null;
+        itens: { categoria: string | null } | null;
+      }[] = [];
       simples.forEach((m) => {
         if (!m.item_id) return; // composite: valor virá em (b)
         const q = Number(m.quantidade || 0);
         const vu = Number(m.itens?.valor_unitario || 0);
-        rows.push({ valor_total: q * vu, evento_projeto: m.evento_projeto, itens: m.itens });
+        rows.push({
+          valor_total: q * vu,
+          evento_projeto: m.evento_projeto,
+          data: m.data_movimento,
+          item_nome: m.itens?.nome ?? null,
+          quantidade: q,
+          observacao: m.observacao,
+          responsavel: m.responsavel,
+          itens: m.itens,
+        });
       });
       composites.forEach((mi) => {
         const q = Number(mi.quantidade || 0);
@@ -715,12 +736,18 @@ function AnaliseDetalhada() {
         rows.push({
           valor_total: q * vu,
           evento_projeto: mi.movimentacoes?.evento_projeto ?? null,
+          data: mi.movimentacoes?.data_movimento ?? null,
+          item_nome: mi.itens?.nome ?? null,
+          quantidade: q,
+          observacao: mi.movimentacoes?.observacao ?? null,
+          responsavel: mi.movimentacoes?.responsavel ?? null,
           itens: mi.itens,
         });
       });
       return rows;
     },
   });
+
 
 
   // 3. Monta linhas sintéticas (1 por fatia): herdam descrição/datas/status do pai
