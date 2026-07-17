@@ -315,6 +315,7 @@ function ValidarRecebimentoDialog({ demanda, onClose }: { demanda: DemandaRow; o
           .insert({
             nome: l.nome.trim(),
             id_item,
+            cod: l.cod ?? null,
             categoria: "IMOBILIZADO",
             subcategoria: l.subcategoria || null,
             especificacao: l.especificacao || null,
