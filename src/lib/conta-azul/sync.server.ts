@@ -130,6 +130,44 @@ export async function syncCentrosCusto() {
         synced_at: syncedAt,
       }));
       await upsertBatched("ca_centros_custo", rows, "external_id");
+
+      // Reconciliar exclusões: apaga do banco os centros que sumiram da API.
+      // Guarda: só executa quando a listagem retornou algum item.
+      try {
+        const activeIds = new Set(items.map((it: any) => String(it.id ?? it.uuid)));
+        const { data: existentes, error } = await sb
+          .from("ca_centros_custo")
+          .select("external_id");
+        if (error) throw error;
+        const toDelete = (existentes ?? [])
+          .map((r: any) => String(r.external_id))
+          .filter((id: string) => !activeIds.has(id));
+        if (toDelete.length > 0) {
+          for (let i = 0; i < toDelete.length; i += 500) {
+            const chunk = toDelete.slice(i, i + 500);
+            await sb.from("ca_centros_custo").delete().in("external_id", chunk);
+          }
+          const nowIso = new Date().toISOString();
+          await sb.from("ca_sync_log").insert({
+            recurso: "reconciliacao_centros_custo",
+            status: "ok",
+            started_at: nowIso,
+            finished_at: nowIso,
+            qtd_registros: toDelete.length,
+            mensagem: `Removidos ${toDelete.length} centro(s) excluídos no Conta Azul: ${toDelete.slice(0, 20).join(", ")}${toDelete.length > 20 ? "..." : ""}`,
+          });
+        }
+      } catch (e: any) {
+        const nowIso = new Date().toISOString();
+        await sb.from("ca_sync_log").insert({
+          recurso: "reconciliacao_centros_custo",
+          status: "erro",
+          started_at: nowIso,
+          finished_at: nowIso,
+          qtd_registros: 0,
+          mensagem: String(e?.message ?? e),
+        });
+      }
     }
     await logFinish(logId, "ok", items.length);
     return items.length;
@@ -138,6 +176,7 @@ export async function syncCentrosCusto() {
     throw e;
   }
 }
+
 
 function normalizeStatus(s?: string) {
   if (!s) return null;
@@ -620,12 +659,20 @@ async function reconciliarExclusoes(
   to: string,
   activeIds: Set<string>,
 ): Promise<{ removidos: number; ids: string[] }> {
+  // Guarda de segurança: se a listagem da API veio vazia, NÃO apaga nada.
+  // Evita zerar a tabela por instabilidade (429/503) ou erro upstream.
+  if (activeIds.size === 0) {
+    throw new Error(
+      "reconciliação abortada: API retornou 0 itens no período — possível instabilidade",
+    );
+  }
   const { data: existentes, error } = await sb
     .from(tabela)
     .select("external_id")
     .gte("data_vencimento", from)
     .lte("data_vencimento", to);
   if (error) throw error;
+
   const toDelete = (existentes ?? [])
     .map((r: any) => String(r.external_id))
     .filter((id: string) => !activeIds.has(id));
