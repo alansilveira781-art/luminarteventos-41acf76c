@@ -266,8 +266,24 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
             <Input value={f.local} onChange={(e) => set("local", e.target.value)} />
           </div>
           <div>
+            <Label>Estado (UF)</Label>
+            <SearchableSelect
+              value={f.uf}
+              onChange={handleUfChange}
+              options={ufOptions}
+              placeholder="Selecione o estado…"
+              searchPlaceholder="Buscar estado…"
+            />
+          </div>
+          <div>
             <Label>Cidade</Label>
-            <Input value={f.cidade} onChange={(e) => set("cidade", e.target.value)} />
+            <SearchableSelect
+              value={cidadeValue}
+              onChange={handleCidadeChange}
+              options={cidadeOptions}
+              placeholder={f.uf ? "Selecione a cidade…" : "Selecione a cidade (auto UF)…"}
+              searchPlaceholder="Buscar cidade…"
+            />
           </div>
           <div>
             <Label>Tipo</Label>
