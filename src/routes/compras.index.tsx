@@ -540,6 +540,11 @@ function Card({
             ) : (
               <div>{compra.data_compra ? `Comprada: ${formatDate(compra.data_compra)}` : "Não comprado"}</div>
             )}
+            {compra.valor_total != null && (
+              <div className="font-medium text-foreground">
+                {Number(compra.valor_total).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              </div>
+            )}
           </div>
         </button>
         {onMigrar && (
