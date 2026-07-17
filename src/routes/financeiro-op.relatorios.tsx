@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Printer } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -82,8 +84,8 @@ function RelatoriosPage() {
           "data_compra",
         ),
         buildFilter(
-          sb.from("demandas").select("id, numero, titulo, solicitante, comprador, descritivo, observacoes, valor_total, data_solicitacao, parcelamento"),
-          "data_solicitacao",
+          sb.from("demandas").select("id, numero, titulo, solicitante, comprador, descritivo, observacoes, valor_total, data_compra, parcelamento"),
+          "data_compra",
         ),
       ]);
       if (comprasRes.error) throw comprasRes.error;
@@ -157,6 +159,75 @@ function RelatoriosPage() {
 
   const emitido = format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
 
+  const exportPdf = () => {
+    const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text("Luminart Eventos", 40, 40);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Relatório de Cartão — Cartão Final ${cartao}`, 40, 56);
+    doc.text(`Período: ${periodoLabel}`, 40, 70);
+    doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    doc.text(`Emitido em ${emitido}`, pageWidth - 40, 40, { align: "right" });
+    doc.setTextColor(0, 0, 0);
+
+    const body = rows.map((r) => [
+      `${r.tipo}-${r.numero ?? "—"}`,
+      r.titulo ?? "—",
+      r.solicitante ?? "—",
+      r.comprador ?? "—",
+      r.itens.length > 0
+        ? r.itens.map((it) => `${Number(it.quantidade ?? 0)}x ${it.descricao ?? "—"}`).join("\n")
+        : (r.descritivo_fallback ?? "—"),
+      r.parcelamento ?? "—",
+      brl(r.valor_total),
+    ]);
+
+    autoTable(doc, {
+      startY: 90,
+      head: [["Tipo", "Título", "Solicitante", "Comprador", "Itens ou Descritivo", "Pagamento", "Valor Total"]],
+      body,
+      styles: { fontSize: 8, cellPadding: 4, overflow: "linebreak", valign: "top" },
+      headStyles: { fillColor: [30, 30, 30], textColor: [255, 255, 255], fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+      columnStyles: {
+        0: { cellWidth: 60 },
+        1: { cellWidth: 110 },
+        2: { cellWidth: 90 },
+        3: { cellWidth: 90 },
+        4: { cellWidth: "auto" },
+        5: { cellWidth: 90 },
+        6: { cellWidth: 75, halign: "right" },
+      },
+      margin: { left: 40, right: 40 },
+      showHead: "everyPage",
+    });
+
+    const finalY = (doc as any).lastAutoTable?.finalY ?? 90;
+    let y = finalY + 20;
+    const pageHeight = doc.internal.pageSize.getHeight();
+    if (y > pageHeight - 60) {
+      doc.addPage();
+      y = 40;
+    }
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Total de Compras: ${brl(totalCompras)}`, pageWidth - 40, y, { align: "right" });
+    doc.text(`Total de Despesas: ${brl(totalDemandas)}`, pageWidth - 40, y + 16, { align: "right" });
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(`Total Geral: ${brl(totalGeral)}`, pageWidth - 40, y + 36, { align: "right" });
+
+    const periodoSlug = periodoLabel.replace(/[^\w]+/g, "-").toLowerCase();
+    const cartaoSlug = (cartao || "cartao").replace(/[^\w]+/g, "-").toLowerCase();
+    doc.save(`relatorio-cartao-${cartaoSlug}-${periodoSlug}.pdf`);
+  };
+
+
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div className="print:hidden">
@@ -188,13 +259,14 @@ function RelatoriosPage() {
         <div className="ml-auto">
           <Button
             variant="outline"
-            onClick={() => window.print()}
+            onClick={exportPdf}
             disabled={!cartao || rows.length === 0}
           >
             <Printer className="h-4 w-4 mr-2" />
-            Imprimir
+            Exportar PDF
           </Button>
         </div>
+
       </div>
 
       {/* Cabeçalho de impressão */}
