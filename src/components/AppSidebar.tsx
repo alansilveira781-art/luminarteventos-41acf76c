@@ -71,6 +71,7 @@ const allItems: NavItem[] = [
   { title: "Configurações", url: "/financeiro/configuracoes", icon: Settings, group: "Despesas", module: "financeiro", moduleAdminOnly: "financeiro" },
 
   { title: "Dashboard", url: "/financeiro-op/dashboard", icon: BarChart3, group: "Financeiro", module: "financeiro_op" },
+  { title: "Diaristas", url: "/financeiro-op/diaristas", icon: Users2, group: "Financeiro", module: "financeiro_op" },
   { title: "Quadro Financeiro", url: "/financeiro-op/quadro", icon: KanbanSquare, group: "Financeiro", module: "financeiro_op" },
   { title: "Rotinas Financeiras", url: "/financeiro-op/rotinas", icon: ClipboardCheck, group: "Financeiro", module: "financeiro_op" },
   { title: "Conta Azul", url: "/financeiro-op/conta-azul", icon: Link2, group: "Financeiro", module: "financeiro_op" },
