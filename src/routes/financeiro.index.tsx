@@ -170,8 +170,8 @@ function DemandasKanban() {
     opts?: { force?: boolean; toastMsg?: string },
   ) {
     if (demanda.status === status) return;
-    if (status === "a_receber" && !TIPOS_QUE_VAO_PARA_ESTOQUE.includes(demanda.tipo_demanda ?? "")) {
-      toast.error('Somente despesas de fardamento, material de limpeza ou material de escritório podem ir para "A Receber".');
+    if (status === "a_receber" && !TIPOS_QUE_VAO_PARA_RECEBIMENTO.includes(demanda.tipo_demanda ?? "")) {
+      toast.error('Somente despesas de fardamento, material de limpeza, material de escritório, reposição de estoque ou imobilizado podem ir para "A Receber".');
       return;
     }
     const id = demanda.id;
