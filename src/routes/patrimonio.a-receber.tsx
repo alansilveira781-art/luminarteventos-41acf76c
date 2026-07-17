@@ -578,8 +578,90 @@ function ValidarRecebimentoDialog({ demanda, onClose }: { demanda: DemandaRow; o
                   />
                 </div>
                 <div className="space-y-1.5">
+                  <Label>Categoria</Label>
+                  <Select
+                    value={l.categoria || "IMOBILIZADO"}
+                    onValueChange={(v) => setLinha(idx, { categoria: v })}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIAS_PAT.map((c) => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
                   <Label>Subcategoria</Label>
-                  <Input value={l.subcategoria} onChange={(e) => setLinha(idx, { subcategoria: e.target.value })} placeholder="Ex: CLIMATIZAÇÃO" />
+                  <div className="flex gap-1">
+                    <Select
+                      value={l.subcategoria ? l.subcategoria : "__none"}
+                      onValueChange={(v) =>
+                        setLinha(idx, { subcategoria: v === "__none" ? "" : v })
+                      }
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none">— Nenhuma —</SelectItem>
+                        {subcategoriasParaLinha(idx, l.subcategoria || null).map((c) => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 shrink-0"
+                      onClick={() =>
+                        setAddingSub((p) => ({ ...p, [idx]: !p[idx] }))
+                      }
+                    >
+                      {addingSub[idx] ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  {addingSub[idx] && (
+                    <div className="flex gap-1 mt-1 rounded-md border border-border bg-muted/30 p-2">
+                      <Input
+                        value={newSub[idx] ?? ""}
+                        autoFocus
+                        placeholder="Nova subcategoria"
+                        onChange={(e) => setNewSub((p) => ({ ...p, [idx]: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const v = (newSub[idx] ?? "").trim().toUpperCase();
+                            if (v) {
+                              setExtraSubs((p) => ({ ...p, [idx]: [...(p[idx] ?? []), v] }));
+                              setLinha(idx, { subcategoria: v });
+                              setNewSub((p) => ({ ...p, [idx]: "" }));
+                              setAddingSub((p) => ({ ...p, [idx]: false }));
+                            }
+                          }
+                          if (e.key === "Escape") {
+                            setAddingSub((p) => ({ ...p, [idx]: false }));
+                            setNewSub((p) => ({ ...p, [idx]: "" }));
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={!(newSub[idx] ?? "").trim()}
+                        onClick={() => {
+                          const v = (newSub[idx] ?? "").trim().toUpperCase();
+                          setExtraSubs((p) => ({ ...p, [idx]: [...(p[idx] ?? []), v] }));
+                          setLinha(idx, { subcategoria: v });
+                          setNewSub((p) => ({ ...p, [idx]: "" }));
+                          setAddingSub((p) => ({ ...p, [idx]: false }));
+                        }}
+                      >
+                        Adicionar
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 <div className="sm:col-span-2 space-y-1.5">
                   <Label>Localização</Label>
