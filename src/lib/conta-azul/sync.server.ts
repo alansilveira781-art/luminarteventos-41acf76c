@@ -8,6 +8,20 @@ const MAX_PAGES = 50; // safety cap (50 * 100 = 5000 itens por recurso)
 const UPSERT_BATCH = 500;
 
 async function logStart(recurso: string, from?: string, to?: string): Promise<string> {
+  // Fecha logs órfãos deste mesmo recurso que ficaram em "em_andamento" — o Worker
+  // pode ter sido morto no meio (timeout) sem chance de rodar `finally`.
+  try {
+    await sb
+      .from("ca_sync_log")
+      .update({
+        status: "erro",
+        finished_at: new Date().toISOString(),
+        mensagem: "Interrompido: processo anterior não finalizou (timeout do Worker provável).",
+      })
+      .eq("recurso", recurso)
+      .eq("status", "em_andamento");
+  } catch {}
+
   const { data, error } = await sb
     .from("ca_sync_log")
     .insert({
@@ -22,6 +36,7 @@ async function logStart(recurso: string, from?: string, to?: string): Promise<st
   if (error) throw error;
   return data.id as string;
 }
+
 
 async function logFinish(id: string, status: "ok" | "erro", qtd: number, mensagem?: string) {
   await sb
