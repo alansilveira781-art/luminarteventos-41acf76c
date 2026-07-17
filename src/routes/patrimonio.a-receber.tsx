@@ -201,6 +201,7 @@ type LinhaPat = {
   demanda_item_id: string | null;
   nome: string;
   cod: number | null;
+  categoria: string;
   quantidade: number;
   unidade: string;
   valor: number;
