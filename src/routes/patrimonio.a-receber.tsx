@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { PackageCheck, Paperclip, FileIcon, Download, Trash2 } from "lucide-react";
+import { PackageCheck, Paperclip, FileIcon, Download, Trash2, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { NumberInput } from "@/components/comercial/NumberInput";
 import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
@@ -24,6 +24,18 @@ export const Route = createFileRoute("/patrimonio/a-receber")({
 
 const ESTADOS_PAT = ["OTIMO", "BOM", "EM MANUTENCAO", "DANIFICADO"];
 const UNIDADES_PAT = ["UNIDADE", "M²", "METRAGEM", "PAR", "PEÇA"];
+const CATEGORIAS_PAT = [
+  "ACERVO",
+  "IMOBILIZADO",
+  "ILUMINACAO",
+  "ESTOQUE",
+  "MAQUINARIOS",
+  "FERRAMENTAS",
+  "VEICULOS",
+  "ESTRUTURAS",
+  "AMBIENTE",
+  "DECORACAO",
+];
 
 type DemandaItemRow = {
   id: string;
@@ -189,6 +201,7 @@ type LinhaPat = {
   demanda_item_id: string | null;
   nome: string;
   cod: number | null;
+  categoria: string;
   quantidade: number;
   unidade: string;
   valor: number;
@@ -209,6 +222,7 @@ function buildInitialLinhas(demanda: DemandaRow): LinhaPat[] {
         demanda_item_id: null,
         nome: demanda.titulo || demanda.fornecedor || "",
         cod: null,
+        categoria: "IMOBILIZADO",
         quantidade: 1,
         unidade: "UNIDADE",
         valor: Number(demanda.valor_total || 0),
@@ -235,6 +249,7 @@ function buildInitialLinhas(demanda: DemandaRow): LinhaPat[] {
       demanda_item_id: it.id,
       nome: it.descricao || demanda.titulo || "",
       cod: null,
+      categoria: "IMOBILIZADO",
       quantidade: q > 0 ? q : 1,
       unidade: it.unidade || "UNIDADE",
       valor: Number(valorUnitEfetivo.toFixed(4)),
@@ -255,6 +270,26 @@ function ValidarRecebimentoDialog({ demanda, onClose }: { demanda: DemandaRow; o
 
   const [linhas, setLinhas] = useState<LinhaPat[]>(() => buildInitialLinhas(demanda));
   const [preview, setPreview] = useState<AnexoRow | null>(null);
+  const [extraSubs, setExtraSubs] = useState<Record<number, string[]>>({});
+  const [addingSub, setAddingSub] = useState<Record<number, boolean>>({});
+  const [newSub, setNewSub] = useState<Record<number, string>>({});
+
+  const { data: subcategoriasDb = [] } = useQuery({
+    queryKey: ["pat-subcategorias-all"],
+    queryFn: async () => {
+      const { data } = await sb.from("pat_itens").select("subcategoria").not("subcategoria", "is", null);
+      const set = new Set<string>();
+      (data ?? []).forEach((r: any) => { if (r.subcategoria) set.add(String(r.subcategoria)); });
+      return Array.from(set).sort();
+    },
+  });
+
+  const subcategoriasParaLinha = (idx: number, atual: string | null) => {
+    const s = new Set<string>(subcategoriasDb);
+    (extraSubs[idx] ?? []).forEach((x) => s.add(x));
+    if (atual) s.add(atual);
+    return Array.from(s).sort();
+  };
 
   const nfs = useMemo(() => {
     if (demanda.numeros_nf && demanda.numeros_nf.length > 0) return demanda.numeros_nf;
@@ -316,7 +351,7 @@ function ValidarRecebimentoDialog({ demanda, onClose }: { demanda: DemandaRow; o
             nome: l.nome.trim(),
             id_item,
             cod: l.cod ?? null,
-            categoria: "IMOBILIZADO",
+            categoria: l.categoria || "IMOBILIZADO",
             subcategoria: l.subcategoria || null,
             especificacao: l.especificacao || null,
             dimensoes: l.dimensoes || null,
@@ -543,8 +578,90 @@ function ValidarRecebimentoDialog({ demanda, onClose }: { demanda: DemandaRow; o
                   />
                 </div>
                 <div className="space-y-1.5">
+                  <Label>Categoria</Label>
+                  <Select
+                    value={l.categoria || "IMOBILIZADO"}
+                    onValueChange={(v) => setLinha(idx, { categoria: v })}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIAS_PAT.map((c) => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
                   <Label>Subcategoria</Label>
-                  <Input value={l.subcategoria} onChange={(e) => setLinha(idx, { subcategoria: e.target.value })} placeholder="Ex: CLIMATIZAÇÃO" />
+                  <div className="flex gap-1">
+                    <Select
+                      value={l.subcategoria ? l.subcategoria : "__none"}
+                      onValueChange={(v) =>
+                        setLinha(idx, { subcategoria: v === "__none" ? "" : v })
+                      }
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none">— Nenhuma —</SelectItem>
+                        {subcategoriasParaLinha(idx, l.subcategoria || null).map((c) => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 shrink-0"
+                      onClick={() =>
+                        setAddingSub((p) => ({ ...p, [idx]: !p[idx] }))
+                      }
+                    >
+                      {addingSub[idx] ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  {addingSub[idx] && (
+                    <div className="flex gap-1 mt-1 rounded-md border border-border bg-muted/30 p-2">
+                      <Input
+                        value={newSub[idx] ?? ""}
+                        autoFocus
+                        placeholder="Nova subcategoria"
+                        onChange={(e) => setNewSub((p) => ({ ...p, [idx]: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const v = (newSub[idx] ?? "").trim().toUpperCase();
+                            if (v) {
+                              setExtraSubs((p) => ({ ...p, [idx]: [...(p[idx] ?? []), v] }));
+                              setLinha(idx, { subcategoria: v });
+                              setNewSub((p) => ({ ...p, [idx]: "" }));
+                              setAddingSub((p) => ({ ...p, [idx]: false }));
+                            }
+                          }
+                          if (e.key === "Escape") {
+                            setAddingSub((p) => ({ ...p, [idx]: false }));
+                            setNewSub((p) => ({ ...p, [idx]: "" }));
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={!(newSub[idx] ?? "").trim()}
+                        onClick={() => {
+                          const v = (newSub[idx] ?? "").trim().toUpperCase();
+                          setExtraSubs((p) => ({ ...p, [idx]: [...(p[idx] ?? []), v] }));
+                          setLinha(idx, { subcategoria: v });
+                          setNewSub((p) => ({ ...p, [idx]: "" }));
+                          setAddingSub((p) => ({ ...p, [idx]: false }));
+                        }}
+                      >
+                        Adicionar
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 <div className="sm:col-span-2 space-y-1.5">
                   <Label>Localização</Label>
