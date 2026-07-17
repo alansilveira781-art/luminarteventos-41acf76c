@@ -133,7 +133,7 @@ function ContaAzulPage() {
     }
   }
 
-  async function handleSync() {
+  async function handleSync(modo: "incremental" | "completo" = "incremental") {
     // Roda um recurso por request — evita timeouts e dá feedback de progresso.
     setBusy("sync");
     setProgress({ current: null, done: 0 });
@@ -148,7 +148,7 @@ function ContaAzulPage() {
           const res = await fetch("/api/contaazul/sync", {
             method: "POST",
             headers,
-            body: JSON.stringify({ from, to, recurso: r.key }),
+            body: JSON.stringify({ from, to, recurso: r.key, modo }),
           });
           if (!res.ok) throw new Error(await res.text());
           const { qtd } = (await res.json()) as { qtd: number };
@@ -172,6 +172,7 @@ function ContaAzulPage() {
       setProgress({ current: null, done: 0 });
     }
   }
+
 
   const connected = status.data?.connected;
 
