@@ -162,6 +162,7 @@ function useNavItems(pathname: string) {
     if (i.module === "juridico") return ctx === "juridico" && (isAdmin || hasModule("juridico"));
     if (i.module === "patrimonio") return ctx === "patrimonio" && (isAdmin || hasModule("patrimonio"));
     if (i.module === "rh") return ctx === "rh" && (isAdmin || hasModule("rh"));
+    if (i.module === "eventos") return ctx === "eventos" && (isAdmin || hasModule("eventos"));
     return true;
   });
 }
