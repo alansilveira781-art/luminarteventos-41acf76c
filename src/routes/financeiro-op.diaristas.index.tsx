@@ -59,10 +59,7 @@ type Apontamento = {
 type ApontamentoForm = {
   id?: string;
   diarista_id: string;
-  empresa: string;
-  atividade: string;
   projeto: string;
-  comodos: string;
   data: string;
   hora_inicial: string;
   hora_final: string;
@@ -74,10 +71,7 @@ type ApontamentoForm = {
 
 const emptyApontamento = (): ApontamentoForm => ({
   diarista_id: "",
-  empresa: "Luminart Eventos",
-  atividade: "",
   projeto: "",
-  comodos: "",
   data: format(new Date(), "yyyy-MM-dd"),
   hora_inicial: "08:00",
   hora_final: "17:00",
@@ -172,10 +166,26 @@ function useApontamentos() {
 // Apontamento
 // ─────────────────────────────────────────────────────────────
 
+function useEventos() {
+  return useQuery({
+    queryKey: ["diaristas-eventos-list"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("eventos")
+        .select("id, nome, data_evento")
+        .order("data_evento", { ascending: false, nullsFirst: false });
+      if (error) throw error;
+      return (data ?? []) as { id: string; nome: string; data_evento: string | null }[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 function ApontamentoTab() {
   const qc = useQueryClient();
   const { data: diaristas = [] } = useDiaristas();
   const { data: apontamentos = [], isLoading } = useApontamentos();
+  const { data: eventos = [] } = useEventos();
 
   const diaristasAtivos = useMemo(() => diaristas.filter((d) => d.ativo), [diaristas]);
   const diaristasMap = useMemo(
@@ -198,10 +208,7 @@ function ApontamentoTab() {
       if (!payload.diarista_id) throw new Error("Selecione o diarista");
       const row = {
         diarista_id: payload.diarista_id,
-        empresa: payload.empresa.trim() || null,
-        atividade: payload.atividade.trim() || null,
         projeto: payload.projeto.trim() || null,
-        comodos: payload.comodos.trim() || null,
         data: payload.data,
         hora_inicial: payload.hora_inicial,
         hora_final: payload.hora_final,
@@ -370,10 +377,7 @@ function ApontamentoTab() {
                               setEditing({
                                 id: a.id,
                                 diarista_id: a.diarista_id,
-                                empresa: a.empresa ?? "",
-                                atividade: a.atividade ?? "",
                                 projeto: a.projeto ?? "",
-                                comodos: a.comodos ?? "",
                                 data: a.data,
                                 hora_inicial: a.hora_inicial.slice(0, 5),
                                 hora_final: a.hora_final.slice(0, 5),
@@ -452,25 +456,19 @@ function ApontamentoTab() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label>Projeto</Label>
-                <Input value={editing.projeto}
-                  onChange={(e) => setEditing({ ...editing, projeto: e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Atividade</Label>
-                <Input value={editing.atividade}
-                  onChange={(e) => setEditing({ ...editing, atividade: e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Cômodos</Label>
-                <Input value={editing.comodos}
-                  onChange={(e) => setEditing({ ...editing, comodos: e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Empresa</Label>
-                <Input value={editing.empresa}
-                  onChange={(e) => setEditing({ ...editing, empresa: e.target.value })} />
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Projeto (evento)</Label>
+                <Input
+                  list="diaristas-eventos-list"
+                  value={editing.projeto}
+                  placeholder="Digite para buscar um evento…"
+                  onChange={(e) => setEditing({ ...editing, projeto: e.target.value })}
+                />
+                <datalist id="diaristas-eventos-list">
+                  {eventos.map((ev) => (
+                    <option key={ev.id} value={ev.nome} />
+                  ))}
+                </datalist>
               </div>
               <div className="space-y-1.5">
                 <Label>Data</Label>
