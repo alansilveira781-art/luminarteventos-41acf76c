@@ -245,19 +245,43 @@ function ContaAzulPage() {
                 <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
               </div>
             </div>
-            <Button onClick={handleSync} disabled={!canManage || !connected || busy !== null} className="w-full">
-              {busy === "sync" ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
-              Sincronizar agora
-            </Button>
-            {busy === "sync" && progress.current && (
-              <p className="text-xs text-muted-foreground">
-                Sincronizando {RECURSOS.find((r) => r.key === progress.current)?.label} ({progress.done + 1}/{RECURSOS.length})…
-              </p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              Puxa Plano de Contas, Centros de Custo, Contas a Pagar, Contas a Receber e Extrato no período selecionado.
-            </p>
+            {(() => {
+              const dias = Math.max(
+                0,
+                Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000),
+              );
+              const grande = dias > 120;
+              return (
+                <>
+                  <Button
+                    onClick={handleSync}
+                    disabled={!canManage || !connected || busy !== null || grande}
+                    className="w-full"
+                  >
+                    {busy === "sync" ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+                    Sincronizar agora
+                  </Button>
+                  {busy === "sync" && progress.current && (
+                    <p className="text-xs text-muted-foreground">
+                      Sincronizando {RECURSOS.find((r) => r.key === progress.current)?.label} ({progress.done + 1}/{RECURSOS.length})…
+                    </p>
+                  )}
+                  {grande ? (
+                    <p className="text-xs text-amber-600">
+                      Intervalo de {dias} dias é grande demais para esta ação (limite recomendado: 120 dias). Use o card
+                      <strong> Carga histórica</strong> abaixo — ele processa mês a mês em segundo plano, sem timeouts.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Puxa Plano de Contas, Centros de Custo, Contas a Pagar, Contas a Receber e Extrato no período selecionado.
+                      Para períodos maiores que 120 dias, prefira a <strong>Carga histórica</strong>.
+                    </p>
+                  )}
+                </>
+              );
+            })()}
           </CardContent>
+
         </Card>
       </div>
 
