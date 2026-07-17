@@ -77,6 +77,7 @@ function ComprasKanban() {
   const [defaultStatus, setDefaultStatus] = useState<CompraStatus>("solicitacao");
   const [q, setQ] = useState<string>(""); const qd = useDebouncedValue(q, 300);
   const [filters, setFilters] = usePersistedState<Filters>("compras.kanban", {});
+  const [migrarCompra, setMigrarCompra] = useState<Compra | null>(null);
 
   // Abre o card automaticamente quando a URL tem ?id=...
   useEffect(() => {
