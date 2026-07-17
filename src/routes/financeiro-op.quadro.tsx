@@ -264,40 +264,64 @@ function CardItem({
   podeMover: boolean;
   onOpen: (c: Card) => void;
 }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `${card.origem}:${card.id}`,
     disabled: !podeMover,
   });
+  const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
   return (
     <Card
       ref={setNodeRef}
+      style={style}
       {...(podeMover ? { ...listeners, ...attributes } : {})}
       onClick={() => onOpen(card)}
       className={cn(
-        "p-3 cursor-pointer hover:border-primary/60 transition-colors bg-background",
-        isDragging && "opacity-40",
+        "rounded-md border border-border bg-card p-2.5 text-xs shadow-sm cursor-pointer hover:border-primary/60 transition-colors",
+        isDragging && "opacity-50",
       )}
     >
-      <div className="flex items-center justify-between gap-2 mb-1">
-        <span className="text-[10px] font-mono text-muted-foreground">#{card.numero ?? "—"}</span>
+      <div className="flex items-start gap-2">
         <span
           className={cn(
-            "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium border",
-            card.origem === "compra"
-              ? "bg-primary/10 text-primary border-primary/30"
-              : "bg-accent/10 text-accent border-accent/30",
+            "text-muted-foreground select-none shrink-0",
+            podeMover ? "cursor-grab active:cursor-grabbing hover:text-foreground" : "cursor-not-allowed opacity-40",
           )}
+          {...(podeMover ? { ...listeners, ...attributes } : {})}
+          aria-label="Mover"
         >
-          {card.origem === "compra" ? "Compra" : "Despesa"}
+          ⋮⋮
         </span>
-      </div>
-      <div className="text-sm font-semibold truncate">{card.titulo ?? "(sem título)"}</div>
-      {card.fornecedor && (
-        <div className="text-xs text-muted-foreground truncate mt-0.5">{card.fornecedor}</div>
-      )}
-      <div className="flex items-center justify-between mt-2">
-        <div className="text-[11px] text-muted-foreground truncate">{card.solicitante ?? "—"}</div>
-        <div className="text-xs font-semibold">{fmtBRL(card.valor_total)}</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <div className="font-medium text-sm truncate text-foreground flex-1 min-w-0">
+              {card.titulo ?? "(sem título)"}
+            </div>
+            <span
+              className={cn(
+                "inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium border shrink-0",
+                card.origem === "compra"
+                  ? "bg-primary/10 text-primary border-primary/30"
+                  : "bg-accent/10 text-accent border-accent/30",
+              )}
+            >
+              {card.origem === "compra" ? "Compra" : "Despesa"}
+            </span>
+          </div>
+          {card.fornecedor && card.titulo && (
+            <div className="text-[11px] text-muted-foreground truncate">{card.fornecedor}</div>
+          )}
+          <div className="mt-1.5 space-y-0.5 text-[11px] text-muted-foreground">
+            {card.numero != null && (
+              <div className="font-mono text-muted-foreground">
+                {card.origem === "compra" ? `COMPRA-${card.numero}` : `DESPESA-${card.numero}`}
+              </div>
+            )}
+            {card.solicitante && <div>Solic.: {card.solicitante}</div>}
+            {card.valor_total != null && (
+              <div className="font-medium text-foreground">{fmtBRL(card.valor_total)}</div>
+            )}
+          </div>
+        </div>
       </div>
     </Card>
   );
