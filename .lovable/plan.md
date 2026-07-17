@@ -1,15 +1,20 @@
-## Problema
+## Objetivo
 
-No Quadro de Despesas (`src/routes/financeiro.index.tsx`), a validação ao mover um card para "A Receber" usa `TIPOS_QUE_VAO_PARA_ESTOQUE`, que contém apenas fardamento, material de limpeza, material de escritório e reposição de estoque. O tipo **imobilizado** está em `TIPOS_QUE_VAO_PARA_PATRIMONIO` (lista separada), então é bloqueado com a mensagem "Somente despesas de fardamento…".
+Adicionar o campo **Código** (numérico, sem letras — coluna `cod` de `pat_itens`) em cada linha do bloco "Itens a patrimoniar" da tela `patrimonio/a-receber`. Hoje esse código é preenchido manualmente no cadastro normal de patrimônio, mas está faltando no fluxo de validação do recebimento — o `id_item` (IMO-####) continua sendo gerado automaticamente.
 
-A função `proximoStatusDemanda` em `src/lib/demandas.ts` já usa corretamente `TIPOS_QUE_VAO_PARA_RECEBIMENTO` (união de estoque + patrimônio), então o roteamento automático já funciona — só a guarda manual do drag/clique está errada.
+## Escopo
 
-## Correção
+Arquivo único: `src/routes/patrimonio.a-receber.tsx`.
 
-Em `src/routes/financeiro.index.tsx`, na função `advanceToStatus`:
+## Alterações
 
-1. Trocar o import `TIPOS_QUE_VAO_PARA_ESTOQUE` por `TIPOS_QUE_VAO_PARA_RECEBIMENTO`.
-2. Trocar a checagem para permitir também imobilizado.
-3. Atualizar a mensagem de erro para incluir imobilizado (algo como: "Somente despesas de fardamento, material de limpeza, material de escritório, reposição de estoque ou imobilizado podem ir para 'A Receber'.").
+1. **Tipo `LinhaPat`**: adicionar `cod: number | null`.
+2. **`buildInitialLinhas`**: inicializar `cod: null` em cada linha (tanto no caso sem itens quanto no map de `demanda.itens`).
+3. **UI (bloco "Itens a patrimoniar")**: adicionar um campo `Código` (input numérico, opcional) ao lado dos outros campos da linha — usando `NumberInput` com precisão 0, placeholder tipo "Ex: 1234".
+4. **Insert em `pat_itens`**: incluir `cod: l.cod` (ou `null` se vazio) no payload da mutation `finalizar`.
 
-Nenhuma mudança em banco, tipos ou outros fluxos.
+## Fora de escopo
+
+- `id_item` continua sendo gerado como `IMO-####` sequencialmente (comportamento atual).
+- Nenhuma mudança de schema — a coluna `cod` já existe em `pat_itens`.
+- Nenhuma validação de unicidade do `cod` (segue o padrão do cadastro atual em `patrimonio.index.tsx`).
