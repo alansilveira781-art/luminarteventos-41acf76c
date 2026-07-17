@@ -545,6 +545,16 @@ function Card({
                 {Number(compra.valor_total).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               </div>
             )}
+            {onMigrar && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onMigrar(); }}
+                className="mt-1.5 inline-flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground hover:border-primary"
+                title="Migrar este card para o Quadro de Despesas"
+              >
+                <ArrowRightLeft className="h-3 w-3" /> Migrar para Despesa
+              </button>
+            )}
           </div>
         </button>
         {onAdvance && nextStatusLabel && (
