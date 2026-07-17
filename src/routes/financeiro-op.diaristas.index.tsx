@@ -167,20 +167,6 @@ function useApontamentos() {
 // Apontamento
 // ─────────────────────────────────────────────────────────────
 
-function useEventos() {
-  return useQuery({
-    queryKey: ["diaristas-eventos-list"],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("eventos")
-        .select("id, nome, data_evento")
-        .order("data_evento", { ascending: false, nullsFirst: false });
-      if (error) throw error;
-      return (data ?? []) as { id: string; nome: string; data_evento: string | null }[];
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-}
 
 function ApontamentoTab() {
   const qc = useQueryClient();
