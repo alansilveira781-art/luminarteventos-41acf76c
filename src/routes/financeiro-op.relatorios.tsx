@@ -259,13 +259,14 @@ function RelatoriosPage() {
         <div className="ml-auto">
           <Button
             variant="outline"
-            onClick={() => window.print()}
+            onClick={exportPdf}
             disabled={!cartao || rows.length === 0}
           >
             <Printer className="h-4 w-4 mr-2" />
-            Imprimir
+            Exportar PDF
           </Button>
         </div>
+
       </div>
 
       {/* Cabeçalho de impressão */}
