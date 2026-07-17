@@ -1,7 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { requireAdminOfModule } from "@/lib/conta-azul/auth-check.server";
-import { syncRecurso, syncTudo, type Recurso } from "@/lib/conta-azul/sync.server";
+import {
+  syncRecurso,
+  syncTudo,
+  ultimoSyncOk,
+  type Recurso,
+} from "@/lib/conta-azul/sync.server";
 
 const schema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -9,6 +14,7 @@ const schema = z.object({
   recurso: z
     .enum(["plano_contas", "centros_custo", "contas_pagar", "contas_receber", "extrato", "tudo"])
     .optional(),
+  modo: z.enum(["incremental", "completo"]).optional(),
 });
 
 function json(body: unknown, status = 200) {
@@ -34,14 +40,21 @@ export const Route = createFileRoute("/api/contaazul/sync")({
         const parsed = schema.safeParse(body);
         if (!parsed.success) return json({ error: "Datas inválidas (use YYYY-MM-DD)" }, 400);
 
-        const { from, to, recurso } = parsed.data;
+        const { from, to, recurso, modo } = parsed.data;
+        const incremental = (modo ?? "incremental") === "incremental";
         try {
           if (!recurso || recurso === "tudo") {
-            const result = await syncTudo(from, to);
+            const result = await syncTudo(from, to, { incremental });
             return json(result);
           }
-          const qtd = await syncRecurso(recurso as Recurso, from, to);
-          return json({ recurso, qtd });
+          // Só pagar/receber suportam incremental via data_alteracao.
+          let desde: string | undefined;
+          if (incremental && (recurso === "contas_pagar" || recurso === "contas_receber")) {
+            const ts = await ultimoSyncOk(recurso);
+            desde = ts ?? undefined;
+          }
+          const qtd = await syncRecurso(recurso as Recurso, from, to, desde);
+          return json({ recurso, qtd, modo: desde ? "incremental" : "completo" });
         } catch (e: any) {
           return json({ error: String(e?.message ?? e) }, 500);
         }
