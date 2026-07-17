@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { MoneyInput } from "@/components/MoneyInput";
+import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { calcularApontamento, formatHoras, type Local } from "@/lib/diaristas-calc";
@@ -166,26 +167,11 @@ function useApontamentos() {
 // Apontamento
 // ─────────────────────────────────────────────────────────────
 
-function useEventos() {
-  return useQuery({
-    queryKey: ["diaristas-eventos-list"],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("eventos")
-        .select("id, nome, data_evento")
-        .order("data_evento", { ascending: false, nullsFirst: false });
-      if (error) throw error;
-      return (data ?? []) as { id: string; nome: string; data_evento: string | null }[];
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-}
 
 function ApontamentoTab() {
   const qc = useQueryClient();
   const { data: diaristas = [] } = useDiaristas();
   const { data: apontamentos = [], isLoading } = useApontamentos();
-  const { data: eventos = [] } = useEventos();
 
   const diaristasAtivos = useMemo(() => diaristas.filter((d) => d.ativo), [diaristas]);
   const diaristasMap = useMemo(
@@ -458,17 +444,10 @@ function ApontamentoTab() {
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <Label>Projeto (evento)</Label>
-                <Input
-                  list="diaristas-eventos-list"
-                  value={editing.projeto}
-                  placeholder="Digite para buscar um evento…"
-                  onChange={(e) => setEditing({ ...editing, projeto: e.target.value })}
+                <EventoSheetCombobox
+                  value={editing.projeto || null}
+                  onChange={(v) => setEditing({ ...editing, projeto: v ?? "" })}
                 />
-                <datalist id="diaristas-eventos-list">
-                  {eventos.map((ev) => (
-                    <option key={ev.id} value={ev.nome} />
-                  ))}
-                </datalist>
               </div>
               <div className="space-y-1.5">
                 <Label>Data</Label>
