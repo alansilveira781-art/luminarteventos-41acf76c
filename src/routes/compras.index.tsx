@@ -454,6 +454,16 @@ function ComprasKanban() {
         }}
       />
 
+      <MigrarCompraDialog
+        compra={migrarCompra}
+        onClose={() => setMigrarCompra(null)}
+        onDone={() => {
+          setMigrarCompra(null);
+          qc.invalidateQueries({ queryKey: ["compras"] });
+          qc.invalidateQueries({ queryKey: ["demandas"] });
+        }}
+      />
+
     </>
   );
 }
