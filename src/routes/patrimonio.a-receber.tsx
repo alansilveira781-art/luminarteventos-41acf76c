@@ -188,6 +188,7 @@ function PatrimonioAReceberPage() {
 type LinhaPat = {
   demanda_item_id: string | null;
   nome: string;
+  cod: number | null;
   quantidade: number;
   unidade: string;
   valor: number;
