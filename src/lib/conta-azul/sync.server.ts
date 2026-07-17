@@ -756,9 +756,16 @@ export async function syncContasReceber(from: string, to: string, desde?: string
   const logId = await logStart("contas_receber", from, to);
   try {
     const basePath = "/financeiro/eventos-financeiros/contas-a-receber/buscar";
+    const janela = janelaVencimentoIncremental();
     const params: Record<string, string> = incremental
-      ? { data_alteracao_de: toCaDateTime(desdeAjustado!), data_alteracao_ate: toCaDateTime(agoraIso) }
+      ? {
+          data_vencimento_de: janela.from,
+          data_vencimento_ate: janela.to,
+          data_alteracao_de: toCaDateTime(desdeAjustado!),
+          data_alteracao_ate: toCaDateTime(agoraIso),
+        }
       : { data_vencimento_de: from, data_vencimento_ate: to };
+
     const items = await fetchPaged(basePath, params);
 
     if (items.length > 0) {
