@@ -1,6 +1,7 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -134,10 +135,18 @@ function DiaristasConfiguracoes() {
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
-      <PageHeader
-        title="Configurações — Diaristas"
-        description="Cadastre diaristas com valor/hora por localidade e chave Pix. Estes dados serão usados no apontamento e fechamento."
-      />
+      <div>
+        <Button variant="ghost" size="sm" asChild className="-ml-2 mb-2">
+          <Link to="/financeiro-op/diaristas">
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Voltar
+          </Link>
+        </Button>
+        <PageHeader
+          title="Configurações — Diaristas"
+          description="Cadastre diaristas com valor/hora por localidade e chave Pix. Estes dados serão usados no apontamento e fechamento."
+        />
+      </div>
 
       <Card className="p-4">
         <div className="flex items-center justify-between mb-3">
