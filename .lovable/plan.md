@@ -1,36 +1,23 @@
 ## Objetivo
-Corrigir o erro 400 do Conta Azul no modo incremental, que hoje omite `data_vencimento_de/ate`. A API exige essa janela sempre; o filtro por alteração é adicional.
+Tornar a sincronização resiliente à cota (429 QuotaViolation), rodando mais devagar e aguardando mais tempo entre tentativas, sem alterar filtros de data, mapeamento ou rateios.
 
-## Alteração única
-Arquivo: `src/lib/conta-azul/sync.server.ts`, funções `syncContasPagar` e `syncContasReceber`.
+## Alterações
 
-1. Adicionar duas constantes locais (topo do arquivo, próximo aos helpers de data) para a janela ampla usada no modo incremental:
-   - `INCREMENTAL_VENC_MESES_PASSADO = 12`
-   - `INCREMENTAL_VENC_MESES_FUTURO = 12`
-   E um helper `janelaVencimentoIncremental()` que devolve `{ from: hoje-12m, to: hoje+12m }` no formato `YYYY-MM-DD`.
+### 1. `src/lib/conta-azul/sync.server.ts` — `enrichItemsWithDetail`
+- Alterar `const CONCURRENCY = 2` para `const CONCURRENCY = 1`.
+- Adicionar constante no topo do arquivo (junto às demais): `const DETAIL_THROTTLE_MS = 350`.
+- No final de cada iteração do `worker` (após o `try/catch` que faz `caFetch(url)`), adicionar `await sleep(DETAIL_THROTTLE_MS)`.
+- Usar o `sleep` já existente no módulo (ou importar/definir localmente se ainda não houver — verificar na hora da implementação).
 
-2. Nos blocos incrementais das duas funções, substituir:
-   ```ts
-   incremental
-     ? { data_alteracao_de: toCaDateTime(desdeAjustado!), data_alteracao_ate: toCaDateTime(agoraIso) }
-     : { data_vencimento_de: from, data_vencimento_ate: to }
-   ```
-   por:
-   ```ts
-   const params = incremental
-     ? {
-         data_vencimento_de: janela.from,
-         data_vencimento_ate: janela.to,
-         data_alteracao_de: toCaDateTime(desdeAjustado!),
-         data_alteracao_ate: toCaDateTime(agoraIso),
-       }
-     : { data_vencimento_de: from, data_vencimento_ate: to };
-   ```
-   onde `janela = janelaVencimentoIncremental()`.
+### 2. `src/lib/conta-azul/client.server.ts` — `caFetch`
+- Alterar `const MAX_ATTEMPTS = 4` para `const MAX_ATTEMPTS = 6`.
+- No bloco `if (RETRY_STATUSES.has(res.status) && attempt < MAX_ATTEMPTS)`:
+  - Sem `retry-after`: trocar `1000 * 2 ** (attempt - 1)` por `Math.min(2000 * 2 ** (attempt - 1), 60000)`.
+  - Com `retry-after`: trocar o teto de `15000` para `60000` (`Math.min(retryAfter * 1000, 60000)`).
+- Manter 401 (refresh) e erros de rede inalterados.
 
-3. Garantir que `toCaDateTime` produza `YYYY-MM-DDTHH:mm:ss` sem milissegundos nem `Z` (cortando após o segundo). Ajustar o helper se hoje ainda inclui `.sss` ou `Z`.
-
-4. Modo completo permanece exatamente como está (só `data_vencimento_de/ate` a partir de `from/to` do usuário, sem `data_alteracao_*`).
+### 3. Continuidade em caso de falha final
+- Nenhuma mudança de código necessária: `enrichItemsWithDetail` já captura exceções por item em `detalheFalhas` e prossegue. Confirmar apenas que o comportamento permanece (não abortar o loop).
 
 ## Fora de escopo
-Enriquecimento, rateios, mapeamento, reconciliação de exclusões, UI, endpoints, migração.
+Filtros de data (vencimento + alteração), mapeamento, rateios, UI, endpoints, migração.
