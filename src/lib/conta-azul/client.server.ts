@@ -154,7 +154,7 @@ async function forceRefreshToken(): Promise<string> {
 }
 
 const RETRY_STATUSES = new Set([408, 429, 502, 503, 504]);
-const MAX_ATTEMPTS = 4;
+const MAX_ATTEMPTS = 6;
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -202,8 +202,8 @@ export async function caFetch(path: string, init: RequestInit = {}) {
     if (RETRY_STATUSES.has(res.status) && attempt < MAX_ATTEMPTS) {
       const retryAfter = Number(res.headers.get("retry-after"));
       const wait = Number.isFinite(retryAfter) && retryAfter > 0
-        ? Math.min(retryAfter * 1000, 15000)
-        : 1000 * 2 ** (attempt - 1);
+        ? Math.min(retryAfter * 1000, 60000)
+        : Math.min(2000 * 2 ** (attempt - 1), 60000);
       console.warn(`[caFetch] ${path} ${res.status} (attempt ${attempt}/${MAX_ATTEMPTS}), retry in ${wait}ms`);
       await sleep(wait);
       continue;
