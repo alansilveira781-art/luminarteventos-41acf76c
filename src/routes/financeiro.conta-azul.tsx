@@ -254,14 +254,25 @@ function ContaAzulPage() {
               const grande = dias > 120;
               return (
                 <>
-                  <Button
-                    onClick={handleSync}
-                    disabled={!canManage || !connected || busy !== null || grande}
-                    className="w-full"
-                  >
-                    {busy === "sync" ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
-                    Sincronizar agora
-                  </Button>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <Button
+                      onClick={() => handleSync("incremental")}
+                      disabled={!canManage || !connected || busy !== null}
+                      className="w-full"
+                    >
+                      {busy === "sync" ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+                      Sincronizar novidades
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleSync("completo")}
+                      disabled={!canManage || !connected || busy !== null || grande}
+                      className="w-full"
+                    >
+                      {busy === "sync" ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+                      Sincronização completa
+                    </Button>
+                  </div>
                   {busy === "sync" && progress.current && (
                     <p className="text-xs text-muted-foreground">
                       Sincronizando {RECURSOS.find((r) => r.key === progress.current)?.label} ({progress.done + 1}/{RECURSOS.length})…
@@ -269,17 +280,19 @@ function ContaAzulPage() {
                   )}
                   {grande ? (
                     <p className="text-xs text-amber-600">
-                      Intervalo de {dias} dias é grande demais para esta ação (limite recomendado: 120 dias). Use o card
-                      <strong> Carga histórica</strong> abaixo — ele processa mês a mês em segundo plano, sem timeouts.
+                      Intervalo de {dias} dias é grande demais para a <strong>sincronização completa</strong> (limite recomendado: 120 dias).
+                      Use <strong>Sincronizar novidades</strong> (só o que mudou desde a última sync) ou o card
+                      <strong> Carga histórica</strong> abaixo — que processa mês a mês em segundo plano.
                     </p>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      Puxa Plano de Contas, Centros de Custo, Contas a Pagar, Contas a Receber e Extrato no período selecionado.
-                      Para períodos maiores que 120 dias, prefira a <strong>Carga histórica</strong>.
+                      <strong>Novidades</strong>: traz apenas o que foi criado/editado no Conta Azul desde a última sincronização OK.{" "}
+                      <strong>Completa</strong>: reprocessa toda a janela e reconcilia exclusões. Para períodos maiores que 120 dias, prefira a <strong>Carga histórica</strong>.
                     </p>
                   )}
                 </>
               );
+
             })()}
           </CardContent>
 
