@@ -9,7 +9,7 @@ import { Plus, Search, ChevronRight } from "lucide-react";
 import { DemandaDialog } from "@/components/DemandaDialog";
 import { AvancarCardDialog } from "@/components/AvancarCardDialog";
 import { notifyResponsavel } from "@/lib/notify";
-import { DEMANDA_STATUSES, TIPOS_QUE_VAO_PARA_ESTOQUE, proximoStatusDemanda, type DemandaStatus } from "@/lib/demandas";
+import { DEMANDA_STATUSES, TIPOS_QUE_VAO_PARA_RECEBIMENTO, proximoStatusDemanda, type DemandaStatus } from "@/lib/demandas";
 import { KanbanFilters, applyKanbanFilters, type FieldDef, type Filters } from "@/components/KanbanFilters";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import {
@@ -170,8 +170,8 @@ function DemandasKanban() {
     opts?: { force?: boolean; toastMsg?: string },
   ) {
     if (demanda.status === status) return;
-    if (status === "a_receber" && !TIPOS_QUE_VAO_PARA_ESTOQUE.includes(demanda.tipo_demanda ?? "")) {
-      toast.error('Somente despesas de fardamento, material de limpeza ou material de escritório podem ir para "A Receber".');
+    if (status === "a_receber" && !TIPOS_QUE_VAO_PARA_RECEBIMENTO.includes(demanda.tipo_demanda ?? "")) {
+      toast.error('Somente despesas de fardamento, material de limpeza, material de escritório, reposição de estoque ou imobilizado podem ir para "A Receber".');
       return;
     }
     const id = demanda.id;

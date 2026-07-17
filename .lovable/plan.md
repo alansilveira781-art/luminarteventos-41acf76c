@@ -1,19 +1,15 @@
-## 1. Enriquecer `CardDetalheDialog` em `src/routes/financeiro-op.quadro.tsx`
+## Problema
 
-- Adicionar query para buscar o registro completo (`select("*")`) de `compras` ou `demandas` conforme `card.origem`.
-- Adicionar query para buscar anexos em `compra_anexos` (fk `compra_id`) ou `demanda_anexos` (fk `demanda_id`), campos: `id, nome, path, mime_type, tamanho`.
-- Reestruturar o dialog com seções tituladas:
-  - **Dados**: grid usando `Info`, renderizando somente campos com valor — número, título, status, status_financeiro, data_solicitacao, data_compra, comprador, responsavel_nome, parcelamento/condicao_pagamento, documento, numero_nf/numeros_nf, e específicos por origem (`tipo_compra`/`empresa_faturada` para compra; `tipo_demanda`/`evento_projeto` para despesa).
-  - **Observações**: bloco de texto se houver `observacoes` (ou `descritivo` para despesa).
-  - **Itens**: manter tabela atual.
-  - **Anexos**: lista com nome + tamanho formatado + botão que gera signed URL (`supabase.storage.from(bucket).createSignedUrl(path, 3600)`) e abre em nova aba; bucket `compra-anexos` ou `demanda-anexos`. Exibir "Nenhum anexo" se vazio. Sem upload nem exclusão.
-- Rodapé permanece com botão "Fechar". `max-h-[90vh] overflow-y-auto` mantido.
-- Nenhuma mudança na lógica do quadro (colunas, drag, permissões).
+No Quadro de Despesas (`src/routes/financeiro.index.tsx`), a validação ao mover um card para "A Receber" usa `TIPOS_QUE_VAO_PARA_ESTOQUE`, que contém apenas fardamento, material de limpeza, material de escritório e reposição de estoque. O tipo **imobilizado** está em `TIPOS_QUE_VAO_PARA_PATRIMONIO` (lista separada), então é bloqueado com a mensagem "Somente despesas de fardamento…".
 
-## 2. Corrigir visibilidade de Eventos em `src/components/AppSidebar.tsx`
+A função `proximoStatusDemanda` em `src/lib/demandas.ts` já usa corretamente `TIPOS_QUE_VAO_PARA_RECEBIMENTO` (união de estoque + patrimônio), então o roteamento automático já funciona — só a guarda manual do drag/clique está errada.
 
-- Na função de filtro (linhas ~156–165), adicionar antes do `return true` final:
-  ```ts
-  if (i.module === "eventos") return ctx === "eventos" && (isAdmin || hasModule("eventos"));
-  ```
-- Nenhuma outra alteração.
+## Correção
+
+Em `src/routes/financeiro.index.tsx`, na função `advanceToStatus`:
+
+1. Trocar o import `TIPOS_QUE_VAO_PARA_ESTOQUE` por `TIPOS_QUE_VAO_PARA_RECEBIMENTO`.
+2. Trocar a checagem para permitir também imobilizado.
+3. Atualizar a mensagem de erro para incluir imobilizado (algo como: "Somente despesas de fardamento, material de limpeza, material de escritório, reposição de estoque ou imobilizado podem ir para 'A Receber'.").
+
+Nenhuma mudança em banco, tipos ou outros fluxos.
