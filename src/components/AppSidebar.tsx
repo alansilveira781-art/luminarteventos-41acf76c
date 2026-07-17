@@ -101,6 +101,7 @@ const allItems: NavItem[] = [
   { title: "Devoluções", url: "/patrimonio/devolucoes", icon: Undo2, group: "Patrimônio", module: "patrimonio" },
   { title: "A receber", url: "/patrimonio/a-receber", icon: PackageCheck, group: "Patrimônio", module: "patrimonio" },
   { title: "Calendário", url: "/eventos", icon: CalendarDays, group: "Eventos", module: "eventos" },
+  { title: "Configurações", url: "/eventos/configuracoes", icon: Settings, group: "Eventos", module: "eventos" },
   { title: "Recrutamento", url: "/rh", icon: UserPlus, group: "Recursos Humanos", module: "rh" },
   { title: "Administração", url: "/admin", icon: Shield, group: "Administração", adminOnly: true },
 ];
