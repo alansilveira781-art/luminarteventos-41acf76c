@@ -26,10 +26,17 @@ function fmtDay(iso?: string | null): string {
   return format(new Date(y, m - 1, dd), "dd/MM/yyyy");
 }
 
+function stripDate(iso?: string | null): string {
+  if (!iso) return "";
+  return iso.slice(0, 10);
+}
+
 function fmtRange(ini?: string | null, fim?: string | null): string {
   if (!ini && !fim) return "—";
   if (!ini) return fmtDay(fim);
-  if (!fim || fim === ini) return fmtDay(ini);
+  const iniStr = stripDate(ini);
+  const fimStr = stripDate(fim);
+  if (!fimStr || fimStr === iniStr) return fmtDay(ini);
   return `${fmtDay(ini)} → ${fmtDay(fim)}`;
 }
 
