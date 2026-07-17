@@ -494,6 +494,13 @@ function ValidarRecebimentoDialog({ demanda, onClose }: { demanda: DemandaRow; o
                   <Input value={l.nome} onChange={(e) => setLinha(idx, { nome: e.target.value })} />
                 </div>
                 <div className="space-y-1.5">
+                  <Label>Código</Label>
+                  <NumberInput
+                    value={l.cod ?? 0}
+                    onChange={(nv) => setLinha(idx, { cod: nv > 0 ? Math.trunc(nv) : null })}
+                  />
+                </div>
+                <div className="space-y-1.5">
                   <Label>Especificação</Label>
                   <Input value={l.especificacao} onChange={(e) => setLinha(idx, { especificacao: e.target.value })} placeholder="Modelo, marca, cor…" />
                 </div>
