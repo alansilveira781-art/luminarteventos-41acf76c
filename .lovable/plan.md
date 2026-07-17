@@ -1,20 +1,25 @@
 ## Objetivo
 
-Adicionar o campo **Código** (numérico, sem letras — coluna `cod` de `pat_itens`) em cada linha do bloco "Itens a patrimoniar" da tela `patrimonio/a-receber`. Hoje esse código é preenchido manualmente no cadastro normal de patrimônio, mas está faltando no fluxo de validação do recebimento — o `id_item` (IMO-####) continua sendo gerado automaticamente.
+Substituir os campos "Subcategoria" (input livre) e a categoria fixa "IMOBILIZADO" no bloco "Itens a patrimoniar" (`src/routes/patrimonio.a-receber.tsx`) pelos mesmos controles usados no cadastro normal do Patrimônio (`src/routes/patrimonio.index.tsx` → `ItemDialog`).
 
-## Escopo
+## Alterações em `src/routes/patrimonio.a-receber.tsx`
 
-Arquivo único: `src/routes/patrimonio.a-receber.tsx`.
+1. **Constantes**: reaproveitar a lista `CATEGORIAS` (`["ACERVO","IMOBILIZADO","ILUMINACAO","ESTOQUE","MAQUINARIOS","FERRAMENTAS","VEICULOS","ESTRUTURAS","AMBIENTE","DECORACAO"]`) do cadastro; declarar localmente no arquivo.
 
-## Alterações
+2. **Tipo `LinhaPat`**: adicionar `categoria: string` (default `"IMOBILIZADO"`).
 
-1. **Tipo `LinhaPat`**: adicionar `cod: number | null`.
-2. **`buildInitialLinhas`**: inicializar `cod: null` em cada linha (tanto no caso sem itens quanto no map de `demanda.itens`).
-3. **UI (bloco "Itens a patrimoniar")**: adicionar um campo `Código` (input numérico, opcional) ao lado dos outros campos da linha — usando `NumberInput` com precisão 0, placeholder tipo "Ex: 1234".
-4. **Insert em `pat_itens`**: incluir `cod: l.cod` (ou `null` se vazio) no payload da mutation `finalizar`.
+3. **`buildInitialLinhas`**: inicializar `categoria: "IMOBILIZADO"` em cada linha.
+
+4. **Query de subcategorias existentes**: adicionar `useQuery` que busca `subcategoria` distinta em `pat_itens` (todas as categorias) para popular o Select — mesmo padrão do `ItemDialog`, mas em vez de derivar de `itens` na tela, buscamos do banco (o dialog atual não recebe a lista).
+
+5. **UI da linha** — substituir os dois campos atuais:
+   - **Categoria**: `Select` com as opções de `CATEGORIAS`, default `"IMOBILIZADO"`, com `onValueChange` atualizando `l.categoria`.
+   - **Subcategoria**: `Select` com opções vindas da query + subcategorias adicionadas na sessão (`extraSubs` por linha), com botão `+` ao lado que abre input inline para criar nova (upper-case, "Enter" confirma). Espelhar exatamente o markup do `ItemDialog` (linhas ~461–497). Estado local: `extraSubs: Record<number,string[]>` mais `addingSub`/`newSub` por linha (ou um mapa indexado por `idx`).
+
+6. **Insert na mutation `finalizar`**: trocar `categoria: "IMOBILIZADO"` fixo por `categoria: l.categoria || "IMOBILIZADO"`; `subcategoria` continua sendo `l.subcategoria || null`.
 
 ## Fora de escopo
 
-- `id_item` continua sendo gerado como `IMO-####` sequencialmente (comportamento atual).
-- Nenhuma mudança de schema — a coluna `cod` já existe em `pat_itens`.
-- Nenhuma validação de unicidade do `cod` (segue o padrão do cadastro atual em `patrimonio.index.tsx`).
+- Persistir subcategorias em tabela própria (permanece derivada de `pat_itens`, como no cadastro).
+- Alterações no `ItemDialog` do cadastro.
+- Mudanças de schema.
