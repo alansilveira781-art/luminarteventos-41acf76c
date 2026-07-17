@@ -8,6 +8,20 @@ const MAX_PAGES = 50; // safety cap (50 * 100 = 5000 itens por recurso)
 const UPSERT_BATCH = 500;
 
 async function logStart(recurso: string, from?: string, to?: string): Promise<string> {
+  // Fecha logs órfãos deste mesmo recurso que ficaram em "em_andamento" — o Worker
+  // pode ter sido morto no meio (timeout) sem chance de rodar `finally`.
+  try {
+    await sb
+      .from("ca_sync_log")
+      .update({
+        status: "erro",
+        finished_at: new Date().toISOString(),
+        mensagem: "Interrompido: processo anterior não finalizou (timeout do Worker provável).",
+      })
+      .eq("recurso", recurso)
+      .eq("status", "em_andamento");
+  } catch {}
+
   const { data, error } = await sb
     .from("ca_sync_log")
     .insert({
@@ -22,6 +36,7 @@ async function logStart(recurso: string, from?: string, to?: string): Promise<st
   if (error) throw error;
   return data.id as string;
 }
+
 
 async function logFinish(id: string, status: "ok" | "erro", qtd: number, mensagem?: string) {
   await sb
@@ -463,8 +478,14 @@ async function logRateioSemValor(lancId: string, tipo: "pagar" | "receber", n: n
 
 /** Busca o endpoint de parcelas para cada item que precisa (ver `needsDetail`).
  *  O endpoint correto na API v2 é /financeiro/eventos-financeiros/parcelas/{id}
- *  — os antigos /contas-a-pagar/{id} e /contas-a-receber/{id} retornam 404. */
-async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber"): Promise<any[]> {
+ *  — os antigos /contas-a-pagar/{id} e /contas-a-receber/{id} retornam 404.
+ *
+ *  `deadline` (ms epoch) permite interromper o enrichment antes de estourar
+ *  o wall-time do Worker (Cloudflare mata o processo silenciosamente e o log
+ *  fica preso em `em_andamento`). Itens não enriquecidos ficam com o payload
+ *  original da listagem — os rateios usam divisão igual como fallback.
+ */
+async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber", deadline?: number): Promise<any[]> {
   const detailBase = "/financeiro/eventos-financeiros/parcelas";
   const idxs = items.map((it, i) => (needsDetail(it) ? i : -1)).filter((i) => i >= 0);
   if (idxs.length === 0) return items;
@@ -477,11 +498,16 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber"): P
   let cursor = 0;
   let detalheFalhas = 0;
   let fallbackIdCount = 0;
+  let abortedByDeadline = 0;
   const primeirosErros: string[] = [];
   const fallbackSample: string[] = [];
 
   async function worker() {
     while (true) {
+      if (deadline && Date.now() >= deadline) {
+        // Conta quantos ainda faltavam a partir daqui — sem consumir mais o cursor.
+        return;
+      }
       const my = cursor++;
       if (my >= idxs.length) return;
       const i = idxs[my];
@@ -507,6 +533,12 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber"): P
 
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, idxs.length) }, () => worker()));
 
+  if (deadline && Date.now() >= deadline) {
+    // Cursor pode ter avançado além do idxs.length; clamp.
+    const processados = Math.min(cursor, idxs.length);
+    abortedByDeadline = Math.max(0, idxs.length - processados);
+  }
+
   if (detalheFalhas > 0) {
     try {
       await sb.from("ca_sync_log").insert({
@@ -516,6 +548,19 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber"): P
         finished_at: new Date().toISOString(),
         qtd_registros: detalheFalhas,
         mensagem: `Falhas ao buscar detalhe (${detailBase}/{id}) de ${detalheFalhas}/${idxs.length} lançamentos.\nPrimeiros erros:\n${primeirosErros.join("\n")}`,
+      });
+    } catch {}
+  }
+
+  if (abortedByDeadline > 0) {
+    try {
+      await sb.from("ca_sync_log").insert({
+        recurso: `enrich_timeout_${tipo}`,
+        status: "erro",
+        started_at: new Date().toISOString(),
+        finished_at: new Date().toISOString(),
+        qtd_registros: abortedByDeadline,
+        mensagem: `Enrichment de detalhe interrompido por time budget: ${abortedByDeadline}/${idxs.length} lançamentos ficaram sem detalhe (rateios usarão fallback). Considere reduzir o período ou rodar a Carga Histórica em chunks mensais.`,
       });
     } catch {}
   }
@@ -537,9 +582,10 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber"): P
 }
 
 
-async function persistRateios(items: any[], tipo: "pagar" | "receber", syncedAt: string) {
+
+async function persistRateios(items: any[], tipo: "pagar" | "receber", syncedAt: string, deadline?: number) {
   await logRatioProbe(items, tipo);
-  const enriched = await enrichItemsWithDetail(items, tipo);
+  const enriched = await enrichItemsWithDetail(items, tipo, deadline);
   const allRateios: any[] = [];
   const lancIds: string[] = [];
   for (const it of enriched) {
@@ -556,6 +602,7 @@ async function persistRateios(items: any[], tipo: "pagar" | "receber", syncedAt:
   }
   await upsertBatched("ca_lancamento_rateios", allRateios, "lancamento_external_id,tipo,ordem");
 }
+
 
 /** Remove do banco os registros com data_vencimento em [from,to] que não vieram
  *  na resposta da API — significa que foram excluídos no Conta Azul. Cascateia
@@ -591,7 +638,13 @@ async function reconciliarExclusoes(
   return { removidos: toDelete.length, ids: toDelete };
 }
 
+// Time budget interno para o enrichment: o Worker do Cloudflare é morto
+// silenciosamente após alguns segundos de wall-time, deixando o log preso
+// em `em_andamento`. Melhor abortar cedo e persistir o que já veio.
+const ENRICH_BUDGET_MS = 40_000;
+
 export async function syncContasPagar(from: string, to: string) {
+  const startedAtMs = Date.now();
   const logId = await logStart("contas_pagar", from, to);
   try {
     const basePath = "/financeiro/eventos-financeiros/contas-a-pagar/buscar";
@@ -603,8 +656,10 @@ export async function syncContasPagar(from: string, to: string) {
       const syncedAt = new Date().toISOString();
       const rows = items.map((it: any) => mapEvento(it, syncedAt, "fornecedor_nome"));
       await upsertBatched("ca_contas_pagar", rows, "external_id");
-      await persistRateios(items, "pagar", syncedAt);
+      const deadline = startedAtMs + ENRICH_BUDGET_MS;
+      await persistRateios(items, "pagar", syncedAt, deadline);
     }
+
 
     // Reconciliação: remove fantasmas (excluídos no CA) do range.
     try {
@@ -644,6 +699,7 @@ export async function syncContasPagar(from: string, to: string) {
 }
 
 export async function syncContasReceber(from: string, to: string) {
+  const startedAtMs = Date.now();
   const logId = await logStart("contas_receber", from, to);
   try {
     const basePath = "/financeiro/eventos-financeiros/contas-a-receber/buscar";
@@ -656,8 +712,10 @@ export async function syncContasReceber(from: string, to: string) {
       const syncedAt = new Date().toISOString();
       const rows = items.map((it: any) => mapEvento(it, syncedAt, "cliente_nome"));
       await upsertBatched("ca_contas_receber", rows, "external_id");
-      await persistRateios(items, "receber", syncedAt);
+      const deadline = startedAtMs + ENRICH_BUDGET_MS;
+      await persistRateios(items, "receber", syncedAt, deadline);
     }
+
 
     // Reconciliação: remove fantasmas (excluídos no CA) do range.
     try {
