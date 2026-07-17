@@ -50,6 +50,7 @@ import { Route as PatrimonioDashboardRouteImport } from './routes/patrimonio.das
 import { Route as PatrimonioAReceberRouteImport } from './routes/patrimonio.a-receber'
 import { Route as JuridicoModelosRouteImport } from './routes/juridico.modelos'
 import { Route as FinanceiroRotinasRouteImport } from './routes/financeiro.rotinas'
+import { Route as FinanceiroDiaristasRouteImport } from './routes/financeiro.diaristas'
 import { Route as FinanceiroDashboardRouteImport } from './routes/financeiro.dashboard'
 import { Route as FinanceiroContaAzulRouteImport } from './routes/financeiro.conta-azul'
 import { Route as FinanceiroConfiguracoesRouteImport } from './routes/financeiro.configuracoes'
@@ -302,6 +303,11 @@ const JuridicoModelosRoute = JuridicoModelosRouteImport.update({
 const FinanceiroRotinasRoute = FinanceiroRotinasRouteImport.update({
   id: '/rotinas',
   path: '/rotinas',
+  getParentRoute: () => FinanceiroRoute,
+} as any)
+const FinanceiroDiaristasRoute = FinanceiroDiaristasRouteImport.update({
+  id: '/diaristas',
+  path: '/diaristas',
   getParentRoute: () => FinanceiroRoute,
 } as any)
 const FinanceiroDashboardRoute = FinanceiroDashboardRouteImport.update({
@@ -609,6 +615,7 @@ export interface FileRoutesByFullPath {
   '/financeiro/configuracoes': typeof FinanceiroConfiguracoesRoute
   '/financeiro/conta-azul': typeof FinanceiroContaAzulRoute
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
+  '/financeiro/diaristas': typeof FinanceiroDiaristasRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
   '/patrimonio/a-receber': typeof PatrimonioAReceberRoute
@@ -689,6 +696,7 @@ export interface FileRoutesByTo {
   '/financeiro/configuracoes': typeof FinanceiroConfiguracoesRoute
   '/financeiro/conta-azul': typeof FinanceiroContaAzulRoute
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
+  '/financeiro/diaristas': typeof FinanceiroDiaristasRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
   '/patrimonio/a-receber': typeof PatrimonioAReceberRoute
@@ -781,6 +789,7 @@ export interface FileRoutesById {
   '/financeiro/configuracoes': typeof FinanceiroConfiguracoesRoute
   '/financeiro/conta-azul': typeof FinanceiroContaAzulRoute
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
+  '/financeiro/diaristas': typeof FinanceiroDiaristasRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
   '/patrimonio/a-receber': typeof PatrimonioAReceberRoute
@@ -874,6 +883,7 @@ export interface FileRouteTypes {
     | '/financeiro/configuracoes'
     | '/financeiro/conta-azul'
     | '/financeiro/dashboard'
+    | '/financeiro/diaristas'
     | '/financeiro/rotinas'
     | '/juridico/modelos'
     | '/patrimonio/a-receber'
@@ -954,6 +964,7 @@ export interface FileRouteTypes {
     | '/financeiro/configuracoes'
     | '/financeiro/conta-azul'
     | '/financeiro/dashboard'
+    | '/financeiro/diaristas'
     | '/financeiro/rotinas'
     | '/juridico/modelos'
     | '/patrimonio/a-receber'
@@ -1045,6 +1056,7 @@ export interface FileRouteTypes {
     | '/financeiro/configuracoes'
     | '/financeiro/conta-azul'
     | '/financeiro/dashboard'
+    | '/financeiro/diaristas'
     | '/financeiro/rotinas'
     | '/juridico/modelos'
     | '/patrimonio/a-receber'
@@ -1409,6 +1421,13 @@ declare module '@tanstack/react-router' {
       path: '/rotinas'
       fullPath: '/financeiro/rotinas'
       preLoaderRoute: typeof FinanceiroRotinasRouteImport
+      parentRoute: typeof FinanceiroRoute
+    }
+    '/financeiro/diaristas': {
+      id: '/financeiro/diaristas'
+      path: '/diaristas'
+      fullPath: '/financeiro/diaristas'
+      preLoaderRoute: typeof FinanceiroDiaristasRouteImport
       parentRoute: typeof FinanceiroRoute
     }
     '/financeiro/dashboard': {
@@ -1871,6 +1890,7 @@ interface FinanceiroRouteChildren {
   FinanceiroConfiguracoesRoute: typeof FinanceiroConfiguracoesRoute
   FinanceiroContaAzulRoute: typeof FinanceiroContaAzulRoute
   FinanceiroDashboardRoute: typeof FinanceiroDashboardRoute
+  FinanceiroDiaristasRoute: typeof FinanceiroDiaristasRoute
   FinanceiroRotinasRoute: typeof FinanceiroRotinasRoute
   FinanceiroIndexRoute: typeof FinanceiroIndexRoute
 }
@@ -1879,6 +1899,7 @@ const FinanceiroRouteChildren: FinanceiroRouteChildren = {
   FinanceiroConfiguracoesRoute: FinanceiroConfiguracoesRoute,
   FinanceiroContaAzulRoute: FinanceiroContaAzulRoute,
   FinanceiroDashboardRoute: FinanceiroDashboardRoute,
+  FinanceiroDiaristasRoute: FinanceiroDiaristasRoute,
   FinanceiroRotinasRoute: FinanceiroRotinasRoute,
   FinanceiroIndexRoute: FinanceiroIndexRoute,
 }
