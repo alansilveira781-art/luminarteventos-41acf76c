@@ -540,23 +540,19 @@ function Card({
             ) : (
               <div>{compra.data_compra ? `Comprada: ${formatDate(compra.data_compra)}` : "Não comprado"}</div>
             )}
-            {compra.valor_total != null && (
-              <div className="font-medium text-foreground">
-                {Number(compra.valor_total).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-              </div>
-            )}
-            {onMigrar && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onMigrar(); }}
-                className="mt-1.5 inline-flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground hover:border-primary"
-                title="Migrar este card para o Quadro de Despesas"
-              >
-                <ArrowRightLeft className="h-3 w-3" /> Migrar para Despesa
-              </button>
-            )}
           </div>
         </button>
+        {onMigrar && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onMigrar(); }}
+            className="shrink-0 p-0.5 text-muted-foreground hover:text-primary"
+            title="Migrar para Despesa"
+            aria-label="Migrar para Despesa"
+          >
+            <ArrowRightLeft className="h-4 w-4" />
+          </button>
+        )}
         {onAdvance && nextStatusLabel && (
           <button
             type="button"
