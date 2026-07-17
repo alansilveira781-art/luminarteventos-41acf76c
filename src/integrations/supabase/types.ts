@@ -2270,6 +2270,7 @@ export type Database = {
           responsavel: string | null
           situacao: string | null
           tipo: string | null
+          uf: string | null
           updated_at: string
           venda_id: string | null
         }
@@ -2299,6 +2300,7 @@ export type Database = {
           responsavel?: string | null
           situacao?: string | null
           tipo?: string | null
+          uf?: string | null
           updated_at?: string
           venda_id?: string | null
         }
@@ -2328,6 +2330,7 @@ export type Database = {
           responsavel?: string | null
           situacao?: string | null
           tipo?: string | null
+          uf?: string | null
           updated_at?: string
           venda_id?: string | null
         }

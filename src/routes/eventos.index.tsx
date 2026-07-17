@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Plus, Link2, ExternalLink, Trash2, CalendarPlus } from "lucide-react";
 import { toast } from "sonner";
 import { GanttEventos, type EventoCal } from "@/components/eventos/GanttEventos";
+import { SearchableSelect } from "@/components/SearchableSelect";
+import { fetchEstados, fetchMunicipios } from "@/lib/ibge";
 
 const sb = supabase as any;
 
@@ -120,6 +122,7 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
     nome: evento?.nome ?? "",
     local: evento?.local ?? "",
     cidade: evento?.cidade ?? "",
+    uf: evento?.uf ?? "",
     tipo: evento?.tipo && TIPOS.includes(evento.tipo) ? evento.tipo : "Social",
     data_evento: evento?.data_evento ?? "",
     data_evento_fim: evento?.data_evento_fim ?? "",
@@ -135,6 +138,43 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
   }));
   const set = (k: string, v: any) => setF((p: any) => ({ ...p, [k]: v }));
 
+  const { data: estados = [] } = useQuery({
+    queryKey: ["ibge-estados"],
+    queryFn: fetchEstados,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+  const { data: municipios = [] } = useQuery({
+    queryKey: ["ibge-municipios"],
+    queryFn: fetchMunicipios,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+
+  const ufOptions = estados.map((e) => ({ value: e.sigla, label: `${e.sigla} — ${e.nome}` }));
+  const cidadeOptions = (f.uf
+    ? municipios.filter((m) => m.uf === f.uf).map((m) => ({ value: m.nome, label: m.nome }))
+    : municipios.map((m) => ({ value: `${m.nome}|${m.uf}`, label: `${m.nome} - ${m.uf}` })));
+
+  const cidadeValue = f.uf ? f.cidade : (f.cidade ? `${f.cidade}|${f.uf}` : "");
+
+  const handleCidadeChange = (v: string) => {
+    if (f.uf) {
+      set("cidade", v);
+    } else {
+      const [nome, uf] = v.split("|");
+      setF((p: any) => ({ ...p, cidade: nome, uf: uf ?? "" }));
+    }
+  };
+
+  const handleUfChange = (v: string) => {
+    setF((p: any) => {
+      const cidadePertence = municipios.some((m) => m.uf === v && m.nome === p.cidade);
+      return { ...p, uf: v, cidade: cidadePertence ? p.cidade : "" };
+    });
+  };
+
+
   const salvar = useMutation({
     mutationFn: async () => {
       if (!f.nome.trim()) throw new Error("Informe o nome do evento");
@@ -145,6 +185,7 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
         nome: f.nome.trim(),
         local: f.local || null,
         cidade: f.cidade || null,
+        uf: f.uf || null,
         tipo: f.tipo || null,
         data_evento: f.data_evento,
         data_evento_fim: f.data_evento_fim,
@@ -225,8 +266,24 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
             <Input value={f.local} onChange={(e) => set("local", e.target.value)} />
           </div>
           <div>
+            <Label>Estado (UF)</Label>
+            <SearchableSelect
+              value={f.uf}
+              onChange={handleUfChange}
+              options={ufOptions}
+              placeholder="Selecione o estado…"
+              searchPlaceholder="Buscar estado…"
+            />
+          </div>
+          <div>
             <Label>Cidade</Label>
-            <Input value={f.cidade} onChange={(e) => set("cidade", e.target.value)} />
+            <SearchableSelect
+              value={cidadeValue}
+              onChange={handleCidadeChange}
+              options={cidadeOptions}
+              placeholder={f.uf ? "Selecione a cidade…" : "Selecione a cidade (auto UF)…"}
+              searchPlaceholder="Buscar cidade…"
+            />
           </div>
           <div>
             <Label>Tipo</Label>
