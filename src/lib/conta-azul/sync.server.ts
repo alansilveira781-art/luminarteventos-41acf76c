@@ -485,15 +485,19 @@ async function logRateioSemValor(lancId: string, tipo: "pagar" | "receber", n: n
  *  fica preso em `em_andamento`). Itens não enriquecidos ficam com o payload
  *  original da listagem — os rateios usam divisão igual como fallback.
  */
+const DETAIL_THROTTLE_MS = 350;
+function sleepDetail(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber", deadline?: number): Promise<any[]> {
   const detailBase = "/financeiro/eventos-financeiros/parcelas";
   const idxs = items.map((it, i) => (needsDetail(it) ? i : -1)).filter((i) => i >= 0);
   if (idxs.length === 0) return items;
 
-  // Conta Azul rate-limita agressivamente /parcelas/{id}. Concurrency 2 +
-  // pequeno throttle entre chamadas evita 429 em massa (era 5, gerava
-  // falhas de detalhe em ~30% dos itens).
-  const CONCURRENCY = 2;
+  // Conta Azul rate-limita agressivamente /parcelas/{id}. Serializado + throttle
+  // fixo entre chamadas para respeitar a cota (QuotaViolation 429).
+  const CONCURRENCY = 1;
   const out = items.slice();
   let cursor = 0;
   let detalheFalhas = 0;
