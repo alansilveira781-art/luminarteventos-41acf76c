@@ -302,6 +302,18 @@ function CardItem({
 }
 
 function CardDetalheDialog({ card, onClose }: { card: Card | null; onClose: () => void }) {
+function CardDetalheDialog({ card, onClose }: { card: Card | null; onClose: () => void }) {
+  const { data: full } = useQuery({
+    enabled: !!card,
+    queryKey: ["fin-quadro-full", card?.origem, card?.id],
+    queryFn: async () => {
+      if (!card) return null;
+      const table = card.origem === "compra" ? "compras" : "demandas";
+      const { data } = await sb.from(table).select("*").eq("id", card.id).maybeSingle();
+      return data;
+    },
+  });
+
   const { data: itens = [] } = useQuery({
     enabled: !!card,
     queryKey: ["fin-quadro-itens", card?.origem, card?.id],
@@ -317,12 +329,89 @@ function CardDetalheDialog({ card, onClose }: { card: Card | null; onClose: () =
     },
   });
 
+  const { data: anexos = [] } = useQuery({
+    enabled: !!card,
+    queryKey: ["fin-quadro-anexos", card?.origem, card?.id],
+    queryFn: async () => {
+      if (!card) return [];
+      const table = card.origem === "compra" ? "compra_anexos" : "demanda_anexos";
+      const fk = card.origem === "compra" ? "compra_id" : "demanda_id";
+      const { data } = await sb
+        .from(table)
+        .select("id,nome,path,mime_type,tamanho")
+        .eq(fk, card.id);
+      return data ?? [];
+    },
+  });
+
   if (!card) return null;
 
   const total = itens.reduce(
     (s: number, it: any) => s + (Number(it.quantidade) || 0) * (Number(it.valor_unitario) || 0),
     0,
   );
+
+  const bucket = card.origem === "compra" ? "compra-anexos" : "demanda-anexos";
+  const observacoes =
+    (full?.observacoes as string | null) ??
+    (card.origem === "demanda" ? (full?.descritivo as string | null) : null) ??
+    null;
+
+  const fmtDate = (v: string | null | undefined) => {
+    if (!v) return null;
+    try {
+      return new Date(v).toLocaleDateString("pt-BR");
+    } catch {
+      return v;
+    }
+  };
+  const fmtSize = (n: number | null | undefined) => {
+    if (!n) return "";
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / 1024 / 1024).toFixed(2)} MB`;
+  };
+
+  const abrirAnexo = async (path: string) => {
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
+    if (error || !data?.signedUrl) {
+      toast.error("Não foi possível abrir o anexo");
+      return;
+    }
+    window.open(data.signedUrl, "_blank", "noopener");
+  };
+
+  // Monta lista de campos "Dados" — só os com valor
+  const nfCampo = full?.numeros_nf ?? full?.numero_nf ?? null;
+  const nfStr = Array.isArray(nfCampo) ? nfCampo.filter(Boolean).join(", ") : nfCampo;
+  const dados: Array<{ label: string; value: string }> = [];
+  const push = (label: string, value: any) => {
+    if (value == null || value === "") return;
+    dados.push({ label, value: String(value) });
+  };
+  push("Origem", card.origem === "compra" ? "Compra" : "Despesa");
+  push("Número", full?.numero ?? card.numero);
+  push("Título", full?.titulo ?? card.titulo);
+  push("Status", full?.status);
+  push("Status financeiro", full?.status_financeiro);
+  push("Fornecedor", full?.fornecedor ?? card.fornecedor);
+  push("Solicitante", full?.solicitante ?? card.solicitante);
+  push("Comprador", full?.comprador);
+  push("Responsável", full?.responsavel_nome);
+  push("Data de solicitação", fmtDate(full?.data_solicitacao));
+  push("Data da compra", fmtDate(full?.data_compra));
+  push("Data do serviço", fmtDate(full?.data_servico));
+  push("Forma de pagamento", full?.parcelamento ?? full?.condicao_pagamento);
+  push("Documento", full?.documento);
+  push("Notas fiscais", nfStr);
+  if (card.origem === "compra") {
+    push("Tipo de compra", full?.tipo_compra);
+    push("Empresa faturada", full?.empresa_faturada);
+  } else {
+    push("Tipo de despesa", full?.tipo_demanda);
+    push("Evento / Projeto", full?.evento_projeto);
+  }
+  push("Valor total", fmtBRL(full?.valor_total ?? card.valor_total));
 
   return (
     <Dialog open={!!card} onOpenChange={(o) => !o && onClose()}>
@@ -333,12 +422,27 @@ function CardDetalheDialog({ card, onClose }: { card: Card | null; onClose: () =
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <Info label="Origem" value={card.origem === "compra" ? "Compra" : "Despesa"} />
-          <Info label="Fornecedor" value={card.fornecedor ?? "—"} />
-          <Info label="Solicitante" value={card.solicitante ?? "—"} />
-          <Info label="Valor total" value={fmtBRL(card.valor_total)} />
+        <div>
+          <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+            Dados
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            {dados.map((d) => (
+              <Info key={d.label} label={d.label} value={d.value} />
+            ))}
+          </div>
         </div>
+
+        {observacoes && (
+          <div className="mt-3">
+            <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+              Observações
+            </div>
+            <div className="text-sm whitespace-pre-wrap rounded-md border bg-muted/20 p-3">
+              {observacoes}
+            </div>
+          </div>
+        )}
 
         {itens.length > 0 && (
           <div className="mt-3">
@@ -382,6 +486,34 @@ function CardDetalheDialog({ card, onClose }: { card: Card | null; onClose: () =
           </div>
         )}
 
+        <div className="mt-3">
+          <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+            Anexos
+          </div>
+          {anexos.length === 0 ? (
+            <div className="text-sm text-muted-foreground">Nenhum anexo</div>
+          ) : (
+            <ul className="space-y-1.5">
+              {anexos.map((a: any) => (
+                <li
+                  key={a.id}
+                  className="flex items-center justify-between gap-2 rounded-md border bg-background px-3 py-2 text-sm"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">{a.nome}</div>
+                    {a.tamanho ? (
+                      <div className="text-xs text-muted-foreground">{fmtSize(a.tamanho)}</div>
+                    ) : null}
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => abrirAnexo(a.path)}>
+                    Abrir
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Fechar
@@ -391,6 +523,7 @@ function CardDetalheDialog({ card, onClose }: { card: Card | null; onClose: () =
     </Dialog>
   );
 }
+
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
