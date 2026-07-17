@@ -273,7 +273,6 @@ function CardItem({
     <Card
       ref={setNodeRef}
       style={style}
-      {...(podeMover ? { ...listeners, ...attributes } : {})}
       onClick={() => onOpen(card)}
       className={cn(
         "rounded-md border border-border bg-card p-2.5 text-xs shadow-sm cursor-pointer hover:border-primary/60 transition-colors",
