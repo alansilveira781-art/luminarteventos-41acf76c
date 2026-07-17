@@ -188,7 +188,7 @@ function QuadroFinanceiro() {
       )}
 
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="flex gap-4 overflow-x-auto pb-2">
           {FINANCEIRO_STATUSES.map((s) => (
             <Coluna
               key={s.key}
@@ -229,7 +229,7 @@ function Coluna({
     <div
       ref={setNodeRef}
       className={cn(
-        "rounded-lg border bg-muted/20 p-3 min-h-[300px] transition-colors",
+        "rounded-lg border bg-muted/20 p-3 min-h-[300px] min-w-[280px] shrink-0 transition-colors",
         isOver && "bg-primary/5 border-primary/50",
       )}
     >
