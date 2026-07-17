@@ -532,6 +532,7 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber", de
           primeirosErros.push(`GET ${url} — ${String(e?.message ?? e).slice(0, 400)}`);
         }
       }
+      await sleepDetail(DETAIL_THROTTLE_MS);
     }
   }
 
