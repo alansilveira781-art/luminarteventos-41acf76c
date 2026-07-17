@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { PackageCheck, Paperclip, FileIcon, Download, Trash2 } from "lucide-react";
+import { PackageCheck, Paperclip, FileIcon, Download, Trash2, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { NumberInput } from "@/components/comercial/NumberInput";
 import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
@@ -24,6 +24,18 @@ export const Route = createFileRoute("/patrimonio/a-receber")({
 
 const ESTADOS_PAT = ["OTIMO", "BOM", "EM MANUTENCAO", "DANIFICADO"];
 const UNIDADES_PAT = ["UNIDADE", "M²", "METRAGEM", "PAR", "PEÇA"];
+const CATEGORIAS_PAT = [
+  "ACERVO",
+  "IMOBILIZADO",
+  "ILUMINACAO",
+  "ESTOQUE",
+  "MAQUINARIOS",
+  "FERRAMENTAS",
+  "VEICULOS",
+  "ESTRUTURAS",
+  "AMBIENTE",
+  "DECORACAO",
+];
 
 type DemandaItemRow = {
   id: string;
