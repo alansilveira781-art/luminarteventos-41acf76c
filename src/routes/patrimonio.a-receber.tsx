@@ -331,7 +331,7 @@ function ValidarRecebimentoDialog({ demanda, onClose }: { demanda: DemandaRow; o
             nome: l.nome.trim(),
             id_item,
             cod: l.cod ?? null,
-            categoria: "IMOBILIZADO",
+            categoria: l.categoria || "IMOBILIZADO",
             subcategoria: l.subcategoria || null,
             especificacao: l.especificacao || null,
             dimensoes: l.dimensoes || null,
