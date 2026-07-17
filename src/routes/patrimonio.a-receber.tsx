@@ -188,6 +188,7 @@ function PatrimonioAReceberPage() {
 type LinhaPat = {
   demanda_item_id: string | null;
   nome: string;
+  cod: number | null;
   quantidade: number;
   unidade: string;
   valor: number;
@@ -207,6 +208,7 @@ function buildInitialLinhas(demanda: DemandaRow): LinhaPat[] {
       {
         demanda_item_id: null,
         nome: demanda.titulo || demanda.fornecedor || "",
+        cod: null,
         quantidade: 1,
         unidade: "UNIDADE",
         valor: Number(demanda.valor_total || 0),
@@ -232,6 +234,7 @@ function buildInitialLinhas(demanda: DemandaRow): LinhaPat[] {
     return {
       demanda_item_id: it.id,
       nome: it.descricao || demanda.titulo || "",
+      cod: null,
       quantidade: q > 0 ? q : 1,
       unidade: it.unidade || "UNIDADE",
       valor: Number(valorUnitEfetivo.toFixed(4)),
@@ -312,6 +315,7 @@ function ValidarRecebimentoDialog({ demanda, onClose }: { demanda: DemandaRow; o
           .insert({
             nome: l.nome.trim(),
             id_item,
+            cod: l.cod ?? null,
             categoria: "IMOBILIZADO",
             subcategoria: l.subcategoria || null,
             especificacao: l.especificacao || null,
@@ -488,6 +492,13 @@ function ValidarRecebimentoDialog({ demanda, onClose }: { demanda: DemandaRow; o
                 <div className="sm:col-span-2 space-y-1.5">
                   <Label>Nome do item *</Label>
                   <Input value={l.nome} onChange={(e) => setLinha(idx, { nome: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Código</Label>
+                  <NumberInput
+                    value={l.cod ?? 0}
+                    onChange={(nv) => setLinha(idx, { cod: nv > 0 ? Math.trunc(nv) : null })}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Especificação</Label>
