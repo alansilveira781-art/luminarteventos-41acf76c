@@ -59,6 +59,7 @@ import { Route as FinanceiroOpRelatoriosRouteImport } from './routes/financeiro-
 import { Route as FinanceiroOpQuadroRouteImport } from './routes/financeiro-op.quadro'
 import { Route as FinanceiroOpDashboardRouteImport } from './routes/financeiro-op.dashboard'
 import { Route as FinanceiroOpContaAzulRouteImport } from './routes/financeiro-op.conta-azul'
+import { Route as EventosConfiguracoesRouteImport } from './routes/eventos.configuracoes'
 import { Route as EstoqueAReceberRouteImport } from './routes/estoque.a-receber'
 import { Route as EstoqueItemIdRouteImport } from './routes/estoque.$itemId'
 import { Route as ContabilTomadoresRouteImport } from './routes/contabil.tomadores'
@@ -348,6 +349,11 @@ const FinanceiroOpContaAzulRoute = FinanceiroOpContaAzulRouteImport.update({
   path: '/conta-azul',
   getParentRoute: () => FinanceiroOpRoute,
 } as any)
+const EventosConfiguracoesRoute = EventosConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => EventosRoute,
+} as any)
 const EstoqueAReceberRoute = EstoqueAReceberRouteImport.update({
   id: '/estoque/a-receber',
   path: '/estoque/a-receber',
@@ -593,6 +599,7 @@ export interface FileRoutesByFullPath {
   '/contabil/tomadores': typeof ContabilTomadoresRoute
   '/estoque/$itemId': typeof EstoqueItemIdRoute
   '/estoque/a-receber': typeof EstoqueAReceberRoute
+  '/eventos/configuracoes': typeof EventosConfiguracoesRoute
   '/financeiro-op/conta-azul': typeof FinanceiroOpContaAzulRoute
   '/financeiro-op/dashboard': typeof FinanceiroOpDashboardRoute
   '/financeiro-op/quadro': typeof FinanceiroOpQuadroRoute
@@ -672,6 +679,7 @@ export interface FileRoutesByTo {
   '/contabil/tomadores': typeof ContabilTomadoresRoute
   '/estoque/$itemId': typeof EstoqueItemIdRoute
   '/estoque/a-receber': typeof EstoqueAReceberRoute
+  '/eventos/configuracoes': typeof EventosConfiguracoesRoute
   '/financeiro-op/conta-azul': typeof FinanceiroOpContaAzulRoute
   '/financeiro-op/dashboard': typeof FinanceiroOpDashboardRoute
   '/financeiro-op/quadro': typeof FinanceiroOpQuadroRoute
@@ -763,6 +771,7 @@ export interface FileRoutesById {
   '/contabil/tomadores': typeof ContabilTomadoresRoute
   '/estoque/$itemId': typeof EstoqueItemIdRoute
   '/estoque/a-receber': typeof EstoqueAReceberRoute
+  '/eventos/configuracoes': typeof EventosConfiguracoesRoute
   '/financeiro-op/conta-azul': typeof FinanceiroOpContaAzulRoute
   '/financeiro-op/dashboard': typeof FinanceiroOpDashboardRoute
   '/financeiro-op/quadro': typeof FinanceiroOpQuadroRoute
@@ -855,6 +864,7 @@ export interface FileRouteTypes {
     | '/contabil/tomadores'
     | '/estoque/$itemId'
     | '/estoque/a-receber'
+    | '/eventos/configuracoes'
     | '/financeiro-op/conta-azul'
     | '/financeiro-op/dashboard'
     | '/financeiro-op/quadro'
@@ -934,6 +944,7 @@ export interface FileRouteTypes {
     | '/contabil/tomadores'
     | '/estoque/$itemId'
     | '/estoque/a-receber'
+    | '/eventos/configuracoes'
     | '/financeiro-op/conta-azul'
     | '/financeiro-op/dashboard'
     | '/financeiro-op/quadro'
@@ -1024,6 +1035,7 @@ export interface FileRouteTypes {
     | '/contabil/tomadores'
     | '/estoque/$itemId'
     | '/estoque/a-receber'
+    | '/eventos/configuracoes'
     | '/financeiro-op/conta-azul'
     | '/financeiro-op/dashboard'
     | '/financeiro-op/quadro'
@@ -1462,6 +1474,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FinanceiroOpContaAzulRouteImport
       parentRoute: typeof FinanceiroOpRoute
     }
+    '/eventos/configuracoes': {
+      id: '/eventos/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/eventos/configuracoes'
+      preLoaderRoute: typeof EventosConfiguracoesRouteImport
+      parentRoute: typeof EventosRoute
+    }
     '/estoque/a-receber': {
       id: '/estoque/a-receber'
       path: '/estoque/a-receber'
@@ -1836,10 +1855,12 @@ const ContabilRouteWithChildren = ContabilRoute._addFileChildren(
 )
 
 interface EventosRouteChildren {
+  EventosConfiguracoesRoute: typeof EventosConfiguracoesRoute
   EventosIndexRoute: typeof EventosIndexRoute
 }
 
 const EventosRouteChildren: EventosRouteChildren = {
+  EventosConfiguracoesRoute: EventosConfiguracoesRoute,
   EventosIndexRoute: EventosIndexRoute,
 }
 

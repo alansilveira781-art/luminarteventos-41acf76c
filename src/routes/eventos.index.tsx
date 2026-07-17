@@ -111,7 +111,6 @@ function EventosPage() {
 }
 
 const TIPOS = ["Social", "Corporativo", "Cenografia", "Stand"];
-const PRODUTORES = ["Matheus Fernandes", "Romulo Manoel"];
 
 function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClose: () => void; onSaved: () => void }) {
   const { user } = useAuth();
