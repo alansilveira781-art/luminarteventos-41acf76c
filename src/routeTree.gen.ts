@@ -84,6 +84,7 @@ import { Route as AdminModulosRouteImport } from './routes/admin.modulos'
 import { Route as AdminDadosRouteImport } from './routes/admin.dados'
 import { Route as FinanceiroDiaristasIndexRouteImport } from './routes/financeiro.diaristas.index'
 import { Route as ComercialDashboardIndexRouteImport } from './routes/comercial.dashboard.index'
+import { Route as FinanceiroDiaristasConfiguracoesRouteImport } from './routes/financeiro.diaristas.configuracoes'
 import { Route as ComercialDashboardVendedoresRouteImport } from './routes/comercial.dashboard.vendedores'
 import { Route as ComercialDashboardRelatoriosRouteImport } from './routes/comercial.dashboard.relatorios'
 import { Route as ComercialDashboardPropostasRouteImport } from './routes/comercial.dashboard.propostas'
@@ -477,6 +478,12 @@ const ComercialDashboardIndexRoute = ComercialDashboardIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ComercialDashboardRoute,
 } as any)
+const FinanceiroDiaristasConfiguracoesRoute =
+  FinanceiroDiaristasConfiguracoesRouteImport.update({
+    id: '/configuracoes',
+    path: '/configuracoes',
+    getParentRoute: () => FinanceiroDiaristasRoute,
+  } as any)
 const ComercialDashboardVendedoresRoute =
   ComercialDashboardVendedoresRouteImport.update({
     id: '/vendedores',
@@ -654,6 +661,7 @@ export interface FileRoutesByFullPath {
   '/comercial/dashboard/propostas': typeof ComercialDashboardPropostasRoute
   '/comercial/dashboard/relatorios': typeof ComercialDashboardRelatoriosRoute
   '/comercial/dashboard/vendedores': typeof ComercialDashboardVendedoresRoute
+  '/financeiro/diaristas/configuracoes': typeof FinanceiroDiaristasConfiguracoesRoute
   '/comercial/dashboard/': typeof ComercialDashboardIndexRoute
   '/financeiro/diaristas/': typeof FinanceiroDiaristasIndexRoute
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
@@ -735,6 +743,7 @@ export interface FileRoutesByTo {
   '/comercial/dashboard/propostas': typeof ComercialDashboardPropostasRoute
   '/comercial/dashboard/relatorios': typeof ComercialDashboardRelatoriosRoute
   '/comercial/dashboard/vendedores': typeof ComercialDashboardVendedoresRoute
+  '/financeiro/diaristas/configuracoes': typeof FinanceiroDiaristasConfiguracoesRoute
   '/comercial/dashboard': typeof ComercialDashboardIndexRoute
   '/financeiro/diaristas': typeof FinanceiroDiaristasIndexRoute
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
@@ -829,6 +838,7 @@ export interface FileRoutesById {
   '/comercial/dashboard/propostas': typeof ComercialDashboardPropostasRoute
   '/comercial/dashboard/relatorios': typeof ComercialDashboardRelatoriosRoute
   '/comercial/dashboard/vendedores': typeof ComercialDashboardVendedoresRoute
+  '/financeiro/diaristas/configuracoes': typeof FinanceiroDiaristasConfiguracoesRoute
   '/comercial/dashboard/': typeof ComercialDashboardIndexRoute
   '/financeiro/diaristas/': typeof FinanceiroDiaristasIndexRoute
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
@@ -924,6 +934,7 @@ export interface FileRouteTypes {
     | '/comercial/dashboard/propostas'
     | '/comercial/dashboard/relatorios'
     | '/comercial/dashboard/vendedores'
+    | '/financeiro/diaristas/configuracoes'
     | '/comercial/dashboard/'
     | '/financeiro/diaristas/'
     | '/api/contaazul/oauth/callback'
@@ -1005,6 +1016,7 @@ export interface FileRouteTypes {
     | '/comercial/dashboard/propostas'
     | '/comercial/dashboard/relatorios'
     | '/comercial/dashboard/vendedores'
+    | '/financeiro/diaristas/configuracoes'
     | '/comercial/dashboard'
     | '/financeiro/diaristas'
     | '/api/contaazul/oauth/callback'
@@ -1098,6 +1110,7 @@ export interface FileRouteTypes {
     | '/comercial/dashboard/propostas'
     | '/comercial/dashboard/relatorios'
     | '/comercial/dashboard/vendedores'
+    | '/financeiro/diaristas/configuracoes'
     | '/comercial/dashboard/'
     | '/financeiro/diaristas/'
     | '/api/contaazul/oauth/callback'
@@ -1672,6 +1685,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ComercialDashboardIndexRouteImport
       parentRoute: typeof ComercialDashboardRoute
     }
+    '/financeiro/diaristas/configuracoes': {
+      id: '/financeiro/diaristas/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/financeiro/diaristas/configuracoes'
+      preLoaderRoute: typeof FinanceiroDiaristasConfiguracoesRouteImport
+      parentRoute: typeof FinanceiroDiaristasRoute
+    }
     '/comercial/dashboard/vendedores': {
       id: '/comercial/dashboard/vendedores'
       path: '/vendedores'
@@ -1905,10 +1925,12 @@ const EventosRouteWithChildren =
   EventosRoute._addFileChildren(EventosRouteChildren)
 
 interface FinanceiroDiaristasRouteChildren {
+  FinanceiroDiaristasConfiguracoesRoute: typeof FinanceiroDiaristasConfiguracoesRoute
   FinanceiroDiaristasIndexRoute: typeof FinanceiroDiaristasIndexRoute
 }
 
 const FinanceiroDiaristasRouteChildren: FinanceiroDiaristasRouteChildren = {
+  FinanceiroDiaristasConfiguracoesRoute: FinanceiroDiaristasConfiguracoesRoute,
   FinanceiroDiaristasIndexRoute: FinanceiroDiaristasIndexRoute,
 }
 
