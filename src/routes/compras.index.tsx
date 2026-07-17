@@ -380,6 +380,9 @@ function ComprasKanban() {
               {(byStatus[s.key] ?? []).map((c) => {
                 const next = nextCompraStatus(c.status);
                 const canMove = canMoveCompra(c, user?.id, isAdmin, user?.email, next ?? undefined, c.status, responsavelDoStatus(next), responsavelDoStatus(c.status));
+                const canMigrate =
+                  c.status === "solicitacao" &&
+                  canEditCompra(c, user?.id, isAdmin, user?.email, responsavelDoStatus(c.status));
                 return (
                   <Card
                     key={c.id}
@@ -389,6 +392,7 @@ function ComprasKanban() {
                     onAdvance={next ? () => advanceToStatus(c, next) : undefined}
                     canMove={canMove}
                     blockedMsg={canMove ? null : statusMoveBlockedMessage(next)}
+                    onMigrar={canMigrate ? () => setMigrarCompra(c) : undefined}
                   />
                 );
               })}
