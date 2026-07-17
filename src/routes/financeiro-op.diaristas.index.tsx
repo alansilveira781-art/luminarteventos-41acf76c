@@ -768,7 +768,7 @@ function FechamentoTab() {
                 {linhas.map((l) => {
                   const aberto = expandido.has(l.id);
                   return (
-                    <>
+                    <Fragment key={l.id}>
                       <tr key={l.id} className="border-b border-border/50 hover:bg-muted/40 cursor-pointer"
                         onClick={() => toggleExp(l.id)}>
                         <td className="py-2 pr-3">
@@ -815,7 +815,7 @@ function FechamentoTab() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   );
                 })}
               </tbody>
