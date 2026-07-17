@@ -164,12 +164,13 @@ function MeusPedidos() {
   });
 
   const pedidos = useMemo(() => {
-    return [...compras, ...demandas].sort((a, b) => {
+    const all = [...compras, ...demandas].sort((a, b) => {
       const da = a.data_solicitacao ?? "";
       const db = b.data_solicitacao ?? "";
       return db.localeCompare(da);
     });
-  }, [compras, demandas]);
+    return hideFinalizados ? all.filter((p) => p.status !== "finalizado") : all;
+  }, [compras, demandas, hideFinalizados]);
 
   if (!user) {
     return (
