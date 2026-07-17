@@ -659,12 +659,20 @@ async function reconciliarExclusoes(
   to: string,
   activeIds: Set<string>,
 ): Promise<{ removidos: number; ids: string[] }> {
+  // Guarda de segurança: se a listagem da API veio vazia, NÃO apaga nada.
+  // Evita zerar a tabela por instabilidade (429/503) ou erro upstream.
+  if (activeIds.size === 0) {
+    throw new Error(
+      "reconciliação abortada: API retornou 0 itens no período — possível instabilidade",
+    );
+  }
   const { data: existentes, error } = await sb
     .from(tabela)
     .select("external_id")
     .gte("data_vencimento", from)
     .lte("data_vencimento", to);
   if (error) throw error;
+
   const toDelete = (existentes ?? [])
     .map((r: any) => String(r.external_id))
     .filter((id: string) => !activeIds.has(id));
