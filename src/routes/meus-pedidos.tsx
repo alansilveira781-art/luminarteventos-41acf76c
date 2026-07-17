@@ -89,6 +89,7 @@ function colorFor(tipo: "compra" | "demanda", status: CompraStatus) {
 function MeusPedidos() {
   const { user } = useAuth();
   const [selected, setSelected] = useState<Pedido | null>(null);
+  const [hideFinalizados, setHideFinalizados] = useState(false);
 
   const email = user?.email ?? "";
   const uid = user?.id ?? "";
