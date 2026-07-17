@@ -1,57 +1,36 @@
 ## Objetivo
+Corrigir o erro 400 do Conta Azul no modo incremental, que hoje omite `data_vencimento_de/ate`. A API exige essa janela sempre; o filtro por alteração é adicional.
 
-Duas mudanças independentes no módulo Conta Azul:
-1. **Sync incremental por `data_alteracao`** — trazer só o que foi criado/editado desde a última sincronização OK.
-2. **Simplificar a tela `financeiro-op.conta-azul`** — deixar só Conexão e Sincronização.
+## Alteração única
+Arquivo: `src/lib/conta-azul/sync.server.ts`, funções `syncContasPagar` e `syncContasReceber`.
 
----
+1. Adicionar duas constantes locais (topo do arquivo, próximo aos helpers de data) para a janela ampla usada no modo incremental:
+   - `INCREMENTAL_VENC_MESES_PASSADO = 12`
+   - `INCREMENTAL_VENC_MESES_FUTURO = 12`
+   E um helper `janelaVencimentoIncremental()` que devolve `{ from: hoje-12m, to: hoje+12m }` no formato `YYYY-MM-DD`.
 
-## Parte 1 — Sync incremental
+2. Nos blocos incrementais das duas funções, substituir:
+   ```ts
+   incremental
+     ? { data_alteracao_de: toCaDateTime(desdeAjustado!), data_alteracao_ate: toCaDateTime(agoraIso) }
+     : { data_vencimento_de: from, data_vencimento_ate: to }
+   ```
+   por:
+   ```ts
+   const params = incremental
+     ? {
+         data_vencimento_de: janela.from,
+         data_vencimento_ate: janela.to,
+         data_alteracao_de: toCaDateTime(desdeAjustado!),
+         data_alteracao_ate: toCaDateTime(agoraIso),
+       }
+     : { data_vencimento_de: from, data_vencimento_ate: to };
+   ```
+   onde `janela = janelaVencimentoIncremental()`.
 
-### `src/lib/conta-azul/sync.server.ts`
+3. Garantir que `toCaDateTime` produza `YYYY-MM-DDTHH:mm:ss` sem milissegundos nem `Z` (cortando após o segundo). Ajustar o helper se hoje ainda inclui `.sss` ou `Z`.
 
-- Nova função `ultimoSyncOk(recurso: "contas_pagar" | "contas_receber"): Promise<string | null>`  
-  Consulta `ca_sync_log` pelo maior `finished_at` com `status='ok'` e `recurso=<recurso>`. Retorna ISO ou `null`.
-- `syncContasPagar(from, to, desde?)` e `syncContasReceber(from, to, desde?)`:
-  - Se `desde` informado (modo incremental):
-    - No `fetchPaged`, trocar `data_vencimento_de/ate` por `data_alteracao_de: desde` e `data_alteracao_ate: <agora ISO>` (formato `YYYY-MM-DDTHH:mm:ss`).
-    - Aplicar margem de segurança: subtrair 10 min de `desde` antes de enviar.
-    - **Pular** `reconciliarExclusoes` (só roda no modo completo — janela por vencimento é o critério dela).
-    - Passar `modo=incremental desde=<ts>` para `logFinish` via `mensagem`.
-  - Se `desde` ausente: comportamento atual (janela `from/to` + reconciliação). Mensagem: `modo=completo`.
-- Enrichment, rateios, mapeamento e upsert seguem iguais — só muda o conjunto que chega até eles.
-
-### `src/routes/api/contaazul/sync.ts`
-
-- Estender schema Zod com `modo: z.enum(["incremental","completo"]).optional()` (default `"incremental"`).
-- Quando `recurso` é `contas_pagar` / `contas_receber` / `tudo`:
-  - `incremental`: chamar `ultimoSyncOk(recurso)`; se existir, chamar sync com `desde`. Se não existir (primeira vez), fallback para completo com `from/to`.
-  - `completo`: comportamento atual.
-- `syncTudo`: quando modo incremental, passa `desde` para pagar/receber; plano_contas, centros_custo e extrato continuam iguais (extrato usa janela porque não tem filtro de alteração).
-
-### `src/routes/financeiro.conta-azul.tsx` (tela principal de sync)
-
-- Botão primário passa a mandar `modo: "incremental"` — rótulo **"Sincronizar novidades"**.
-- Novo botão secundário **"Sincronização completa"** → manda `modo: "completo"` com a janela `from/to`. Mantém o aviso atual para janela > 120 dias apenas neste modo.
-
----
-
-## Parte 2 — Enxugar `src/routes/financeiro-op.conta-azul.tsx`
-
-Deixar apenas **card Conexão** + **card Sincronização**.
-
-Remover:
-- Da renderização: `<SyncAutomaticoCard>`, `<CargaHistoricaCard>`, `<ReprocessarFalhasCard>`, `<SyncStateCard>` e o `<Card>` inline com o histórico de logs (bloco contíguo).
-- Definições órfãs: funções `SyncAutomaticoCard`, `CargaHistoricaCard`, `ReprocessarFalhasCard`, `SyncStateCard`.
-- `useQuery` `logs` (usado só pela tabela removida) e estados que ficarem sem uso.
-- Imports que ficarem sem referência.
-
-Não mexer em `financeiro.conta-azul.tsx` nem em nada de `src/lib/conta-azul/`. Endpoints backend permanecem — só saem da UI desta aba.
-
----
+4. Modo completo permanece exatamente como está (só `data_vencimento_de/ate` a partir de `from/to` do usuário, sem `data_alteracao_*`).
 
 ## Fora de escopo
-
-- Refatorar `enrichItemsWithDetail` / rateios / mapeamento.
-- Alterar sync de plano de contas, centros de custo, extrato.
-- Schema / RLS / OAuth.
+Enriquecimento, rateios, mapeamento, reconciliação de exclusões, UI, endpoints, migração.

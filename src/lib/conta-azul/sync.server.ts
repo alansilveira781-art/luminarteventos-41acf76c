@@ -659,10 +659,24 @@ export async function ultimoSyncOk(
   return (data?.finished_at as string | undefined) ?? null;
 }
 
-/** Formato aceito pela API v2 do Conta Azul (`YYYY-MM-DDTHH:mm:ss`, sem TZ). */
+/** Formato aceito pela API v2 do Conta Azul (`YYYY-MM-DDTHH:mm:ss`, sem TZ nem ms). */
 function toCaDateTime(iso: string): string {
-  return new Date(iso).toISOString().slice(0, 19);
+  return new Date(iso).toISOString().replace(/\.\d{3}Z$/, "").slice(0, 19);
 }
+
+// Janela ampla de vencimento usada no modo incremental. A API do Conta Azul
+// exige data_vencimento_de/ate sempre; o filtro de alteração é adicional.
+const INCREMENTAL_VENC_MESES_PASSADO = 12;
+const INCREMENTAL_VENC_MESES_FUTURO = 12;
+function janelaVencimentoIncremental(): { from: string; to: string } {
+  const hoje = new Date();
+  const from = new Date(hoje);
+  from.setMonth(from.getMonth() - INCREMENTAL_VENC_MESES_PASSADO);
+  const to = new Date(hoje);
+  to.setMonth(to.getMonth() + INCREMENTAL_VENC_MESES_FUTURO);
+  return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
+}
+
 
 export async function syncContasPagar(from: string, to: string, desde?: string) {
   const startedAtMs = Date.now();
@@ -673,9 +687,16 @@ export async function syncContasPagar(from: string, to: string, desde?: string) 
   const logId = await logStart("contas_pagar", from, to);
   try {
     const basePath = "/financeiro/eventos-financeiros/contas-a-pagar/buscar";
+    const janela = janelaVencimentoIncremental();
     const params: Record<string, string> = incremental
-      ? { data_alteracao_de: toCaDateTime(desdeAjustado!), data_alteracao_ate: toCaDateTime(agoraIso) }
+      ? {
+          data_vencimento_de: janela.from,
+          data_vencimento_ate: janela.to,
+          data_alteracao_de: toCaDateTime(desdeAjustado!),
+          data_alteracao_ate: toCaDateTime(agoraIso),
+        }
       : { data_vencimento_de: from, data_vencimento_ate: to };
+
     const items = await fetchPaged(basePath, params);
     if (items.length > 0) {
       const syncedAt = new Date().toISOString();
@@ -735,9 +756,16 @@ export async function syncContasReceber(from: string, to: string, desde?: string
   const logId = await logStart("contas_receber", from, to);
   try {
     const basePath = "/financeiro/eventos-financeiros/contas-a-receber/buscar";
+    const janela = janelaVencimentoIncremental();
     const params: Record<string, string> = incremental
-      ? { data_alteracao_de: toCaDateTime(desdeAjustado!), data_alteracao_ate: toCaDateTime(agoraIso) }
+      ? {
+          data_vencimento_de: janela.from,
+          data_vencimento_ate: janela.to,
+          data_alteracao_de: toCaDateTime(desdeAjustado!),
+          data_alteracao_ate: toCaDateTime(agoraIso),
+        }
       : { data_vencimento_de: from, data_vencimento_ate: to };
+
     const items = await fetchPaged(basePath, params);
 
     if (items.length > 0) {
