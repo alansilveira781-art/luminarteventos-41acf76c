@@ -208,6 +208,7 @@ function buildInitialLinhas(demanda: DemandaRow): LinhaPat[] {
       {
         demanda_item_id: null,
         nome: demanda.titulo || demanda.fornecedor || "",
+        cod: null,
         quantidade: 1,
         unidade: "UNIDADE",
         valor: Number(demanda.valor_total || 0),
