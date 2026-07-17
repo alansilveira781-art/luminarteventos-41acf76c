@@ -128,7 +128,8 @@ function QuadroFinanceiro() {
       finalizado_fin: [],
     };
     for (const c of cards) {
-      if (g[c.status_financeiro]) g[c.status_financeiro].push(c);
+      const k = c.status_financeiro as FinanceiroStatus;
+      if (g[k]) g[k].push(c);
     }
     for (const k of Object.keys(g) as FinanceiroStatus[]) {
       g[k].sort((a, b) => {
