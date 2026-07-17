@@ -138,6 +138,43 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
   }));
   const set = (k: string, v: any) => setF((p: any) => ({ ...p, [k]: v }));
 
+  const { data: estados = [] } = useQuery({
+    queryKey: ["ibge-estados"],
+    queryFn: fetchEstados,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+  const { data: municipios = [] } = useQuery({
+    queryKey: ["ibge-municipios"],
+    queryFn: fetchMunicipios,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+
+  const ufOptions = estados.map((e) => ({ value: e.sigla, label: `${e.sigla} — ${e.nome}` }));
+  const cidadeOptions = (f.uf
+    ? municipios.filter((m) => m.uf === f.uf).map((m) => ({ value: m.nome, label: m.nome }))
+    : municipios.map((m) => ({ value: `${m.nome}|${m.uf}`, label: `${m.nome} - ${m.uf}` })));
+
+  const cidadeValue = f.uf ? f.cidade : (f.cidade ? `${f.cidade}|${f.uf}` : "");
+
+  const handleCidadeChange = (v: string) => {
+    if (f.uf) {
+      set("cidade", v);
+    } else {
+      const [nome, uf] = v.split("|");
+      setF((p: any) => ({ ...p, cidade: nome, uf: uf ?? "" }));
+    }
+  };
+
+  const handleUfChange = (v: string) => {
+    setF((p: any) => {
+      const cidadePertence = municipios.some((m) => m.uf === v && m.nome === p.cidade);
+      return { ...p, uf: v, cidade: cidadePertence ? p.cidade : "" };
+    });
+  };
+
+
   const salvar = useMutation({
     mutationFn: async () => {
       if (!f.nome.trim()) throw new Error("Informe o nome do evento");
