@@ -444,17 +444,10 @@ function ApontamentoTab() {
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <Label>Projeto (evento)</Label>
-                <Input
-                  list="diaristas-eventos-list"
-                  value={editing.projeto}
-                  placeholder="Digite para buscar um evento…"
-                  onChange={(e) => setEditing({ ...editing, projeto: e.target.value })}
+                <EventoSheetCombobox
+                  value={editing.projeto || null}
+                  onChange={(v) => setEditing({ ...editing, projeto: v ?? "" })}
                 />
-                <datalist id="diaristas-eventos-list">
-                  {eventos.map((ev) => (
-                    <option key={ev.id} value={ev.nome} />
-                  ))}
-                </datalist>
               </div>
               <div className="space-y-1.5">
                 <Label>Data</Label>
