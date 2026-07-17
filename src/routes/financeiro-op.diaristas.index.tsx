@@ -361,10 +361,7 @@ function ApontamentoTab() {
                               setEditing({
                                 id: a.id,
                                 diarista_id: a.diarista_id,
-                                empresa: a.empresa ?? "",
-                                atividade: a.atividade ?? "",
                                 projeto: a.projeto ?? "",
-                                comodos: a.comodos ?? "",
                                 data: a.data,
                                 hora_inicial: a.hora_inicial.slice(0, 5),
                                 hora_final: a.hora_final.slice(0, 5),
