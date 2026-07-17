@@ -84,8 +84,8 @@ function RelatoriosPage() {
           "data_compra",
         ),
         buildFilter(
-          sb.from("demandas").select("id, numero, titulo, solicitante, comprador, descritivo, observacoes, valor_total, data_solicitacao, parcelamento"),
-          "data_solicitacao",
+          sb.from("demandas").select("id, numero, titulo, solicitante, comprador, descritivo, observacoes, valor_total, data_compra, parcelamento"),
+          "data_compra",
         ),
       ]);
       if (comprasRes.error) throw comprasRes.error;
