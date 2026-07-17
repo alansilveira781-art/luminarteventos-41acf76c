@@ -591,3 +591,161 @@ function formatDate(d: string) {
   if (m) return `${m[3]}/${m[2]}/${m[1]}`;
   try { return new Date(d).toLocaleDateString("pt-BR"); } catch { return d; }
 }
+
+function MigrarCompraDialog({
+  compra,
+  onClose,
+  onDone,
+}: {
+  compra: Compra | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [tipo, setTipo] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (compra) setTipo("");
+  }, [compra?.id]);
+
+  if (!compra) return null;
+
+  async function handleConfirm() {
+    if (!tipo) {
+      toast.error("Escolha o tipo de despesa.");
+      return;
+    }
+    if (!compra) return;
+    setSaving(true);
+    try {
+      // 1) Buscar itens da compra
+      const { data: itens, error: itensErr } = await sb
+        .from("compra_itens")
+        .select("descricao,quantidade,unidade,valor_unitario")
+        .eq("compra_id", compra.id);
+      if (itensErr) throw itensErr;
+
+      // 2) Buscar campos completos da compra
+      const { data: full, error: fullErr } = await sb
+        .from("compras")
+        .select(
+          "titulo,fornecedor,fornecedor_id,solicitante,solicitante_id,valor_total,observacoes,data_solicitacao,responsavel_id,responsavel_nome,numero_nf,numeros_nf,tem_nf,parcelamento,condicao_pagamento,documento,created_by",
+        )
+        .eq("id", compra.id)
+        .maybeSingle();
+      if (fullErr) throw fullErr;
+      if (!full) throw new Error("Compra não encontrada");
+
+      const usaItens = TIPOS_COM_ITENS.includes(tipo);
+      let observacoes: string | null = full.observacoes ?? null;
+      if (!usaItens && itens && itens.length) {
+        const linhas = itens.map((it: any) => {
+          const q = Number(it.quantidade) || 0;
+          const v = Number(it.valor_unitario) || 0;
+          const val = v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+          return `${q}x ${it.descricao ?? ""} — ${val}`;
+        });
+        const texto = linhas.join("; ");
+        observacoes = observacoes ? `${observacoes}\n\n${texto}` : texto;
+      }
+
+      const payload: any = {
+        titulo: full.titulo,
+        fornecedor: full.fornecedor,
+        fornecedor_id: full.fornecedor_id,
+        solicitante: full.solicitante,
+        solicitante_id: full.solicitante_id,
+        valor_total: full.valor_total,
+        observacoes,
+        data_solicitacao: full.data_solicitacao,
+        responsavel_id: full.responsavel_id,
+        responsavel_nome: full.responsavel_nome,
+        numero_nf: full.numero_nf,
+        numeros_nf: full.numeros_nf,
+        tem_nf: full.tem_nf,
+        parcelamento: full.parcelamento,
+        condicao_pagamento: full.condicao_pagamento,
+        documento: full.documento,
+        created_by: full.created_by,
+        tipo_demanda: tipo,
+        status: "solicitacao",
+      };
+
+      // 3) Criar demanda
+      const { data: novaDem, error: demErr } = await sb
+        .from("demandas")
+        .insert(payload)
+        .select("id")
+        .single();
+      if (demErr) throw demErr;
+
+      // 4) Copiar itens quando aplicável
+      if (usaItens && itens && itens.length) {
+        const rows = itens.map((it: any) => ({
+          demanda_id: novaDem.id,
+          descricao: it.descricao,
+          quantidade: it.quantidade,
+          unidade: it.unidade,
+          valor_unitario: it.valor_unitario,
+        }));
+        const { error: insItErr } = await sb.from("demanda_itens").insert(rows);
+        if (insItErr) throw insItErr;
+      }
+
+      // 5) Só agora excluir compra_itens e a compra
+      await sb.from("compra_itens").delete().eq("compra_id", compra.id);
+      const { error: delErr } = await sb.from("compras").delete().eq("id", compra.id);
+      if (delErr) throw delErr;
+
+      toast.success("Compra migrada para Despesa");
+      onDone();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao migrar compra");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={!!compra} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Migrar para Despesa</DialogTitle>
+          <DialogDescription>
+            Esta compra será convertida em uma despesa e removida do Quadro de Compras.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Tipo de despesa</label>
+          <Select value={tipo} onValueChange={setTipo}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione o tipo…" />
+            </SelectTrigger>
+            <SelectContent>
+              {TIPO_DEMANDA_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {tipo && !TIPOS_COM_ITENS.includes(tipo) && (
+            <p className="text-xs text-muted-foreground">
+              Os itens da compra serão convertidos em texto no campo de observações.
+            </p>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>
+            Cancelar
+          </Button>
+          <Button onClick={handleConfirm} disabled={saving || !tipo}>
+            {saving ? "Migrando…" : "Confirmar migração"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
