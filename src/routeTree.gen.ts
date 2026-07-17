@@ -83,6 +83,7 @@ import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 import { Route as AdminModulosRouteImport } from './routes/admin.modulos'
 import { Route as AdminDadosRouteImport } from './routes/admin.dados'
 import { Route as FinanceiroDiaristasIndexRouteImport } from './routes/financeiro.diaristas.index'
+import { Route as FinanceiroOpDiaristasIndexRouteImport } from './routes/financeiro-op.diaristas.index'
 import { Route as ComercialDashboardIndexRouteImport } from './routes/comercial.dashboard.index'
 import { Route as FinanceiroDiaristasConfiguracoesRouteImport } from './routes/financeiro.diaristas.configuracoes'
 import { Route as FinanceiroOpDiaristasConfiguracoesRouteImport } from './routes/financeiro-op.diaristas.configuracoes'
@@ -474,6 +475,12 @@ const FinanceiroDiaristasIndexRoute =
     path: '/',
     getParentRoute: () => FinanceiroDiaristasRoute,
   } as any)
+const FinanceiroOpDiaristasIndexRoute =
+  FinanceiroOpDiaristasIndexRouteImport.update({
+    id: '/diaristas/',
+    path: '/diaristas/',
+    getParentRoute: () => FinanceiroOpRoute,
+  } as any)
 const ComercialDashboardIndexRoute = ComercialDashboardIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -671,6 +678,7 @@ export interface FileRoutesByFullPath {
   '/financeiro-op/diaristas/configuracoes': typeof FinanceiroOpDiaristasConfiguracoesRoute
   '/financeiro/diaristas/configuracoes': typeof FinanceiroDiaristasConfiguracoesRoute
   '/comercial/dashboard/': typeof ComercialDashboardIndexRoute
+  '/financeiro-op/diaristas/': typeof FinanceiroOpDiaristasIndexRoute
   '/financeiro/diaristas/': typeof FinanceiroDiaristasIndexRoute
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
   '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
@@ -754,6 +762,7 @@ export interface FileRoutesByTo {
   '/financeiro-op/diaristas/configuracoes': typeof FinanceiroOpDiaristasConfiguracoesRoute
   '/financeiro/diaristas/configuracoes': typeof FinanceiroDiaristasConfiguracoesRoute
   '/comercial/dashboard': typeof ComercialDashboardIndexRoute
+  '/financeiro-op/diaristas': typeof FinanceiroOpDiaristasIndexRoute
   '/financeiro/diaristas': typeof FinanceiroDiaristasIndexRoute
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
   '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
@@ -850,6 +859,7 @@ export interface FileRoutesById {
   '/financeiro-op/diaristas/configuracoes': typeof FinanceiroOpDiaristasConfiguracoesRoute
   '/financeiro/diaristas/configuracoes': typeof FinanceiroDiaristasConfiguracoesRoute
   '/comercial/dashboard/': typeof ComercialDashboardIndexRoute
+  '/financeiro-op/diaristas/': typeof FinanceiroOpDiaristasIndexRoute
   '/financeiro/diaristas/': typeof FinanceiroDiaristasIndexRoute
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
   '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
@@ -947,6 +957,7 @@ export interface FileRouteTypes {
     | '/financeiro-op/diaristas/configuracoes'
     | '/financeiro/diaristas/configuracoes'
     | '/comercial/dashboard/'
+    | '/financeiro-op/diaristas/'
     | '/financeiro/diaristas/'
     | '/api/contaazul/oauth/callback'
     | '/api/contaazul/oauth/prepare'
@@ -1030,6 +1041,7 @@ export interface FileRouteTypes {
     | '/financeiro-op/diaristas/configuracoes'
     | '/financeiro/diaristas/configuracoes'
     | '/comercial/dashboard'
+    | '/financeiro-op/diaristas'
     | '/financeiro/diaristas'
     | '/api/contaazul/oauth/callback'
     | '/api/contaazul/oauth/prepare'
@@ -1125,6 +1137,7 @@ export interface FileRouteTypes {
     | '/financeiro-op/diaristas/configuracoes'
     | '/financeiro/diaristas/configuracoes'
     | '/comercial/dashboard/'
+    | '/financeiro-op/diaristas/'
     | '/financeiro/diaristas/'
     | '/api/contaazul/oauth/callback'
     | '/api/contaazul/oauth/prepare'
@@ -1691,6 +1704,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FinanceiroDiaristasIndexRouteImport
       parentRoute: typeof FinanceiroDiaristasRoute
     }
+    '/financeiro-op/diaristas/': {
+      id: '/financeiro-op/diaristas/'
+      path: '/diaristas'
+      fullPath: '/financeiro-op/diaristas/'
+      preLoaderRoute: typeof FinanceiroOpDiaristasIndexRouteImport
+      parentRoute: typeof FinanceiroOpRoute
+    }
     '/comercial/dashboard/': {
       id: '/comercial/dashboard/'
       path: '/'
@@ -1988,6 +2008,7 @@ interface FinanceiroOpRouteChildren {
   FinanceiroOpUberRoute: typeof FinanceiroOpUberRoute
   FinanceiroOpIndexRoute: typeof FinanceiroOpIndexRoute
   FinanceiroOpDiaristasConfiguracoesRoute: typeof FinanceiroOpDiaristasConfiguracoesRoute
+  FinanceiroOpDiaristasIndexRoute: typeof FinanceiroOpDiaristasIndexRoute
 }
 
 const FinanceiroOpRouteChildren: FinanceiroOpRouteChildren = {
@@ -2000,6 +2021,7 @@ const FinanceiroOpRouteChildren: FinanceiroOpRouteChildren = {
   FinanceiroOpIndexRoute: FinanceiroOpIndexRoute,
   FinanceiroOpDiaristasConfiguracoesRoute:
     FinanceiroOpDiaristasConfiguracoesRoute,
+  FinanceiroOpDiaristasIndexRoute: FinanceiroOpDiaristasIndexRoute,
 }
 
 const FinanceiroOpRouteWithChildren = FinanceiroOpRoute._addFileChildren(
