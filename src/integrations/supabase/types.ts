@@ -1165,21 +1165,30 @@ export type Database = {
       comercial_vendedores: {
         Row: {
           created_at: string
+          gatilho_meta: number | null
+          gatilho_valor: number | null
           id: string
           nome: string
           percentual_comissao: number
+          tipo_comissao: string
         }
         Insert: {
           created_at?: string
+          gatilho_meta?: number | null
+          gatilho_valor?: number | null
           id?: string
           nome: string
           percentual_comissao?: number
+          tipo_comissao?: string
         }
         Update: {
           created_at?: string
+          gatilho_meta?: number | null
+          gatilho_valor?: number | null
           id?: string
           nome?: string
           percentual_comissao?: number
+          tipo_comissao?: string
         }
         Relationships: []
       }
