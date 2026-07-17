@@ -1,40 +1,57 @@
+## Diagnóstico
 
-## Objetivo
-No diálogo "Novo/Editar evento" (`src/routes/eventos.index.tsx`), trocar os campos livres de Cidade por listas suspensas pesquisáveis com todos os estados e municípios do Brasil (dados oficiais do IBGE), preenchendo o estado automaticamente ao escolher a cidade.
+A **conexão OAuth está saudável** — o token do Conta Azul foi refrescado hoje às 10:58 UTC (`conta_azul_credentials.updated_at`). O problema não é autenticação.
 
-## Mudanças
+Analisando `ca_sync_log`, na sua última tentativa (10:58 de hoje) o padrão foi:
 
-### 1. Nova coluna `uf` na tabela `eventos`
-Migração adicionando `uf text` (2 letras) em `public.eventos`. Sem obrigatoriedade (para não quebrar registros existentes). Nada mais é alterado no schema.
+| Recurso | Resultado |
+|---|---|
+| `plano_contas` | ✅ 255 registros |
+| `centros_custo` | ✅ 466 registros |
+| `contas_pagar` (2026-01-01 → 2027-12-31) | ⚠️ **em_andamento sem `finished_at`** — o processo morreu no meio |
+| `contas_receber` / `extrato` | ❌ nunca chegaram a rodar (o loop no cliente parou antes) |
 
-### 2. Fonte de dados dos municípios
-Usar a API pública do IBGE (sem chave, sem custo):
-- Estados: `https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome`
-- Municípios: `https://servicodados.ibge.gov.br/api/v1/localidades/municipios?orderBy=nome`
+Isso já aconteceu antes (16/07 21:24 idêntico) e é uma **assinatura clara de timeout do server function**. A causa está em `syncContasPagar` / `syncContasReceber`:
 
-Carregados via `useQuery` com `staleTime: Infinity` (dados praticamente imutáveis, cache durante toda a sessão). Uma única requisição de municípios (~5.500 itens, leve).
+- A listagem `/financeiro/eventos-financeiros` da API v2 do Conta Azul **não traz `centros_de_custo` nem `categorias`** para a maioria dos lançamentos.
+- Para não perder rateio/centro no DRE, o código enriquece cada item chamando `/financeiro/eventos-financeiros/parcelas/{id}` (função `enrichItemsWithDetail`).
+- O Conta Azul rate-limita esse endpoint agressivamente, então o código usa concorrência 2 com retry/backoff.
+- Com um período grande (dois anos, como o atual), são centenas/milhares de chamadas sequenciais e o server function **estoura o orçamento de wall-time do worker** antes de terminar. Resultado: log fica `em_andamento`, cliente recebe erro/timeout, próximos recursos não rodam.
 
-Fallback: se a API falhar, os campos voltam a ser inputs de texto livres para não travar o cadastro.
+Rodadas anteriores só passaram porque o período era pequeno (5, 42, 79 lançamentos). A rodada com 2981 registros em 16/07 levou quase 6 minutos e foi um "quase-milagre".
 
-### 3. UI no `EventoDialog`
-Substituir os dois `<Input>` atuais de "Cidade" e (novo) "UF" por dois selects pesquisáveis usando o componente já existente no projeto `SearchableSelect` (`src/components/SearchableSelect.tsx`), mantendo o visual consistente:
+## O que fazer
 
-- **UF**: lista com as 27 unidades federativas (sigla + nome).
-- **Cidade**: lista filtrada pela UF selecionada; se nenhuma UF estiver escolhida, mostra todas as cidades com sufixo " - UF" para desambiguar homônimos.
+### 1. Não sincronizar períodos grandes pela tela "Sincronizar agora"
+Esse botão foi desenhado para janelas curtas (~90 dias). Para trazer histórico longo (2023 → 2027), **usar o card "Carga histórica"**, que já quebra o período em chunks mensais e é processado 1 mês por tick de cron — exatamente para não estourar timeout.
 
-Comportamento:
-- Selecionar uma **cidade** preenche automaticamente a **UF** correspondente.
-- Selecionar/trocar a **UF** filtra a lista de cidades; se a cidade atual não pertence à nova UF, o campo cidade é limpo.
+Ação de UI:
+- Adicionar aviso no card **Sincronizar dados** quando o intervalo `from → to` for maior que ~120 dias, orientando o usuário a usar Carga Histórica.
+- Opcional: travar o botão nesse caso.
 
-### 4. Persistência
-O `payload` de insert/update passa a incluir `cidade` (nome do município) e `uf` (sigla). Nenhuma outra lógica do formulário muda.
+### 2. Tornar `syncContasPagar` / `syncContasReceber` resilientes a timeout
+Mesmo em janelas curtas o enrichment pode explodir se houver muitos lançamentos. Ajustes em `src/lib/conta-azul/sync.server.ts`:
+
+- **Time budget interno**: parar o `enrichItemsWithDetail` quando o tempo decorrido passar de ~20s e persistir o que já foi coletado, marcando o log como `ok_parcial` com quantos ficaram sem detalhe.
+- **Upsert incremental**: gravar em `ca_contas_pagar` a cada N itens processados (ex.: a cada 200), em vez de esperar o array inteiro. Assim, mesmo se o worker for morto, os dados já sincronizados ficam salvos.
+- **Fechar o log de forma defensiva** com um `finally` que marca `erro` + mensagem "timeout provável" quando o handler é interrompido — hoje ele fica preso em `em_andamento` e polui o histórico.
+
+### 3. Reprocessar o que ficou pendente
+Depois dos ajustes:
+1. Marcar o log preso (`contas_pagar` 10:58) como `erro` manualmente para limpar.
+2. Rodar `contas_receber` e `extrato` isoladamente para completar a janela corrente.
+3. Enfileirar a janela 2026-01-01 → 2027-12-31 via **Carga Histórica** (chunks mensais).
+
+## Escopo técnico
+
+Arquivos a alterar:
+- `src/lib/conta-azul/sync.server.ts` — time budget + upsert incremental + `finally` que registra `erro` no `ca_sync_log`.
+- `src/routes/financeiro.conta-azul.tsx` — aviso/limite no card "Sincronizar dados" quando o intervalo for grande, com CTA para o card "Carga histórica".
+
+Sem mudança de schema. Sem mudança em RLS/GRANT. Sem mudança no fluxo OAuth.
 
 ## Fora de escopo
-- Não alterar o calendário público, o Gantt, nem outras telas.
-- Não migrar dados históricos (registros antigos ficam com `uf` nulo até serem reeditados).
-- Não adicionar cadastro manual de cidades — apenas a lista oficial do IBGE.
 
-## Arquivos afetados
-- `supabase/migrations/<nova>.sql` — adiciona coluna `uf`.
-- `src/routes/eventos.index.tsx` — troca inputs por selects e ajusta payload.
-- (opcional) `src/lib/ibge.ts` — helper para buscar estados/municípios via `useQuery`.
+- Refatorar o enrichment para lote (a API v2 não expõe endpoint em lote).
+- Trocar cron para outra ferramenta.
+- Mexer em `syncPlanoContas` / `syncCentrosCusto` / `syncExtrato` (funcionaram).
