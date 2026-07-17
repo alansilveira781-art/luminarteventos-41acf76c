@@ -122,6 +122,7 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
     nome: evento?.nome ?? "",
     local: evento?.local ?? "",
     cidade: evento?.cidade ?? "",
+    uf: evento?.uf ?? "",
     tipo: evento?.tipo && TIPOS.includes(evento.tipo) ? evento.tipo : "Social",
     data_evento: evento?.data_evento ?? "",
     data_evento_fim: evento?.data_evento_fim ?? "",
