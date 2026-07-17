@@ -192,10 +192,7 @@ function ApontamentoTab() {
       if (!payload.diarista_id) throw new Error("Selecione o diarista");
       const row = {
         diarista_id: payload.diarista_id,
-        empresa: payload.empresa.trim() || null,
-        atividade: payload.atividade.trim() || null,
         projeto: payload.projeto.trim() || null,
-        comodos: payload.comodos.trim() || null,
         data: payload.data,
         hora_inicial: payload.hora_inicial,
         hora_final: payload.hora_final,
