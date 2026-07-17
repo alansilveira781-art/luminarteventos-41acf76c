@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Settings } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
-export const Route = createFileRoute("/financeiro/diaristas/")({
+export const Route = createFileRoute("/financeiro-op/diaristas/")({
   component: DiaristasIndex,
 });
 
 function DiaristasIndex() {
   const { isAdmin, modulos } = useAuth();
-  const isFinAdmin = isAdmin || modulos.some((m) => m.slug === "financeiro" && m.is_admin);
+  const isFinAdmin = isAdmin || modulos.some((m) => m.slug === "financeiro_op" && m.is_admin);
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
@@ -22,7 +22,7 @@ function DiaristasIndex() {
         />
         {isFinAdmin && (
           <Button asChild variant="outline">
-            <Link to="/financeiro/diaristas/configuracoes">
+            <Link to="/financeiro-op/diaristas/configuracoes">
               <Settings className="h-4 w-4 mr-2" />
               Configurações
             </Link>

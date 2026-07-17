@@ -16,7 +16,7 @@ import { MoneyInput } from "@/components/MoneyInput";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-export const Route = createFileRoute("/financeiro/diaristas/configuracoes")({
+export const Route = createFileRoute("/financeiro-op/diaristas/configuracoes")({
   component: DiaristasConfiguracoes,
 });
 
@@ -70,8 +70,8 @@ function useDiaristas() {
 
 function DiaristasConfiguracoes() {
   const { isAdmin, modulos } = useAuth();
-  const isFinAdmin = isAdmin || modulos.some((m) => m.slug === "financeiro" && m.is_admin);
-  if (!isFinAdmin) return <Navigate to="/financeiro/diaristas" />;
+  const isFinAdmin = isAdmin || modulos.some((m) => m.slug === "financeiro_op" && m.is_admin);
+  if (!isFinAdmin) return <Navigate to="/financeiro-op/diaristas" />;
 
   const qc = useQueryClient();
   const { data = [], isLoading } = useDiaristas();
