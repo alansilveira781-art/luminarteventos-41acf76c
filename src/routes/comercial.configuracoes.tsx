@@ -56,36 +56,74 @@ function ComercialConfiguracoes() {
 }
 
 /* ---------- Vendedores ---------- */
+type VendedorForm = {
+  id?: string;
+  nome: string;
+  tipo_comissao: "percentual" | "gatilho";
+  percentual_comissao: number;
+  gatilho_meta: number;
+  gatilho_valor: number;
+};
+
+function fmtBRL(v: number) {
+  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 });
+}
+
 function VendedoresCard() {
   const { data = [], isLoading } = useVendedores();
   const { upsert, remove } = useCadastroMutations("comercial_vendedores", "comercial-vendedores");
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<{ id?: string; nome: string; percentual_comissao: number } | null>(null);
+  const [editing, setEditing] = useState<VendedorForm | null>(null);
 
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-semibold">Vendedores (Consultor(a))</h2>
-        <Button size="sm" onClick={() => { setEditing({ nome: "", percentual_comissao: 0 }); setOpen(true); }}>
+        <Button
+          size="sm"
+          onClick={() => {
+            setEditing({
+              nome: "",
+              tipo_comissao: "percentual",
+              percentual_comissao: 0,
+              gatilho_meta: 0,
+              gatilho_valor: 0,
+            });
+            setOpen(true);
+          }}
+        >
           <Plus className="h-4 w-4 mr-1" /> Novo vendedor
         </Button>
       </div>
       <CrudTable
         isLoading={isLoading}
         empty="Nenhum vendedor cadastrado."
-        columns={["Nome", "% Comissão", ""]}
-        rows={data.map((v) => ({
-          id: v.id,
-          cells: [
-            v.nome,
-            `${Number(v.percentual_comissao).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`,
-          ],
-          onEdit: () => { setEditing({ id: v.id, nome: v.nome, percentual_comissao: Number(v.percentual_comissao) || 0 }); setOpen(true); },
-          onDelete: () => {
-            if (confirm(`Excluir vendedor "${v.nome}"?`))
-              remove.mutate(v.id, { onSuccess: () => toast.success("Vendedor excluído") });
-          },
-        }))}
+        columns={["Nome", "Comissão", ""]}
+        rows={data.map((v) => {
+          const isGatilho = v.tipo_comissao === "gatilho";
+          const label = isGatilho
+            ? `${fmtBRL(Number(v.gatilho_valor) || 0)} se faturar ${fmtBRL(Number(v.gatilho_meta) || 0)}`
+            : `${Number(v.percentual_comissao).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
+          return {
+            id: v.id,
+            cells: [v.nome, label],
+            onEdit: () => {
+              setEditing({
+                id: v.id,
+                nome: v.nome,
+                tipo_comissao: (v.tipo_comissao as "percentual" | "gatilho") ?? "percentual",
+                percentual_comissao: Number(v.percentual_comissao) || 0,
+                gatilho_meta: Number(v.gatilho_meta) || 0,
+                gatilho_valor: Number(v.gatilho_valor) || 0,
+              });
+              setOpen(true);
+            },
+            onDelete: () => {
+              if (confirm(`Excluir vendedor "${v.nome}"?`))
+                remove.mutate(v.id, { onSuccess: () => toast.success("Vendedor excluído") });
+            },
+          };
+        })}
       />
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
@@ -98,13 +136,36 @@ function VendedoresCard() {
               onSubmit={(e) => {
                 e.preventDefault();
                 const nome = editing.nome.trim();
-                const pct = Number(editing.percentual_comissao);
                 if (!nome) return toast.error("Informe o nome");
-                if (!Number.isFinite(pct) || pct < 0) return toast.error("Percentual inválido");
-                upsert.mutate(
-                  { id: editing.id, nome, percentual_comissao: pct },
-                  { onSuccess: () => { toast.success("Salvo"); setOpen(false); } },
-                );
+                let payload: Record<string, any>;
+                if (editing.tipo_comissao === "percentual") {
+                  const pct = Number(editing.percentual_comissao);
+                  if (!Number.isFinite(pct) || pct < 0) return toast.error("Percentual inválido");
+                  payload = {
+                    id: editing.id,
+                    nome,
+                    tipo_comissao: "percentual",
+                    percentual_comissao: pct,
+                    gatilho_meta: null,
+                    gatilho_valor: null,
+                  };
+                } else {
+                  const meta = Number(editing.gatilho_meta);
+                  const valor = Number(editing.gatilho_valor);
+                  if (!Number.isFinite(meta) || meta <= 0) return toast.error("Meta de faturamento deve ser maior que zero");
+                  if (!Number.isFinite(valor) || valor < 0) return toast.error("Valor da comissão inválido");
+                  payload = {
+                    id: editing.id,
+                    nome,
+                    tipo_comissao: "gatilho",
+                    percentual_comissao: 0,
+                    gatilho_meta: meta,
+                    gatilho_valor: valor,
+                  };
+                }
+                upsert.mutate(payload, {
+                  onSuccess: () => { toast.success("Salvo"); setOpen(false); },
+                });
               }}
             >
               <div className="space-y-1">
@@ -112,13 +173,50 @@ function VendedoresCard() {
                 <Input value={editing.nome} onChange={(e) => setEditing({ ...editing, nome: e.target.value })} />
               </div>
               <div className="space-y-1">
-                <Label>Percentual de comissão (%)</Label>
-                <Input
-                  type="number" step="0.01" min={0}
-                  value={editing.percentual_comissao}
-                  onChange={(e) => setEditing({ ...editing, percentual_comissao: Number(e.target.value) })}
-                />
+                <Label>Modelo de comissão</Label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={editing.tipo_comissao}
+                  onChange={(e) =>
+                    setEditing({ ...editing, tipo_comissao: e.target.value as "percentual" | "gatilho" })
+                  }
+                >
+                  <option value="percentual">Percentual (%)</option>
+                  <option value="gatilho">Gatilho (meta + valor fixo)</option>
+                </select>
               </div>
+              {editing.tipo_comissao === "percentual" ? (
+                <div className="space-y-1">
+                  <Label>Percentual de comissão (%)</Label>
+                  <Input
+                    type="number" step="0.01" min={0}
+                    value={editing.percentual_comissao}
+                    onChange={(e) => setEditing({ ...editing, percentual_comissao: Number(e.target.value) })}
+                  />
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-1">
+                    <Label>Meta de faturamento (R$)</Label>
+                    <Input
+                      type="number" step="0.01" min={0}
+                      value={editing.gatilho_meta}
+                      onChange={(e) => setEditing({ ...editing, gatilho_meta: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Comissão ao atingir a meta (R$)</Label>
+                    <Input
+                      type="number" step="0.01" min={0}
+                      value={editing.gatilho_valor}
+                      onChange={(e) => setEditing({ ...editing, gatilho_valor: Number(e.target.value) })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Ex.: R$ 10.000 pagos apenas se o consultor faturar R$ 200.000.
+                    </p>
+                  </div>
+                </>
+              )}
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
                 <Button type="submit" disabled={upsert.isPending}>Salvar</Button>
@@ -130,6 +228,7 @@ function VendedoresCard() {
     </Card>
   );
 }
+
 
 /* ---------- Cerimoniais ---------- */
 function CerimoniaisCard() {

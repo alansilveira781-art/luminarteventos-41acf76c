@@ -3,7 +3,15 @@ import { supabase } from "@/integrations/supabase/client";
 
 const sb = supabase as any;
 
-export type Vendedor = { id: string; nome: string; percentual_comissao: number };
+export type Vendedor = {
+  id: string;
+  nome: string;
+  percentual_comissao: number;
+  tipo_comissao: "percentual" | "gatilho";
+  gatilho_meta: number | null;
+  gatilho_valor: number | null;
+};
+
 export type Cerimonial = { id: string; nome: string; percentual_bv: number };
 export type Decorador = { id: string; nome: string };
 export type Classificacao = { id: string; nome: string };
@@ -30,8 +38,9 @@ export function useVendedores() {
     queryFn: async (): Promise<Vendedor[]> => {
       const { data, error } = await sb
         .from("comercial_vendedores")
-        .select("id,nome,percentual_comissao")
+        .select("id,nome,percentual_comissao,tipo_comissao,gatilho_meta,gatilho_valor")
         .order("nome");
+
       if (error) throw error;
       return (data ?? []) as Vendedor[];
     },
