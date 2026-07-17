@@ -270,6 +270,26 @@ function ValidarRecebimentoDialog({ demanda, onClose }: { demanda: DemandaRow; o
 
   const [linhas, setLinhas] = useState<LinhaPat[]>(() => buildInitialLinhas(demanda));
   const [preview, setPreview] = useState<AnexoRow | null>(null);
+  const [extraSubs, setExtraSubs] = useState<Record<number, string[]>>({});
+  const [addingSub, setAddingSub] = useState<Record<number, boolean>>({});
+  const [newSub, setNewSub] = useState<Record<number, string>>({});
+
+  const { data: subcategoriasDb = [] } = useQuery({
+    queryKey: ["pat-subcategorias-all"],
+    queryFn: async () => {
+      const { data } = await sb.from("pat_itens").select("subcategoria").not("subcategoria", "is", null);
+      const set = new Set<string>();
+      (data ?? []).forEach((r: any) => { if (r.subcategoria) set.add(String(r.subcategoria)); });
+      return Array.from(set).sort();
+    },
+  });
+
+  const subcategoriasParaLinha = (idx: number, atual: string | null) => {
+    const s = new Set<string>(subcategoriasDb);
+    (extraSubs[idx] ?? []).forEach((x) => s.add(x));
+    if (atual) s.add(atual);
+    return Array.from(s).sort();
+  };
 
   const nfs = useMemo(() => {
     if (demanda.numeros_nf && demanda.numeros_nf.length > 0) return demanda.numeros_nf;
