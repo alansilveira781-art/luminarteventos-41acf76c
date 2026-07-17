@@ -131,11 +131,21 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
     data_desmontagem: evento?.data_desmontagem ?? "",
     data_desmontagem_fim: evento?.data_desmontagem_fim ?? "",
     produtor: evento?.produtor ?? "",
+    produtor_id: evento?.produtor_id ?? "",
     situacao: evento?.situacao ?? "Em Aprovação",
     hora_montagem: evento?.hora_montagem ?? "",
     hora_desmontagem: evento?.hora_desmontagem ?? "",
   }));
   const set = (k: string, v: any) => setF((p: any) => ({ ...p, [k]: v }));
+
+  const { data: produtores = [] } = useQuery({
+    queryKey: ["produtores"],
+    queryFn: async () => {
+      const { data } = await sb.from("produtores").select("id,nome").order("nome");
+      return (data ?? []) as { id: string; nome: string }[];
+    },
+    staleTime: 60_000,
+  });
 
   const { data: estados = [] } = useQuery({
     queryKey: ["ibge-estados"],
