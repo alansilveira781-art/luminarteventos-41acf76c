@@ -154,7 +154,7 @@ async function forceRefreshToken(): Promise<string> {
 }
 
 const RETRY_STATUSES = new Set([408, 429, 502, 503, 504]);
-const MAX_ATTEMPTS = 4;
+const MAX_ATTEMPTS = 6;
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
