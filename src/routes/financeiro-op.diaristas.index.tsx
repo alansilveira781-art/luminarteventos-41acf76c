@@ -440,25 +440,19 @@ function ApontamentoTab() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label>Projeto</Label>
-                <Input value={editing.projeto}
-                  onChange={(e) => setEditing({ ...editing, projeto: e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Atividade</Label>
-                <Input value={editing.atividade}
-                  onChange={(e) => setEditing({ ...editing, atividade: e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Cômodos</Label>
-                <Input value={editing.comodos}
-                  onChange={(e) => setEditing({ ...editing, comodos: e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Empresa</Label>
-                <Input value={editing.empresa}
-                  onChange={(e) => setEditing({ ...editing, empresa: e.target.value })} />
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Projeto (evento)</Label>
+                <Input
+                  list="diaristas-eventos-list"
+                  value={editing.projeto}
+                  placeholder="Digite para buscar um evento…"
+                  onChange={(e) => setEditing({ ...editing, projeto: e.target.value })}
+                />
+                <datalist id="diaristas-eventos-list">
+                  {eventos.map((ev) => (
+                    <option key={ev.id} value={ev.nome} />
+                  ))}
+                </datalist>
               </div>
               <div className="space-y-1.5">
                 <Label>Data</Label>
