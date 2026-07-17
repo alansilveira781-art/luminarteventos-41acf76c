@@ -172,7 +172,6 @@ function ApontamentoTab() {
   const qc = useQueryClient();
   const { data: diaristas = [] } = useDiaristas();
   const { data: apontamentos = [], isLoading } = useApontamentos();
-  const { data: eventos = [] } = useEventos();
 
   const diaristasAtivos = useMemo(() => diaristas.filter((d) => d.ativo), [diaristas]);
   const diaristasMap = useMemo(
