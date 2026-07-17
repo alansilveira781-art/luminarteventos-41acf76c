@@ -249,6 +249,7 @@ function buildInitialLinhas(demanda: DemandaRow): LinhaPat[] {
       demanda_item_id: it.id,
       nome: it.descricao || demanda.titulo || "",
       cod: null,
+      categoria: "IMOBILIZADO",
       quantidade: q > 0 ? q : 1,
       unidade: it.unidade || "UNIDADE",
       valor: Number(valorUnitEfetivo.toFixed(4)),
