@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { MoneyInput } from "@/components/MoneyInput";
+import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { calcularApontamento, formatHoras, type Local } from "@/lib/diaristas-calc";
