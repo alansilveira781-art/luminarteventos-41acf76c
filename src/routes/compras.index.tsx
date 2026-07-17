@@ -480,7 +480,7 @@ function Column({
 }
 
 function Card({
-  compra, onOpen, onAdvance, nextStatusLabel, canMove = true, blockedMsg = null,
+  compra, onOpen, onAdvance, nextStatusLabel, canMove = true, blockedMsg = null, onMigrar,
 }: {
   compra: Compra;
   onOpen: () => void;
@@ -488,6 +488,7 @@ function Card({
   nextStatusLabel?: string | null;
   canMove?: boolean;
   blockedMsg?: string | null;
+  onMigrar?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: compra.id, disabled: !canMove });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
