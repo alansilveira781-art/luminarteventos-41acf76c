@@ -109,7 +109,7 @@ function ContaAzulPage() {
     }
   }
 
-  async function handleSync() {
+  async function handleSync(modo: "incremental" | "completo") {
     setBusy("sync");
     setProgress({ current: null, done: 0 });
     const headers = { ...(await authHeaders()), "Content-Type": "application/json" };
@@ -123,7 +123,7 @@ function ContaAzulPage() {
           const res = await fetch("/api/contaazul/sync", {
             method: "POST",
             headers,
-            body: JSON.stringify({ from, to, recurso: r.key, modo: "incremental" }),
+            body: JSON.stringify({ from, to, recurso: r.key, modo }),
           });
           if (!res.ok) throw new Error(await res.text());
           const { qtd } = (await res.json()) as { qtd: number };
@@ -219,9 +219,13 @@ function ContaAzulPage() {
                 <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
               </div>
             </div>
-            <Button onClick={handleSync} disabled={!canManage || !connected || busy !== null} className="w-full">
+            <Button onClick={() => handleSync("incremental")} disabled={!canManage || !connected || busy !== null} className="w-full">
               {busy === "sync" ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
-              Sincronizar agora
+              Sincronizar novidades
+            </Button>
+            <Button variant="outline" onClick={() => handleSync("completo")} disabled={!canManage || !connected || busy !== null} className="w-full">
+              {busy === "sync" ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+              Sincronização completa
             </Button>
             {busy === "sync" && progress.current && (
               <p className="text-xs text-muted-foreground">
@@ -229,7 +233,7 @@ function ContaAzulPage() {
               </p>
             )}
             <p className="text-xs text-muted-foreground">
-              Traz apenas o que foi criado ou editado no Conta Azul desde a última sincronização.
+              Use a completa para a primeira carga ou para trazer lançamentos futuros; a de novidades traz só o que mudou.
             </p>
           </CardContent>
         </Card>

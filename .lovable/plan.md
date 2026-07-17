@@ -1,35 +1,31 @@
-# Plano: incluir lançamentos futuros na sincronização do Conta Azul
+## Objetivo
 
-## O que será alterado
+Na tela `src/routes/financeiro-op.conta-azul.tsx`, o único botão de sincronização chama o endpoint com `modo: "incremental"`. Depois da primeira sincronização bem-sucedida, o incremental passa a retornar 0 registros, porque só busca o que foi alterado desde a última rodada. Lançamentos futuros também não são capturados. A correção é expor um segundo botão que dispara `modo: "completo"`, varrendo toda a janela de vencimento configurada na tela.
 
-Atualizar o cálculo do estado inicial `from/to` em `src/routes/financeiro-op.conta-azul.tsx` para que a janela padrão de sincronização cubra tanto o passado quanto o futuro, garantindo que parcelas com vencimento futuro (ex.: compras parceladas em 12x) sejam sincronizadas.
+## Escopo
 
-## Mudança técnica
+Alterações apenas na tela `src/routes/financeiro-op.conta-azul.tsx`. O servidor (`sync.server.ts`) já trata `modo: "completo"` corretamente e não será modificado.
 
-No `useState` das linhas 38–44:
+## Mudanças
 
-- `from`: passar de 90 dias atrás para 6 meses atrás.
-- `to`: passar de "hoje" para 12 meses à frente de hoje.
+1. Refatorar `handleSync` para receber o modo como parâmetro:
+   ```ts
+   async function handleSync(modo: "incremental" | "completo") { ... }
+   ```
 
-Exemplo da implementação:
+2. No `fetch` para `/api/contaazul/sync`, enviar o parâmetro `modo` passado para a função, em vez do valor fixo `"incremental"`.
 
-```ts
-const [defaults] = useState(() => {
-  const today = new Date();
-  const from = new Date(today);
-  from.setMonth(from.getMonth() - 6);
-  const to = new Date(today);
-  to.setMonth(to.getMonth() + 12);
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
-  return { from: iso(from), to: iso(to) };
-});
-```
+3. Substituir o botão único de sincronização por dois botões no card "Sincronizar dados":
+   - **"Sincronizar novidades"** — botão principal, chama `handleSync("incremental")`.
+   - **"Sincronização completa"** — botão com `variant="outline"`, chama `handleSync("completo")`.
 
-## O que NÃO será alterado
+4. Adicionar abaixo dos botões um texto explicativo:
+   > "Use a completa para a primeira carga ou para trazer lançamentos futuros; a de novidades traz só o que mudou."
 
-- Os campos `from` e `to` continuam editáveis para o usuário.
-- Nenhuma outra lógica da tela, endpoints, mapeamento, rateios ou enriquecimento será modificada.
+5. Garantir que, no modo `"completo"`, o body continue usando os campos `from` e `to` editáveis da tela (janela −6/+12 meses já configurada), para que a sincronização completa varra toda a faixa de vencimento, incluindo futuro.
 
-## Validação
+## Fora de escopo
 
-Após a alteração, abrir a tela `/financeiro-op/conta-azul` e confirmar que os campos de data vêm preenchidos com a nova janela padrão (6 meses atrás → 12 meses à frente).
+- Nenhuma alteração em `src/lib/conta-azul/sync.server.ts`.
+- Nenhuma alteração nos filtros de data, mapeamento, rateios ou enriquecimento.
+- Nenhuma alteração no cálculo dos defaults de `from`/`to`.
