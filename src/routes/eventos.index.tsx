@@ -185,6 +185,7 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
         nome: f.nome.trim(),
         local: f.local || null,
         cidade: f.cidade || null,
+        uf: f.uf || null,
         tipo: f.tipo || null,
         data_evento: f.data_evento,
         data_evento_fim: f.data_evento_fim,
