@@ -190,6 +190,19 @@ function MeusPedidos() {
         description="Acompanhe o andamento das suas solicitações"
       />
 
+      <div className="flex items-center gap-2 mb-3">
+        <input
+          id="hide-finalizados"
+          type="checkbox"
+          className="h-4 w-4 rounded border-input"
+          checked={hideFinalizados}
+          onChange={(e) => setHideFinalizados(e.target.checked)}
+        />
+        <label htmlFor="hide-finalizados" className="text-sm cursor-pointer select-none">
+          Ocultar Finalizados
+        </label>
+      </div>
+
       {pedidos.length === 0 ? (
         <Card className="p-8 text-center text-sm text-muted-foreground">
           Você ainda não tem pedidos.
