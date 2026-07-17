@@ -1,57 +1,57 @@
-## Diagnóstico
+## Objetivo
 
-A **conexão OAuth está saudável** — o token do Conta Azul foi refrescado hoje às 10:58 UTC (`conta_azul_credentials.updated_at`). O problema não é autenticação.
+Duas mudanças independentes no módulo Conta Azul:
+1. **Sync incremental por `data_alteracao`** — trazer só o que foi criado/editado desde a última sincronização OK.
+2. **Simplificar a tela `financeiro-op.conta-azul`** — deixar só Conexão e Sincronização.
 
-Analisando `ca_sync_log`, na sua última tentativa (10:58 de hoje) o padrão foi:
+---
 
-| Recurso | Resultado |
-|---|---|
-| `plano_contas` | ✅ 255 registros |
-| `centros_custo` | ✅ 466 registros |
-| `contas_pagar` (2026-01-01 → 2027-12-31) | ⚠️ **em_andamento sem `finished_at`** — o processo morreu no meio |
-| `contas_receber` / `extrato` | ❌ nunca chegaram a rodar (o loop no cliente parou antes) |
+## Parte 1 — Sync incremental
 
-Isso já aconteceu antes (16/07 21:24 idêntico) e é uma **assinatura clara de timeout do server function**. A causa está em `syncContasPagar` / `syncContasReceber`:
+### `src/lib/conta-azul/sync.server.ts`
 
-- A listagem `/financeiro/eventos-financeiros` da API v2 do Conta Azul **não traz `centros_de_custo` nem `categorias`** para a maioria dos lançamentos.
-- Para não perder rateio/centro no DRE, o código enriquece cada item chamando `/financeiro/eventos-financeiros/parcelas/{id}` (função `enrichItemsWithDetail`).
-- O Conta Azul rate-limita esse endpoint agressivamente, então o código usa concorrência 2 com retry/backoff.
-- Com um período grande (dois anos, como o atual), são centenas/milhares de chamadas sequenciais e o server function **estoura o orçamento de wall-time do worker** antes de terminar. Resultado: log fica `em_andamento`, cliente recebe erro/timeout, próximos recursos não rodam.
+- Nova função `ultimoSyncOk(recurso: "contas_pagar" | "contas_receber"): Promise<string | null>`  
+  Consulta `ca_sync_log` pelo maior `finished_at` com `status='ok'` e `recurso=<recurso>`. Retorna ISO ou `null`.
+- `syncContasPagar(from, to, desde?)` e `syncContasReceber(from, to, desde?)`:
+  - Se `desde` informado (modo incremental):
+    - No `fetchPaged`, trocar `data_vencimento_de/ate` por `data_alteracao_de: desde` e `data_alteracao_ate: <agora ISO>` (formato `YYYY-MM-DDTHH:mm:ss`).
+    - Aplicar margem de segurança: subtrair 10 min de `desde` antes de enviar.
+    - **Pular** `reconciliarExclusoes` (só roda no modo completo — janela por vencimento é o critério dela).
+    - Passar `modo=incremental desde=<ts>` para `logFinish` via `mensagem`.
+  - Se `desde` ausente: comportamento atual (janela `from/to` + reconciliação). Mensagem: `modo=completo`.
+- Enrichment, rateios, mapeamento e upsert seguem iguais — só muda o conjunto que chega até eles.
 
-Rodadas anteriores só passaram porque o período era pequeno (5, 42, 79 lançamentos). A rodada com 2981 registros em 16/07 levou quase 6 minutos e foi um "quase-milagre".
+### `src/routes/api/contaazul/sync.ts`
 
-## O que fazer
+- Estender schema Zod com `modo: z.enum(["incremental","completo"]).optional()` (default `"incremental"`).
+- Quando `recurso` é `contas_pagar` / `contas_receber` / `tudo`:
+  - `incremental`: chamar `ultimoSyncOk(recurso)`; se existir, chamar sync com `desde`. Se não existir (primeira vez), fallback para completo com `from/to`.
+  - `completo`: comportamento atual.
+- `syncTudo`: quando modo incremental, passa `desde` para pagar/receber; plano_contas, centros_custo e extrato continuam iguais (extrato usa janela porque não tem filtro de alteração).
 
-### 1. Não sincronizar períodos grandes pela tela "Sincronizar agora"
-Esse botão foi desenhado para janelas curtas (~90 dias). Para trazer histórico longo (2023 → 2027), **usar o card "Carga histórica"**, que já quebra o período em chunks mensais e é processado 1 mês por tick de cron — exatamente para não estourar timeout.
+### `src/routes/financeiro.conta-azul.tsx` (tela principal de sync)
 
-Ação de UI:
-- Adicionar aviso no card **Sincronizar dados** quando o intervalo `from → to` for maior que ~120 dias, orientando o usuário a usar Carga Histórica.
-- Opcional: travar o botão nesse caso.
+- Botão primário passa a mandar `modo: "incremental"` — rótulo **"Sincronizar novidades"**.
+- Novo botão secundário **"Sincronização completa"** → manda `modo: "completo"` com a janela `from/to`. Mantém o aviso atual para janela > 120 dias apenas neste modo.
 
-### 2. Tornar `syncContasPagar` / `syncContasReceber` resilientes a timeout
-Mesmo em janelas curtas o enrichment pode explodir se houver muitos lançamentos. Ajustes em `src/lib/conta-azul/sync.server.ts`:
+---
 
-- **Time budget interno**: parar o `enrichItemsWithDetail` quando o tempo decorrido passar de ~20s e persistir o que já foi coletado, marcando o log como `ok_parcial` com quantos ficaram sem detalhe.
-- **Upsert incremental**: gravar em `ca_contas_pagar` a cada N itens processados (ex.: a cada 200), em vez de esperar o array inteiro. Assim, mesmo se o worker for morto, os dados já sincronizados ficam salvos.
-- **Fechar o log de forma defensiva** com um `finally` que marca `erro` + mensagem "timeout provável" quando o handler é interrompido — hoje ele fica preso em `em_andamento` e polui o histórico.
+## Parte 2 — Enxugar `src/routes/financeiro-op.conta-azul.tsx`
 
-### 3. Reprocessar o que ficou pendente
-Depois dos ajustes:
-1. Marcar o log preso (`contas_pagar` 10:58) como `erro` manualmente para limpar.
-2. Rodar `contas_receber` e `extrato` isoladamente para completar a janela corrente.
-3. Enfileirar a janela 2026-01-01 → 2027-12-31 via **Carga Histórica** (chunks mensais).
+Deixar apenas **card Conexão** + **card Sincronização**.
 
-## Escopo técnico
+Remover:
+- Da renderização: `<SyncAutomaticoCard>`, `<CargaHistoricaCard>`, `<ReprocessarFalhasCard>`, `<SyncStateCard>` e o `<Card>` inline com o histórico de logs (bloco contíguo).
+- Definições órfãs: funções `SyncAutomaticoCard`, `CargaHistoricaCard`, `ReprocessarFalhasCard`, `SyncStateCard`.
+- `useQuery` `logs` (usado só pela tabela removida) e estados que ficarem sem uso.
+- Imports que ficarem sem referência.
 
-Arquivos a alterar:
-- `src/lib/conta-azul/sync.server.ts` — time budget + upsert incremental + `finally` que registra `erro` no `ca_sync_log`.
-- `src/routes/financeiro.conta-azul.tsx` — aviso/limite no card "Sincronizar dados" quando o intervalo for grande, com CTA para o card "Carga histórica".
+Não mexer em `financeiro.conta-azul.tsx` nem em nada de `src/lib/conta-azul/`. Endpoints backend permanecem — só saem da UI desta aba.
 
-Sem mudança de schema. Sem mudança em RLS/GRANT. Sem mudança no fluxo OAuth.
+---
 
 ## Fora de escopo
 
-- Refatorar o enrichment para lote (a API v2 não expõe endpoint em lote).
-- Trocar cron para outra ferramenta.
-- Mexer em `syncPlanoContas` / `syncCentrosCusto` / `syncExtrato` (funcionaram).
+- Refatorar `enrichItemsWithDetail` / rateios / mapeamento.
+- Alterar sync de plano de contas, centros de custo, extrato.
+- Schema / RLS / OAuth.

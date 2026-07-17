@@ -643,15 +643,40 @@ async function reconciliarExclusoes(
 // em `em_andamento`. Melhor abortar cedo e persistir o que já veio.
 const ENRICH_BUDGET_MS = 40_000;
 
-export async function syncContasPagar(from: string, to: string) {
+/** Retorna o `finished_at` da última sincronização OK para o recurso, ou null. */
+export async function ultimoSyncOk(
+  recurso: "contas_pagar" | "contas_receber",
+): Promise<string | null> {
+  const { data } = await sb
+    .from("ca_sync_log")
+    .select("finished_at")
+    .eq("recurso", recurso)
+    .eq("status", "ok")
+    .not("finished_at", "is", null)
+    .order("finished_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data?.finished_at as string | undefined) ?? null;
+}
+
+/** Formato aceito pela API v2 do Conta Azul (`YYYY-MM-DDTHH:mm:ss`, sem TZ). */
+function toCaDateTime(iso: string): string {
+  return new Date(iso).toISOString().slice(0, 19);
+}
+
+export async function syncContasPagar(from: string, to: string, desde?: string) {
   const startedAtMs = Date.now();
+  const incremental = !!desde;
+  // Aplica margem de 10 min para não perder o que foi alterado durante a rodada anterior.
+  const desdeAjustado = desde ? new Date(new Date(desde).getTime() - 10 * 60_000).toISOString() : null;
+  const agoraIso = new Date().toISOString();
   const logId = await logStart("contas_pagar", from, to);
   try {
     const basePath = "/financeiro/eventos-financeiros/contas-a-pagar/buscar";
-    const items = await fetchPaged(basePath, {
-      data_vencimento_de: from,
-      data_vencimento_ate: to,
-    });
+    const params: Record<string, string> = incremental
+      ? { data_alteracao_de: toCaDateTime(desdeAjustado!), data_alteracao_ate: toCaDateTime(agoraIso) }
+      : { data_vencimento_de: from, data_vencimento_ate: to };
+    const items = await fetchPaged(basePath, params);
     if (items.length > 0) {
       const syncedAt = new Date().toISOString();
       const rows = items.map((it: any) => mapEvento(it, syncedAt, "fornecedor_nome"));
@@ -660,37 +685,41 @@ export async function syncContasPagar(from: string, to: string) {
       await persistRateios(items, "pagar", syncedAt, deadline);
     }
 
-
-    // Reconciliação: remove fantasmas (excluídos no CA) do range.
-    try {
-      const activeIds = new Set(items.map((it: any) => String(it.id)));
-      const rec = await reconciliarExclusoes("ca_contas_pagar", "pagar", from, to, activeIds);
-      if (rec.removidos > 0) {
+    // Reconciliação só faz sentido no modo completo (janela por vencimento).
+    if (!incremental) {
+      try {
+        const activeIds = new Set(items.map((it: any) => String(it.id)));
+        const rec = await reconciliarExclusoes("ca_contas_pagar", "pagar", from, to, activeIds);
+        if (rec.removidos > 0) {
+          await sb.from("ca_sync_log").insert({
+            recurso: "reconciliacao_pagar",
+            status: "ok",
+            started_at: new Date().toISOString(),
+            finished_at: new Date().toISOString(),
+            date_from: from,
+            date_to: to,
+            qtd_registros: rec.removidos,
+            mensagem: `Removidos ${rec.removidos} registro(s) excluídos no Conta Azul: ${rec.ids.slice(0, 20).join(", ")}${rec.ids.length > 20 ? "..." : ""}`,
+          });
+        }
+      } catch (e: any) {
         await sb.from("ca_sync_log").insert({
           recurso: "reconciliacao_pagar",
-          status: "ok",
+          status: "erro",
           started_at: new Date().toISOString(),
           finished_at: new Date().toISOString(),
           date_from: from,
           date_to: to,
-          qtd_registros: rec.removidos,
-          mensagem: `Removidos ${rec.removidos} registro(s) excluídos no Conta Azul: ${rec.ids.slice(0, 20).join(", ")}${rec.ids.length > 20 ? "..." : ""}`,
+          qtd_registros: 0,
+          mensagem: String(e?.message ?? e),
         });
       }
-    } catch (e: any) {
-      await sb.from("ca_sync_log").insert({
-        recurso: "reconciliacao_pagar",
-        status: "erro",
-        started_at: new Date().toISOString(),
-        finished_at: new Date().toISOString(),
-        date_from: from,
-        date_to: to,
-        qtd_registros: 0,
-        mensagem: String(e?.message ?? e),
-      });
     }
 
-    await logFinish(logId, "ok", items.length);
+    const modoMsg = incremental
+      ? `modo=incremental desde=${desdeAjustado}`
+      : `modo=completo janela=${from}..${to}`;
+    await logFinish(logId, "ok", items.length, modoMsg);
     return items.length;
   } catch (e: any) {
     await logFinish(logId, "erro", 0, String(e?.message ?? e));
@@ -698,15 +727,18 @@ export async function syncContasPagar(from: string, to: string) {
   }
 }
 
-export async function syncContasReceber(from: string, to: string) {
+export async function syncContasReceber(from: string, to: string, desde?: string) {
   const startedAtMs = Date.now();
+  const incremental = !!desde;
+  const desdeAjustado = desde ? new Date(new Date(desde).getTime() - 10 * 60_000).toISOString() : null;
+  const agoraIso = new Date().toISOString();
   const logId = await logStart("contas_receber", from, to);
   try {
     const basePath = "/financeiro/eventos-financeiros/contas-a-receber/buscar";
-    const items = await fetchPaged(basePath, {
-      data_vencimento_de: from,
-      data_vencimento_ate: to,
-    });
+    const params: Record<string, string> = incremental
+      ? { data_alteracao_de: toCaDateTime(desdeAjustado!), data_alteracao_ate: toCaDateTime(agoraIso) }
+      : { data_vencimento_de: from, data_vencimento_ate: to };
+    const items = await fetchPaged(basePath, params);
 
     if (items.length > 0) {
       const syncedAt = new Date().toISOString();
@@ -716,43 +748,47 @@ export async function syncContasReceber(from: string, to: string) {
       await persistRateios(items, "receber", syncedAt, deadline);
     }
 
-
-    // Reconciliação: remove fantasmas (excluídos no CA) do range.
-    try {
-      const activeIds = new Set(items.map((it: any) => String(it.id)));
-      const rec = await reconciliarExclusoes("ca_contas_receber", "receber", from, to, activeIds);
-      if (rec.removidos > 0) {
+    if (!incremental) {
+      try {
+        const activeIds = new Set(items.map((it: any) => String(it.id)));
+        const rec = await reconciliarExclusoes("ca_contas_receber", "receber", from, to, activeIds);
+        if (rec.removidos > 0) {
+          await sb.from("ca_sync_log").insert({
+            recurso: "reconciliacao_receber",
+            status: "ok",
+            started_at: new Date().toISOString(),
+            finished_at: new Date().toISOString(),
+            date_from: from,
+            date_to: to,
+            qtd_registros: rec.removidos,
+            mensagem: `Removidos ${rec.removidos} registro(s) excluídos no Conta Azul: ${rec.ids.slice(0, 20).join(", ")}${rec.ids.length > 20 ? "..." : ""}`,
+          });
+        }
+      } catch (e: any) {
         await sb.from("ca_sync_log").insert({
           recurso: "reconciliacao_receber",
-          status: "ok",
+          status: "erro",
           started_at: new Date().toISOString(),
           finished_at: new Date().toISOString(),
           date_from: from,
           date_to: to,
-          qtd_registros: rec.removidos,
-          mensagem: `Removidos ${rec.removidos} registro(s) excluídos no Conta Azul: ${rec.ids.slice(0, 20).join(", ")}${rec.ids.length > 20 ? "..." : ""}`,
+          qtd_registros: 0,
+          mensagem: String(e?.message ?? e),
         });
       }
-    } catch (e: any) {
-      await sb.from("ca_sync_log").insert({
-        recurso: "reconciliacao_receber",
-        status: "erro",
-        started_at: new Date().toISOString(),
-        finished_at: new Date().toISOString(),
-        date_from: from,
-        date_to: to,
-        qtd_registros: 0,
-        mensagem: String(e?.message ?? e),
-      });
     }
 
-    await logFinish(logId, "ok", items.length);
+    const modoMsg = incremental
+      ? `modo=incremental desde=${desdeAjustado}`
+      : `modo=completo janela=${from}..${to}`;
+    await logFinish(logId, "ok", items.length, modoMsg);
     return items.length;
   } catch (e: any) {
     await logFinish(logId, "erro", 0, String(e?.message ?? e));
     throw e;
   }
 }
+
 
 export async function syncExtrato(from: string, to: string) {
   // A nova plataforma não expõe um endpoint único de "Extrato Bancário".
@@ -801,22 +837,27 @@ export type Recurso =
   | "contas_receber"
   | "extrato";
 
-export async function syncRecurso(recurso: Recurso, from: string, to: string): Promise<number> {
+export async function syncRecurso(
+  recurso: Recurso,
+  from: string,
+  to: string,
+  desde?: string,
+): Promise<number> {
   switch (recurso) {
     case "plano_contas":
       return syncPlanoContas();
     case "centros_custo":
       return syncCentrosCusto();
     case "contas_pagar":
-      return syncContasPagar(from, to);
+      return syncContasPagar(from, to, desde);
     case "contas_receber":
-      return syncContasReceber(from, to);
+      return syncContasReceber(from, to, desde);
     case "extrato":
       return syncExtrato(from, to);
   }
 }
 
-export async function syncTudo(from: string, to: string) {
+export async function syncTudo(from: string, to: string, opts?: { incremental?: boolean }) {
   const result = {
     plano_contas: 0,
     centros_custo: 0,
@@ -825,11 +866,13 @@ export async function syncTudo(from: string, to: string) {
     extrato: 0,
     errors: [] as string[],
   };
+  const desdePagar = opts?.incremental ? await ultimoSyncOk("contas_pagar") : null;
+  const desdeReceber = opts?.incremental ? await ultimoSyncOk("contas_receber") : null;
   const tasks: Array<[Recurso, () => Promise<number>]> = [
     ["plano_contas", () => syncPlanoContas()],
     ["centros_custo", () => syncCentrosCusto()],
-    ["contas_pagar", () => syncContasPagar(from, to)],
-    ["contas_receber", () => syncContasReceber(from, to)],
+    ["contas_pagar", () => syncContasPagar(from, to, desdePagar ?? undefined)],
+    ["contas_receber", () => syncContasReceber(from, to, desdeReceber ?? undefined)],
     ["extrato", () => syncExtrato(from, to)],
   ];
   for (const [key, fn] of tasks) {
@@ -842,6 +885,7 @@ export async function syncTudo(from: string, to: string) {
   await upsertSyncState(from, to, result as any);
   return result;
 }
+
 
 async function upsertSyncState(
   from: string,
