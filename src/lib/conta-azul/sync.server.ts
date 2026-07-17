@@ -638,7 +638,13 @@ async function reconciliarExclusoes(
   return { removidos: toDelete.length, ids: toDelete };
 }
 
+// Time budget interno para o enrichment: o Worker do Cloudflare é morto
+// silenciosamente após alguns segundos de wall-time, deixando o log preso
+// em `em_andamento`. Melhor abortar cedo e persistir o que já veio.
+const ENRICH_BUDGET_MS = 40_000;
+
 export async function syncContasPagar(from: string, to: string) {
+  const startedAtMs = Date.now();
   const logId = await logStart("contas_pagar", from, to);
   try {
     const basePath = "/financeiro/eventos-financeiros/contas-a-pagar/buscar";
@@ -650,8 +656,10 @@ export async function syncContasPagar(from: string, to: string) {
       const syncedAt = new Date().toISOString();
       const rows = items.map((it: any) => mapEvento(it, syncedAt, "fornecedor_nome"));
       await upsertBatched("ca_contas_pagar", rows, "external_id");
-      await persistRateios(items, "pagar", syncedAt);
+      const deadline = startedAtMs + ENRICH_BUDGET_MS;
+      await persistRateios(items, "pagar", syncedAt, deadline);
     }
+
 
     // Reconciliação: remove fantasmas (excluídos no CA) do range.
     try {
