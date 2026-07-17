@@ -89,6 +89,7 @@ function colorFor(tipo: "compra" | "demanda", status: CompraStatus) {
 function MeusPedidos() {
   const { user } = useAuth();
   const [selected, setSelected] = useState<Pedido | null>(null);
+  const [hideFinalizados, setHideFinalizados] = useState(false);
 
   const email = user?.email ?? "";
   const uid = user?.id ?? "";
@@ -163,12 +164,13 @@ function MeusPedidos() {
   });
 
   const pedidos = useMemo(() => {
-    return [...compras, ...demandas].sort((a, b) => {
+    const all = [...compras, ...demandas].sort((a, b) => {
       const da = a.data_solicitacao ?? "";
       const db = b.data_solicitacao ?? "";
       return db.localeCompare(da);
     });
-  }, [compras, demandas]);
+    return hideFinalizados ? all.filter((p) => p.status !== "finalizado") : all;
+  }, [compras, demandas, hideFinalizados]);
 
   if (!user) {
     return (
@@ -187,6 +189,19 @@ function MeusPedidos() {
         title="Meus Pedidos"
         description="Acompanhe o andamento das suas solicitações"
       />
+
+      <div className="flex items-center gap-2 mb-3">
+        <input
+          id="hide-finalizados"
+          type="checkbox"
+          className="h-4 w-4 rounded border-input"
+          checked={hideFinalizados}
+          onChange={(e) => setHideFinalizados(e.target.checked)}
+        />
+        <label htmlFor="hide-finalizados" className="text-sm cursor-pointer select-none">
+          Ocultar Finalizados
+        </label>
+      </div>
 
       {pedidos.length === 0 ? (
         <Card className="p-8 text-center text-sm text-muted-foreground">

@@ -71,6 +71,7 @@ const allItems: NavItem[] = [
   { title: "Configurações", url: "/financeiro/configuracoes", icon: Settings, group: "Despesas", module: "financeiro", moduleAdminOnly: "financeiro" },
 
   { title: "Dashboard", url: "/financeiro-op/dashboard", icon: BarChart3, group: "Financeiro", module: "financeiro_op" },
+  { title: "Quadro Financeiro", url: "/financeiro-op/quadro", icon: KanbanSquare, group: "Financeiro", module: "financeiro_op" },
   { title: "Rotinas Financeiras", url: "/financeiro-op/rotinas", icon: ClipboardCheck, group: "Financeiro", module: "financeiro_op" },
   { title: "Conta Azul", url: "/financeiro-op/conta-azul", icon: Link2, group: "Financeiro", module: "financeiro_op" },
   { title: "Uber", url: "/financeiro-op/uber", icon: Car, group: "Financeiro", module: "financeiro_op" },
@@ -100,6 +101,7 @@ const allItems: NavItem[] = [
   { title: "Devoluções", url: "/patrimonio/devolucoes", icon: Undo2, group: "Patrimônio", module: "patrimonio" },
   { title: "A receber", url: "/patrimonio/a-receber", icon: PackageCheck, group: "Patrimônio", module: "patrimonio" },
   { title: "Calendário", url: "/eventos", icon: CalendarDays, group: "Eventos", module: "eventos" },
+  { title: "Configurações", url: "/eventos/configuracoes", icon: Settings, group: "Eventos", module: "eventos" },
   { title: "Recrutamento", url: "/rh", icon: UserPlus, group: "Recursos Humanos", module: "rh" },
   { title: "Administração", url: "/admin", icon: Shield, group: "Administração", adminOnly: true },
 ];

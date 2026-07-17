@@ -56,8 +56,10 @@ import { Route as FinanceiroConfiguracoesRouteImport } from './routes/financeiro
 import { Route as FinanceiroOpUberRouteImport } from './routes/financeiro-op.uber'
 import { Route as FinanceiroOpRotinasRouteImport } from './routes/financeiro-op.rotinas'
 import { Route as FinanceiroOpRelatoriosRouteImport } from './routes/financeiro-op.relatorios'
+import { Route as FinanceiroOpQuadroRouteImport } from './routes/financeiro-op.quadro'
 import { Route as FinanceiroOpDashboardRouteImport } from './routes/financeiro-op.dashboard'
 import { Route as FinanceiroOpContaAzulRouteImport } from './routes/financeiro-op.conta-azul'
+import { Route as EventosConfiguracoesRouteImport } from './routes/eventos.configuracoes'
 import { Route as EstoqueAReceberRouteImport } from './routes/estoque.a-receber'
 import { Route as EstoqueItemIdRouteImport } from './routes/estoque.$itemId'
 import { Route as ContabilTomadoresRouteImport } from './routes/contabil.tomadores'
@@ -332,6 +334,11 @@ const FinanceiroOpRelatoriosRoute = FinanceiroOpRelatoriosRouteImport.update({
   path: '/relatorios',
   getParentRoute: () => FinanceiroOpRoute,
 } as any)
+const FinanceiroOpQuadroRoute = FinanceiroOpQuadroRouteImport.update({
+  id: '/quadro',
+  path: '/quadro',
+  getParentRoute: () => FinanceiroOpRoute,
+} as any)
 const FinanceiroOpDashboardRoute = FinanceiroOpDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -341,6 +348,11 @@ const FinanceiroOpContaAzulRoute = FinanceiroOpContaAzulRouteImport.update({
   id: '/conta-azul',
   path: '/conta-azul',
   getParentRoute: () => FinanceiroOpRoute,
+} as any)
+const EventosConfiguracoesRoute = EventosConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => EventosRoute,
 } as any)
 const EstoqueAReceberRoute = EstoqueAReceberRouteImport.update({
   id: '/estoque/a-receber',
@@ -587,8 +599,10 @@ export interface FileRoutesByFullPath {
   '/contabil/tomadores': typeof ContabilTomadoresRoute
   '/estoque/$itemId': typeof EstoqueItemIdRoute
   '/estoque/a-receber': typeof EstoqueAReceberRoute
+  '/eventos/configuracoes': typeof EventosConfiguracoesRoute
   '/financeiro-op/conta-azul': typeof FinanceiroOpContaAzulRoute
   '/financeiro-op/dashboard': typeof FinanceiroOpDashboardRoute
+  '/financeiro-op/quadro': typeof FinanceiroOpQuadroRoute
   '/financeiro-op/relatorios': typeof FinanceiroOpRelatoriosRoute
   '/financeiro-op/rotinas': typeof FinanceiroOpRotinasRoute
   '/financeiro-op/uber': typeof FinanceiroOpUberRoute
@@ -665,8 +679,10 @@ export interface FileRoutesByTo {
   '/contabil/tomadores': typeof ContabilTomadoresRoute
   '/estoque/$itemId': typeof EstoqueItemIdRoute
   '/estoque/a-receber': typeof EstoqueAReceberRoute
+  '/eventos/configuracoes': typeof EventosConfiguracoesRoute
   '/financeiro-op/conta-azul': typeof FinanceiroOpContaAzulRoute
   '/financeiro-op/dashboard': typeof FinanceiroOpDashboardRoute
+  '/financeiro-op/quadro': typeof FinanceiroOpQuadroRoute
   '/financeiro-op/relatorios': typeof FinanceiroOpRelatoriosRoute
   '/financeiro-op/rotinas': typeof FinanceiroOpRotinasRoute
   '/financeiro-op/uber': typeof FinanceiroOpUberRoute
@@ -755,8 +771,10 @@ export interface FileRoutesById {
   '/contabil/tomadores': typeof ContabilTomadoresRoute
   '/estoque/$itemId': typeof EstoqueItemIdRoute
   '/estoque/a-receber': typeof EstoqueAReceberRoute
+  '/eventos/configuracoes': typeof EventosConfiguracoesRoute
   '/financeiro-op/conta-azul': typeof FinanceiroOpContaAzulRoute
   '/financeiro-op/dashboard': typeof FinanceiroOpDashboardRoute
+  '/financeiro-op/quadro': typeof FinanceiroOpQuadroRoute
   '/financeiro-op/relatorios': typeof FinanceiroOpRelatoriosRoute
   '/financeiro-op/rotinas': typeof FinanceiroOpRotinasRoute
   '/financeiro-op/uber': typeof FinanceiroOpUberRoute
@@ -846,8 +864,10 @@ export interface FileRouteTypes {
     | '/contabil/tomadores'
     | '/estoque/$itemId'
     | '/estoque/a-receber'
+    | '/eventos/configuracoes'
     | '/financeiro-op/conta-azul'
     | '/financeiro-op/dashboard'
+    | '/financeiro-op/quadro'
     | '/financeiro-op/relatorios'
     | '/financeiro-op/rotinas'
     | '/financeiro-op/uber'
@@ -924,8 +944,10 @@ export interface FileRouteTypes {
     | '/contabil/tomadores'
     | '/estoque/$itemId'
     | '/estoque/a-receber'
+    | '/eventos/configuracoes'
     | '/financeiro-op/conta-azul'
     | '/financeiro-op/dashboard'
+    | '/financeiro-op/quadro'
     | '/financeiro-op/relatorios'
     | '/financeiro-op/rotinas'
     | '/financeiro-op/uber'
@@ -1013,8 +1035,10 @@ export interface FileRouteTypes {
     | '/contabil/tomadores'
     | '/estoque/$itemId'
     | '/estoque/a-receber'
+    | '/eventos/configuracoes'
     | '/financeiro-op/conta-azul'
     | '/financeiro-op/dashboard'
+    | '/financeiro-op/quadro'
     | '/financeiro-op/relatorios'
     | '/financeiro-op/rotinas'
     | '/financeiro-op/uber'
@@ -1429,6 +1453,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FinanceiroOpRelatoriosRouteImport
       parentRoute: typeof FinanceiroOpRoute
     }
+    '/financeiro-op/quadro': {
+      id: '/financeiro-op/quadro'
+      path: '/quadro'
+      fullPath: '/financeiro-op/quadro'
+      preLoaderRoute: typeof FinanceiroOpQuadroRouteImport
+      parentRoute: typeof FinanceiroOpRoute
+    }
     '/financeiro-op/dashboard': {
       id: '/financeiro-op/dashboard'
       path: '/dashboard'
@@ -1442,6 +1473,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/financeiro-op/conta-azul'
       preLoaderRoute: typeof FinanceiroOpContaAzulRouteImport
       parentRoute: typeof FinanceiroOpRoute
+    }
+    '/eventos/configuracoes': {
+      id: '/eventos/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/eventos/configuracoes'
+      preLoaderRoute: typeof EventosConfiguracoesRouteImport
+      parentRoute: typeof EventosRoute
     }
     '/estoque/a-receber': {
       id: '/estoque/a-receber'
@@ -1817,10 +1855,12 @@ const ContabilRouteWithChildren = ContabilRoute._addFileChildren(
 )
 
 interface EventosRouteChildren {
+  EventosConfiguracoesRoute: typeof EventosConfiguracoesRoute
   EventosIndexRoute: typeof EventosIndexRoute
 }
 
 const EventosRouteChildren: EventosRouteChildren = {
+  EventosConfiguracoesRoute: EventosConfiguracoesRoute,
   EventosIndexRoute: EventosIndexRoute,
 }
 
@@ -1850,6 +1890,7 @@ const FinanceiroRouteWithChildren = FinanceiroRoute._addFileChildren(
 interface FinanceiroOpRouteChildren {
   FinanceiroOpContaAzulRoute: typeof FinanceiroOpContaAzulRoute
   FinanceiroOpDashboardRoute: typeof FinanceiroOpDashboardRoute
+  FinanceiroOpQuadroRoute: typeof FinanceiroOpQuadroRoute
   FinanceiroOpRelatoriosRoute: typeof FinanceiroOpRelatoriosRoute
   FinanceiroOpRotinasRoute: typeof FinanceiroOpRotinasRoute
   FinanceiroOpUberRoute: typeof FinanceiroOpUberRoute
@@ -1859,6 +1900,7 @@ interface FinanceiroOpRouteChildren {
 const FinanceiroOpRouteChildren: FinanceiroOpRouteChildren = {
   FinanceiroOpContaAzulRoute: FinanceiroOpContaAzulRoute,
   FinanceiroOpDashboardRoute: FinanceiroOpDashboardRoute,
+  FinanceiroOpQuadroRoute: FinanceiroOpQuadroRoute,
   FinanceiroOpRelatoriosRoute: FinanceiroOpRelatoriosRoute,
   FinanceiroOpRotinasRoute: FinanceiroOpRotinasRoute,
   FinanceiroOpUberRoute: FinanceiroOpUberRoute,
@@ -1957,13 +1999,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

@@ -1391,6 +1391,7 @@ export type Database = {
           data_solicitacao: string
           documento: string | null
           empresa_faturada: string | null
+          financeiro_ordem: number | null
           fornecedor: string | null
           fornecedor_id: string | null
           id: string
@@ -1406,6 +1407,7 @@ export type Database = {
           solicitante: string | null
           solicitante_id: string | null
           status: Database["public"]["Enums"]["compra_status"]
+          status_financeiro: string | null
           tem_nf: boolean
           tipo_compra: string | null
           titulo: string | null
@@ -1422,6 +1424,7 @@ export type Database = {
           data_solicitacao?: string
           documento?: string | null
           empresa_faturada?: string | null
+          financeiro_ordem?: number | null
           fornecedor?: string | null
           fornecedor_id?: string | null
           id?: string
@@ -1437,6 +1440,7 @@ export type Database = {
           solicitante?: string | null
           solicitante_id?: string | null
           status?: Database["public"]["Enums"]["compra_status"]
+          status_financeiro?: string | null
           tem_nf?: boolean
           tipo_compra?: string | null
           titulo?: string | null
@@ -1453,6 +1457,7 @@ export type Database = {
           data_solicitacao?: string
           documento?: string | null
           empresa_faturada?: string | null
+          financeiro_ordem?: number | null
           fornecedor?: string | null
           fornecedor_id?: string | null
           id?: string
@@ -1468,6 +1473,7 @@ export type Database = {
           solicitante?: string | null
           solicitante_id?: string | null
           status?: Database["public"]["Enums"]["compra_status"]
+          status_financeiro?: string | null
           tem_nf?: boolean
           tipo_compra?: string | null
           titulo?: string | null
@@ -2155,6 +2161,7 @@ export type Database = {
           documento: string | null
           evento_projeto: string | null
           evento_projeto_id: string | null
+          financeiro_ordem: number | null
           fornecedor: string | null
           fornecedor_id: string | null
           id: string
@@ -2170,6 +2177,7 @@ export type Database = {
           solicitante: string | null
           solicitante_id: string | null
           status: Database["public"]["Enums"]["compra_status"]
+          status_financeiro: string | null
           tem_nf: boolean
           tipo_demanda: string | null
           titulo: string | null
@@ -2188,6 +2196,7 @@ export type Database = {
           documento?: string | null
           evento_projeto?: string | null
           evento_projeto_id?: string | null
+          financeiro_ordem?: number | null
           fornecedor?: string | null
           fornecedor_id?: string | null
           id?: string
@@ -2203,6 +2212,7 @@ export type Database = {
           solicitante?: string | null
           solicitante_id?: string | null
           status?: Database["public"]["Enums"]["compra_status"]
+          status_financeiro?: string | null
           tem_nf?: boolean
           tipo_demanda?: string | null
           titulo?: string | null
@@ -2221,6 +2231,7 @@ export type Database = {
           documento?: string | null
           evento_projeto?: string | null
           evento_projeto_id?: string | null
+          financeiro_ordem?: number | null
           fornecedor?: string | null
           fornecedor_id?: string | null
           id?: string
@@ -2236,6 +2247,7 @@ export type Database = {
           solicitante?: string | null
           solicitante_id?: string | null
           status?: Database["public"]["Enums"]["compra_status"]
+          status_financeiro?: string | null
           tem_nf?: boolean
           tipo_demanda?: string | null
           titulo?: string | null
@@ -2276,6 +2288,7 @@ export type Database = {
           observacoes: string | null
           origem: string
           produtor: string | null
+          produtor_id: string | null
           responsavel: string | null
           situacao: string | null
           tipo: string | null
@@ -2306,6 +2319,7 @@ export type Database = {
           observacoes?: string | null
           origem?: string
           produtor?: string | null
+          produtor_id?: string | null
           responsavel?: string | null
           situacao?: string | null
           tipo?: string | null
@@ -2336,6 +2350,7 @@ export type Database = {
           observacoes?: string | null
           origem?: string
           produtor?: string | null
+          produtor_id?: string | null
           responsavel?: string | null
           situacao?: string | null
           tipo?: string | null
@@ -2343,7 +2358,15 @@ export type Database = {
           updated_at?: string
           venda_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "eventos_produtor_id_fkey"
+            columns: ["produtor_id"]
+            isOneToOne: false
+            referencedRelation: "produtores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       eventos_projetos: {
         Row: {
@@ -3338,6 +3361,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      produtores: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
