@@ -2264,6 +2264,104 @@ export type Database = {
           },
         ]
       }
+      diarista_apontamentos: {
+        Row: {
+          atividade: string | null
+          comodos: string | null
+          created_at: string
+          created_by: string | null
+          data: string
+          diarista_id: string | null
+          empresa: string | null
+          extra_manual: number
+          hora_final: string
+          hora_inicial: string
+          id: string
+          intervalo_minutos: number
+          local: string
+          obs: string | null
+          projeto: string | null
+          updated_at: string
+        }
+        Insert: {
+          atividade?: string | null
+          comodos?: string | null
+          created_at?: string
+          created_by?: string | null
+          data: string
+          diarista_id?: string | null
+          empresa?: string | null
+          extra_manual?: number
+          hora_final: string
+          hora_inicial: string
+          id?: string
+          intervalo_minutos?: number
+          local?: string
+          obs?: string | null
+          projeto?: string | null
+          updated_at?: string
+        }
+        Update: {
+          atividade?: string | null
+          comodos?: string | null
+          created_at?: string
+          created_by?: string | null
+          data?: string
+          diarista_id?: string | null
+          empresa?: string | null
+          extra_manual?: number
+          hora_final?: string
+          hora_inicial?: string
+          id?: string
+          intervalo_minutos?: number
+          local?: string
+          obs?: string | null
+          projeto?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diarista_apontamentos_diarista_id_fkey"
+            columns: ["diarista_id"]
+            isOneToOne: false
+            referencedRelation: "diaristas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diaristas: {
+        Row: {
+          ativo: boolean
+          chave_pix: string | null
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+          valor_hora_fora: number
+          valor_hora_fortaleza: number
+        }
+        Insert: {
+          ativo?: boolean
+          chave_pix?: string | null
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+          valor_hora_fora?: number
+          valor_hora_fortaleza?: number
+        }
+        Update: {
+          ativo?: boolean
+          chave_pix?: string | null
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+          valor_hora_fora?: number
+          valor_hora_fortaleza?: number
+        }
+        Relationships: []
+      }
       eventos: {
         Row: {
           cidade: string | null
