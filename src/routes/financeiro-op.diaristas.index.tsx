@@ -59,10 +59,7 @@ type Apontamento = {
 type ApontamentoForm = {
   id?: string;
   diarista_id: string;
-  empresa: string;
-  atividade: string;
   projeto: string;
-  comodos: string;
   data: string;
   hora_inicial: string;
   hora_final: string;
@@ -74,10 +71,7 @@ type ApontamentoForm = {
 
 const emptyApontamento = (): ApontamentoForm => ({
   diarista_id: "",
-  empresa: "Luminart Eventos",
-  atividade: "",
   projeto: "",
-  comodos: "",
   data: format(new Date(), "yyyy-MM-dd"),
   hora_inicial: "08:00",
   hora_final: "17:00",
