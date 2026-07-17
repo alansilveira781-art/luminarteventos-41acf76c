@@ -302,7 +302,6 @@ function CardItem({
 }
 
 function CardDetalheDialog({ card, onClose }: { card: Card | null; onClose: () => void }) {
-function CardDetalheDialog({ card, onClose }: { card: Card | null; onClose: () => void }) {
   const { data: full } = useQuery({
     enabled: !!card,
     queryKey: ["fin-quadro-full", card?.origem, card?.id],
