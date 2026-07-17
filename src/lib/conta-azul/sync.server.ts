@@ -699,6 +699,7 @@ export async function syncContasPagar(from: string, to: string) {
 }
 
 export async function syncContasReceber(from: string, to: string) {
+  const startedAtMs = Date.now();
   const logId = await logStart("contas_receber", from, to);
   try {
     const basePath = "/financeiro/eventos-financeiros/contas-a-receber/buscar";
@@ -711,8 +712,10 @@ export async function syncContasReceber(from: string, to: string) {
       const syncedAt = new Date().toISOString();
       const rows = items.map((it: any) => mapEvento(it, syncedAt, "cliente_nome"));
       await upsertBatched("ca_contas_receber", rows, "external_id");
-      await persistRateios(items, "receber", syncedAt);
+      const deadline = startedAtMs + ENRICH_BUDGET_MS;
+      await persistRateios(items, "receber", syncedAt, deadline);
     }
+
 
     // Reconciliação: remove fantasmas (excluídos no CA) do range.
     try {
