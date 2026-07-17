@@ -1,23 +1,35 @@
-## Objetivo
-Tornar a sincronização resiliente à cota (429 QuotaViolation), rodando mais devagar e aguardando mais tempo entre tentativas, sem alterar filtros de data, mapeamento ou rateios.
+# Plano: incluir lançamentos futuros na sincronização do Conta Azul
 
-## Alterações
+## O que será alterado
 
-### 1. `src/lib/conta-azul/sync.server.ts` — `enrichItemsWithDetail`
-- Alterar `const CONCURRENCY = 2` para `const CONCURRENCY = 1`.
-- Adicionar constante no topo do arquivo (junto às demais): `const DETAIL_THROTTLE_MS = 350`.
-- No final de cada iteração do `worker` (após o `try/catch` que faz `caFetch(url)`), adicionar `await sleep(DETAIL_THROTTLE_MS)`.
-- Usar o `sleep` já existente no módulo (ou importar/definir localmente se ainda não houver — verificar na hora da implementação).
+Atualizar o cálculo do estado inicial `from/to` em `src/routes/financeiro-op.conta-azul.tsx` para que a janela padrão de sincronização cubra tanto o passado quanto o futuro, garantindo que parcelas com vencimento futuro (ex.: compras parceladas em 12x) sejam sincronizadas.
 
-### 2. `src/lib/conta-azul/client.server.ts` — `caFetch`
-- Alterar `const MAX_ATTEMPTS = 4` para `const MAX_ATTEMPTS = 6`.
-- No bloco `if (RETRY_STATUSES.has(res.status) && attempt < MAX_ATTEMPTS)`:
-  - Sem `retry-after`: trocar `1000 * 2 ** (attempt - 1)` por `Math.min(2000 * 2 ** (attempt - 1), 60000)`.
-  - Com `retry-after`: trocar o teto de `15000` para `60000` (`Math.min(retryAfter * 1000, 60000)`).
-- Manter 401 (refresh) e erros de rede inalterados.
+## Mudança técnica
 
-### 3. Continuidade em caso de falha final
-- Nenhuma mudança de código necessária: `enrichItemsWithDetail` já captura exceções por item em `detalheFalhas` e prossegue. Confirmar apenas que o comportamento permanece (não abortar o loop).
+No `useState` das linhas 38–44:
 
-## Fora de escopo
-Filtros de data (vencimento + alteração), mapeamento, rateios, UI, endpoints, migração.
+- `from`: passar de 90 dias atrás para 6 meses atrás.
+- `to`: passar de "hoje" para 12 meses à frente de hoje.
+
+Exemplo da implementação:
+
+```ts
+const [defaults] = useState(() => {
+  const today = new Date();
+  const from = new Date(today);
+  from.setMonth(from.getMonth() - 6);
+  const to = new Date(today);
+  to.setMonth(to.getMonth() + 12);
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  return { from: iso(from), to: iso(to) };
+});
+```
+
+## O que NÃO será alterado
+
+- Os campos `from` e `to` continuam editáveis para o usuário.
+- Nenhuma outra lógica da tela, endpoints, mapeamento, rateios ou enriquecimento será modificada.
+
+## Validação
+
+Após a alteração, abrir a tela `/financeiro-op/conta-azul` e confirmar que os campos de data vêm preenchidos com a nova janela padrão (6 meses atrás → 12 meses à frente).

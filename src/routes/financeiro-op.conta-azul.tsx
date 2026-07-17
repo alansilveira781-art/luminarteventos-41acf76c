@@ -37,10 +37,12 @@ function ContaAzulPage() {
 
   const [defaults] = useState(() => {
     const today = new Date();
-    const ninetyAgo = new Date(today);
-    ninetyAgo.setDate(ninetyAgo.getDate() - 90);
+    const from = new Date(today);
+    from.setMonth(from.getMonth() - 6);
+    const to = new Date(today);
+    to.setMonth(to.getMonth() + 12);
     const iso = (d: Date) => d.toISOString().slice(0, 10);
-    return { from: iso(ninetyAgo), to: iso(today) };
+    return { from: iso(from), to: iso(to) };
   });
   const [from, setFrom] = useState(defaults.from);
   const [to, setTo] = useState(defaults.to);
