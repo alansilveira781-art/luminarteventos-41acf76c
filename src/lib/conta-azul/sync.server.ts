@@ -837,22 +837,27 @@ export type Recurso =
   | "contas_receber"
   | "extrato";
 
-export async function syncRecurso(recurso: Recurso, from: string, to: string): Promise<number> {
+export async function syncRecurso(
+  recurso: Recurso,
+  from: string,
+  to: string,
+  desde?: string,
+): Promise<number> {
   switch (recurso) {
     case "plano_contas":
       return syncPlanoContas();
     case "centros_custo":
       return syncCentrosCusto();
     case "contas_pagar":
-      return syncContasPagar(from, to);
+      return syncContasPagar(from, to, desde);
     case "contas_receber":
-      return syncContasReceber(from, to);
+      return syncContasReceber(from, to, desde);
     case "extrato":
       return syncExtrato(from, to);
   }
 }
 
-export async function syncTudo(from: string, to: string) {
+export async function syncTudo(from: string, to: string, opts?: { incremental?: boolean }) {
   const result = {
     plano_contas: 0,
     centros_custo: 0,
@@ -861,11 +866,13 @@ export async function syncTudo(from: string, to: string) {
     extrato: 0,
     errors: [] as string[],
   };
+  const desdePagar = opts?.incremental ? await ultimoSyncOk("contas_pagar") : null;
+  const desdeReceber = opts?.incremental ? await ultimoSyncOk("contas_receber") : null;
   const tasks: Array<[Recurso, () => Promise<number>]> = [
     ["plano_contas", () => syncPlanoContas()],
     ["centros_custo", () => syncCentrosCusto()],
-    ["contas_pagar", () => syncContasPagar(from, to)],
-    ["contas_receber", () => syncContasReceber(from, to)],
+    ["contas_pagar", () => syncContasPagar(from, to, desdePagar ?? undefined)],
+    ["contas_receber", () => syncContasReceber(from, to, desdeReceber ?? undefined)],
     ["extrato", () => syncExtrato(from, to)],
   ];
   for (const [key, fn] of tasks) {
@@ -878,6 +885,7 @@ export async function syncTudo(from: string, to: string) {
   await upsertSyncState(from, to, result as any);
   return result;
 }
+
 
 async function upsertSyncState(
   from: string,
