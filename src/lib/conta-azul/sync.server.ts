@@ -568,9 +568,9 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber", de
 
 
 
-async function persistRateios(items: any[], tipo: "pagar" | "receber", syncedAt: string) {
+async function persistRateios(items: any[], tipo: "pagar" | "receber", syncedAt: string, deadline?: number) {
   await logRatioProbe(items, tipo);
-  const enriched = await enrichItemsWithDetail(items, tipo);
+  const enriched = await enrichItemsWithDetail(items, tipo, deadline);
   const allRateios: any[] = [];
   const lancIds: string[] = [];
   for (const it of enriched) {
@@ -587,6 +587,7 @@ async function persistRateios(items: any[], tipo: "pagar" | "receber", syncedAt:
   }
   await upsertBatched("ca_lancamento_rateios", allRateios, "lancamento_external_id,tipo,ordem");
 }
+
 
 /** Remove do banco os registros com data_vencimento em [from,to] que não vieram
  *  na resposta da API — significa que foram excluídos no Conta Azul. Cascateia
