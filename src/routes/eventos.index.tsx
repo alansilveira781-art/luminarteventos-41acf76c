@@ -369,12 +369,16 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
               <div className="sm:col-span-2">
                 <Label>Produtor do evento</Label>
                 <select
-                  value={f.produtor}
-                  onChange={(e) => set("produtor", e.target.value)}
+                  value={f.produtor_id}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    const nome = produtores.find((p) => p.id === id)?.nome ?? "";
+                    setF((prev: any) => ({ ...prev, produtor_id: id, produtor: nome }));
+                  }}
                   className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
                 >
                   <option value="">— Selecione —</option>
-                  {PRODUTORES.map((p) => <option key={p} value={p}>{p}</option>)}
+                  {produtores.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
                 </select>
               </div>
             </div>
