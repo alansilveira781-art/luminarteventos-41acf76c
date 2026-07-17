@@ -229,25 +229,27 @@ function Coluna({
     <div
       ref={setNodeRef}
       className={cn(
-        "rounded-lg border bg-muted/20 p-3 min-h-[300px] min-w-[280px] shrink-0 transition-colors",
-        isOver && "bg-primary/5 border-primary/50",
+        "flex-shrink-0 w-72 flex flex-col h-full rounded-lg border bg-muted/30 transition-colors",
+        isOver ? "border-primary ring-2 ring-primary/30" : "border-border",
       )}
     >
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+      <div className="px-3 py-2 border-b border-border flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
           <span className={cn("h-2 w-2 rounded-full", color)} />
-          <div className="text-sm font-semibold">{label}</div>
-          <span className="text-xs text-muted-foreground">({cards.length})</span>
+          <span className="text-xs font-semibold truncate">{label}</span>
         </div>
-        <div className="text-xs text-muted-foreground">{fmtBRL(total)}</div>
+        <span className="text-[10px] text-muted-foreground">{cards.length}</span>
       </div>
-      <div className="space-y-2">
+      <div className="p-2 space-y-2 flex-1 overflow-y-auto">
         {cards.map((c) => (
           <CardItem key={`${c.origem}:${c.id}`} card={c} podeMover={podeMover} onOpen={onOpen} />
         ))}
         {cards.length === 0 && (
           <div className="text-xs text-muted-foreground text-center py-6">Sem cards</div>
         )}
+      </div>
+      <div className="px-3 py-2 border-t border-border shrink-0 text-[10px] text-muted-foreground text-right">
+        {fmtBRL(total)}
       </div>
     </div>
   );
