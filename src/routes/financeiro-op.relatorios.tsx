@@ -698,7 +698,7 @@ function AnalisesReport() {
 
 
 
-  const categoriasOrdenadas: CategoriaCentroCusto[] = ["corporativo", "stand", "social", "cenografia"];
+  
 
   const renderCard = (e: EventoCC) => {
     const totais = totaisDe(e.external_id);
