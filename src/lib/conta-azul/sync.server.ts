@@ -1412,6 +1412,5 @@ export async function reprocessarRateios(
   });
 
   return { tentados: idsAlvo.length, corrigidos, falhas, detalhes };
-  }
-  return { tentados: itens.length, sucesso, falhas };
 }
+
