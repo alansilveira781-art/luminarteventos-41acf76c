@@ -435,11 +435,14 @@ function buildRateios(
 
   const hasValor = pairs.some((p) => p.valorRaw != null && Number.isFinite(p.valorRaw));
   const hasPct = pairs.some((p) => p.pct != null && Number.isFinite(p.pct));
-  const isRateado = pairs.length >= 2;
-  if (isRateado && !hasValor && !hasPct) {
-    // Fatiamento sem valor/percentual explícito — vamos cair em divisão igual.
-    // Loga para investigação (throttled dentro de logRateioSemValor).
+  const isRateadoLegacy = pairs.length >= 2;
+  if (isRateadoLegacy && !hasValor && !hasPct) {
+    // Rateado sem valor/percentual no payload = enrichment não trouxe detalhe
+    // válido. Divisão igual é sempre INCORRETA aqui — preferimos preservar
+    // os rateios anteriores retornando `null` (persistRateios não apagará
+    // a linha), e logamos para reprocessamento futuro.
     logRateioSemValor(lancId, tipo, pairs.length).catch(() => {});
+    return null;
   }
 
   const valores = distribuirValores(pairs, total);
