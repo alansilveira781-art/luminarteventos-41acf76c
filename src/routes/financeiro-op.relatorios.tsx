@@ -636,7 +636,12 @@ function AnalisesReport() {
   }, [planos.data]);
 
   const loading =
-    eventos.isLoading || planos.isLoading || rateios.isLoading || pagarParents.isLoading || receberParents.isLoading;
+    eventos.isLoading ||
+    planos.isLoading ||
+    (rateios.fetchStatus !== "idle" && rateios.isLoading) ||
+    (pagarParents.fetchStatus !== "idle" && pagarParents.isLoading) ||
+    (receberParents.fetchStatus !== "idle" && receberParents.isLoading);
+
 
   const linhasCard: DreLine[] = useMemo(() => {
     const sums = dreEstrutura.filter((l) => l.kind === "sum");
