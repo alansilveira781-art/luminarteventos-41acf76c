@@ -567,8 +567,13 @@ function AnalisesReport() {
 
   const loading = eventos.isLoading || planos.isLoading || pagar.isLoading || receber.isLoading;
 
-  // Linhas principais do DRE a exibir no card compacto.
-  const LINHAS_PRINCIPAIS: DreGroupId[] = ["RB", "RL", "RV", "RO", "RG", "RF_TOT", "RN", "LU"];
+  // Categorias do DRE (kind === "sum") + Lucro ao final. Dinâmico via estrutura.
+  const linhasCard: DreLine[] = useMemo(() => {
+    const sums = dreEstrutura.filter((l) => l.kind === "sum");
+    const lu = dreEstrutura.find((l) => l.id === "LU");
+    return lu ? [...sums, lu] : sums;
+  }, [dreEstrutura]);
+  const idsCard = useMemo(() => linhasCard.map((l) => l.id as DreGroupId), [linhasCard]);
 
   const gruposCategoria = useMemo(() => {
     const evs = eventos.data ?? [];
@@ -589,9 +594,10 @@ function AnalisesReport() {
     const acc: Partial<Record<DreGroupId, number>> = {};
     evs.forEach((e) => {
       const { totais } = calcularParaEvento(e.external_id);
-      LINHAS_PRINCIPAIS.forEach((k) => {
+      idsCard.forEach((k) => {
         acc[k] = (acc[k] ?? 0) + (totais[k] ?? 0);
       });
+      acc.RB = (acc.RB ?? 0) + (totais.RB ?? 0);
     });
     return acc;
   };
