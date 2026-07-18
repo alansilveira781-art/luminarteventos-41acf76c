@@ -642,11 +642,6 @@ function AnalisesReport() {
     (pagarParents.fetchStatus !== "idle" && pagarParents.isLoading) ||
     (receberParents.fetchStatus !== "idle" && receberParents.isLoading);
 
-  useEffect(() => {
-    console.log(
-      `[Analises loading] loading=${loading} | eventos isL=${eventos.isLoading} fs=${eventos.fetchStatus} len=${eventos.data?.length ?? 0} | planos isL=${planos.isLoading} fs=${planos.fetchStatus} len=${planos.data?.length ?? 0} | rateios isL=${rateios.isLoading} fs=${rateios.fetchStatus} enabled=${evExtIds.length > 0} len=${rateios.data?.length ?? 0} | pagar isL=${pagarParents.isLoading} fs=${pagarParents.fetchStatus} enabled=${lancPagarIds.length > 0} len=${pagarParents.data?.length ?? 0} | receber isL=${receberParents.isLoading} fs=${receberParents.fetchStatus} enabled=${lancReceberIds.length > 0} len=${receberParents.data?.length ?? 0}`,
-    );
-  }, [eventos.isLoading, eventos.fetchStatus, eventos.data, planos.isLoading, planos.fetchStatus, planos.data, rateios.isLoading, rateios.fetchStatus, rateios.data, pagarParents.isLoading, pagarParents.fetchStatus, pagarParents.data, receberParents.isLoading, receberParents.fetchStatus, receberParents.data, evExtIds.length, lancPagarIds.length, lancReceberIds.length, loading]);
 
 
 
