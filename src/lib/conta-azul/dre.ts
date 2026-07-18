@@ -296,6 +296,57 @@ export function transferenciasNoPeriodo(
   return { count: itens.length, total, itens: itens.sort((a, b) => (b.data ?? "").localeCompare(a.data ?? "")) };
 }
 
+/** Monta linhas sintéticas por centro de custo a partir dos rateios + lançamentos-pai.
+ * Cada fatia vira 1 linha com valor + categoria da fatia, herdando datas/status/descrição do pai.
+ * Fonte de verdade dos números por evento (mesma lógica da Análise Detalhada). */
+export type RateioMin = {
+  lancamento_external_id: string;
+  tipo: "pagar" | "receber";
+  categoria_external_id: string | null;
+  valor: number;
+  ordem: number;
+};
+export function montarLinhasPorCentro(
+  rateios: RateioMin[],
+  pagarParents: any[],
+  receberParents: any[],
+  centroId: string,
+): { pagarRows: any[]; receberRows: any[] } {
+  const pPar = new Map<string, any>();
+  pagarParents.forEach((p) => pPar.set(p.external_id, p));
+  const rPar = new Map<string, any>();
+  receberParents.forEach((p) => rPar.set(p.external_id, p));
+  const pagarRows: any[] = [];
+  const receberRows: any[] = [];
+  const counts = new Map<string, number>();
+  rateios.forEach((r) => {
+    const k = `${r.tipo}|${r.lancamento_external_id}`;
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+  });
+  rateios.forEach((r) => {
+    const par = r.tipo === "pagar" ? pPar.get(r.lancamento_external_id) : rPar.get(r.lancamento_external_id);
+    if (!par) return;
+    const row = {
+      external_id: `${r.lancamento_external_id}#${r.ordem}`,
+      descricao: par.descricao,
+      fornecedor_nome: par.fornecedor_nome ?? null,
+      cliente_nome: par.cliente_nome ?? null,
+      categoria_external_id: r.categoria_external_id,
+      centro_custo_external_id: centroId,
+      valor: r.valor,
+      data_vencimento: par.data_vencimento,
+      data_pagamento: par.data_pagamento,
+      status: par.status,
+      observacoes: par.observacoes,
+      _rateado: (counts.get(`${r.tipo}|${r.lancamento_external_id}`) ?? 1) > 1,
+    };
+    if (r.tipo === "pagar") pagarRows.push(row);
+    else receberRows.push(row);
+  });
+  return { pagarRows, receberRows };
+}
+
+
 /** Filtro de período usado pelo cálculo de DRE do dashboard (ano/mês). */
 export function inPeriodo(date: string | null, ano: number, mes: number): boolean {
   if (!date) return false;
