@@ -45,14 +45,8 @@ const MESES = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
 
-function inPeriodo(date: string | null, ano: number, mes: number) {
-  if (!date) return false;
-  if (!ano) return true;
-  const d = new Date(date);
-  if (d.getFullYear() !== ano) return false;
-  if (mes > 0 && d.getMonth() + 1 !== mes) return false;
-  return true;
-}
+
+
 
 function normTxt(s: string | null | undefined): string {
   return (s ?? "")
