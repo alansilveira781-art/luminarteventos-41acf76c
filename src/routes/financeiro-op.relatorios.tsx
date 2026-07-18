@@ -713,13 +713,19 @@ function AnalisesReport() {
             const k = line.id as DreGroupId;
             const v = totais[k] ?? 0;
             const isLucro = k === "LU";
+            const base = totais.RB ?? 0;
+            const pct = base !== 0 ? (v / base) * 100 : null;
+            const pctStr = pct === null ? "—" : `${pct.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
             return (
               <div
                 key={k}
-                className={`flex justify-between py-0.5 ${isLucro ? "mt-1 border-t pt-1 font-bold" : "border-b border-dashed last:border-0"}`}
+                className={`flex items-baseline justify-between gap-2 py-0.5 ${isLucro ? "mt-1 border-t pt-1 font-bold" : "border-b border-dashed last:border-0"}`}
               >
                 <span className={`text-xs ${isLucro ? "text-foreground" : "text-muted-foreground"}`}>{line.label}</span>
-                <span className={`tabular-nums text-xs ${v < 0 ? "text-red-600" : ""} ${isLucro ? "font-bold" : ""}`}>{brl(v)}</span>
+                <span className="flex items-baseline gap-2">
+                  <span className={`tabular-nums text-[10px] ${isLucro ? "text-muted-foreground font-semibold" : "text-muted-foreground"}`}>{pctStr}</span>
+                  <span className={`tabular-nums text-xs ${v < 0 ? "text-red-600" : ""} ${isLucro ? "font-bold" : ""}`}>{brl(v)}</span>
+                </span>
               </div>
             );
           })}
