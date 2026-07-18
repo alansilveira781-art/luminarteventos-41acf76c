@@ -502,17 +502,16 @@ function ClassificacaoEventos() {
 type PlanoConta = { external_id: string; nome: string };
 
 function AnalisesReport() {
-  const [ano, setAno] = useState<number>(new Date().getFullYear());
-  const [mes, setMes] = useState<number>(0);
-  const [categoriaFiltro, setCategoriaFiltro] = useState<"todas" | CategoriaCentroCusto>("todas");
+  const [categoriaFiltro, setCategoriaFiltro] = useState<CategoriaCentroCusto>("corporativo");
   const [pagPorCat, setPagPorCat] = useState<Record<string, number>>({});
   const PAGE_SIZE = 4;
 
   const dreEstrutura = useDreEstrutura().data ?? DRE_STRUCTURE;
 
   // Reset pagination on filter changes.
-  const filterKey = `${ano}|${mes}|${categoriaFiltro}`;
+  const filterKey = categoriaFiltro;
   useMemo(() => { setPagPorCat({}); }, [filterKey]);
+
 
   const eventos = useQuery({
     queryKey: ["eventos_centros_custo", "analises"],
