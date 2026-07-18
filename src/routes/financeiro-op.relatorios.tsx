@@ -642,6 +642,18 @@ function AnalisesReport() {
     (pagarParents.fetchStatus !== "idle" && pagarParents.isLoading) ||
     (receberParents.fetchStatus !== "idle" && receberParents.isLoading);
 
+  useEffect(() => {
+    console.log("[Analises loading]", {
+      loading,
+      eventos: { isLoading: eventos.isLoading, fetchStatus: eventos.fetchStatus, dataLen: eventos.data?.length },
+      planos: { isLoading: planos.isLoading, fetchStatus: planos.fetchStatus, dataLen: planos.data?.length },
+      rateios: { isLoading: rateios.isLoading, fetchStatus: rateios.fetchStatus, enabled: evExtIds.length > 0, dataLen: rateios.data?.length },
+      pagarParents: { isLoading: pagarParents.isLoading, fetchStatus: pagarParents.fetchStatus, enabled: lancPagarIds.length > 0, dataLen: pagarParents.data?.length },
+      receberParents: { isLoading: receberParents.isLoading, fetchStatus: receberParents.fetchStatus, enabled: lancReceberIds.length > 0, dataLen: receberParents.data?.length },
+    });
+  }, [eventos.isLoading, eventos.fetchStatus, eventos.data, planos.isLoading, planos.fetchStatus, planos.data, rateios.isLoading, rateios.fetchStatus, rateios.data, pagarParents.isLoading, pagarParents.fetchStatus, pagarParents.data, receberParents.isLoading, receberParents.fetchStatus, receberParents.data, evExtIds.length, lancPagarIds.length, lancReceberIds.length, loading]);
+
+
 
   const linhasCard: DreLine[] = useMemo(() => {
     const sums = dreEstrutura.filter((l) => l.kind === "sum");
