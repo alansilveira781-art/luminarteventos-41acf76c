@@ -505,8 +505,14 @@ function AnalisesReport() {
   const [ano, setAno] = useState<number>(new Date().getFullYear());
   const [mes, setMes] = useState<number>(0);
   const [categoriaFiltro, setCategoriaFiltro] = useState<"todas" | CategoriaCentroCusto>("todas");
+  const [pagPorCat, setPagPorCat] = useState<Record<string, number>>({});
+  const PAGE_SIZE = 4;
 
   const dreEstrutura = useDreEstrutura().data ?? DRE_STRUCTURE;
+
+  // Reset pagination on filter changes.
+  const filterKey = `${ano}|${mes}|${categoriaFiltro}`;
+  useMemo(() => { setPagPorCat({}); }, [filterKey]);
 
   const eventos = useQuery({
     queryKey: ["eventos_centros_custo", "analises"],
@@ -528,16 +534,11 @@ function AnalisesReport() {
     },
   });
 
-  const buildPeriodo = (a: number, m: number) => {
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const inicio = m > 0 ? `${a}-${pad(m)}-01` : `${a}-01-01`;
-    const fim = m > 0 ? `${a}-${pad(m)}-${pad(new Date(a, m, 0).getDate())}` : `${a}-12-31`;
-    return { inicio, fim };
-  };
-
-  const { inicio, fim } = buildPeriodo(ano, mes);
-  const orFilter = `and(data_pagamento.gte.${inicio},data_pagamento.lte.${fim}),and(data_pagamento.is.null,data_vencimento.gte.${inicio},data_vencimento.lte.${fim})`;
-  const cols = "external_id,descricao,categoria_external_id,centro_custo_external_id,valor,data_vencimento,data_pagamento,status,observacoes";
+  const evExtIds = useMemo(
+    () => (eventos.data ?? []).map((e) => e.external_id),
+    [eventos.data],
+  );
+  const evKey = useMemo(() => [...evExtIds].sort().join(","), [evExtIds]);
 
   const fetchPaged = async <T,>(build: (from: number, to: number) => any): Promise<T[]> => {
     const all: T[] = [];
@@ -551,13 +552,81 @@ function AnalisesReport() {
     return all;
   };
 
-  const pagar = useQuery({
-    queryKey: ["ca-pagar", "analises", ano, mes],
-    queryFn: () => fetchPaged<any>((f, t) => sb.from("ca_contas_pagar").select(cols).or(orFilter).range(f, t)),
+  // Todos os rateios cujos centros são eventos classificáveis (base dos números).
+  const rateios = useQuery({
+    queryKey: ["ca-rateios", "analises", evKey],
+    enabled: evExtIds.length > 0,
+    queryFn: async (): Promise<RateioMin[]> => {
+      const out: RateioMin[] = [];
+      for (let i = 0; i < evExtIds.length; i += 300) {
+        const chunk = evExtIds.slice(i, i + 300);
+        const rows = await fetchPaged<RateioMin & { centro_custo_external_id: string }>((from, to) =>
+          sb
+            .from("ca_lancamento_rateios")
+            .select("lancamento_external_id,tipo,categoria_external_id,valor,ordem,centro_custo_external_id")
+            .in("centro_custo_external_id", chunk)
+            .range(from, to),
+        );
+        out.push(...rows);
+      }
+      return out;
+    },
   });
-  const receber = useQuery({
-    queryKey: ["ca-receber", "analises", ano, mes],
-    queryFn: () => fetchPaged<any>((f, t) => sb.from("ca_contas_receber").select(cols).or(orFilter).range(f, t)),
+
+  const rateiosData = rateios.data ?? [];
+  // Rateios agrupados por centro para lookup rápido.
+  const rateiosPorCentro = useMemo(() => {
+    const m = new Map<string, RateioMin[]>();
+    (rateiosData as any[]).forEach((r) => {
+      const arr = m.get(r.centro_custo_external_id) ?? [];
+      arr.push(r);
+      m.set(r.centro_custo_external_id, arr);
+    });
+    return m;
+  }, [rateiosData]);
+
+  const lancPagarIds = useMemo(
+    () => Array.from(new Set(rateiosData.filter((r) => r.tipo === "pagar").map((r) => r.lancamento_external_id))),
+    [rateiosData],
+  );
+  const lancReceberIds = useMemo(
+    () => Array.from(new Set(rateiosData.filter((r) => r.tipo === "receber").map((r) => r.lancamento_external_id))),
+    [rateiosData],
+  );
+  const pagarKey = useMemo(() => [...lancPagarIds].sort().join(","), [lancPagarIds]);
+  const receberKey = useMemo(() => [...lancReceberIds].sort().join(","), [lancReceberIds]);
+
+  const pagarParents = useQuery({
+    queryKey: ["ca-pagar-parents", "analises", pagarKey],
+    enabled: lancPagarIds.length > 0,
+    queryFn: async () => {
+      const cols = "external_id,descricao,fornecedor_nome,data_vencimento,data_pagamento,status,observacoes";
+      const out: any[] = [];
+      for (let i = 0; i < lancPagarIds.length; i += 300) {
+        const chunk = lancPagarIds.slice(i, i + 300);
+        const rows = await fetchPaged<any>((from, to) =>
+          sb.from("ca_contas_pagar").select(cols).in("external_id", chunk).range(from, to),
+        );
+        out.push(...rows);
+      }
+      return out;
+    },
+  });
+  const receberParents = useQuery({
+    queryKey: ["ca-receber-parents", "analises", receberKey],
+    enabled: lancReceberIds.length > 0,
+    queryFn: async () => {
+      const cols = "external_id,descricao,cliente_nome,data_vencimento,data_pagamento,status,observacoes";
+      const out: any[] = [];
+      for (let i = 0; i < lancReceberIds.length; i += 300) {
+        const chunk = lancReceberIds.slice(i, i + 300);
+        const rows = await fetchPaged<any>((from, to) =>
+          sb.from("ca_contas_receber").select(cols).in("external_id", chunk).range(from, to),
+        );
+        out.push(...rows);
+      }
+      return out;
+    },
   });
 
   const planoMap = useMemo(() => {
@@ -566,15 +635,33 @@ function AnalisesReport() {
     return m;
   }, [planos.data]);
 
-  const loading = eventos.isLoading || planos.isLoading || pagar.isLoading || receber.isLoading;
+  const loading =
+    eventos.isLoading || planos.isLoading || rateios.isLoading || pagarParents.isLoading || receberParents.isLoading;
 
-  // Categorias do DRE (kind === "sum") + Lucro ao final. Dinâmico via estrutura.
   const linhasCard: DreLine[] = useMemo(() => {
     const sums = dreEstrutura.filter((l) => l.kind === "sum");
     const lu = dreEstrutura.find((l) => l.id === "LU");
     return lu ? [...sums, lu] : sums;
   }, [dreEstrutura]);
   const idsCard = useMemo(() => linhasCard.map((l) => l.id as DreGroupId), [linhasCard]);
+
+  // Cache de totais por evento — invalidado quando dados/período mudam.
+  const totaisPorEvento = useMemo(() => {
+    const cache = new Map<string, Partial<Record<DreGroupId, number>>>();
+    if (loading) return cache;
+    const pParents = pagarParents.data ?? [];
+    const rParents = receberParents.data ?? [];
+    (eventos.data ?? []).forEach((e) => {
+      const rat = rateiosPorCentro.get(e.external_id) ?? [];
+      if (rat.length === 0) { cache.set(e.external_id, {}); return; }
+      const { pagarRows, receberRows } = montarLinhasPorCentro(rat, pParents, rParents, e.external_id);
+      const { totais } = calcularDRECaixa(
+        pagarRows, receberRows, planoMap, ano, mes, dreEstrutura, e.external_id, undefined, "caixa",
+      );
+      cache.set(e.external_id, totais);
+    });
+    return cache;
+  }, [loading, eventos.data, rateiosPorCentro, pagarParents.data, receberParents.data, planoMap, ano, mes, dreEstrutura]);
 
   const gruposCategoria = useMemo(() => {
     const evs = eventos.data ?? [];
@@ -588,26 +675,20 @@ function AnalisesReport() {
     return map;
   }, [eventos.data]);
 
-  const calcularParaEvento = (external_id: string) =>
-    calcularDRECaixa(pagar.data ?? [], receber.data ?? [], planoMap, ano, mes, dreEstrutura, external_id, undefined, "caixa");
+  const totaisDe = (id: string) => totaisPorEvento.get(id) ?? {};
+  const temMovimento = (id: string) =>
+    Object.values(totaisDe(id)).some((v) => Math.abs(v ?? 0) > 0.005);
 
   const somarTotais = (evs: EventoCC[]) => {
     const acc: Partial<Record<DreGroupId, number>> = {};
     evs.forEach((e) => {
-      const { totais } = calcularParaEvento(e.external_id);
-      idsCard.forEach((k) => {
-        acc[k] = (acc[k] ?? 0) + (totais[k] ?? 0);
-      });
-      acc.RB = (acc.RB ?? 0) + (totais.RB ?? 0);
-      acc.RN = (acc.RN ?? 0) + (totais.RN ?? 0);
-      acc.LU = (acc.LU ?? 0) + (totais.LU ?? 0);
+      const t = totaisDe(e.external_id);
+      idsCard.forEach((k) => { acc[k] = (acc[k] ?? 0) + (t[k] ?? 0); });
+      acc.RB = (acc.RB ?? 0) + (t.RB ?? 0);
+      acc.RN = (acc.RN ?? 0) + (t.RN ?? 0);
+      acc.LU = (acc.LU ?? 0) + (t.LU ?? 0);
     });
     return acc;
-  };
-
-  const temMovimento = (external_id: string): boolean => {
-    const { totais } = calcularParaEvento(external_id);
-    return Object.values(totais).some((v) => Math.abs(v ?? 0) > 0.005);
   };
 
   const YEARS = Array.from({ length: new Date().getFullYear() - 2022 + 1 }, (_, i) => 2023 + i);
@@ -616,7 +697,7 @@ function AnalisesReport() {
   const categoriasOrdenadas: CategoriaCentroCusto[] = ["corporativo", "stand", "social", "cenografia"];
 
   const renderCard = (e: EventoCC) => {
-    const { totais } = calcularParaEvento(e.external_id);
+    const totais = totaisDe(e.external_id);
     return (
       <Card key={e.id} className="p-4">
         <div className="flex items-start justify-between gap-2 mb-3">
@@ -640,6 +721,35 @@ function AnalisesReport() {
           })}
         </div>
       </Card>
+    );
+  };
+
+  const renderSecao = (key: string, titulo: React.ReactNode, evsAll: EventoCC[], extraHeader?: React.ReactNode) => {
+    const total = evsAll.length;
+    if (total === 0) return null;
+    const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    const page = Math.min(pagPorCat[key] ?? 1, pageCount);
+    const start = (page - 1) * PAGE_SIZE;
+    const visiveis = evsAll.slice(start, start + PAGE_SIZE);
+    const setPage = (p: number) => setPagPorCat((s) => ({ ...s, [key]: Math.min(pageCount, Math.max(1, p)) }));
+    return (
+      <div key={key} className="space-y-3">
+        <div className="flex items-center justify-between border-b pb-2 gap-3 flex-wrap">
+          <h2 className="text-lg font-bold">{titulo}</h2>
+          {extraHeader}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {visiveis.map(renderCard)}
+        </div>
+        <div className="flex items-center justify-between gap-3 pt-1">
+          <div className="text-xs text-muted-foreground">{total} eventos</div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>Anterior</Button>
+            <span className="text-xs text-muted-foreground">Página {page} de {pageCount}</span>
+            <Button variant="outline" size="sm" disabled={page >= pageCount} onClick={() => setPage(page + 1)}>Próxima</Button>
+          </div>
+        </div>
+      </div>
     );
   };
 
@@ -682,38 +792,26 @@ function AnalisesReport() {
             .filter((cat) => categoriaFiltro === "todas" || categoriaFiltro === cat)
             .map((cat) => {
               const evs = (gruposCategoria.get(cat) ?? []).filter((e) => e.ativo || temMovimento(e.external_id));
-              if (evs.length === 0) return null;
               const totalCat = somarTotais(evs);
-              return (
-                <div key={cat} className="space-y-3">
-                  <div className="flex items-center justify-between border-b pb-2">
-                    <h2 className="text-lg font-bold">{CATEGORIA_LABEL[cat]}</h2>
-                    <div className="text-xs text-muted-foreground flex gap-3">
-                      <span>Receita: <span className="text-foreground font-medium">{brl(totalCat.RB ?? 0)}</span></span>
-                      <span>Resultado: <span className={`font-medium ${(totalCat.RN ?? 0) < 0 ? "text-red-600" : "text-foreground"}`}>{brl(totalCat.RN ?? 0)}</span></span>
-                      <span>Lucro: <span className={`font-medium ${(totalCat.LU ?? 0) < 0 ? "text-red-600" : "text-foreground"}`}>{brl(totalCat.LU ?? 0)}</span></span>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {evs.map(renderCard)}
-                  </div>
-                </div>
+              return renderSecao(
+                cat,
+                CATEGORIA_LABEL[cat],
+                evs,
+                <div className="text-xs text-muted-foreground flex gap-3">
+                  <span>Receita: <span className="text-foreground font-medium">{brl(totalCat.RB ?? 0)}</span></span>
+                  <span>Resultado: <span className={`font-medium ${(totalCat.RN ?? 0) < 0 ? "text-red-600" : "text-foreground"}`}>{brl(totalCat.RN ?? 0)}</span></span>
+                  <span>Lucro: <span className={`font-medium ${(totalCat.LU ?? 0) < 0 ? "text-red-600" : "text-foreground"}`}>{brl(totalCat.LU ?? 0)}</span></span>
+                </div>,
               );
             })}
 
           {categoriaFiltro === "todas" && (() => {
             const semClas = (gruposCategoria.get("sc") ?? []).filter((e) => e.ativo || temMovimento(e.external_id));
-            if (semClas.length === 0) return null;
-            return (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between border-b pb-2">
-                  <h2 className="text-lg font-bold text-muted-foreground">Sem classificação</h2>
-                  <div className="text-xs text-muted-foreground">Classifique estes eventos na aba "Classificação de Eventos"</div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {semClas.map(renderCard)}
-                </div>
-              </div>
+            return renderSecao(
+              "sc",
+              <span className="text-muted-foreground">Sem classificação</span>,
+              semClas,
+              <div className="text-xs text-muted-foreground">Classifique estes eventos na aba "Classificação de Eventos"</div>,
             );
           })()}
         </>
@@ -721,3 +819,4 @@ function AnalisesReport() {
     </div>
   );
 }
+
