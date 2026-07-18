@@ -598,6 +598,8 @@ function AnalisesReport() {
         acc[k] = (acc[k] ?? 0) + (totais[k] ?? 0);
       });
       acc.RB = (acc.RB ?? 0) + (totais.RB ?? 0);
+      acc.RN = (acc.RN ?? 0) + (totais.RN ?? 0);
+      acc.LU = (acc.LU ?? 0) + (totais.LU ?? 0);
     });
     return acc;
   };
