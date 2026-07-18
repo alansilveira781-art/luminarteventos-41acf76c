@@ -643,16 +643,11 @@ function AnalisesReport() {
     (receberParents.fetchStatus !== "idle" && receberParents.isLoading);
 
   useEffect(() => {
-    const payload = {
-      loading,
-      eventos: { isLoading: eventos.isLoading, fetchStatus: eventos.fetchStatus, dataLen: eventos.data?.length },
-      planos: { isLoading: planos.isLoading, fetchStatus: planos.fetchStatus, dataLen: planos.data?.length },
-      rateios: { isLoading: rateios.isLoading, fetchStatus: rateios.fetchStatus, enabled: evExtIds.length > 0, dataLen: rateios.data?.length },
-      pagarParents: { isLoading: pagarParents.isLoading, fetchStatus: pagarParents.fetchStatus, enabled: lancPagarIds.length > 0, dataLen: pagarParents.data?.length },
-      receberParents: { isLoading: receberParents.isLoading, fetchStatus: receberParents.fetchStatus, enabled: lancReceberIds.length > 0, dataLen: receberParents.data?.length },
-    };
-    console.log("[Analises loading] " + JSON.stringify(payload));
+    console.log(
+      `[Analises loading] loading=${loading} | eventos isL=${eventos.isLoading} fs=${eventos.fetchStatus} len=${eventos.data?.length ?? 0} | planos isL=${planos.isLoading} fs=${planos.fetchStatus} len=${planos.data?.length ?? 0} | rateios isL=${rateios.isLoading} fs=${rateios.fetchStatus} enabled=${evExtIds.length > 0} len=${rateios.data?.length ?? 0} | pagar isL=${pagarParents.isLoading} fs=${pagarParents.fetchStatus} enabled=${lancPagarIds.length > 0} len=${pagarParents.data?.length ?? 0} | receber isL=${receberParents.isLoading} fs=${receberParents.fetchStatus} enabled=${lancReceberIds.length > 0} len=${receberParents.data?.length ?? 0}`,
+    );
   }, [eventos.isLoading, eventos.fetchStatus, eventos.data, planos.isLoading, planos.fetchStatus, planos.data, rateios.isLoading, rateios.fetchStatus, rateios.data, pagarParents.isLoading, pagarParents.fetchStatus, pagarParents.data, receberParents.isLoading, receberParents.fetchStatus, receberParents.data, evExtIds.length, lancPagarIds.length, lancReceberIds.length, loading]);
+
 
 
 
