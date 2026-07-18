@@ -1330,11 +1330,15 @@ export async function reprocessarFalhas(
       sucesso += 1;
     } catch (e: any) {
       falhas.push({ recurso: it.recurso, mes: it.mes_from, mensagem: String(e?.message ?? e) });
+    }
+  }
+  return { tentados: itens.length, sucesso, falhas };
 }
 
 /** Identifica lançamentos cujos rateios provavelmente vieram do fallback de
  *  divisão igual (todas as fatias com o mesmo valor, >=2 fatias) e reprocessa
  *  buscando o detalhe em /parcelas/{id}. Também atende IDs explícitos. */
+
 export async function reprocessarRateios(
   opts: { ids?: string[]; tipo?: "pagar" | "receber"; limite?: number } = {},
 ): Promise<{ tentados: number; corrigidos: number; falhas: number; detalhes: string[] }> {
