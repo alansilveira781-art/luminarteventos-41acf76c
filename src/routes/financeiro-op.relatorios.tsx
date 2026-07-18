@@ -636,7 +636,11 @@ function AnalisesReport() {
   }, [planos.data]);
 
   const loading =
-    eventos.isLoading || planos.isLoading || rateios.isLoading || pagarParents.isLoading || receberParents.isLoading;
+    eventos.isLoading ||
+    planos.isLoading ||
+    (rateios.fetchStatus !== "idle" && rateios.isLoading) ||
+    (pagarParents.fetchStatus !== "idle" && pagarParents.isLoading) ||
+    (receberParents.fetchStatus !== "idle" && receberParents.isLoading);
 
   const linhasCard: DreLine[] = useMemo(() => {
     const sums = dreEstrutura.filter((l) => l.kind === "sum");
@@ -814,8 +818,26 @@ function AnalisesReport() {
               <div className="text-xs text-muted-foreground">Classifique estes eventos na aba "Classificação de Eventos"</div>,
             );
           })()}
+
+          {(() => {
+            const catsVisiveis = categoriasOrdenadas.filter((cat) => categoriaFiltro === "todas" || categoriaFiltro === cat);
+            const temEventos = catsVisiveis.some((cat) =>
+              (gruposCategoria.get(cat) ?? []).some((e) => e.ativo || temMovimento(e.external_id))
+            );
+            const temSemClassificacao = categoriaFiltro === "todas" &&
+              (gruposCategoria.get("sc") ?? []).some((e) => e.ativo || temMovimento(e.external_id));
+            if (!temEventos && !temSemClassificacao) {
+              return (
+                <div className="text-sm text-muted-foreground text-center py-10 border rounded-lg bg-muted/30">
+                  Nenhum evento com movimento financeiro neste período.
+                </div>
+              );
+            }
+            return null;
+          })()}
         </>
       )}
+
     </div>
   );
 }
