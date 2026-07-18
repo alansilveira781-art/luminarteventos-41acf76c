@@ -95,6 +95,7 @@ import { Route as ApiPublicOpcoesPagamentoRouteImport } from './routes/api/publi
 import { Route as ApiContaazulSyncRouteImport } from './routes/api/contaazul/sync'
 import { Route as ApiContaazulStatusRouteImport } from './routes/api/contaazul/status'
 import { Route as ApiContaazulScheduleRouteImport } from './routes/api/contaazul/schedule'
+import { Route as ApiContaazulReprocessarRateiosRouteImport } from './routes/api/contaazul/reprocessar-rateios'
 import { Route as ApiContaazulReprocessarFalhasRouteImport } from './routes/api/contaazul/reprocessar-falhas'
 import { Route as ApiContaazulHistoricoRouteImport } from './routes/api/contaazul/historico'
 import { Route as ApiPublicContaazulCronRouteImport } from './routes/api/public/contaazul/cron'
@@ -539,6 +540,12 @@ const ApiContaazulScheduleRoute = ApiContaazulScheduleRouteImport.update({
   path: '/api/contaazul/schedule',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiContaazulReprocessarRateiosRoute =
+  ApiContaazulReprocessarRateiosRouteImport.update({
+    id: '/api/contaazul/reprocessar-rateios',
+    path: '/api/contaazul/reprocessar-rateios',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiContaazulReprocessarFalhasRoute =
   ApiContaazulReprocessarFalhasRouteImport.update({
     id: '/api/contaazul/reprocessar-falhas',
@@ -643,6 +650,7 @@ export interface FileRoutesByFullPath {
   '/rh/': typeof RhIndexRoute
   '/api/contaazul/historico': typeof ApiContaazulHistoricoRoute
   '/api/contaazul/reprocessar-falhas': typeof ApiContaazulReprocessarFalhasRoute
+  '/api/contaazul/reprocessar-rateios': typeof ApiContaazulReprocessarRateiosRoute
   '/api/contaazul/schedule': typeof ApiContaazulScheduleRoute
   '/api/contaazul/status': typeof ApiContaazulStatusRoute
   '/api/contaazul/sync': typeof ApiContaazulSyncRoute
@@ -725,6 +733,7 @@ export interface FileRoutesByTo {
   '/rh': typeof RhIndexRoute
   '/api/contaazul/historico': typeof ApiContaazulHistoricoRoute
   '/api/contaazul/reprocessar-falhas': typeof ApiContaazulReprocessarFalhasRoute
+  '/api/contaazul/reprocessar-rateios': typeof ApiContaazulReprocessarRateiosRoute
   '/api/contaazul/schedule': typeof ApiContaazulScheduleRoute
   '/api/contaazul/status': typeof ApiContaazulStatusRoute
   '/api/contaazul/sync': typeof ApiContaazulSyncRoute
@@ -819,6 +828,7 @@ export interface FileRoutesById {
   '/rh/': typeof RhIndexRoute
   '/api/contaazul/historico': typeof ApiContaazulHistoricoRoute
   '/api/contaazul/reprocessar-falhas': typeof ApiContaazulReprocessarFalhasRoute
+  '/api/contaazul/reprocessar-rateios': typeof ApiContaazulReprocessarRateiosRoute
   '/api/contaazul/schedule': typeof ApiContaazulScheduleRoute
   '/api/contaazul/status': typeof ApiContaazulStatusRoute
   '/api/contaazul/sync': typeof ApiContaazulSyncRoute
@@ -914,6 +924,7 @@ export interface FileRouteTypes {
     | '/rh/'
     | '/api/contaazul/historico'
     | '/api/contaazul/reprocessar-falhas'
+    | '/api/contaazul/reprocessar-rateios'
     | '/api/contaazul/schedule'
     | '/api/contaazul/status'
     | '/api/contaazul/sync'
@@ -996,6 +1007,7 @@ export interface FileRouteTypes {
     | '/rh'
     | '/api/contaazul/historico'
     | '/api/contaazul/reprocessar-falhas'
+    | '/api/contaazul/reprocessar-rateios'
     | '/api/contaazul/schedule'
     | '/api/contaazul/status'
     | '/api/contaazul/sync'
@@ -1089,6 +1101,7 @@ export interface FileRouteTypes {
     | '/rh/'
     | '/api/contaazul/historico'
     | '/api/contaazul/reprocessar-falhas'
+    | '/api/contaazul/reprocessar-rateios'
     | '/api/contaazul/schedule'
     | '/api/contaazul/status'
     | '/api/contaazul/sync'
@@ -1137,6 +1150,7 @@ export interface RootRouteChildren {
   EstoqueIndexRoute: typeof EstoqueIndexRoute
   ApiContaazulHistoricoRoute: typeof ApiContaazulHistoricoRoute
   ApiContaazulReprocessarFalhasRoute: typeof ApiContaazulReprocessarFalhasRoute
+  ApiContaazulReprocessarRateiosRoute: typeof ApiContaazulReprocessarRateiosRoute
   ApiContaazulScheduleRoute: typeof ApiContaazulScheduleRoute
   ApiContaazulStatusRoute: typeof ApiContaazulStatusRoute
   ApiContaazulSyncRoute: typeof ApiContaazulSyncRoute
@@ -1752,6 +1766,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiContaazulScheduleRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/contaazul/reprocessar-rateios': {
+      id: '/api/contaazul/reprocessar-rateios'
+      path: '/api/contaazul/reprocessar-rateios'
+      fullPath: '/api/contaazul/reprocessar-rateios'
+      preLoaderRoute: typeof ApiContaazulReprocessarRateiosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/contaazul/reprocessar-falhas': {
       id: '/api/contaazul/reprocessar-falhas'
       path: '/api/contaazul/reprocessar-falhas'
@@ -2031,6 +2052,7 @@ const rootRouteChildren: RootRouteChildren = {
   EstoqueIndexRoute: EstoqueIndexRoute,
   ApiContaazulHistoricoRoute: ApiContaazulHistoricoRoute,
   ApiContaazulReprocessarFalhasRoute: ApiContaazulReprocessarFalhasRoute,
+  ApiContaazulReprocessarRateiosRoute: ApiContaazulReprocessarRateiosRoute,
   ApiContaazulScheduleRoute: ApiContaazulScheduleRoute,
   ApiContaazulStatusRoute: ApiContaazulStatusRoute,
   ApiContaazulSyncRoute: ApiContaazulSyncRoute,
