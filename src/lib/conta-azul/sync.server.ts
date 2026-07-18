@@ -1330,7 +1330,88 @@ export async function reprocessarFalhas(
       sucesso += 1;
     } catch (e: any) {
       falhas.push({ recurso: it.recurso, mes: it.mes_from, mensagem: String(e?.message ?? e) });
+}
+
+/** Identifica lançamentos cujos rateios provavelmente vieram do fallback de
+ *  divisão igual (todas as fatias com o mesmo valor, >=2 fatias) e reprocessa
+ *  buscando o detalhe em /parcelas/{id}. Também atende IDs explícitos. */
+export async function reprocessarRateios(
+  opts: { ids?: string[]; tipo?: "pagar" | "receber"; limite?: number } = {},
+): Promise<{ tentados: number; corrigidos: number; falhas: number; detalhes: string[] }> {
+  const limite = Math.min(Math.max(opts.limite ?? 100, 1), 500);
+  const tipos: Array<"pagar" | "receber"> = opts.tipo ? [opts.tipo] : ["pagar", "receber"];
+
+  let idsAlvo: Array<{ id: string; tipo: "pagar" | "receber" }> = [];
+  if (opts.ids && opts.ids.length > 0) {
+    for (const t of tipos) opts.ids.forEach((id) => idsAlvo.push({ id: String(id), tipo: t }));
+  } else {
+    // Descobre IDs suspeitos via SQL: rateios com todos os valores iguais e >=2 fatias.
+    for (const t of tipos) {
+      const { data } = await sb.rpc as any; // placeholder p/ evitar erro se rpc não existir
+      // Preferimos consulta direta:
+      const { data: rows } = await sb
+        .from("ca_lancamento_rateios")
+        .select("lancamento_external_id,valor")
+        .eq("tipo", t)
+        .limit(20000);
+      if (!rows) continue;
+      const groups = new Map<string, Set<number>>();
+      const counts = new Map<string, number>();
+      for (const r of rows as any[]) {
+        const k = String(r.lancamento_external_id);
+        if (!groups.has(k)) groups.set(k, new Set());
+        groups.get(k)!.add(Number(r.valor));
+        counts.set(k, (counts.get(k) ?? 0) + 1);
+      }
+      for (const [id, valores] of groups.entries()) {
+        if ((counts.get(id) ?? 0) >= 2 && valores.size === 1) {
+          idsAlvo.push({ id, tipo: t });
+          if (idsAlvo.length >= limite) break;
+        }
+      }
+      if (idsAlvo.length >= limite) break;
     }
+  }
+
+  idsAlvo = idsAlvo.slice(0, limite);
+  const detailBase = "/financeiro/eventos-financeiros/parcelas";
+  const syncedAt = new Date().toISOString();
+  let corrigidos = 0;
+  let falhas = 0;
+  const detalhes: string[] = [];
+
+  for (const alvo of idsAlvo) {
+    try {
+      const detail = await caFetch(`${detailBase}/${alvo.id}`);
+      const rs = buildRateios(detail, alvo.tipo, syncedAt);
+      if (!rs || rs.length === 0) {
+        falhas++;
+        if (detalhes.length < 10) detalhes.push(`${alvo.id}: detalhe sem rateio válido`);
+        continue;
+      }
+      await sb.from("ca_lancamento_rateios").delete().eq("tipo", alvo.tipo).eq("lancamento_external_id", alvo.id);
+      await sb.from("ca_lancamento_rateios").insert(rs);
+      const tabela = alvo.tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
+      await sb.from(tabela).update({ detalhe_synced_at: syncedAt }).eq("external_id", alvo.id);
+      corrigidos++;
+      // throttle p/ respeitar rate limit
+      await new Promise((r) => setTimeout(r, 400));
+    } catch (e: any) {
+      falhas++;
+      if (detalhes.length < 10) detalhes.push(`${alvo.id}: ${String(e?.message ?? e).slice(0, 200)}`);
+    }
+  }
+
+  await sb.from("ca_sync_log").insert({
+    recurso: "reprocessar_rateios",
+    status: falhas === 0 ? "ok" : "erro",
+    started_at: syncedAt,
+    finished_at: new Date().toISOString(),
+    qtd_registros: corrigidos,
+    mensagem: `Reprocessados ${corrigidos}/${idsAlvo.length} rateios (falhas=${falhas}).${detalhes.length ? "\n" + detalhes.join("\n") : ""}`,
+  });
+
+  return { tentados: idsAlvo.length, corrigidos, falhas, detalhes };
   }
   return { tentados: itens.length, sucesso, falhas };
 }
