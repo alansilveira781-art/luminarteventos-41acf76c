@@ -567,8 +567,13 @@ function AnalisesReport() {
 
   const loading = eventos.isLoading || planos.isLoading || pagar.isLoading || receber.isLoading;
 
-  // Linhas principais do DRE a exibir no card compacto.
-  const LINHAS_PRINCIPAIS: DreGroupId[] = ["RB", "RL", "RV", "RO", "RG", "RF_TOT", "RN", "LU"];
+  // Categorias do DRE (kind === "sum") + Lucro ao final. Dinâmico via estrutura.
+  const linhasCard: DreLine[] = useMemo(() => {
+    const sums = dreEstrutura.filter((l) => l.kind === "sum");
+    const lu = dreEstrutura.find((l) => l.id === "LU");
+    return lu ? [...sums, lu] : sums;
+  }, [dreEstrutura]);
+  const idsCard = useMemo(() => linhasCard.map((l) => l.id as DreGroupId), [linhasCard]);
 
   const gruposCategoria = useMemo(() => {
     const evs = eventos.data ?? [];
@@ -589,9 +594,12 @@ function AnalisesReport() {
     const acc: Partial<Record<DreGroupId, number>> = {};
     evs.forEach((e) => {
       const { totais } = calcularParaEvento(e.external_id);
-      LINHAS_PRINCIPAIS.forEach((k) => {
+      idsCard.forEach((k) => {
         acc[k] = (acc[k] ?? 0) + (totais[k] ?? 0);
       });
+      acc.RB = (acc.RB ?? 0) + (totais.RB ?? 0);
+      acc.RN = (acc.RN ?? 0) + (totais.RN ?? 0);
+      acc.LU = (acc.LU ?? 0) + (totais.LU ?? 0);
     });
     return acc;
   };
@@ -615,14 +623,17 @@ function AnalisesReport() {
           {!e.ativo && <Badge variant="destructive" className="shrink-0">Removido</Badge>}
         </div>
         <div className="space-y-1 text-sm">
-          {LINHAS_PRINCIPAIS.map((k) => {
-            const line = dreEstrutura.find((l) => l.id === k);
-            if (!line) return null;
+          {linhasCard.map((line) => {
+            const k = line.id as DreGroupId;
             const v = totais[k] ?? 0;
+            const isLucro = k === "LU";
             return (
-              <div key={k} className="flex justify-between border-b border-dashed last:border-0 py-0.5">
-                <span className="text-xs text-muted-foreground">{line.label}</span>
-                <span className={`tabular-nums text-xs ${v < 0 ? "text-red-600" : ""}`}>{brl(v)}</span>
+              <div
+                key={k}
+                className={`flex justify-between py-0.5 ${isLucro ? "mt-1 border-t pt-1 font-bold" : "border-b border-dashed last:border-0"}`}
+              >
+                <span className={`text-xs ${isLucro ? "text-foreground" : "text-muted-foreground"}`}>{line.label}</span>
+                <span className={`tabular-nums text-xs ${v < 0 ? "text-red-600" : ""} ${isLucro ? "font-bold" : ""}`}>{brl(v)}</span>
               </div>
             );
           })}
