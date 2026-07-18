@@ -332,7 +332,7 @@ export function calcularDRECaixa(
       } else {
         if (!inPeriodo(c.data_vencimento, ano, mes)) return;
       }
-      if (centroCustoId && c.centro_custo_external_id && c.centro_custo_external_id !== centroCustoId) return;
+      if (centroCustoId && c.centro_custo_external_id !== centroCustoId) return;
       if (idsPermitidos && !(c.centro_custo_external_id && idsPermitidos.has(c.centro_custo_external_id))) return;
       const plano = c.categoria_external_id ? planoMap.get(c.categoria_external_id) : undefined;
       if (isTransferencia(plano?.nome, c.descricao)) return;
