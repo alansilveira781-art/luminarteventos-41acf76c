@@ -318,6 +318,11 @@ export function montarLinhasPorCentro(
   receberParents.forEach((p) => rPar.set(p.external_id, p));
   const pagarRows: any[] = [];
   const receberRows: any[] = [];
+  const counts = new Map<string, number>();
+  rateios.forEach((r) => {
+    const k = `${r.tipo}|${r.lancamento_external_id}`;
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+  });
   rateios.forEach((r) => {
     const par = r.tipo === "pagar" ? pPar.get(r.lancamento_external_id) : rPar.get(r.lancamento_external_id);
     if (!par) return;
@@ -333,6 +338,7 @@ export function montarLinhasPorCentro(
       data_pagamento: par.data_pagamento,
       status: par.status,
       observacoes: par.observacoes,
+      _rateado: (counts.get(`${r.tipo}|${r.lancamento_external_id}`) ?? 1) > 1,
     };
     if (r.tipo === "pagar") pagarRows.push(row);
     else receberRows.push(row);
