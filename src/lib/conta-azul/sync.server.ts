@@ -168,6 +168,72 @@ export async function syncCentrosCusto() {
           mensagem: String(e?.message ?? e),
         });
       }
+
+      // ---- Alimenta eventos_centros_custo (tabela de classificação) ----
+      // Regras: insere novos com categoria=null; nunca sobrescreve categoria;
+      // marca ativo=false/removido_em em quem sumiu (só se listagem trouxe algum item).
+      try {
+        const activeIds = new Set(items.map((it: any) => String(it.id ?? it.uuid)));
+        const nowIso = new Date().toISOString();
+
+        // Insere novos (mantém categoria null se já não existir).
+        const upsertRows = items.map((it: any) => ({
+          external_id: String(it.id ?? it.uuid),
+          nome: it.nome ?? it.descricao ?? it.name ?? "—",
+        }));
+        // Busca existentes uma vez.
+        const { data: existRows } = await sb
+          .from("eventos_centros_custo")
+          .select("external_id,nome,ativo");
+        const existMap = new Map<string, { nome: string; ativo: boolean }>();
+        (existRows ?? []).forEach((r: any) =>
+          existMap.set(String(r.external_id), { nome: r.nome, ativo: !!r.ativo }),
+        );
+
+        const novos: any[] = [];
+        const atualizar: { external_id: string; nome: string; reativar: boolean }[] = [];
+        upsertRows.forEach((r) => {
+          const cur = existMap.get(r.external_id);
+          if (!cur) {
+            novos.push({ external_id: r.external_id, nome: r.nome, ativo: true });
+          } else if (cur.nome !== r.nome || !cur.ativo) {
+            atualizar.push({ external_id: r.external_id, nome: r.nome, reativar: !cur.ativo });
+          }
+        });
+        if (novos.length) {
+          for (let i = 0; i < novos.length; i += 500) {
+            await sb.from("eventos_centros_custo").insert(novos.slice(i, i + 500));
+          }
+        }
+        for (const u of atualizar) {
+          const patch: any = { nome: u.nome };
+          if (u.reativar) { patch.ativo = true; patch.removido_em = null; }
+          await sb.from("eventos_centros_custo").update(patch).eq("external_id", u.external_id);
+        }
+
+        // Marca como removidos os que existem localmente e não vieram na API.
+        const toDeactivate = Array.from(existMap.keys()).filter((id) => !activeIds.has(id));
+        if (toDeactivate.length) {
+          for (let i = 0; i < toDeactivate.length; i += 500) {
+            const chunk = toDeactivate.slice(i, i + 500);
+            await sb
+              .from("eventos_centros_custo")
+              .update({ ativo: false, removido_em: nowIso })
+              .in("external_id", chunk)
+              .eq("ativo", true);
+          }
+        }
+      } catch (e: any) {
+        const nowIso = new Date().toISOString();
+        await sb.from("ca_sync_log").insert({
+          recurso: "reconciliacao_eventos_centros_custo",
+          status: "erro",
+          started_at: nowIso,
+          finished_at: nowIso,
+          qtd_registros: 0,
+          mensagem: String(e?.message ?? e),
+        });
+      }
     }
     await logFinish(logId, "ok", items.length);
     return items.length;
