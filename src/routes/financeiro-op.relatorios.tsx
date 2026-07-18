@@ -695,8 +695,8 @@ function AnalisesReport() {
     return acc;
   };
 
-  const YEARS = Array.from({ length: new Date().getFullYear() - 2022 + 1 }, (_, i) => 2023 + i);
-  const MESES = ["Todos", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+
 
   const categoriasOrdenadas: CategoriaCentroCusto[] = ["corporativo", "stand", "social", "cenografia"];
 
