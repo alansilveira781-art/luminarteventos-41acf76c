@@ -1351,11 +1351,10 @@ export async function reprocessarRateios(
   } else {
     // Descobre IDs suspeitos via SQL: rateios com todos os valores iguais e >=2 fatias.
     for (const t of tipos) {
-      const { data } = await sb.rpc as any; // placeholder p/ evitar erro se rpc não existir
-      // Preferimos consulta direta:
       const { data: rows } = await sb
         .from("ca_lancamento_rateios")
         .select("lancamento_external_id,valor")
+
         .eq("tipo", t)
         .limit(20000);
       if (!rows) continue;
