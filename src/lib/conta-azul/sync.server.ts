@@ -598,13 +598,28 @@ function sleepDetail(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber", deadline?: number): Promise<any[]> {
+async function enrichItemsWithDetail(
+  items: any[],
+  tipo: "pagar" | "receber",
+  deadline?: number,
+  alreadyEnriched?: Set<string>,
+): Promise<{ items: any[]; enrichedIds: Set<string> }> {
   const detailBase = "/financeiro/eventos-financeiros/parcelas";
-  const idxs = items.map((it, i) => (needsDetail(it) ? i : -1)).filter((i) => i >= 0);
-  if (idxs.length === 0) return items;
+  // Prioriza rateados: se o time budget estourar, os single-CC ficam para
+  // o próximo sync, mas os rateados (que dependem do detalhe para valor de fatia)
+  // sempre são atendidos primeiro. Evita o bug de divisão igual em rateados.
+  const allNeed = items
+    .map((it, i) => ({ i, need: needsDetail(it), rateado: isRateado(it) }))
+    .filter((x) => x.need);
+  const rateados = allNeed.filter((x) => x.rateado).map((x) => x.i);
+  const outros = allNeed.filter((x) => !x.rateado).map((x) => x.i);
+  const idxs = [...rateados, ...outros].filter((i) => {
+    if (!alreadyEnriched) return true;
+    return !alreadyEnriched.has(String(items[i].id));
+  });
+  const enrichedIds = new Set<string>();
+  if (idxs.length === 0) return { items, enrichedIds };
 
-  // Conta Azul rate-limita agressivamente /parcelas/{id}. Serializado + throttle
-  // fixo entre chamadas para respeitar a cota (QuotaViolation 429).
   const CONCURRENCY = 1;
   const out = items.slice();
   let cursor = 0;
@@ -616,10 +631,7 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber", de
 
   async function worker() {
     while (true) {
-      if (deadline && Date.now() >= deadline) {
-        // Conta quantos ainda faltavam a partir daqui — sem consumir mais o cursor.
-        return;
-      }
+      if (deadline && Date.now() >= deadline) return;
       const my = cursor++;
       if (my >= idxs.length) return;
       const i = idxs[my];
@@ -634,6 +646,7 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber", de
         const detail = await caFetch(url);
         await logDetailProbe(detail, tipo);
         out[i] = { ...items[i], ...detail };
+        enrichedIds.add(String(items[i].id));
       } catch (e: any) {
         detalheFalhas++;
         if (primeirosErros.length < 3) {
@@ -647,7 +660,6 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber", de
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, idxs.length) }, () => worker()));
 
   if (deadline && Date.now() >= deadline) {
-    // Cursor pode ter avançado além do idxs.length; clamp.
     const processados = Math.min(cursor, idxs.length);
     abortedByDeadline = Math.max(0, idxs.length - processados);
   }
@@ -673,7 +685,7 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber", de
         started_at: new Date().toISOString(),
         finished_at: new Date().toISOString(),
         qtd_registros: abortedByDeadline,
-        mensagem: `Enrichment de detalhe interrompido por time budget: ${abortedByDeadline}/${idxs.length} lançamentos ficaram sem detalhe (rateios usarão fallback). Considere reduzir o período ou rodar a Carga Histórica em chunks mensais.`,
+        mensagem: `Enrichment de detalhe interrompido por time budget: ${abortedByDeadline}/${idxs.length} lançamentos ficaram sem detalhe (rateados priorizados). Rode a rotina "Reprocessar rateios" ou reduza o período.`,
       });
     } catch {}
   }
@@ -691,29 +703,67 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber", de
     } catch {}
   }
 
-  return out;
+  return { items: out, enrichedIds };
 }
 
 
 
 async function persistRateios(items: any[], tipo: "pagar" | "receber", syncedAt: string, deadline?: number) {
   await logRatioProbe(items, tipo);
-  const enriched = await enrichItemsWithDetail(items, tipo, deadline);
-  const allRateios: any[] = [];
-  const lancIds: string[] = [];
-  for (const it of enriched) {
-    const rs = buildRateios(it, tipo, syncedAt);
-    if (rs.length > 0) {
-      allRateios.push(...rs);
-      lancIds.push(String(it.id));
+
+  // Cache de enrichment: pula lançamentos já enriquecidos recentemente (30 dias)
+  // que não sofreram alteração desde então. Isso libera time budget para os que
+  // realmente precisam. O sync incremental já traz só o que mudou.
+  const tabela = tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
+  const ids = items.map((it) => String(it.id));
+  const alreadyEnriched = new Set<string>();
+  if (ids.length > 0) {
+    const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+    const cutoff = new Date(Date.now() - CACHE_TTL_MS).toISOString();
+    for (let i = 0; i < ids.length; i += 500) {
+      const chunk = ids.slice(i, i + 500);
+      const { data } = await sb
+        .from(tabela)
+        .select("external_id,detalhe_synced_at")
+        .in("external_id", chunk)
+        .gte("detalhe_synced_at", cutoff);
+      (data ?? []).forEach((r: any) => alreadyEnriched.add(String(r.external_id)));
     }
   }
-  if (lancIds.length === 0) return;
-  for (let i = 0; i < lancIds.length; i += 500) {
-    const chunk = lancIds.slice(i, i + 500);
-    await sb.from("ca_lancamento_rateios").delete().eq("tipo", tipo).in("lancamento_external_id", chunk);
+
+  const { items: enriched, enrichedIds } = await enrichItemsWithDetail(
+    items,
+    tipo,
+    deadline,
+    alreadyEnriched,
+  );
+  const allRateios: any[] = [];
+  const lancIdsWithRateios: string[] = [];
+  for (const it of enriched) {
+    const rs = buildRateios(it, tipo, syncedAt);
+    if (rs && rs.length > 0) {
+      allRateios.push(...rs);
+      lancIdsWithRateios.push(String(it.id));
+    }
+    // rs === null → NÃO apagar rateios existentes (dados anteriores mais confiáveis)
   }
-  await upsertBatched("ca_lancamento_rateios", allRateios, "lancamento_external_id,tipo,ordem");
+  if (lancIdsWithRateios.length > 0) {
+    for (let i = 0; i < lancIdsWithRateios.length; i += 500) {
+      const chunk = lancIdsWithRateios.slice(i, i + 500);
+      await sb.from("ca_lancamento_rateios").delete().eq("tipo", tipo).in("lancamento_external_id", chunk);
+    }
+    await upsertBatched("ca_lancamento_rateios", allRateios, "lancamento_external_id,tipo,ordem");
+  }
+
+  // Marca cache de enrichment nos que foram atendidos com sucesso nesta rodada.
+  if (enrichedIds.size > 0) {
+    const nowIso = new Date().toISOString();
+    const arr = Array.from(enrichedIds);
+    for (let i = 0; i < arr.length; i += 500) {
+      const chunk = arr.slice(i, i + 500);
+      await sb.from(tabela).update({ detalhe_synced_at: nowIso }).in("external_id", chunk);
+    }
+  }
 }
 
 
