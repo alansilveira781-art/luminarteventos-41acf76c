@@ -502,17 +502,16 @@ function ClassificacaoEventos() {
 type PlanoConta = { external_id: string; nome: string };
 
 function AnalisesReport() {
-  const [ano, setAno] = useState<number>(new Date().getFullYear());
-  const [mes, setMes] = useState<number>(0);
-  const [categoriaFiltro, setCategoriaFiltro] = useState<"todas" | CategoriaCentroCusto>("todas");
+  const [categoriaFiltro, setCategoriaFiltro] = useState<CategoriaCentroCusto>("corporativo");
   const [pagPorCat, setPagPorCat] = useState<Record<string, number>>({});
   const PAGE_SIZE = 4;
 
   const dreEstrutura = useDreEstrutura().data ?? DRE_STRUCTURE;
 
   // Reset pagination on filter changes.
-  const filterKey = `${ano}|${mes}|${categoriaFiltro}`;
+  const filterKey = categoriaFiltro;
   useMemo(() => { setPagPorCat({}); }, [filterKey]);
+
 
   const eventos = useQuery({
     queryKey: ["eventos_centros_custo", "analises"],
@@ -660,12 +659,13 @@ function AnalisesReport() {
       if (rat.length === 0) { cache.set(e.external_id, {}); return; }
       const { pagarRows, receberRows } = montarLinhasPorCentro(rat, pParents, rParents, e.external_id);
       const { totais } = calcularDRECaixa(
-        pagarRows, receberRows, planoMap, ano, mes, dreEstrutura, e.external_id, undefined, "caixa",
+        pagarRows, receberRows, planoMap, 0, 0, dreEstrutura, e.external_id, undefined, "caixa",
       );
       cache.set(e.external_id, totais);
     });
     return cache;
-  }, [loading, eventos.data, rateiosPorCentro, pagarParents.data, receberParents.data, planoMap, ano, mes, dreEstrutura]);
+  }, [loading, eventos.data, rateiosPorCentro, pagarParents.data, receberParents.data, planoMap, dreEstrutura]);
+
 
   const gruposCategoria = useMemo(() => {
     const evs = eventos.data ?? [];
@@ -695,10 +695,10 @@ function AnalisesReport() {
     return acc;
   };
 
-  const YEARS = Array.from({ length: new Date().getFullYear() - 2022 + 1 }, (_, i) => 2023 + i);
-  const MESES = ["Todos", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-  const categoriasOrdenadas: CategoriaCentroCusto[] = ["corporativo", "stand", "social", "cenografia"];
+
+
+  
 
   const renderCard = (e: EventoCC) => {
     const totais = totaisDe(e.external_id);
@@ -761,25 +761,10 @@ function AnalisesReport() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Ano</label>
-          <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
-            <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-            <SelectContent>{YEARS.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Mês</label>
-          <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
-            <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
-            <SelectContent>{MESES.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-        <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">Categoria</label>
-          <Select value={categoriaFiltro} onValueChange={(v) => setCategoriaFiltro(v as any)}>
-            <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+          <Select value={categoriaFiltro} onValueChange={(v) => setCategoriaFiltro(v as CategoriaCentroCusto)}>
+            <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="todas">Todas</SelectItem>
               {CATEGORIAS_CENTRO_CUSTO.map((c) => (
                 <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
               ))}
@@ -792,51 +777,31 @@ function AnalisesReport() {
         <div className="text-sm text-muted-foreground">Carregando…</div>
       ) : (
         <>
-          {categoriasOrdenadas
-            .filter((cat) => categoriaFiltro === "todas" || categoriaFiltro === cat)
-            .map((cat) => {
-              const evs = (gruposCategoria.get(cat) ?? []).filter((e) => e.ativo || temMovimento(e.external_id));
-              const totalCat = somarTotais(evs);
-              return renderSecao(
-                cat,
-                CATEGORIA_LABEL[cat],
-                evs,
-                <div className="text-xs text-muted-foreground flex gap-3">
-                  <span>Receita: <span className="text-foreground font-medium">{brl(totalCat.RB ?? 0)}</span></span>
-                  <span>Resultado: <span className={`font-medium ${(totalCat.RN ?? 0) < 0 ? "text-red-600" : "text-foreground"}`}>{brl(totalCat.RN ?? 0)}</span></span>
-                  <span>Lucro: <span className={`font-medium ${(totalCat.LU ?? 0) < 0 ? "text-red-600" : "text-foreground"}`}>{brl(totalCat.LU ?? 0)}</span></span>
-                </div>,
-              );
-            })}
-
-          {categoriaFiltro === "todas" && (() => {
-            const semClas = (gruposCategoria.get("sc") ?? []).filter((e) => e.ativo || temMovimento(e.external_id));
-            return renderSecao(
-              "sc",
-              <span className="text-muted-foreground">Sem classificação</span>,
-              semClas,
-              <div className="text-xs text-muted-foreground">Classifique estes eventos na aba "Classificação de Eventos"</div>,
-            );
-          })()}
-
           {(() => {
-            const catsVisiveis = categoriasOrdenadas.filter((cat) => categoriaFiltro === "todas" || categoriaFiltro === cat);
-            const temEventos = catsVisiveis.some((cat) =>
-              (gruposCategoria.get(cat) ?? []).some((e) => e.ativo || temMovimento(e.external_id))
-            );
-            const temSemClassificacao = categoriaFiltro === "todas" &&
-              (gruposCategoria.get("sc") ?? []).some((e) => e.ativo || temMovimento(e.external_id));
-            if (!temEventos && !temSemClassificacao) {
+            const cat = categoriaFiltro;
+            const evs = (gruposCategoria.get(cat) ?? []).filter((e) => e.ativo || temMovimento(e.external_id));
+            if (evs.length === 0) {
               return (
                 <div className="text-sm text-muted-foreground text-center py-10 border rounded-lg bg-muted/30">
-                  Nenhum evento com movimento financeiro neste período.
+                  Nenhum evento com movimento financeiro nesta categoria.
                 </div>
               );
             }
-            return null;
+            const totalCat = somarTotais(evs);
+            return renderSecao(
+              cat,
+              CATEGORIA_LABEL[cat],
+              evs,
+              <div className="text-xs text-muted-foreground flex gap-3">
+                <span>Receita: <span className="text-foreground font-medium">{brl(totalCat.RB ?? 0)}</span></span>
+                <span>Resultado: <span className={`font-medium ${(totalCat.RN ?? 0) < 0 ? "text-red-600" : "text-foreground"}`}>{brl(totalCat.RN ?? 0)}</span></span>
+                <span>Lucro: <span className={`font-medium ${(totalCat.LU ?? 0) < 0 ? "text-red-600" : "text-foreground"}`}>{brl(totalCat.LU ?? 0)}</span></span>
+              </div>,
+            );
           })()}
         </>
       )}
+
 
     </div>
   );
