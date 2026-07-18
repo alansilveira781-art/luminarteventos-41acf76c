@@ -10,7 +10,7 @@ import {
 } from "recharts";
 import { PiggyBank as Piggy, Building2, BarChart3, Sprout, Users, X, ChevronRight, ChevronDown, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DRE_STRUCTURE, grupoDoPlanoNome, isTransferencia, buildPrefixIndex, type DreGroupId, type DreLine } from "@/lib/conta-azul/dre";
+import { DRE_STRUCTURE, grupoDoPlanoNome, isTransferencia, buildPrefixIndex, calcularDRECaixa, inPeriodo, type DreGroupId, type DreLine } from "@/lib/conta-azul/dre";
 import { useDreEstrutura } from "@/hooks/useDreEstrutura";
 import { agruparParcelamentos, type GroupedLancRow } from "@/lib/conta-azul/agrupar-parcelas";
 
@@ -45,14 +45,8 @@ const MESES = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
 
-function inPeriodo(date: string | null, ano: number, mes: number) {
-  if (!date) return false;
-  if (!ano) return true;
-  const d = new Date(date);
-  if (d.getFullYear() !== ano) return false;
-  if (mes > 0 && d.getMonth() + 1 !== mes) return false;
-  return true;
-}
+
+
 
 function normTxt(s: string | null | undefined): string {
   return (s ?? "")
@@ -502,64 +496,8 @@ function PainelFinanceiro() {
   );
 }
 
-/** DRE por regime configurável, excluindo transferências.
- * - "caixa": só lançamentos pagos, período por data_pagamento (fallback vencimento).
- * - "competencia": todos os lançamentos, período por data_vencimento.
- * Retorna totais por grupo (já com sinal aplicado) e detalhamento por categoria (valor absoluto). */
-function calcularDRECaixa(
-  pagar: any[],
-  receber: any[],
-  planoMap: Map<string, { nome: string }>,
-  ano: number,
-  mes: number,
-  estrutura: DreLine[] = DRE_STRUCTURE,
-  centroCustoId?: string,
-  idsPermitidos?: Set<string>,
-  regime: "caixa" | "competencia" = "caixa",
-): { totais: Partial<Record<DreGroupId, number>>; grupos: Map<DreGroupId, Map<string, number>> } {
-  const grupos = new Map<DreGroupId, Map<string, number>>();
-  const totalSum = new Map<DreGroupId, number>();
-  const prefixIndex = buildPrefixIndex(estrutura);
-  const acumula = (rows: any[]) => {
-    rows.forEach((c) => {
-      if (regime === "caixa") {
-        if (c.status !== "pago") return;
-        if (!inPeriodo(c.data_pagamento ?? c.data_vencimento, ano, mes)) return;
-      } else {
-        if (!inPeriodo(c.data_vencimento, ano, mes)) return;
-      }
-      if (centroCustoId && c.centro_custo_external_id && c.centro_custo_external_id !== centroCustoId) return;
-      if (idsPermitidos && !(c.centro_custo_external_id && idsPermitidos.has(c.centro_custo_external_id))) return;
-      const plano = c.categoria_external_id ? planoMap.get(c.categoria_external_id) : undefined;
-      if (isTransferencia(plano?.nome, c.descricao)) return;
-      const g = grupoDoPlanoNome(plano?.nome, prefixIndex);
-      if (!g) return;
-      const v = Math.abs(Number(c.valor || 0));
-      const k = c.categoria_external_id ?? "_";
-      const det = grupos.get(g) ?? new Map<string, number>();
-      det.set(k, (det.get(k) ?? 0) + v);
-      grupos.set(g, det);
-      totalSum.set(g, (totalSum.get(g) ?? 0) + v);
-    });
-  };
-  acumula(pagar);
-  acumula(receber);
 
 
-  const totais: Partial<Record<DreGroupId, number>> = {};
-  const getVal = (id: DreGroupId): number => {
-    if (totais[id] !== undefined) return totais[id]!;
-    const line = estrutura.find((l) => l.id === id);
-    if (!line) { totais[id] = 0; return 0; }
-    let v = 0;
-    if (line.kind === "sum") v = (totalSum.get(id) ?? 0) * line.sign;
-    else if (line.formula) v = line.formula.reduce((s, f) => s + getVal(f), 0);
-    totais[id] = v;
-    return v;
-  };
-  estrutura.forEach((l) => getVal(l.id));
-  return { totais, grupos };
-}
 
 
 

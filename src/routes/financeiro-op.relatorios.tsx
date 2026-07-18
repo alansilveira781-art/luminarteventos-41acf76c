@@ -1,21 +1,33 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Printer } from "lucide-react";
+import { Printer, Search } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
   PeriodoFilter, PERIODO_MES_DEFAULT, type Periodo, type PeriodoPreset,
 } from "@/components/PeriodoFilter";
-import { fetchAllRows } from "@/lib/fetch-all";
+import { toast } from "sonner";
+import { useDreEstrutura } from "@/hooks/useDreEstrutura";
+import {
+  DRE_STRUCTURE, calcularDRECaixa, type DreGroupId, type DreLine,
+} from "@/lib/conta-azul/dre";
+import {
+  CATEGORIAS_CENTRO_CUSTO, CATEGORIA_LABEL, type CategoriaCentroCusto,
+} from "@/lib/centro-custo-categorias";
 
 const sb = supabase as any;
 
@@ -42,6 +54,28 @@ type Row = {
 };
 
 function RelatoriosPage() {
+  return (
+    <div className="p-4 md:p-6 space-y-4">
+      <div className="print:hidden">
+        <PageHeader title="Relatórios — Financeiro Op" description="Cartões, análises e classificação de eventos" />
+      </div>
+      <Tabs defaultValue="cartoes" className="print:hidden">
+        <TabsList>
+          <TabsTrigger value="cartoes">Cartões</TabsTrigger>
+          <TabsTrigger value="analises">Análises</TabsTrigger>
+          <TabsTrigger value="classificacao">Classificação de Eventos</TabsTrigger>
+        </TabsList>
+        <TabsContent value="cartoes"><CartoesReport /></TabsContent>
+        <TabsContent value="analises"><AnalisesReport /></TabsContent>
+        <TabsContent value="classificacao"><ClassificacaoEventos /></TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+/* -------------------- Cartões (relatório existente) -------------------- */
+
+function CartoesReport() {
   const [cartao, setCartao] = useState<string>("");
   const [preset, setPreset] = useState<PeriodoPreset>(PERIODO_MES_DEFAULT.preset);
   const [periodo, setPeriodo] = useState<Periodo>(PERIODO_MES_DEFAULT.periodo);
@@ -227,14 +261,9 @@ function RelatoriosPage() {
     doc.save(`relatorio-cartao-${cartaoSlug}-${periodoSlug}.pdf`);
   };
 
-
   return (
-    <div className="p-4 md:p-6 space-y-4">
-      <div className="print:hidden">
-        <PageHeader title="Relatórios — Despesas" description="Relatórios do módulo Financeiro" />
-      </div>
-
-      <div className="flex flex-wrap items-end gap-3 print:hidden">
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">Cartão (condição de pagamento)</label>
           <Select value={cartao} onValueChange={setCartao}>
@@ -257,28 +286,15 @@ function RelatoriosPage() {
           />
         </div>
         <div className="ml-auto">
-          <Button
-            variant="outline"
-            onClick={exportPdf}
-            disabled={!cartao || rows.length === 0}
-          >
+          <Button variant="outline" onClick={exportPdf} disabled={!cartao || rows.length === 0}>
             <Printer className="h-4 w-4 mr-2" />
             Exportar PDF
           </Button>
         </div>
-
-      </div>
-
-      {/* Cabeçalho de impressão */}
-      <div className="hidden print:block mb-4">
-        <h1 className="text-xl font-bold">Luminart Eventos</h1>
-        <div className="text-sm">Relatório de Cartão — {cartao || "—"}</div>
-        <div className="text-sm">Período: {periodoLabel}</div>
-        <div className="text-xs text-muted-foreground">Emitido em {emitido}</div>
       </div>
 
       {!cartao ? (
-        <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground print:hidden">
+        <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
           Selecione um cartão para gerar o relatório.
         </div>
       ) : isLoading ? (
@@ -288,9 +304,9 @@ function RelatoriosPage() {
           Nenhum registro finalizado ou a receber para este cartão no período.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border print:border-0 print:overflow-visible">
+        <div className="overflow-x-auto rounded-lg border">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 print:bg-transparent">
+            <thead className="bg-muted/50">
               <tr>
                 <th className="text-left px-3 py-2 font-medium">Tipo</th>
                 <th className="text-left px-3 py-2 font-medium">Título</th>
@@ -304,9 +320,7 @@ function RelatoriosPage() {
             <tbody>
               {rows.map((r) => (
                 <tr key={`${r.tipo}-${r.id}`} className="border-t align-top">
-                  <td className="px-3 py-2 whitespace-nowrap font-mono text-xs">
-                    {r.tipo}-{r.numero ?? "—"}
-                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap font-mono text-xs">{r.tipo}-{r.numero ?? "—"}</td>
                   <td className="px-3 py-2">{r.titulo ?? "—"}</td>
                   <td className="px-3 py-2">{r.solicitante ?? "—"}</td>
                   <td className="px-3 py-2">{r.comprador ?? "—"}</td>
@@ -314,9 +328,7 @@ function RelatoriosPage() {
                     {r.itens.length > 0 ? (
                       <ul className="space-y-0.5">
                         {r.itens.map((it, i) => (
-                          <li key={i}>
-                            {Number(it.quantidade ?? 0)}x {it.descricao ?? "—"}
-                          </li>
+                          <li key={i}>{Number(it.quantidade ?? 0)}x {it.descricao ?? "—"}</li>
                         ))}
                       </ul>
                     ) : (
@@ -329,19 +341,370 @@ function RelatoriosPage() {
               ))}
             </tbody>
             <tfoot>
-              <tr className="border-t bg-muted/30 print:bg-transparent">
+              <tr className="border-t bg-muted/30">
                 <td colSpan={6} className="px-3 py-2 text-right text-xs text-muted-foreground">
                   Subtotal Compras: {brl(totalCompras)} · Subtotal Despesas: {brl(totalDemandas)}
                 </td>
                 <td className="px-3 py-2 text-right font-mono text-xs text-muted-foreground">&nbsp;</td>
               </tr>
-              <tr className="border-t bg-muted/60 print:bg-transparent">
+              <tr className="border-t bg-muted/60">
                 <td colSpan={6} className="px-3 py-2 text-right font-semibold">Total geral</td>
                 <td className="px-3 py-2 text-right font-semibold whitespace-nowrap">{brl(totalGeral)}</td>
               </tr>
             </tfoot>
           </table>
         </div>
+      )}
+    </div>
+  );
+}
+
+/* -------------------- Classificação de Eventos -------------------- */
+
+type EventoCC = {
+  id: string;
+  external_id: string;
+  nome: string;
+  categoria: CategoriaCentroCusto | null;
+  ativo: boolean;
+  removido_em: string | null;
+};
+
+function ClassificacaoEventos() {
+  const qc = useQueryClient();
+  const [busca, setBusca] = useState("");
+  const [soNaoClassificados, setSoNaoClassificados] = useState(false);
+  const [mostrarInativos, setMostrarInativos] = useState(false);
+
+  const { data: eventos = [], isLoading } = useQuery({
+    queryKey: ["eventos_centros_custo"],
+    queryFn: async (): Promise<EventoCC[]> => {
+      const { data, error } = await sb
+        .from("eventos_centros_custo")
+        .select("id, external_id, nome, categoria, ativo, removido_em")
+        .order("nome");
+      if (error) throw error;
+      return (data ?? []) as EventoCC[];
+    },
+  });
+
+  const setCategoria = useMutation({
+    mutationFn: async ({ id, categoria }: { id: string; categoria: CategoriaCentroCusto | null }) => {
+      const { data: u } = await supabase.auth.getUser();
+      const { error } = await sb
+        .from("eventos_centros_custo")
+        .update({ categoria, classificado_por: u?.user?.id ?? null })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["eventos_centros_custo"] });
+      toast.success("Classificação atualizada");
+    },
+    onError: (e: any) => toast.error(String(e?.message ?? e)),
+  });
+
+  const filtrados = useMemo(() => {
+    const needle = busca.trim().toLowerCase();
+    return eventos.filter((e) => {
+      if (!mostrarInativos && !e.ativo) return false;
+      if (soNaoClassificados && e.categoria) return false;
+      if (needle && !e.nome.toLowerCase().includes(needle)) return false;
+      return true;
+    });
+  }, [eventos, busca, soNaoClassificados, mostrarInativos]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative">
+          <Search className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nome…"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            className="pl-8 w-[280px]"
+          />
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox checked={soNaoClassificados} onCheckedChange={(v) => setSoNaoClassificados(!!v)} />
+          Somente não classificados
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox checked={mostrarInativos} onCheckedChange={(v) => setMostrarInativos(!!v)} />
+          Mostrar removidos
+        </label>
+        <div className="ml-auto text-xs text-muted-foreground">
+          {filtrados.length} de {eventos.length}
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="text-sm text-muted-foreground">Carregando…</div>
+      ) : (
+        <div className="rounded-lg border overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="text-left px-3 py-2 font-medium">Evento / Centro de Custo</th>
+                <th className="text-left px-3 py-2 font-medium w-[220px]">Categoria</th>
+                <th className="text-left px-3 py-2 font-medium w-[120px]">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtrados.map((e) => (
+                <tr key={e.id} className="border-t">
+                  <td className="px-3 py-2">{e.nome}</td>
+                  <td className="px-3 py-2">
+                    <Select
+                      value={e.categoria ?? "__none__"}
+                      onValueChange={(v) =>
+                        setCategoria.mutate({
+                          id: e.id,
+                          categoria: v === "__none__" ? null : (v as CategoriaCentroCusto),
+                        })
+                      }
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Sem classificação</SelectItem>
+                        {CATEGORIAS_CENTRO_CUSTO.map((c) => (
+                          <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="px-3 py-2">
+                    {e.ativo ? (
+                      <Badge variant="outline">Ativo</Badge>
+                    ) : (
+                      <Badge variant="destructive">Removido</Badge>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {filtrados.length === 0 && (
+                <tr><td colSpan={3} className="px-3 py-8 text-center text-sm text-muted-foreground">Nenhum evento encontrado.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* -------------------- Análises — Comparação entre eventos -------------------- */
+
+type PlanoConta = { external_id: string; nome: string };
+
+function AnalisesReport() {
+  const [ano, setAno] = useState<number>(new Date().getFullYear());
+  const [mes, setMes] = useState<number>(0);
+  const [categoriaFiltro, setCategoriaFiltro] = useState<"todas" | CategoriaCentroCusto>("todas");
+
+  const dreEstrutura = useDreEstrutura().data ?? DRE_STRUCTURE;
+
+  const eventos = useQuery({
+    queryKey: ["eventos_centros_custo", "analises"],
+    queryFn: async (): Promise<EventoCC[]> => {
+      const { data, error } = await sb
+        .from("eventos_centros_custo")
+        .select("id, external_id, nome, categoria, ativo, removido_em")
+        .order("nome");
+      if (error) throw error;
+      return (data ?? []) as EventoCC[];
+    },
+  });
+
+  const planos = useQuery({
+    queryKey: ["ca-plano", "analises"],
+    queryFn: async (): Promise<PlanoConta[]> => {
+      const { data } = await sb.from("ca_plano_contas").select("external_id,nome");
+      return (data ?? []) as PlanoConta[];
+    },
+  });
+
+  const buildPeriodo = (a: number, m: number) => {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const inicio = m > 0 ? `${a}-${pad(m)}-01` : `${a}-01-01`;
+    const fim = m > 0 ? `${a}-${pad(m)}-${pad(new Date(a, m, 0).getDate())}` : `${a}-12-31`;
+    return { inicio, fim };
+  };
+
+  const { inicio, fim } = buildPeriodo(ano, mes);
+  const orFilter = `and(data_pagamento.gte.${inicio},data_pagamento.lte.${fim}),and(data_pagamento.is.null,data_vencimento.gte.${inicio},data_vencimento.lte.${fim})`;
+  const cols = "external_id,descricao,categoria_external_id,centro_custo_external_id,valor,data_vencimento,data_pagamento,status,observacoes";
+
+  const fetchPaged = async <T,>(build: (from: number, to: number) => any): Promise<T[]> => {
+    const all: T[] = [];
+    const pageSize = 1000;
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await build(from, from + pageSize - 1);
+      if (error || !data || data.length === 0) break;
+      all.push(...(data as T[]));
+      if (data.length < pageSize) break;
+    }
+    return all;
+  };
+
+  const pagar = useQuery({
+    queryKey: ["ca-pagar", "analises", ano, mes],
+    queryFn: () => fetchPaged<any>((f, t) => sb.from("ca_contas_pagar").select(cols).or(orFilter).range(f, t)),
+  });
+  const receber = useQuery({
+    queryKey: ["ca-receber", "analises", ano, mes],
+    queryFn: () => fetchPaged<any>((f, t) => sb.from("ca_contas_receber").select(cols).or(orFilter).range(f, t)),
+  });
+
+  const planoMap = useMemo(() => {
+    const m = new Map<string, { nome: string }>();
+    (planos.data ?? []).forEach((p) => m.set(p.external_id, { nome: p.nome }));
+    return m;
+  }, [planos.data]);
+
+  const loading = eventos.isLoading || planos.isLoading || pagar.isLoading || receber.isLoading;
+
+  // Linhas principais do DRE a exibir no card compacto.
+  const LINHAS_PRINCIPAIS: DreGroupId[] = ["RB", "RL", "RV", "RO", "RG", "RF_TOT", "RN", "LU"];
+
+  const gruposCategoria = useMemo(() => {
+    const evs = eventos.data ?? [];
+    const map = new Map<CategoriaCentroCusto | "sc", EventoCC[]>();
+    evs.forEach((e) => {
+      const key = (e.categoria ?? "sc") as CategoriaCentroCusto | "sc";
+      const arr = map.get(key) ?? [];
+      arr.push(e);
+      map.set(key, arr);
+    });
+    return map;
+  }, [eventos.data]);
+
+  const calcularParaEvento = (external_id: string) =>
+    calcularDRECaixa(pagar.data ?? [], receber.data ?? [], planoMap, ano, mes, dreEstrutura, external_id, undefined, "caixa");
+
+  const somarTotais = (evs: EventoCC[]) => {
+    const acc: Partial<Record<DreGroupId, number>> = {};
+    evs.forEach((e) => {
+      const { totais } = calcularParaEvento(e.external_id);
+      LINHAS_PRINCIPAIS.forEach((k) => {
+        acc[k] = (acc[k] ?? 0) + (totais[k] ?? 0);
+      });
+    });
+    return acc;
+  };
+
+  const temMovimento = (external_id: string): boolean => {
+    const { totais } = calcularParaEvento(external_id);
+    return Object.values(totais).some((v) => Math.abs(v ?? 0) > 0.005);
+  };
+
+  const YEARS = Array.from({ length: new Date().getFullYear() - 2022 + 1 }, (_, i) => 2023 + i);
+  const MESES = ["Todos", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+  const categoriasOrdenadas: CategoriaCentroCusto[] = ["corporativo", "stand", "social", "cenografia"];
+
+  const renderCard = (e: EventoCC) => {
+    const { totais } = calcularParaEvento(e.external_id);
+    return (
+      <Card key={e.id} className="p-4">
+        <div className="flex items-start justify-between gap-2 mb-3">
+          <div className="font-semibold text-sm leading-tight">{e.nome}</div>
+          {!e.ativo && <Badge variant="destructive" className="shrink-0">Removido</Badge>}
+        </div>
+        <div className="space-y-1 text-sm">
+          {LINHAS_PRINCIPAIS.map((k) => {
+            const line = dreEstrutura.find((l) => l.id === k);
+            if (!line) return null;
+            const v = totais[k] ?? 0;
+            return (
+              <div key={k} className="flex justify-between border-b border-dashed last:border-0 py-0.5">
+                <span className="text-xs text-muted-foreground">{line.label}</span>
+                <span className={`tabular-nums text-xs ${v < 0 ? "text-red-600" : ""}`}>{brl(v)}</span>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Ano</label>
+          <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
+            <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+            <SelectContent>{YEARS.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Mês</label>
+          <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
+            <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+            <SelectContent>{MESES.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Categoria</label>
+          <Select value={categoriaFiltro} onValueChange={(v) => setCategoriaFiltro(v as any)}>
+            <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas</SelectItem>
+              {CATEGORIAS_CENTRO_CUSTO.map((c) => (
+                <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="text-sm text-muted-foreground">Carregando…</div>
+      ) : (
+        <>
+          {categoriasOrdenadas
+            .filter((cat) => categoriaFiltro === "todas" || categoriaFiltro === cat)
+            .map((cat) => {
+              const evs = (gruposCategoria.get(cat) ?? []).filter((e) => e.ativo || temMovimento(e.external_id));
+              if (evs.length === 0) return null;
+              const totalCat = somarTotais(evs);
+              return (
+                <div key={cat} className="space-y-3">
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <h2 className="text-lg font-bold">{CATEGORIA_LABEL[cat]}</h2>
+                    <div className="text-xs text-muted-foreground flex gap-3">
+                      <span>Receita: <span className="text-foreground font-medium">{brl(totalCat.RB ?? 0)}</span></span>
+                      <span>Resultado: <span className={`font-medium ${(totalCat.RN ?? 0) < 0 ? "text-red-600" : "text-foreground"}`}>{brl(totalCat.RN ?? 0)}</span></span>
+                      <span>Lucro: <span className={`font-medium ${(totalCat.LU ?? 0) < 0 ? "text-red-600" : "text-foreground"}`}>{brl(totalCat.LU ?? 0)}</span></span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {evs.map(renderCard)}
+                  </div>
+                </div>
+              );
+            })}
+
+          {categoriaFiltro === "todas" && (() => {
+            const semClas = (gruposCategoria.get("sc") ?? []).filter((e) => e.ativo || temMovimento(e.external_id));
+            if (semClas.length === 0) return null;
+            return (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <h2 className="text-lg font-bold text-muted-foreground">Sem classificação</h2>
+                  <div className="text-xs text-muted-foreground">Classifique estes eventos na aba "Classificação de Eventos"</div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {semClas.map(renderCard)}
+                </div>
+              </div>
+            );
+          })()}
+        </>
       )}
     </div>
   );

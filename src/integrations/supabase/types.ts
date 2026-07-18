@@ -2466,6 +2466,42 @@ export type Database = {
           },
         ]
       }
+      eventos_centros_custo: {
+        Row: {
+          ativo: boolean
+          atualizado_em: string
+          categoria: string | null
+          classificado_por: string | null
+          criado_em: string
+          external_id: string
+          id: string
+          nome: string
+          removido_em: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          atualizado_em?: string
+          categoria?: string | null
+          classificado_por?: string | null
+          criado_em?: string
+          external_id: string
+          id?: string
+          nome: string
+          removido_em?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          atualizado_em?: string
+          categoria?: string | null
+          classificado_por?: string | null
+          criado_em?: string
+          external_id?: string
+          id?: string
+          nome?: string
+          removido_em?: string | null
+        }
+        Relationships: []
+      }
       eventos_projetos: {
         Row: {
           codigo: string | null
