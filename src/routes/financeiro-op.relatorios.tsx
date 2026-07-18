@@ -23,7 +23,8 @@ import {
 import { toast } from "sonner";
 import { useDreEstrutura } from "@/hooks/useDreEstrutura";
 import {
-  DRE_STRUCTURE, calcularDRECaixa, type DreGroupId, type DreLine,
+  DRE_STRUCTURE, calcularDRECaixa, montarLinhasPorCentro,
+  type DreGroupId, type DreLine, type RateioMin,
 } from "@/lib/conta-azul/dre";
 import {
   CATEGORIAS_CENTRO_CUSTO, CATEGORIA_LABEL, type CategoriaCentroCusto,
