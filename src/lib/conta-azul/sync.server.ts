@@ -435,11 +435,14 @@ function buildRateios(
 
   const hasValor = pairs.some((p) => p.valorRaw != null && Number.isFinite(p.valorRaw));
   const hasPct = pairs.some((p) => p.pct != null && Number.isFinite(p.pct));
-  const isRateado = pairs.length >= 2;
-  if (isRateado && !hasValor && !hasPct) {
-    // Fatiamento sem valor/percentual explícito — vamos cair em divisão igual.
-    // Loga para investigação (throttled dentro de logRateioSemValor).
+  const isRateadoLegacy = pairs.length >= 2;
+  if (isRateadoLegacy && !hasValor && !hasPct) {
+    // Rateado sem valor/percentual no payload = enrichment não trouxe detalhe
+    // válido. Divisão igual é sempre INCORRETA aqui — preferimos preservar
+    // os rateios anteriores retornando `null` (persistRateios não apagará
+    // a linha), e logamos para reprocessamento futuro.
     logRateioSemValor(lancId, tipo, pairs.length).catch(() => {});
+    return null;
   }
 
   const valores = distribuirValores(pairs, total);
@@ -595,13 +598,28 @@ function sleepDetail(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber", deadline?: number): Promise<any[]> {
+async function enrichItemsWithDetail(
+  items: any[],
+  tipo: "pagar" | "receber",
+  deadline?: number,
+  alreadyEnriched?: Set<string>,
+): Promise<{ items: any[]; enrichedIds: Set<string> }> {
   const detailBase = "/financeiro/eventos-financeiros/parcelas";
-  const idxs = items.map((it, i) => (needsDetail(it) ? i : -1)).filter((i) => i >= 0);
-  if (idxs.length === 0) return items;
+  // Prioriza rateados: se o time budget estourar, os single-CC ficam para
+  // o próximo sync, mas os rateados (que dependem do detalhe para valor de fatia)
+  // sempre são atendidos primeiro. Evita o bug de divisão igual em rateados.
+  const allNeed = items
+    .map((it, i) => ({ i, need: needsDetail(it), rateado: isRateado(it) }))
+    .filter((x) => x.need);
+  const rateados = allNeed.filter((x) => x.rateado).map((x) => x.i);
+  const outros = allNeed.filter((x) => !x.rateado).map((x) => x.i);
+  const idxs = [...rateados, ...outros].filter((i) => {
+    if (!alreadyEnriched) return true;
+    return !alreadyEnriched.has(String(items[i].id));
+  });
+  const enrichedIds = new Set<string>();
+  if (idxs.length === 0) return { items, enrichedIds };
 
-  // Conta Azul rate-limita agressivamente /parcelas/{id}. Serializado + throttle
-  // fixo entre chamadas para respeitar a cota (QuotaViolation 429).
   const CONCURRENCY = 1;
   const out = items.slice();
   let cursor = 0;
@@ -613,10 +631,7 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber", de
 
   async function worker() {
     while (true) {
-      if (deadline && Date.now() >= deadline) {
-        // Conta quantos ainda faltavam a partir daqui — sem consumir mais o cursor.
-        return;
-      }
+      if (deadline && Date.now() >= deadline) return;
       const my = cursor++;
       if (my >= idxs.length) return;
       const i = idxs[my];
@@ -631,6 +646,7 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber", de
         const detail = await caFetch(url);
         await logDetailProbe(detail, tipo);
         out[i] = { ...items[i], ...detail };
+        enrichedIds.add(String(items[i].id));
       } catch (e: any) {
         detalheFalhas++;
         if (primeirosErros.length < 3) {
@@ -644,7 +660,6 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber", de
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, idxs.length) }, () => worker()));
 
   if (deadline && Date.now() >= deadline) {
-    // Cursor pode ter avançado além do idxs.length; clamp.
     const processados = Math.min(cursor, idxs.length);
     abortedByDeadline = Math.max(0, idxs.length - processados);
   }
@@ -670,7 +685,7 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber", de
         started_at: new Date().toISOString(),
         finished_at: new Date().toISOString(),
         qtd_registros: abortedByDeadline,
-        mensagem: `Enrichment de detalhe interrompido por time budget: ${abortedByDeadline}/${idxs.length} lançamentos ficaram sem detalhe (rateios usarão fallback). Considere reduzir o período ou rodar a Carga Histórica em chunks mensais.`,
+        mensagem: `Enrichment de detalhe interrompido por time budget: ${abortedByDeadline}/${idxs.length} lançamentos ficaram sem detalhe (rateados priorizados). Rode a rotina "Reprocessar rateios" ou reduza o período.`,
       });
     } catch {}
   }
@@ -688,29 +703,67 @@ async function enrichItemsWithDetail(items: any[], tipo: "pagar" | "receber", de
     } catch {}
   }
 
-  return out;
+  return { items: out, enrichedIds };
 }
 
 
 
 async function persistRateios(items: any[], tipo: "pagar" | "receber", syncedAt: string, deadline?: number) {
   await logRatioProbe(items, tipo);
-  const enriched = await enrichItemsWithDetail(items, tipo, deadline);
-  const allRateios: any[] = [];
-  const lancIds: string[] = [];
-  for (const it of enriched) {
-    const rs = buildRateios(it, tipo, syncedAt);
-    if (rs.length > 0) {
-      allRateios.push(...rs);
-      lancIds.push(String(it.id));
+
+  // Cache de enrichment: pula lançamentos já enriquecidos recentemente (30 dias)
+  // que não sofreram alteração desde então. Isso libera time budget para os que
+  // realmente precisam. O sync incremental já traz só o que mudou.
+  const tabela = tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
+  const ids = items.map((it) => String(it.id));
+  const alreadyEnriched = new Set<string>();
+  if (ids.length > 0) {
+    const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+    const cutoff = new Date(Date.now() - CACHE_TTL_MS).toISOString();
+    for (let i = 0; i < ids.length; i += 500) {
+      const chunk = ids.slice(i, i + 500);
+      const { data } = await sb
+        .from(tabela)
+        .select("external_id,detalhe_synced_at")
+        .in("external_id", chunk)
+        .gte("detalhe_synced_at", cutoff);
+      (data ?? []).forEach((r: any) => alreadyEnriched.add(String(r.external_id)));
     }
   }
-  if (lancIds.length === 0) return;
-  for (let i = 0; i < lancIds.length; i += 500) {
-    const chunk = lancIds.slice(i, i + 500);
-    await sb.from("ca_lancamento_rateios").delete().eq("tipo", tipo).in("lancamento_external_id", chunk);
+
+  const { items: enriched, enrichedIds } = await enrichItemsWithDetail(
+    items,
+    tipo,
+    deadline,
+    alreadyEnriched,
+  );
+  const allRateios: any[] = [];
+  const lancIdsWithRateios: string[] = [];
+  for (const it of enriched) {
+    const rs = buildRateios(it, tipo, syncedAt);
+    if (rs && rs.length > 0) {
+      allRateios.push(...rs);
+      lancIdsWithRateios.push(String(it.id));
+    }
+    // rs === null → NÃO apagar rateios existentes (dados anteriores mais confiáveis)
   }
-  await upsertBatched("ca_lancamento_rateios", allRateios, "lancamento_external_id,tipo,ordem");
+  if (lancIdsWithRateios.length > 0) {
+    for (let i = 0; i < lancIdsWithRateios.length; i += 500) {
+      const chunk = lancIdsWithRateios.slice(i, i + 500);
+      await sb.from("ca_lancamento_rateios").delete().eq("tipo", tipo).in("lancamento_external_id", chunk);
+    }
+    await upsertBatched("ca_lancamento_rateios", allRateios, "lancamento_external_id,tipo,ordem");
+  }
+
+  // Marca cache de enrichment nos que foram atendidos com sucesso nesta rodada.
+  if (enrichedIds.size > 0) {
+    const nowIso = new Date().toISOString();
+    const arr = Array.from(enrichedIds);
+    for (let i = 0; i < arr.length; i += 500) {
+      const chunk = arr.slice(i, i + 500);
+      await sb.from(tabela).update({ detalhe_synced_at: nowIso }).in("external_id", chunk);
+    }
+  }
 }
 
 
@@ -1281,3 +1334,86 @@ export async function reprocessarFalhas(
   }
   return { tentados: itens.length, sucesso, falhas };
 }
+
+/** Identifica lançamentos cujos rateios provavelmente vieram do fallback de
+ *  divisão igual (todas as fatias com o mesmo valor, >=2 fatias) e reprocessa
+ *  buscando o detalhe em /parcelas/{id}. Também atende IDs explícitos. */
+
+export async function reprocessarRateios(
+  opts: { ids?: string[]; tipo?: "pagar" | "receber"; limite?: number } = {},
+): Promise<{ tentados: number; corrigidos: number; falhas: number; detalhes: string[] }> {
+  const limite = Math.min(Math.max(opts.limite ?? 100, 1), 500);
+  const tipos: Array<"pagar" | "receber"> = opts.tipo ? [opts.tipo] : ["pagar", "receber"];
+
+  let idsAlvo: Array<{ id: string; tipo: "pagar" | "receber" }> = [];
+  if (opts.ids && opts.ids.length > 0) {
+    for (const t of tipos) opts.ids.forEach((id) => idsAlvo.push({ id: String(id), tipo: t }));
+  } else {
+    // Descobre IDs suspeitos via SQL: rateios com todos os valores iguais e >=2 fatias.
+    for (const t of tipos) {
+      const { data: rows } = await sb
+        .from("ca_lancamento_rateios")
+        .select("lancamento_external_id,valor")
+
+        .eq("tipo", t)
+        .limit(20000);
+      if (!rows) continue;
+      const groups = new Map<string, Set<number>>();
+      const counts = new Map<string, number>();
+      for (const r of rows as any[]) {
+        const k = String(r.lancamento_external_id);
+        if (!groups.has(k)) groups.set(k, new Set());
+        groups.get(k)!.add(Number(r.valor));
+        counts.set(k, (counts.get(k) ?? 0) + 1);
+      }
+      for (const [id, valores] of groups.entries()) {
+        if ((counts.get(id) ?? 0) >= 2 && valores.size === 1) {
+          idsAlvo.push({ id, tipo: t });
+          if (idsAlvo.length >= limite) break;
+        }
+      }
+      if (idsAlvo.length >= limite) break;
+    }
+  }
+
+  idsAlvo = idsAlvo.slice(0, limite);
+  const detailBase = "/financeiro/eventos-financeiros/parcelas";
+  const syncedAt = new Date().toISOString();
+  let corrigidos = 0;
+  let falhas = 0;
+  const detalhes: string[] = [];
+
+  for (const alvo of idsAlvo) {
+    try {
+      const detail = await caFetch(`${detailBase}/${alvo.id}`);
+      const rs = buildRateios(detail, alvo.tipo, syncedAt);
+      if (!rs || rs.length === 0) {
+        falhas++;
+        if (detalhes.length < 10) detalhes.push(`${alvo.id}: detalhe sem rateio válido`);
+        continue;
+      }
+      await sb.from("ca_lancamento_rateios").delete().eq("tipo", alvo.tipo).eq("lancamento_external_id", alvo.id);
+      await sb.from("ca_lancamento_rateios").insert(rs);
+      const tabela = alvo.tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
+      await sb.from(tabela).update({ detalhe_synced_at: syncedAt }).eq("external_id", alvo.id);
+      corrigidos++;
+      // throttle p/ respeitar rate limit
+      await new Promise((r) => setTimeout(r, 400));
+    } catch (e: any) {
+      falhas++;
+      if (detalhes.length < 10) detalhes.push(`${alvo.id}: ${String(e?.message ?? e).slice(0, 200)}`);
+    }
+  }
+
+  await sb.from("ca_sync_log").insert({
+    recurso: "reprocessar_rateios",
+    status: falhas === 0 ? "ok" : "erro",
+    started_at: syncedAt,
+    finished_at: new Date().toISOString(),
+    qtd_registros: corrigidos,
+    mensagem: `Reprocessados ${corrigidos}/${idsAlvo.length} rateios (falhas=${falhas}).${detalhes.length ? "\n" + detalhes.join("\n") : ""}`,
+  });
+
+  return { tentados: idsAlvo.length, corrigidos, falhas, detalhes };
+}
+

@@ -45,6 +45,7 @@ export type Database = {
           data_pagamento: string | null
           data_vencimento: string | null
           descricao: string | null
+          detalhe_synced_at: string | null
           documento: string | null
           external_id: string
           fornecedor_nome: string | null
@@ -60,6 +61,7 @@ export type Database = {
           data_pagamento?: string | null
           data_vencimento?: string | null
           descricao?: string | null
+          detalhe_synced_at?: string | null
           documento?: string | null
           external_id: string
           fornecedor_nome?: string | null
@@ -75,6 +77,7 @@ export type Database = {
           data_pagamento?: string | null
           data_vencimento?: string | null
           descricao?: string | null
+          detalhe_synced_at?: string | null
           documento?: string | null
           external_id?: string
           fornecedor_nome?: string | null
@@ -94,6 +97,7 @@ export type Database = {
           data_pagamento: string | null
           data_vencimento: string | null
           descricao: string | null
+          detalhe_synced_at: string | null
           documento: string | null
           external_id: string
           id: string
@@ -109,6 +113,7 @@ export type Database = {
           data_pagamento?: string | null
           data_vencimento?: string | null
           descricao?: string | null
+          detalhe_synced_at?: string | null
           documento?: string | null
           external_id: string
           id?: string
@@ -124,6 +129,7 @@ export type Database = {
           data_pagamento?: string | null
           data_vencimento?: string | null
           descricao?: string | null
+          detalhe_synced_at?: string | null
           documento?: string | null
           external_id?: string
           id?: string
