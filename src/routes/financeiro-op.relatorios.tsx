@@ -713,13 +713,19 @@ function AnalisesReport() {
             const k = line.id as DreGroupId;
             const v = totais[k] ?? 0;
             const isLucro = k === "LU";
+            const base = totais.RB ?? 0;
+            const pct = base !== 0 ? (v / base) * 100 : null;
+            const pctStr = pct === null ? "—" : `${pct.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
             return (
               <div
                 key={k}
-                className={`flex justify-between py-0.5 ${isLucro ? "mt-1 border-t pt-1 font-bold" : "border-b border-dashed last:border-0"}`}
+                className={`flex items-baseline justify-between gap-2 py-0.5 ${isLucro ? "mt-1 border-t pt-1 font-bold" : "border-b border-dashed last:border-0"}`}
               >
                 <span className={`text-xs ${isLucro ? "text-foreground" : "text-muted-foreground"}`}>{line.label}</span>
-                <span className={`tabular-nums text-xs ${v < 0 ? "text-red-600" : ""} ${isLucro ? "font-bold" : ""}`}>{brl(v)}</span>
+                <span className="flex items-baseline gap-2">
+                  <span className={`tabular-nums text-[10px] ${isLucro ? "text-muted-foreground font-semibold" : "text-muted-foreground"}`}>{pctStr}</span>
+                  <span className={`tabular-nums text-xs ${v < 0 ? "text-red-600" : ""} ${isLucro ? "font-bold" : ""}`}>{brl(v)}</span>
+                </span>
               </div>
             );
           })}
@@ -792,10 +798,20 @@ function AnalisesReport() {
               cat,
               CATEGORIA_LABEL[cat],
               evs,
-              <div className="text-xs text-muted-foreground flex gap-3">
-                <span>Receita: <span className="text-foreground font-medium">{brl(totalCat.RB ?? 0)}</span></span>
-                <span>Resultado: <span className={`font-medium ${(totalCat.RN ?? 0) < 0 ? "text-red-600" : "text-foreground"}`}>{brl(totalCat.RN ?? 0)}</span></span>
-                <span>Lucro: <span className={`font-medium ${(totalCat.LU ?? 0) < 0 ? "text-red-600" : "text-foreground"}`}>{brl(totalCat.LU ?? 0)}</span></span>
+              <div className="text-xs text-muted-foreground flex gap-3 flex-wrap">
+                {(() => {
+                  const rb = totalCat.RB ?? 0;
+                  const rn = totalCat.RN ?? 0;
+                  const lu = totalCat.LU ?? 0;
+                  const pct = (v: number) => rb !== 0 ? ` (${((v / rb) * 100).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%)` : "";
+                  return (
+                    <>
+                      <span>Receita: <span className="text-foreground font-medium">{brl(rb)}</span></span>
+                      <span>Resultado: <span className={`font-medium ${rn < 0 ? "text-red-600" : "text-foreground"}`}>{brl(rn)}{pct(rn)}</span></span>
+                      <span>Lucro: <span className={`font-medium ${lu < 0 ? "text-red-600" : "text-foreground"}`}>{brl(lu)}{pct(lu)}</span></span>
+                    </>
+                  );
+                })()}
               </div>,
             );
           })()}
