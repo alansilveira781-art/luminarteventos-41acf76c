@@ -642,11 +642,6 @@ function AnalisesReport() {
     (pagarParents.fetchStatus !== "idle" && pagarParents.isLoading) ||
     (receberParents.fetchStatus !== "idle" && receberParents.isLoading);
 
-
-
-
-
-
   const linhasCard: DreLine[] = useMemo(() => {
     const sums = dreEstrutura.filter((l) => l.kind === "sum");
     const lu = dreEstrutura.find((l) => l.id === "LU");
