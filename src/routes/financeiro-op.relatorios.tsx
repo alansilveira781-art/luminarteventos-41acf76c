@@ -659,12 +659,13 @@ function AnalisesReport() {
       if (rat.length === 0) { cache.set(e.external_id, {}); return; }
       const { pagarRows, receberRows } = montarLinhasPorCentro(rat, pParents, rParents, e.external_id);
       const { totais } = calcularDRECaixa(
-        pagarRows, receberRows, planoMap, ano, mes, dreEstrutura, e.external_id, undefined, "caixa",
+        pagarRows, receberRows, planoMap, 0, 0, dreEstrutura, e.external_id, undefined, "caixa",
       );
       cache.set(e.external_id, totais);
     });
     return cache;
-  }, [loading, eventos.data, rateiosPorCentro, pagarParents.data, receberParents.data, planoMap, ano, mes, dreEstrutura]);
+  }, [loading, eventos.data, rateiosPorCentro, pagarParents.data, receberParents.data, planoMap, dreEstrutura]);
+
 
   const gruposCategoria = useMemo(() => {
     const evs = eventos.data ?? [];
