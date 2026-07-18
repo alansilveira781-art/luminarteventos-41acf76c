@@ -621,14 +621,17 @@ function AnalisesReport() {
           {!e.ativo && <Badge variant="destructive" className="shrink-0">Removido</Badge>}
         </div>
         <div className="space-y-1 text-sm">
-          {LINHAS_PRINCIPAIS.map((k) => {
-            const line = dreEstrutura.find((l) => l.id === k);
-            if (!line) return null;
+          {linhasCard.map((line) => {
+            const k = line.id as DreGroupId;
             const v = totais[k] ?? 0;
+            const isLucro = k === "LU";
             return (
-              <div key={k} className="flex justify-between border-b border-dashed last:border-0 py-0.5">
-                <span className="text-xs text-muted-foreground">{line.label}</span>
-                <span className={`tabular-nums text-xs ${v < 0 ? "text-red-600" : ""}`}>{brl(v)}</span>
+              <div
+                key={k}
+                className={`flex justify-between py-0.5 ${isLucro ? "mt-1 border-t pt-1 font-bold" : "border-b border-dashed last:border-0"}`}
+              >
+                <span className={`text-xs ${isLucro ? "text-foreground" : "text-muted-foreground"}`}>{line.label}</span>
+                <span className={`tabular-nums text-xs ${v < 0 ? "text-red-600" : ""} ${isLucro ? "font-bold" : ""}`}>{brl(v)}</span>
               </div>
             );
           })}
