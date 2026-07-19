@@ -491,7 +491,7 @@ function buildRateios(
 function distribuirValores(
   pairs: Array<{ ordem: number; cc: string | null; cat: string | null; valorRaw: number | null; pct: number | null }>,
   total: number,
-) {
+): Array<{ ordem: number; cc: string | null; cat: string | null; valor: number; pct: number | null }> | null {
   const n = pairs.length;
   if (n === 0) return [];
   const hasValor = pairs.some((p) => p.valorRaw != null && Number.isFinite(p.valorRaw));
@@ -507,9 +507,11 @@ function distribuirValores(
   } else if (hasPct) {
     const somaPct = pairs.reduce((s, p) => s + (p.pct ?? 0), 0) || 100;
     valores = pairs.map((p) => total * ((p.pct ?? 0) / somaPct));
+  } else if (n === 1) {
+    valores = [total];
   } else {
-    const fatia = total / n;
-    valores = pairs.map(() => fatia);
+    // 2+ centros sem valor nem percentual: NUNCA invente valores por divisão igual.
+    return null;
   }
   return pairs.map((p, i) => ({
     ordem: p.ordem,
