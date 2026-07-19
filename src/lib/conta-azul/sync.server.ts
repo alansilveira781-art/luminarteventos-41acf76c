@@ -314,15 +314,42 @@ function buildRateios(
       const valorGrupo = r.valor != null ? Number(r.valor) : null;
       const ccList: any[] = Array.isArray(r.rateio_centro_custo) ? r.rateio_centro_custo : [];
       if (ccList.length > 0) {
-        for (const c of ccList) {
+        // Precisamos determinar o valor de cada centro. Prioridade:
+        //   (a) c.valor explícito por centro
+        //   (b) valorGrupo * (percentual / soma_percentuais) quando houver percentual
+        //   (c) se apenas 1 centro no grupo, herda valorGrupo
+        //   (d) 2+ centros sem valor nem percentual → aborta (null) para o lançamento
+        const ccValores = ccList.map((c) => (c.valor != null ? Number(c.valor) : null));
+        const ccPcts = ccList.map((c) => {
+          const p = c.percentual ?? c.porcentagem ?? c.percent ?? null;
+          return p != null ? Number(p) : null;
+        });
+        const hasValorCC = ccValores.some((v) => v != null && Number.isFinite(v));
+        const hasPctCC = ccPcts.some((p) => p != null && Number.isFinite(p));
+
+        let valoresCC: number[];
+        if (hasValorCC) {
+          valoresCC = ccValores.map((v) => (v != null && Number.isFinite(v) ? v : 0));
+        } else if (hasPctCC && valorGrupo != null) {
+          const somaPct = ccPcts.reduce<number>((s, p) => s + (p ?? 0), 0) || 100;
+          valoresCC = ccPcts.map((p) => valorGrupo * ((p ?? 0) / somaPct));
+        } else if (ccList.length === 1 && valorGrupo != null) {
+          valoresCC = [valorGrupo];
+        } else {
+          logRateioSemValor(lancId, tipo, ccList.length).catch(() => {});
+          return null;
+        }
+
+        for (let i = 0; i < ccList.length; i++) {
+          const c = ccList[i];
           const ccId = c.id_centro_custo ?? c.centro_custo?.id ?? c.centro_custo_id ?? null;
-          const valor = c.valor != null ? Number(c.valor) : (valorGrupo ?? 0);
+          const valor = valoresCC[i];
           fatias.push({
             ordem: ordem++,
             cc: ccId ? String(ccId) : null,
             cat: catId ? String(catId) : null,
             valor: Math.round((Number.isFinite(valor) ? valor : 0) * 100) / 100,
-            pct: null,
+            pct: ccPcts[i],
           });
         }
       } else {
@@ -446,6 +473,10 @@ function buildRateios(
   }
 
   const valores = distribuirValores(pairs, total);
+  if (!valores) {
+    logRateioSemValor(lancId, tipo, pairs.length).catch(() => {});
+    return null;
+  }
   return valores.map((p) => ({
     lancamento_external_id: lancId,
     tipo,
@@ -464,7 +495,7 @@ function buildRateios(
 function distribuirValores(
   pairs: Array<{ ordem: number; cc: string | null; cat: string | null; valorRaw: number | null; pct: number | null }>,
   total: number,
-) {
+): Array<{ ordem: number; cc: string | null; cat: string | null; valor: number; pct: number | null }> | null {
   const n = pairs.length;
   if (n === 0) return [];
   const hasValor = pairs.some((p) => p.valorRaw != null && Number.isFinite(p.valorRaw));
@@ -480,9 +511,11 @@ function distribuirValores(
   } else if (hasPct) {
     const somaPct = pairs.reduce((s, p) => s + (p.pct ?? 0), 0) || 100;
     valores = pairs.map((p) => total * ((p.pct ?? 0) / somaPct));
+  } else if (n === 1) {
+    valores = [total];
   } else {
-    const fatia = total / n;
-    valores = pairs.map(() => fatia);
+    // 2+ centros sem valor nem percentual: NUNCA invente valores por divisão igual.
+    return null;
   }
   return pairs.map((p, i) => ({
     ordem: p.ordem,
@@ -1340,43 +1373,113 @@ export async function reprocessarFalhas(
  *  buscando o detalhe em /parcelas/{id}. Também atende IDs explícitos. */
 
 export async function reprocessarRateios(
-  opts: { ids?: string[]; tipo?: "pagar" | "receber"; limite?: number } = {},
-): Promise<{ tentados: number; corrigidos: number; falhas: number; detalhes: string[] }> {
+  opts: {
+    ids?: string[];
+    tipo?: "pagar" | "receber";
+    limite?: number;
+    modo?: "suspeitos" | "todos";
+  } = {},
+): Promise<{
+  tentados: number;
+  corrigidos: number;
+  falhas: number;
+  detalhes: string[];
+  restantes: number;
+  concluido: boolean;
+  modo: "suspeitos" | "todos";
+}> {
   const limite = Math.min(Math.max(opts.limite ?? 100, 1), 500);
+  const modo: "suspeitos" | "todos" = opts.modo ?? "suspeitos";
   const tipos: Array<"pagar" | "receber"> = opts.tipo ? [opts.tipo] : ["pagar", "receber"];
+  const inicioMs = Date.now();
+  const inicioIso = new Date(inicioMs).toISOString();
 
-  let idsAlvo: Array<{ id: string; tipo: "pagar" | "receber" }> = [];
-  if (opts.ids && opts.ids.length > 0) {
-    for (const t of tipos) opts.ids.forEach((id) => idsAlvo.push({ id: String(id), tipo: t }));
-  } else {
-    // Descobre IDs suspeitos via SQL: rateios com todos os valores iguais e >=2 fatias.
-    for (const t of tipos) {
-      const { data: rows } = await sb
+  /** Paginação determinística de ca_lancamento_rateios ordenada por
+   *  lancamento_external_id, retornando todas as linhas (sem cap arbitrário). */
+  async function scanAll(tipo: "pagar" | "receber"): Promise<Array<{ id: string; valor: number }>> {
+    const PAGE = 1000;
+    const acc: Array<{ id: string; valor: number }> = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await sb
         .from("ca_lancamento_rateios")
         .select("lancamento_external_id,valor")
+        .eq("tipo", tipo)
+        .order("lancamento_external_id", { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      const rows = (data ?? []) as any[];
+      for (const r of rows) acc.push({ id: String(r.lancamento_external_id), valor: Number(r.valor) });
+      if (rows.length < PAGE) break;
+      from += PAGE;
+    }
+    return acc;
+  }
 
-        .eq("tipo", t)
-        .limit(20000);
-      if (!rows) continue;
-      const groups = new Map<string, Set<number>>();
-      const counts = new Map<string, number>();
-      for (const r of rows as any[]) {
-        const k = String(r.lancamento_external_id);
-        if (!groups.has(k)) groups.set(k, new Set());
-        groups.get(k)!.add(Number(r.valor));
-        counts.set(k, (counts.get(k) ?? 0) + 1);
-      }
-      for (const [id, valores] of groups.entries()) {
-        if ((counts.get(id) ?? 0) >= 2 && valores.size === 1) {
-          idsAlvo.push({ id, tipo: t });
-          if (idsAlvo.length >= limite) break;
-        }
-      }
-      if (idsAlvo.length >= limite) break;
+  /** Devolve todos os lancamento_external_id rateados (>=2 fatias) para o tipo,
+   *  ordenados. Se `apenasSuspeitos`, exige também valores todos idênticos. */
+  async function listarCandidatos(
+    tipo: "pagar" | "receber",
+    apenasSuspeitos: boolean,
+  ): Promise<string[]> {
+    const rows = await scanAll(tipo);
+    const groups = new Map<string, { valores: Set<number>; count: number }>();
+    for (const r of rows) {
+      const g = groups.get(r.id) ?? { valores: new Set<number>(), count: 0 };
+      g.valores.add(r.valor);
+      g.count += 1;
+      groups.set(r.id, g);
+    }
+    const out: string[] = [];
+    for (const [id, g] of groups.entries()) {
+      if (g.count < 2) continue;
+      if (apenasSuspeitos && g.valores.size !== 1) continue;
+      out.push(id);
+    }
+    out.sort();
+    return out;
+  }
+
+  // Monta a lista completa de alvos ANTES de aplicar o limite, para poder
+  // reportar `restantes` e `concluido` corretamente.
+  let allTargets: Array<{ id: string; tipo: "pagar" | "receber" }> = [];
+  if (opts.ids && opts.ids.length > 0) {
+    for (const t of tipos) opts.ids.forEach((id) => allTargets.push({ id: String(id), tipo: t }));
+  } else {
+    for (const t of tipos) {
+      const cands = await listarCandidatos(t, modo === "suspeitos");
+      cands.forEach((id) => allTargets.push({ id, tipo: t }));
     }
   }
 
-  idsAlvo = idsAlvo.slice(0, limite);
+  // No modo "todos", pula lançamentos já reprocessados nesta rodada (cache
+  // via detalhe_synced_at). Isso torna o processo retomável em lotes.
+  let pulaJa = 0;
+  if (modo === "todos" && !opts.ids) {
+    const byTipo: Record<"pagar" | "receber", string[]> = { pagar: [], receber: [] };
+    for (const t of allTargets) byTipo[t.tipo].push(t.id);
+    const jaFeitos = new Set<string>(); // `${tipo}:${id}`
+    for (const t of tipos) {
+      const ids = byTipo[t];
+      if (ids.length === 0) continue;
+      const tabela = t === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
+      for (let i = 0; i < ids.length; i += 500) {
+        const chunk = ids.slice(i, i + 500);
+        const { data } = await sb
+          .from(tabela)
+          .select("external_id,detalhe_synced_at")
+          .in("external_id", chunk)
+          .gte("detalhe_synced_at", inicioIso);
+        (data ?? []).forEach((r: any) => jaFeitos.add(`${t}:${String(r.external_id)}`));
+      }
+    }
+    const antes = allTargets.length;
+    allTargets = allTargets.filter((t) => !jaFeitos.has(`${t.tipo}:${t.id}`));
+    pulaJa = antes - allTargets.length;
+  }
+
+  const idsAlvo = allTargets.slice(0, limite);
+  const restantes = Math.max(0, allTargets.length - idsAlvo.length);
   const detailBase = "/financeiro/eventos-financeiros/parcelas";
   const syncedAt = new Date().toISOString();
   let corrigidos = 0;
@@ -1388,8 +1491,13 @@ export async function reprocessarRateios(
       const detail = await caFetch(`${detailBase}/${alvo.id}`);
       const rs = buildRateios(detail, alvo.tipo, syncedAt);
       if (!rs || rs.length === 0) {
+        // Payload sem valor/percentual: NÃO apaga rateios existentes nem
+        // conta como corrigido. Reporta explicitamente.
         falhas++;
-        if (detalhes.length < 10) detalhes.push(`${alvo.id}: detalhe sem rateio válido`);
+        if (detalhes.length < 20) {
+          detalhes.push(`${alvo.id}: payload sem valor/percentual por centro`);
+        }
+        await new Promise((r) => setTimeout(r, 400));
         continue;
       }
       await sb.from("ca_lancamento_rateios").delete().eq("tipo", alvo.tipo).eq("lancamento_external_id", alvo.id);
@@ -1397,23 +1505,33 @@ export async function reprocessarRateios(
       const tabela = alvo.tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
       await sb.from(tabela).update({ detalhe_synced_at: syncedAt }).eq("external_id", alvo.id);
       corrigidos++;
-      // throttle p/ respeitar rate limit
       await new Promise((r) => setTimeout(r, 400));
     } catch (e: any) {
       falhas++;
-      if (detalhes.length < 10) detalhes.push(`${alvo.id}: ${String(e?.message ?? e).slice(0, 200)}`);
+      if (detalhes.length < 20) detalhes.push(`${alvo.id}: ${String(e?.message ?? e).slice(0, 200)}`);
     }
   }
+
+  const concluido = restantes === 0;
+  const durMs = Date.now() - inicioMs;
 
   await sb.from("ca_sync_log").insert({
     recurso: "reprocessar_rateios",
     status: falhas === 0 ? "ok" : "erro",
-    started_at: syncedAt,
+    started_at: inicioIso,
     finished_at: new Date().toISOString(),
     qtd_registros: corrigidos,
-    mensagem: `Reprocessados ${corrigidos}/${idsAlvo.length} rateios (falhas=${falhas}).${detalhes.length ? "\n" + detalhes.join("\n") : ""}`,
+    mensagem: `[modo=${modo}] Reprocessados ${corrigidos}/${idsAlvo.length} rateios (falhas=${falhas}, restantes=${restantes}, pulados_ja=${pulaJa}, dur=${durMs}ms).${detalhes.length ? "\n" + detalhes.join("\n") : ""}`,
   });
 
-  return { tentados: idsAlvo.length, corrigidos, falhas, detalhes };
+  return {
+    tentados: idsAlvo.length,
+    corrigidos,
+    falhas,
+    detalhes,
+    restantes,
+    concluido,
+    modo,
+  };
 }
 

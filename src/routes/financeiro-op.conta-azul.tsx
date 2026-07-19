@@ -46,10 +46,26 @@ function ContaAzulPage() {
   });
   const [from, setFrom] = useState(defaults.from);
   const [to, setTo] = useState(defaults.to);
-  const [busy, setBusy] = useState<null | "connect" | "sync" | "disconnect">(null);
+  const [busy, setBusy] = useState<null | "connect" | "sync" | "disconnect" | "reproc">(null);
   const [progress, setProgress] = useState<{ current: RecursoKey | null; done: number }>({
     current: null,
     done: 0,
+  });
+  type ReprocResult = {
+    tentados: number;
+    corrigidos: number;
+    falhas: number;
+    restantes: number;
+    concluido: boolean;
+    modo: "suspeitos" | "todos";
+  };
+  const [reprocMode, setReprocMode] = useState<"suspeitos" | "todos" | null>(null);
+  const [reprocProgress, setReprocProgress] = useState<ReprocResult | null>(null);
+  const [reprocLastResult, setReprocLastResult] = useState<ReprocResult | null>(null);
+  const [reprocTotals, setReprocTotals] = useState<{ corrigidos: number; falhas: number; lotes: number }>({
+    corrigidos: 0,
+    falhas: 0,
+    lotes: 0,
   });
 
   useEffect(() => {
@@ -147,6 +163,50 @@ function ContaAzulPage() {
     }
   }
 
+  async function handleReprocessarRateios(
+    modo: "suspeitos" | "todos",
+    opts: { auto?: boolean } = {},
+  ) {
+    setBusy("reproc");
+    setReprocMode(modo);
+    if (!opts.auto) setReprocTotals({ corrigidos: 0, falhas: 0, lotes: 0 });
+    else setReprocTotals({ corrigidos: 0, falhas: 0, lotes: 0 });
+    const headers = { ...(await authHeaders()), "Content-Type": "application/json" };
+    try {
+      let lastResult: ReprocResult | null = null;
+      // Loop: modo "todos" com opts.auto=true continua chamando até concluido.
+      // Demais casos: um único lote.
+      // Limite de segurança de 200 lotes para evitar loop infinito.
+      for (let i = 0; i < 200; i++) {
+        const res = await fetch("/api/contaazul/reprocessar-rateios", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ modo, limite: 100 }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const r = (await res.json()) as ReprocResult;
+        lastResult = r;
+        setReprocProgress(r);
+        setReprocTotals((t) => ({
+          corrigidos: t.corrigidos + r.corrigidos,
+          falhas: t.falhas + r.falhas,
+          lotes: t.lotes + 1,
+        }));
+        if (r.concluido || modo !== "todos" || !opts.auto) break;
+      }
+      setReprocLastResult(lastResult);
+      if (lastResult?.concluido) {
+        toast.success(`Reprocessamento concluído (${lastResult.corrigidos} corrigidos, ${lastResult.falhas} falhas)`);
+      } else if (lastResult) {
+        toast.message(`Lote reprocessado (${lastResult.corrigidos} corrigidos). Restam ${lastResult.restantes}.`);
+      }
+    } catch (e: any) {
+      toast.error(`Erro ao reprocessar: ${String(e?.message ?? e)}`);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   const connected = status.data?.connected;
 
   return (
@@ -237,7 +297,67 @@ function ContaAzulPage() {
             </p>
           </CardContent>
         </Card>
+
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <RefreshCw className="h-4 w-4" /> Reprocessar rateios
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Recalcula as fatias de rateio buscando o detalhe de cada lançamento no Conta Azul.
+              Use "Somente suspeitos" para corrigir apenas lançamentos com fatias idênticas (fallback antigo);
+              "Reprocessar tudo" refaz todos os lançamentos rateados, em lotes.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                disabled={!canManage || !connected || busy !== null}
+                onClick={() => handleReprocessarRateios("suspeitos")}
+              >
+                {busy === "reproc" && reprocMode === "suspeitos" ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                )}
+                Somente suspeitos
+              </Button>
+              <Button
+                disabled={!canManage || !connected || busy !== null}
+                onClick={() => handleReprocessarRateios("todos", { auto: true })}
+              >
+                {busy === "reproc" && reprocMode === "todos" ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                )}
+                Reprocessar tudo
+              </Button>
+              {reprocLastResult && !reprocLastResult.concluido && busy === null && (
+                <Button
+                  variant="secondary"
+                  disabled={!canManage || !connected}
+                  onClick={() => handleReprocessarRateios(reprocLastResult.modo, { auto: false })}
+                >
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  Continuar (restam {reprocLastResult.restantes})
+                </Button>
+              )}
+            </div>
+            {reprocProgress && (
+              <div className="text-xs text-muted-foreground space-y-0.5">
+                <div>
+                  Lote atual: {reprocProgress.corrigidos} corrigidos · {reprocProgress.falhas} falhas ·
+                  {" "}{reprocProgress.restantes} restantes
+                </div>
+                <div>Acumulado: {reprocTotals.corrigidos} corrigidos · {reprocTotals.falhas} falhas ({reprocTotals.lotes} lotes)</div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </>
   );
 }
+
