@@ -163,6 +163,50 @@ function ContaAzulPage() {
     }
   }
 
+  async function handleReprocessarRateios(
+    modo: "suspeitos" | "todos",
+    opts: { auto?: boolean } = {},
+  ) {
+    setBusy("reproc");
+    setReprocMode(modo);
+    if (!opts.auto) setReprocTotals({ corrigidos: 0, falhas: 0, lotes: 0 });
+    else setReprocTotals({ corrigidos: 0, falhas: 0, lotes: 0 });
+    const headers = { ...(await authHeaders()), "Content-Type": "application/json" };
+    try {
+      let lastResult: ReprocResult | null = null;
+      // Loop: modo "todos" com opts.auto=true continua chamando até concluido.
+      // Demais casos: um único lote.
+      // Limite de segurança de 200 lotes para evitar loop infinito.
+      for (let i = 0; i < 200; i++) {
+        const res = await fetch("/api/contaazul/reprocessar-rateios", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ modo, limite: 100 }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const r = (await res.json()) as ReprocResult;
+        lastResult = r;
+        setReprocProgress(r);
+        setReprocTotals((t) => ({
+          corrigidos: t.corrigidos + r.corrigidos,
+          falhas: t.falhas + r.falhas,
+          lotes: t.lotes + 1,
+        }));
+        if (r.concluido || modo !== "todos" || !opts.auto) break;
+      }
+      setReprocLastResult(lastResult);
+      if (lastResult?.concluido) {
+        toast.success(`Reprocessamento concluído (${lastResult.corrigidos} corrigidos, ${lastResult.falhas} falhas)`);
+      } else if (lastResult) {
+        toast.message(`Lote reprocessado (${lastResult.corrigidos} corrigidos). Restam ${lastResult.restantes}.`);
+      }
+    } catch (e: any) {
+      toast.error(`Erro ao reprocessar: ${String(e?.message ?? e)}`);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   const connected = status.data?.connected;
 
   return (
