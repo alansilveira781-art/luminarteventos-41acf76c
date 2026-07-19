@@ -473,6 +473,10 @@ function buildRateios(
   }
 
   const valores = distribuirValores(pairs, total);
+  if (!valores) {
+    logRateioSemValor(lancId, tipo, pairs.length).catch(() => {});
+    return null;
+  }
   return valores.map((p) => ({
     lancamento_external_id: lancId,
     tipo,
