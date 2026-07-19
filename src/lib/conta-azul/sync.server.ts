@@ -331,7 +331,7 @@ function buildRateios(
         if (hasValorCC) {
           valoresCC = ccValores.map((v) => (v != null && Number.isFinite(v) ? v : 0));
         } else if (hasPctCC && valorGrupo != null) {
-          const somaPct = ccPcts.reduce((s, p) => s + (p ?? 0), 0) || 100;
+          const somaPct = ccPcts.reduce<number>((s, p) => s + (p ?? 0), 0) || 100;
           valoresCC = ccPcts.map((p) => valorGrupo * ((p ?? 0) / somaPct));
         } else if (ccList.length === 1 && valorGrupo != null) {
           valoresCC = [valorGrupo];
