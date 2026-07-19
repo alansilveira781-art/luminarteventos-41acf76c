@@ -46,10 +46,26 @@ function ContaAzulPage() {
   });
   const [from, setFrom] = useState(defaults.from);
   const [to, setTo] = useState(defaults.to);
-  const [busy, setBusy] = useState<null | "connect" | "sync" | "disconnect">(null);
+  const [busy, setBusy] = useState<null | "connect" | "sync" | "disconnect" | "reproc">(null);
   const [progress, setProgress] = useState<{ current: RecursoKey | null; done: number }>({
     current: null,
     done: 0,
+  });
+  type ReprocResult = {
+    tentados: number;
+    corrigidos: number;
+    falhas: number;
+    restantes: number;
+    concluido: boolean;
+    modo: "suspeitos" | "todos";
+  };
+  const [reprocMode, setReprocMode] = useState<"suspeitos" | "todos" | null>(null);
+  const [reprocProgress, setReprocProgress] = useState<ReprocResult | null>(null);
+  const [reprocLastResult, setReprocLastResult] = useState<ReprocResult | null>(null);
+  const [reprocTotals, setReprocTotals] = useState<{ corrigidos: number; falhas: number; lotes: number }>({
+    corrigidos: 0,
+    falhas: 0,
+    lotes: 0,
   });
 
   useEffect(() => {
