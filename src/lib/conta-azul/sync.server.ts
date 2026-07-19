@@ -314,15 +314,42 @@ function buildRateios(
       const valorGrupo = r.valor != null ? Number(r.valor) : null;
       const ccList: any[] = Array.isArray(r.rateio_centro_custo) ? r.rateio_centro_custo : [];
       if (ccList.length > 0) {
-        for (const c of ccList) {
+        // Precisamos determinar o valor de cada centro. Prioridade:
+        //   (a) c.valor explícito por centro
+        //   (b) valorGrupo * (percentual / soma_percentuais) quando houver percentual
+        //   (c) se apenas 1 centro no grupo, herda valorGrupo
+        //   (d) 2+ centros sem valor nem percentual → aborta (null) para o lançamento
+        const ccValores = ccList.map((c) => (c.valor != null ? Number(c.valor) : null));
+        const ccPcts = ccList.map((c) => {
+          const p = c.percentual ?? c.porcentagem ?? c.percent ?? null;
+          return p != null ? Number(p) : null;
+        });
+        const hasValorCC = ccValores.some((v) => v != null && Number.isFinite(v));
+        const hasPctCC = ccPcts.some((p) => p != null && Number.isFinite(p));
+
+        let valoresCC: number[];
+        if (hasValorCC) {
+          valoresCC = ccValores.map((v) => (v != null && Number.isFinite(v) ? v : 0));
+        } else if (hasPctCC && valorGrupo != null) {
+          const somaPct = ccPcts.reduce((s, p) => s + (p ?? 0), 0) || 100;
+          valoresCC = ccPcts.map((p) => valorGrupo * ((p ?? 0) / somaPct));
+        } else if (ccList.length === 1 && valorGrupo != null) {
+          valoresCC = [valorGrupo];
+        } else {
+          logRateioSemValor(lancId, tipo, ccList.length).catch(() => {});
+          return null;
+        }
+
+        for (let i = 0; i < ccList.length; i++) {
+          const c = ccList[i];
           const ccId = c.id_centro_custo ?? c.centro_custo?.id ?? c.centro_custo_id ?? null;
-          const valor = c.valor != null ? Number(c.valor) : (valorGrupo ?? 0);
+          const valor = valoresCC[i];
           fatias.push({
             ordem: ordem++,
             cc: ccId ? String(ccId) : null,
             cat: catId ? String(catId) : null,
             valor: Math.round((Number.isFinite(valor) ? valor : 0) * 100) / 100,
-            pct: null,
+            pct: ccPcts[i],
           });
         }
       } else {
