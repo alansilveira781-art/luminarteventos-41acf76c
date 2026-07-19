@@ -7,6 +7,7 @@ const postSchema = z.object({
   ids: z.array(z.string()).optional(),
   tipo: z.enum(["pagar", "receber"]).optional(),
   limite: z.number().int().min(1).max(500).optional(),
+  modo: z.enum(["suspeitos", "todos"]).optional(),
 });
 
 function json(body: unknown, status = 200) {
