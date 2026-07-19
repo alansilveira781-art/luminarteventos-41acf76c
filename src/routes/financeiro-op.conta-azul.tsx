@@ -237,7 +237,67 @@ function ContaAzulPage() {
             </p>
           </CardContent>
         </Card>
+
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <RefreshCw className="h-4 w-4" /> Reprocessar rateios
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Recalcula as fatias de rateio buscando o detalhe de cada lançamento no Conta Azul.
+              Use "Somente suspeitos" para corrigir apenas lançamentos com fatias idênticas (fallback antigo);
+              "Reprocessar tudo" refaz todos os lançamentos rateados, em lotes.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                disabled={!canManage || !connected || busy !== null}
+                onClick={() => handleReprocessarRateios("suspeitos")}
+              >
+                {busy === "reproc" && reprocMode === "suspeitos" ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                )}
+                Somente suspeitos
+              </Button>
+              <Button
+                disabled={!canManage || !connected || busy !== null}
+                onClick={() => handleReprocessarRateios("todos", { auto: true })}
+              >
+                {busy === "reproc" && reprocMode === "todos" ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                )}
+                Reprocessar tudo
+              </Button>
+              {reprocLastResult && !reprocLastResult.concluido && busy === null && (
+                <Button
+                  variant="secondary"
+                  disabled={!canManage || !connected}
+                  onClick={() => handleReprocessarRateios(reprocLastResult.modo, { auto: false })}
+                >
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  Continuar (restam {reprocLastResult.restantes})
+                </Button>
+              )}
+            </div>
+            {reprocProgress && (
+              <div className="text-xs text-muted-foreground space-y-0.5">
+                <div>
+                  Lote atual: {reprocProgress.corrigidos} corrigidos · {reprocProgress.falhas} falhas ·
+                  {" "}{reprocProgress.restantes} restantes
+                </div>
+                <div>Acumulado: {reprocTotals.corrigidos} corrigidos · {reprocTotals.falhas} falhas ({reprocTotals.lotes} lotes)</div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </>
   );
 }
+
