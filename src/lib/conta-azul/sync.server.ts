@@ -292,7 +292,15 @@ function buildRateios(
   syncedAt: string,
 ) {
   const lancId = String(it.id);
-  const total = Number(it.total ?? 0);
+  const total = Number(
+    it.total ??
+      it.valor_pago ??
+      it.valor_total ??
+      it.valor_total_liquido ??
+      it.valor_composicao?.valor_liquido ??
+      it.valor_composicao?.valor_bruto ??
+      0,
+  );
 
   // --- 1. Formato oficial v2: evento.rateio[] com rateio_centro_custo[] ---
   const eventoRateio: any[] | null =
@@ -311,7 +319,12 @@ function buildRateios(
     let ordem = 0;
     for (const r of eventoRateio) {
       const catId = r.id_categoria ?? r.categoria?.id ?? r.categoria_id ?? null;
-      const valorGrupo = r.valor != null ? Number(r.valor) : null;
+      const valorGrupo =
+        r.valor != null ? Number(r.valor) :
+        r.valor_bruto != null ? Number(r.valor_bruto) :
+        r.valor_liquido != null ? Number(r.valor_liquido) :
+        r.total != null ? Number(r.total) :
+        null;
       const ccList: any[] = Array.isArray(r.rateio_centro_custo) ? r.rateio_centro_custo : [];
       if (ccList.length > 0) {
         // Precisamos determinar o valor de cada centro. Prioridade:
@@ -319,7 +332,14 @@ function buildRateios(
         //   (b) valorGrupo * (percentual / soma_percentuais) quando houver percentual
         //   (c) se apenas 1 centro no grupo, herda valorGrupo
         //   (d) 2+ centros sem valor nem percentual → aborta (null) para o lançamento
-        const ccValores = ccList.map((c) => (c.valor != null ? Number(c.valor) : null));
+        const ccValores = ccList.map((c) =>
+          c.valor != null ? Number(c.valor) :
+          c.valor_bruto != null ? Number(c.valor_bruto) :
+          c.valor_liquido != null ? Number(c.valor_liquido) :
+          c.total != null ? Number(c.total) :
+          c.montante != null ? Number(c.montante) :
+          null,
+        );
         const ccPcts = ccList.map((c) => {
           const p = c.percentual ?? c.porcentagem ?? c.percent ?? null;
           return p != null ? Number(p) : null;
@@ -1406,6 +1426,15 @@ export async function reprocessarRateios(
     apenasSuspeitos: boolean,
     max: number,
   ): Promise<string[]> {
+    if (apenasSuspeitos) {
+      const { data, error } = await sb.rpc("ca_listar_rateios_suspeitos", {
+        _tipo: tipo,
+        _limite: max,
+      });
+      if (error) throw error;
+      return ((data ?? []) as any[]).map((r) => String(r.external_id)).filter(Boolean);
+    }
+
     const tabela = tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
     const POOL = Math.max(max * 5, 200);
     const { data: invs, error: e1 } = await sb
@@ -1446,7 +1475,16 @@ export async function reprocessarRateios(
 
   let allTargets: Array<{ id: string; tipo: "pagar" | "receber" }> = [];
   if (opts.ids && opts.ids.length > 0) {
-    for (const t of tipos) opts.ids.forEach((id) => allTargets.push({ id: String(id), tipo: t }));
+    const ids = Array.from(new Set(opts.ids.map((id) => String(id)).filter(Boolean)));
+    for (const t of tipos) {
+      const tabela = t === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
+      for (let i = 0; i < ids.length; i += 200) {
+        const chunk = ids.slice(i, i + 200);
+        const { data, error } = await sb.from(tabela).select("external_id").in("external_id", chunk);
+        if (error) throw error;
+        (data ?? []).forEach((r: any) => allTargets.push({ id: String(r.external_id), tipo: t }));
+      }
+    }
   } else {
     for (const t of tipos) {
       const cands = await listarCandidatos(t, modo === "suspeitos", limite);
@@ -1498,6 +1536,7 @@ export async function reprocessarRateios(
       const tabela = alvo.tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
       await sb.from(tabela).update({ detalhe_synced_at: syncedAt }).eq("external_id", alvo.id);
       corrigidos++;
+      if (detalhes.length < 20) detalhes.push(`${alvo.id}: ${rs.length} fatias atualizadas`);
       await new Promise((r) => setTimeout(r, SLEEP_MS));
     } catch (e: any) {
       falhas++;
