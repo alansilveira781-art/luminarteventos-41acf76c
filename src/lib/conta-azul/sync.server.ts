@@ -1388,14 +1388,14 @@ export async function reprocessarRateios(
   concluido: boolean;
   modo: "suspeitos" | "todos";
 }> {
-  const limite = Math.min(Math.max(opts.limite ?? 100, 1), 500);
+  const limite = Math.min(Math.max(opts.limite ?? 40, 1), 500);
   const modo: "suspeitos" | "todos" = opts.modo ?? "suspeitos";
   const tipos: Array<"pagar" | "receber"> = opts.tipo ? [opts.tipo] : ["pagar", "receber"];
   const inicioMs = Date.now();
   const inicioIso = new Date(inicioMs).toISOString();
+  const BUDGET_MS = 20_000;
+  const SLEEP_MS = 120;
 
-  /** Paginação determinística de ca_lancamento_rateios ordenada por
-   *  lancamento_external_id, retornando todas as linhas (sem cap arbitrário). */
   async function scanAll(tipo: "pagar" | "receber"): Promise<Array<{ id: string; valor: number }>> {
     const PAGE = 1000;
     const acc: Array<{ id: string; valor: number }> = [];
@@ -1416,8 +1416,6 @@ export async function reprocessarRateios(
     return acc;
   }
 
-  /** Devolve todos os lancamento_external_id rateados (>=2 fatias) para o tipo,
-   *  ordenados. Se `apenasSuspeitos`, exige também valores todos idênticos. */
   async function listarCandidatos(
     tipo: "pagar" | "receber",
     apenasSuspeitos: boolean,
@@ -1436,68 +1434,88 @@ export async function reprocessarRateios(
       if (apenasSuspeitos && g.valores.size !== 1) continue;
       out.push(id);
     }
-    out.sort();
     return out;
   }
 
-  // Monta a lista completa de alvos ANTES de aplicar o limite, para poder
-  // reportar `restantes` e `concluido` corretamente.
+  /** Ordena candidatos por `detalhe_synced_at ASC NULLS FIRST`. Assim itens
+   *  nunca reprocessados vêm primeiro; os processados vão pro fim da fila
+   *  naturalmente e o loop de lotes avança sem depender de comparação com
+   *  o instante da chamada atual. */
+  async function ordenarPorMaisAntigos(
+    tipo: "pagar" | "receber",
+    ids: string[],
+  ): Promise<string[]> {
+    if (ids.length === 0) return [];
+    const tabela = tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
+    const meta = new Map<string, string | null>();
+    for (let i = 0; i < ids.length; i += 500) {
+      const chunk = ids.slice(i, i + 500);
+      const { data, error } = await sb
+        .from(tabela)
+        .select("external_id,detalhe_synced_at")
+        .in("external_id", chunk);
+      if (error) throw error;
+      (data ?? []).forEach((r: any) =>
+        meta.set(String(r.external_id), r.detalhe_synced_at ?? null),
+      );
+    }
+    return [...ids].sort((a, b) => {
+      const va = meta.get(a);
+      const vb = meta.get(b);
+      // NULLS FIRST
+      if (va === null || va === undefined) return vb === null || vb === undefined ? 0 : -1;
+      if (vb === null || vb === undefined) return 1;
+      return va < vb ? -1 : va > vb ? 1 : 0;
+    });
+  }
+
   let allTargets: Array<{ id: string; tipo: "pagar" | "receber" }> = [];
   if (opts.ids && opts.ids.length > 0) {
     for (const t of tipos) opts.ids.forEach((id) => allTargets.push({ id: String(id), tipo: t }));
   } else {
     for (const t of tipos) {
       const cands = await listarCandidatos(t, modo === "suspeitos");
-      cands.forEach((id) => allTargets.push({ id, tipo: t }));
+      const ordenados = await ordenarPorMaisAntigos(t, cands);
+      ordenados.forEach((id) => allTargets.push({ id, tipo: t }));
     }
-  }
-
-  // No modo "todos", pula lançamentos já reprocessados nesta rodada (cache
-  // via detalhe_synced_at). Isso torna o processo retomável em lotes.
-  let pulaJa = 0;
-  if (modo === "todos" && !opts.ids) {
-    const byTipo: Record<"pagar" | "receber", string[]> = { pagar: [], receber: [] };
-    for (const t of allTargets) byTipo[t.tipo].push(t.id);
-    const jaFeitos = new Set<string>(); // `${tipo}:${id}`
-    for (const t of tipos) {
-      const ids = byTipo[t];
-      if (ids.length === 0) continue;
-      const tabela = t === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
-      for (let i = 0; i < ids.length; i += 500) {
-        const chunk = ids.slice(i, i + 500);
-        const { data } = await sb
-          .from(tabela)
-          .select("external_id,detalhe_synced_at")
-          .in("external_id", chunk)
-          .gte("detalhe_synced_at", inicioIso);
-        (data ?? []).forEach((r: any) => jaFeitos.add(`${t}:${String(r.external_id)}`));
-      }
-    }
-    const antes = allTargets.length;
-    allTargets = allTargets.filter((t) => !jaFeitos.has(`${t.tipo}:${t.id}`));
-    pulaJa = antes - allTargets.length;
   }
 
   const idsAlvo = allTargets.slice(0, limite);
-  const restantes = Math.max(0, allTargets.length - idsAlvo.length);
   const detailBase = "/financeiro/eventos-financeiros/parcelas";
   const syncedAt = new Date().toISOString();
   let corrigidos = 0;
   let falhas = 0;
+  let processados = 0;
   const detalhes: string[] = [];
 
-  for (const alvo of idsAlvo) {
+  async function fetchDetalheComRetry(id: string) {
     try {
-      const detail = await caFetch(`${detailBase}/${alvo.id}`);
+      return await caFetch(`${detailBase}/${id}`);
+    } catch (e: any) {
+      const msg = String(e?.message ?? e);
+      if (/\b(429|5\d\d)\b|instabilidade|temporariamente/i.test(msg)) {
+        await new Promise((r) => setTimeout(r, 300));
+        return await caFetch(`${detailBase}/${id}`);
+      }
+      throw e;
+    }
+  }
+
+  for (const alvo of idsAlvo) {
+    if (Date.now() - inicioMs > BUDGET_MS) break;
+    processados++;
+    try {
+      const detail = await fetchDetalheComRetry(alvo.id);
       const rs = buildRateios(detail, alvo.tipo, syncedAt);
       if (!rs || rs.length === 0) {
-        // Payload sem valor/percentual: NÃO apaga rateios existentes nem
-        // conta como corrigido. Reporta explicitamente.
         falhas++;
         if (detalhes.length < 20) {
           detalhes.push(`${alvo.id}: payload sem valor/percentual por centro`);
         }
-        await new Promise((r) => setTimeout(r, 400));
+        // Ainda assim marcamos como "visto" para não travar a fila neste item.
+        const tabela = alvo.tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
+        await sb.from(tabela).update({ detalhe_synced_at: syncedAt }).eq("external_id", alvo.id);
+        await new Promise((r) => setTimeout(r, SLEEP_MS));
         continue;
       }
       await sb.from("ca_lancamento_rateios").delete().eq("tipo", alvo.tipo).eq("lancamento_external_id", alvo.id);
@@ -1505,14 +1523,15 @@ export async function reprocessarRateios(
       const tabela = alvo.tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
       await sb.from(tabela).update({ detalhe_synced_at: syncedAt }).eq("external_id", alvo.id);
       corrigidos++;
-      await new Promise((r) => setTimeout(r, 400));
+      await new Promise((r) => setTimeout(r, SLEEP_MS));
     } catch (e: any) {
       falhas++;
       if (detalhes.length < 20) detalhes.push(`${alvo.id}: ${String(e?.message ?? e).slice(0, 200)}`);
     }
   }
 
-  const concluido = restantes === 0;
+  const restantes = Math.max(0, allTargets.length - processados);
+  const concluido = restantes === 0 && processados >= idsAlvo.length;
   const durMs = Date.now() - inicioMs;
 
   await sb.from("ca_sync_log").insert({
@@ -1521,11 +1540,11 @@ export async function reprocessarRateios(
     started_at: inicioIso,
     finished_at: new Date().toISOString(),
     qtd_registros: corrigidos,
-    mensagem: `[modo=${modo}] Reprocessados ${corrigidos}/${idsAlvo.length} rateios (falhas=${falhas}, restantes=${restantes}, pulados_ja=${pulaJa}, dur=${durMs}ms).${detalhes.length ? "\n" + detalhes.join("\n") : ""}`,
+    mensagem: `[modo=${modo}] Reprocessados ${corrigidos}/${processados} rateios (falhas=${falhas}, restantes=${restantes}, dur=${durMs}ms).${detalhes.length ? "\n" + detalhes.join("\n") : ""}`,
   });
 
   return {
-    tentados: idsAlvo.length,
+    tentados: processados,
     corrigidos,
     falhas,
     detalhes,
@@ -1534,4 +1553,5 @@ export async function reprocessarRateios(
     modo,
   };
 }
+
 
