@@ -55,6 +55,7 @@ function ContaAzulPage() {
     tentados: number;
     corrigidos: number;
     falhas: number;
+    detalhes?: string[];
     restantes: number;
     concluido: boolean;
     modo: "suspeitos" | "todos";
@@ -198,10 +199,15 @@ function ContaAzulPage() {
 
       }
       setReprocLastResult(lastResult);
+      const detalhe = lastResult?.detalhes?.[0] ? ` ${lastResult.detalhes[0]}` : "";
       if (lastResult?.concluido) {
         toast.success(`Reprocessamento concluído (${lastResult.corrigidos} corrigidos, ${lastResult.falhas} falhas)`);
+      } else if (lastResult && lastResult.tentados === 0) {
+        toast.message("Nenhum lançamento encontrado para reprocessar neste lote.");
+      } else if (lastResult && lastResult.corrigidos === 0 && lastResult.falhas > 0) {
+        toast.error(`Lote sem correções (${lastResult.falhas} falhas).${detalhe}`);
       } else if (lastResult) {
-        toast.message(`Lote reprocessado (${lastResult.corrigidos} corrigidos). Restam ${lastResult.restantes}.`);
+        toast.message(`Lote reprocessado (${lastResult.corrigidos} corrigidos, ${lastResult.falhas} falhas). Restam ${lastResult.restantes}.${detalhe}`);
       }
     } catch (e: any) {
       toast.error(`Erro ao reprocessar: ${String(e?.message ?? e)}`);
@@ -355,6 +361,9 @@ function ContaAzulPage() {
                   {" "}{reprocProgress.restantes} restantes
                 </div>
                 <div>Acumulado: {reprocTotals.corrigidos} corrigidos · {reprocTotals.falhas} falhas ({reprocTotals.lotes} lotes)</div>
+                {reprocProgress.detalhes?.length ? (
+                  <div>Detalhe: {reprocProgress.detalhes[0]}</div>
+                ) : null}
               </div>
             )}
           </CardContent>
