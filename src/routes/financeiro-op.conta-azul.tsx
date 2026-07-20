@@ -181,7 +181,7 @@ function ContaAzulPage() {
         const res = await fetch("/api/contaazul/reprocessar-rateios", {
           method: "POST",
           headers,
-          body: JSON.stringify({ modo, limite: 100 }),
+          body: JSON.stringify({ modo, limite: 40 }),
         });
         if (!res.ok) throw new Error(await res.text());
         const r = (await res.json()) as ReprocResult;
@@ -193,6 +193,9 @@ function ContaAzulPage() {
           lotes: t.lotes + 1,
         }));
         if (r.concluido || modo !== "todos" || !opts.auto) break;
+        // Proteção: se um lote não processou nada, parar para não gastar recursos.
+        if (r.tentados === 0) break;
+
       }
       setReprocLastResult(lastResult);
       if (lastResult?.concluido) {
