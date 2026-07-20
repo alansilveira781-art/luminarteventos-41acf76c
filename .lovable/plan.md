@@ -1,48 +1,28 @@
-## Causa raiz
+## Diagnóstico confirmado
 
-Investiguei `src/lib/conta-azul/sync.server.ts` (`reprocessarRateios`) e o loop no `financeiro-op.conta-azul.tsx`. Há três problemas combinados:
+O pagamento **Comissão 05/2026** existe no banco com valor total **R$ 15.807,28** e 8 fatias de rateio iguais de **R$ 1.975,91**. Para o centro **46222 - STAND BRAHMA - SÃO JOÃO MARACANAU**, o demonstrativo mostra R$ 1.975,91 porque está lendo essa fatia antiga.
 
-### 1. "Reprocessar tudo" reprocessa os mesmos itens indefinidamente
+O reprocessamento não corrigiu esse item porque a fila atual ordena por `detalhe_synced_at ASC NULLS FIRST`, mas há **45.050 contas a pagar sem detalhe** antes dele; esse lançamento está na posição **26.634** da fila. Além disso, o modo “Somente suspeitos” só analisa os primeiros 200 itens do pool e nesse pool há **0 suspeitos**, mesmo existindo **1.895 suspeitos** no total. Por isso o botão parece rodar e não chegar no lançamento correto.
 
-O filtro que "pula itens já feitos" compara `detalhe_synced_at >= inicioIso`, mas `inicioIso` é o instante em que **a chamada HTTP atual** começou. Cada lote é uma requisição independente, então:
+## Plano de correção
 
-- Lote 1: `inicioIso = T1`. Processa itens A..J e grava `detalhe_synced_at = T1'` (pouco após T1).
-- Lote 2: `inicioIso = T2 > T1'`. O filtro `>= T2` não encontra nada → nenhum item é pulado → a mesma lista sai ordenada e o `.slice(0, 100)` pega **os mesmos A..J**.
+1. **Corrigir a seleção de candidatos do reprocessamento**
+   - No modo `suspeitos`, buscar diretamente lançamentos com múltiplas fatias de mesmo valor, em vez de olhar apenas os primeiros 200 por `detalhe_synced_at`.
+   - Manter limite pequeno por chamada para não estourar tempo, mas garantir que suspeitos reais entrem na fila.
 
-O loop no cliente chama até 200 lotes achando que está progredindo, mas backend só recicla os primeiros 100 candidatos. Por isso o botão "parece não fazer nada" — o `restantes` nunca chega a zero para os últimos itens da fila.
+2. **Permitir reprocessamento direcionado por lançamento**
+   - Adicionar no endpoint uma forma segura de reprocessar um lançamento específico quando já temos o `external_id`.
+   - Usar isso para corrigir o lançamento `96686f15-b813-43ce-a57c-46f49692a5ec` sem depender de percorrer dezenas de milhares de registros.
 
-### 2. Lentidão excessiva
+3. **Corrigir parser do rateio retornado pelo Conta Azul**
+   - Conferir o formato que o endpoint de detalhe retorna para esse lançamento.
+   - Ajustar `buildRateios` para capturar corretamente valor/percentual quando o valor vem em outro campo ou estrutura, sem voltar para divisão igual.
+   - Se o detalhe não trouxer valor por centro, preservar o rateio anterior e registrar falha clara, em vez de marcar como corrigido.
 
-Cada lote:
-- Faz 2 varreduras completas de `ca_lancamento_rateios` (uma por tipo) via paginação de 1000 em 1000, só para listar candidatos.
-- Aguarda **400 ms fixos entre cada item** (100 itens = 40 s só em `sleep`, além do fetch da Conta Azul e das escritas).
+4. **Melhorar retorno da tela de reprocessamento**
+   - Exibir detalhes de falha/sucesso no toast ou no card quando o lote não corrigir nada.
+   - Evitar mensagem ambígua de “lote reprocessado” quando nenhum rateio foi efetivamente atualizado.
 
-O Worker do Cloudflare tem orçamento apertado de wall-clock; com 100 itens o lote frequentemente estoura o tempo, o cliente vê erro (ou resposta vazia) e o loop "morre" — daí "às vezes não reprocessa nada".
-
-### 3. "Somente suspeitos" sofre do mesmo delay
-
-Cada item leva ~1,5 s (fetch + delay + DB). Mesmo quando a lista é pequena, o feedback visual demora e alguns itens falham por timeout individual sem retry.
-
----
-
-## Correção (apenas em `src/lib/conta-azul/sync.server.ts` e `src/routes/financeiro-op.conta-azul.tsx`)
-
-### Backend — `reprocessarRateios`
-
-1. **Ordenar candidatos por `detalhe_synced_at ASC NULLS FIRST`** (via join com `ca_contas_pagar/receber`). Assim itens nunca processados vêm primeiro; os processados vão para o fim da fila naturalmente, sem depender de comparação com `inicioIso`. Remover o bloco de "jaFeitos" atual.
-2. **Substituir `scanAll` (candidatos rateados)** por uma leitura que retorne `lancamento_external_id`s com `count(*) >= 2` (agrupamento em memória continua ok, mas paginado só até encontrar `limite * 3` candidatos ainda "frescos" para reduzir I/O).
-3. **Orçamento de tempo por chamada**: parar o `for` quando `Date.now() - inicioMs > 20 000 ms`, retornando `concluido=false` e `restantes` real. Assim o Worker nunca estoura; o loop do cliente segue o ritmo.
-4. **Reduzir `sleep` entre itens de 400 ms para 120 ms** e envolver o `caFetch` em 1 retry com backoff curto (300 ms) em caso de 429/5xx, para não perder o item.
-5. Manter comportamento seguro atual (`buildRateios` retornando `null` não apaga rateios existentes).
-
-### Frontend — `handleReprocessarRateios`
-
-1. Reduzir `limite` enviado de 100 para **40** por lote (compatível com o novo orçamento de 20 s do backend, reduz risco de timeout do fetch do navegador).
-2. Continuar loop enquanto `!concluido`, mas **parar automaticamente se um lote retornar `tentados === 0`** (proteção adicional).
-3. Mostrar no toast quando o loop parou por atingir o limite de 200 lotes de segurança para o usuário poder clicar "Continuar".
-
-## Verificação
-
-- Clicar em **Reprocessar tudo**: cada lote leva ~15 s, `corrigidos` acumulado sobe monotonicamente, `restantes` cai até 0 e o toast final anuncia conclusão.
-- Clicar em **Somente suspeitos** com 2 candidatos: conclui em poucos segundos sem timeout.
-- Log em `ca_sync_log` mostra `dur` <20 s por lote e itens diferentes em lotes sucessivos (não mais o mesmo ID repetido).
+5. **Validar no banco e na UI**
+   - Depois da correção, consultar o lançamento e confirmar se a fatia do centro **46222 - STAND BRAHMA - SÃO JOÃO MARACANAU** passa para **R$ 5.600,00**.
+   - Confirmar que a Análise Detalhada deixa de mostrar **R$ 1.975,91** para essa comissão.
