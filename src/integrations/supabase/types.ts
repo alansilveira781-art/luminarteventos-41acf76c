@@ -3806,6 +3806,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      ca_listar_rateios_suspeitos: {
+        Args: { _limite?: number; _tipo: string }
+        Returns: {
+          external_id: string
+        }[]
+      }
       calcular_proxima_data_rotina: {
         Args: {
           p_data_base: string
