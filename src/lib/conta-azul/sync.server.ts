@@ -1396,77 +1396,52 @@ export async function reprocessarRateios(
   const BUDGET_MS = 20_000;
   const SLEEP_MS = 120;
 
-  async function scanAll(tipo: "pagar" | "receber"): Promise<Array<{ id: string; valor: number }>> {
-    const PAGE = 1000;
-    const acc: Array<{ id: string; valor: number }> = [];
-    let from = 0;
-    while (true) {
+  /** Busca candidatos direto da tabela de lançamentos ordenados por
+   *  `detalhe_synced_at ASC NULLS FIRST` (mais antigos/nunca sincronizados
+   *  primeiro), depois verifica quais têm rateios que atendem ao critério.
+   *  Evita varrer toda a tabela de rateios (que estourava CPU/subrequests
+   *  do Worker e causava resposta 0/500). */
+  async function listarCandidatos(
+    tipo: "pagar" | "receber",
+    apenasSuspeitos: boolean,
+    max: number,
+  ): Promise<string[]> {
+    const tabela = tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
+    const POOL = Math.max(max * 5, 200);
+    const { data: invs, error: e1 } = await sb
+      .from(tabela)
+      .select("external_id,detalhe_synced_at")
+      .order("detalhe_synced_at", { ascending: true, nullsFirst: true })
+      .limit(POOL);
+    if (e1) throw e1;
+    const ordemIds = (invs ?? []).map((r: any) => String(r.external_id));
+    if (ordemIds.length === 0) return [];
+    const grupos = new Map<string, { valores: Set<number>; count: number }>();
+    for (let i = 0; i < ordemIds.length; i += 200) {
+      const chunk = ordemIds.slice(i, i + 200);
       const { data, error } = await sb
         .from("ca_lancamento_rateios")
         .select("lancamento_external_id,valor")
         .eq("tipo", tipo)
-        .order("lancamento_external_id", { ascending: true })
-        .range(from, from + PAGE - 1);
+        .in("lancamento_external_id", chunk);
       if (error) throw error;
-      const rows = (data ?? []) as any[];
-      for (const r of rows) acc.push({ id: String(r.lancamento_external_id), valor: Number(r.valor) });
-      if (rows.length < PAGE) break;
-      from += PAGE;
-    }
-    return acc;
-  }
-
-  async function listarCandidatos(
-    tipo: "pagar" | "receber",
-    apenasSuspeitos: boolean,
-  ): Promise<string[]> {
-    const rows = await scanAll(tipo);
-    const groups = new Map<string, { valores: Set<number>; count: number }>();
-    for (const r of rows) {
-      const g = groups.get(r.id) ?? { valores: new Set<number>(), count: 0 };
-      g.valores.add(r.valor);
-      g.count += 1;
-      groups.set(r.id, g);
+      for (const r of (data ?? []) as any[]) {
+        const id = String(r.lancamento_external_id);
+        const g = grupos.get(id) ?? { valores: new Set<number>(), count: 0 };
+        g.valores.add(Number(r.valor));
+        g.count += 1;
+        grupos.set(id, g);
+      }
     }
     const out: string[] = [];
-    for (const [id, g] of groups.entries()) {
-      if (g.count < 2) continue;
+    for (const id of ordemIds) {
+      const g = grupos.get(id);
+      if (!g || g.count < 2) continue;
       if (apenasSuspeitos && g.valores.size !== 1) continue;
       out.push(id);
+      if (out.length >= max) break;
     }
     return out;
-  }
-
-  /** Ordena candidatos por `detalhe_synced_at ASC NULLS FIRST`. Assim itens
-   *  nunca reprocessados vêm primeiro; os processados vão pro fim da fila
-   *  naturalmente e o loop de lotes avança sem depender de comparação com
-   *  o instante da chamada atual. */
-  async function ordenarPorMaisAntigos(
-    tipo: "pagar" | "receber",
-    ids: string[],
-  ): Promise<string[]> {
-    if (ids.length === 0) return [];
-    const tabela = tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
-    const meta = new Map<string, string | null>();
-    for (let i = 0; i < ids.length; i += 500) {
-      const chunk = ids.slice(i, i + 500);
-      const { data, error } = await sb
-        .from(tabela)
-        .select("external_id,detalhe_synced_at")
-        .in("external_id", chunk);
-      if (error) throw error;
-      (data ?? []).forEach((r: any) =>
-        meta.set(String(r.external_id), r.detalhe_synced_at ?? null),
-      );
-    }
-    return [...ids].sort((a, b) => {
-      const va = meta.get(a);
-      const vb = meta.get(b);
-      // NULLS FIRST
-      if (va === null || va === undefined) return vb === null || vb === undefined ? 0 : -1;
-      if (vb === null || vb === undefined) return 1;
-      return va < vb ? -1 : va > vb ? 1 : 0;
-    });
   }
 
   let allTargets: Array<{ id: string; tipo: "pagar" | "receber" }> = [];
@@ -1474,11 +1449,11 @@ export async function reprocessarRateios(
     for (const t of tipos) opts.ids.forEach((id) => allTargets.push({ id: String(id), tipo: t }));
   } else {
     for (const t of tipos) {
-      const cands = await listarCandidatos(t, modo === "suspeitos");
-      const ordenados = await ordenarPorMaisAntigos(t, cands);
-      ordenados.forEach((id) => allTargets.push({ id, tipo: t }));
+      const cands = await listarCandidatos(t, modo === "suspeitos", limite);
+      cands.forEach((id) => allTargets.push({ id, tipo: t }));
     }
   }
+
 
   const idsAlvo = allTargets.slice(0, limite);
   const detailBase = "/financeiro/eventos-financeiros/parcelas";
