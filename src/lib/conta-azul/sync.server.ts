@@ -1506,7 +1506,10 @@ export async function reprocessarRateios(
   }
 
   const restantes = Math.max(0, allTargets.length - processados);
-  const concluido = restantes === 0 && processados >= idsAlvo.length;
+  // Se o lote encheu até o limite, provavelmente ainda há candidatos na fila.
+  const provavelmenteHaMais = !opts.ids && allTargets.length >= limite;
+  const concluido = restantes === 0 && processados >= idsAlvo.length && !provavelmenteHaMais;
+
   const durMs = Date.now() - inicioMs;
 
   await sb.from("ca_sync_log").insert({
