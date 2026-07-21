@@ -999,7 +999,7 @@ function ReceberDemandaDialog({ demandaId, demandaNumero, onClose }: { demandaId
       const { data: numData, error: numErr } = await sb.rpc("next_requisicao_numero");
       if (numErr) throw numErr;
       const requisicaoNumero = numData as number;
-      const origem = demanda?.numero != null ? `DESPESA-${demanda.numero}` : demandaId;
+      const origem = (demandaNumero ?? demanda?.numero) != null ? `DESPESA-${demandaNumero ?? demanda?.numero}` : demandaId;
 
       for (const l of linhasValidas) {
         const qtd = Number(l.quantidade);
