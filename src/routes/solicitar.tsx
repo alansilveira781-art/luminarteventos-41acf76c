@@ -555,59 +555,65 @@ function SolicitarPage() {
                   </Button>
                 </div>
                 <div className="space-y-3">
-                  {form.itens.map((it, idx) => (
-                    <div
-                      key={idx}
-                      className="rounded-lg border border-border p-3 space-y-2 bg-muted/20"
-                    >
-                      <div className="flex items-start gap-2">
-                        <div className="flex-1 space-y-2">
-                          <Input
-                            value={it.descricao}
-                            maxLength={300}
-                            onChange={(e) => updateItem(idx, { descricao: e.target.value })}
-                            placeholder="Descrição do item"
-                          />
-                          <div className="grid grid-cols-3 gap-2">
+                  {form.itens.map((it, idx) => {
+                    const descInvalido = showItemErrors && it.descricao.trim().length === 0;
+                    const qtdInvalido = showItemErrors && !(Number(it.quantidade) > 0);
+                    return (
+                      <div
+                        key={idx}
+                        className="rounded-lg border border-border p-3 space-y-2 bg-muted/20"
+                      >
+                        <div className="flex items-start gap-2">
+                          <div className="flex-1 space-y-2">
                             <Input
-                              type="text"
-                              inputMode="decimal"
-                              value={it.quantidade}
-                              onFocus={(e) => e.currentTarget.select()}
-                              onChange={(e) => {
-                                const v = e.target.value.replace(/[^\d,.-]/g, "");
-                                updateItem(idx, { quantidade: v });
-                              }}
-                              placeholder="Qtd"
+                              value={it.descricao}
+                              maxLength={300}
+                              onChange={(e) => updateItem(idx, { descricao: e.target.value })}
+                              placeholder="Descrição do item *"
+                              className={descInvalido ? "border-destructive focus-visible:ring-destructive" : ""}
                             />
-                            <Input
-                              value={it.unidade}
-                              maxLength={20}
-                              onChange={(e) => updateItem(idx, { unidade: e.target.value })}
-                              placeholder="Un."
-                            />
-                            <MoneyInput
-                              hidePrefix
-                              value={Number(String(it.valor_unitario).replace(",", ".")) || 0}
-                              onChange={(n) => updateItem(idx, { valor_unitario: String(n) })}
-                              placeholder="Vlr unit."
-                            />
+                            <div className="grid grid-cols-3 gap-2">
+                              <Input
+                                type="text"
+                                inputMode="decimal"
+                                value={it.quantidade}
+                                onFocus={(e) => e.currentTarget.select()}
+                                onChange={(e) => {
+                                  const v = e.target.value.replace(/[^\d,.-]/g, "");
+                                  updateItem(idx, { quantidade: v });
+                                }}
+                                placeholder="Qtd *"
+                                className={qtdInvalido ? "border-destructive focus-visible:ring-destructive" : ""}
+                              />
+                              <Input
+                                value={it.unidade}
+                                maxLength={20}
+                                onChange={(e) => updateItem(idx, { unidade: e.target.value })}
+                                placeholder="Un."
+                              />
+                              <MoneyInput
+                                hidePrefix
+                                value={Number(String(it.valor_unitario).replace(",", ".")) || 0}
+                                onChange={(n) => updateItem(idx, { valor_unitario: String(n) })}
+                                placeholder="Vlr unit."
+                              />
+                            </div>
                           </div>
+                          {form.itens.length > 1 && (
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => removeItem(idx)}
+                              className="text-muted-foreground hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
-                        {form.itens.length > 1 && (
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => removeItem(idx)}
-                            className="text-muted-foreground hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 <Field label="Observações (opcional)">
                   <Textarea
