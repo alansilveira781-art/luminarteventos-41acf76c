@@ -1199,6 +1199,37 @@ function ReceberDemandaDialog({ demandaId, onClose }: { demandaId: string; onClo
           </div>
         </div>
 
+        {anexos.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-sm font-semibold">Anexos da solicitação</div>
+            <div className="flex flex-wrap gap-2">
+              {anexos.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => setPreviewAnexo(a)}
+                  className="text-left rounded-md border border-border bg-muted/30 hover:bg-muted px-3 py-2 text-xs max-w-[240px] truncate"
+                  title={a.nome}
+                >
+                  <div className="font-medium truncate">{a.nome}</div>
+                  <div className="text-[10px] text-muted-foreground">{fmtSizeD(a.tamanho)}</div>
+                </button>
+              ))}
+            </div>
+            {previewAnexo && (
+              <AnexoViewer
+                open={!!previewAnexo}
+                onClose={() => setPreviewAnexo(null)}
+                bucket="demanda-anexos"
+                path={previewAnexo.path}
+                filename={previewAnexo.nome}
+                mime={previewAnexo.mime_type}
+              />
+            )}
+          </div>
+        )}
+
+
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
           <Button
