@@ -217,7 +217,7 @@ type LinhaExtra = {
   outros_custos: number;
 };
 
-function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () => void }) {
+function ReceberDialog({ compraId, compraNumero, onClose }: { compraId: string; compraNumero: number | null; onClose: () => void }) {
   const qc = useQueryClient();
 
   const { data: compra } = useQuery({
