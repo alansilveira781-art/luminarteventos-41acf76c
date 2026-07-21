@@ -379,14 +379,19 @@ function SolicitarPage() {
                 maxLength={160}
                 onChange={(e) => update({ fornecedor: e.target.value })}
                 placeholder="Opcional"
+                autoComplete="organization"
               />
             </Field>
-            <Field label="Valor estimado total (R$)">
-              <MoneyInput
-                value={Number(String(form.valor_total).replace(",", ".")) || 0}
-                onChange={(n) => update({ valor_total: n ? String(n) : "" })}
-                placeholder="Opcional"
+            <Field label="Data da solicitação *">
+              <Input
+                type="date"
+                value={form.data_solicitacao}
+                max={hojeISO()}
+                onChange={(e) => update({ data_solicitacao: e.target.value })}
               />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Você pode alterar caso esteja registrando com atraso.
+              </p>
             </Field>
 
             {!isCompra && (
