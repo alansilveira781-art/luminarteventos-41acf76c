@@ -37,7 +37,7 @@ function fmtRange(ini?: string | null, fim?: string | null): string {
   const iniStr = stripDate(ini);
   const fimStr = stripDate(fim);
   if (!fimStr || fimStr === iniStr) return fmtDay(ini);
-  return `${fmtDay(ini)} → ${fmtDay(fim)}`;
+  return `${fmtDay(ini)} - ${fmtDay(fim)}`;
 }
 
 function CalendarioPublico() {
