@@ -1070,7 +1070,7 @@ function ReceberDemandaDialog({ demandaId, demandaNumero, onClose }: { demandaId
           <DialogTitle className="flex items-center gap-2 flex-wrap">
             <span>Validar recebimento</span>
             <span className="text-xs font-mono px-2 py-0.5 rounded bg-muted">
-              DESPESA-{demanda?.numero ?? "—"}
+              DESPESA-{demandaNumero ?? demanda?.numero ?? "—"}
             </span>
           </DialogTitle>
         </DialogHeader>
