@@ -1039,13 +1039,19 @@ function ReceberDemandaDialog({ demandaId, onClose }: { demandaId: string; onClo
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            Validar recebimento
-            {demanda?.numero != null && (
-              <span className="ml-2 text-xs font-mono text-muted-foreground">DESPESA-{demanda.numero}</span>
-            )}
+          <DialogTitle className="flex items-center gap-2 flex-wrap">
+            <span>Validar recebimento</span>
+            <span className="text-xs font-mono px-2 py-0.5 rounded bg-muted">
+              DESPESA-{demanda?.numero ?? "—"}
+            </span>
           </DialogTitle>
         </DialogHeader>
+
+        {demanda?.solicitante && (
+          <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
+            <span>Solicitante: <span className="text-foreground font-medium">{demanda.solicitante}</span></span>
+          </div>
+        )}
 
         {statusBlocked && (
           <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
@@ -1055,6 +1061,7 @@ function ReceberDemandaDialog({ demandaId, onClose }: { demandaId: string; onClo
             </div>
           </div>
         )}
+
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-md border border-border p-3 bg-muted/20">
           <div>
