@@ -129,10 +129,13 @@ function CalendarioPublico() {
   return (
     <div className="min-h-dvh bg-background text-foreground p-6 sm:p-10">
       <div className="max-w-[1600px] mx-auto space-y-8">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-center sm:text-left space-y-1">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="text-center sm:text-left space-y-2">
             <p className="text-sm text-muted-foreground uppercase tracking-[0.2em]">Grupo Luminart</p>
             <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">Calendário de Eventos</h1>
+            <Button asChild variant="outline" size="sm" className="mt-1">
+              <Link to="/">← Voltar para os módulos</Link>
+            </Button>
           </div>
           <div className="text-center sm:text-right">
             <div className="text-3xl sm:text-4xl font-mono font-semibold tabular-nums">
