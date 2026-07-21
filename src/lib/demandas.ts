@@ -82,6 +82,7 @@ export const TIPO_DEMANDA_OPTIONS = [
   { value: "reposicao_estoque", label: "Reposição de Estoque" },
   { value: "departamento_pessoal", label: "Departamento Pessoal" },
   { value: "recursos_humanos", label: "Recursos Humanos" },
+  { value: "pro_labore", label: "Pro Labore" },
 ] as const;
 
 
