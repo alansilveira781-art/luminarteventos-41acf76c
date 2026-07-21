@@ -93,10 +93,26 @@ function fmtSize(n: number) {
 
 function SolicitarPage() {
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState<FormState>(initial);
+  const [form, setForm] = useState<FormState>(() => {
+    if (typeof window === "undefined") return initial;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return initial;
+      const parsed = JSON.parse(raw);
+      return {
+        ...initial,
+        ...parsed,
+        itens: Array.isArray(parsed?.itens) && parsed.itens.length > 0 ? parsed.itens : initial.itens,
+        data_solicitacao: parsed?.data_solicitacao || hojeISO(),
+      } as FormState;
+    } catch {
+      return initial;
+    }
+  });
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState<{ numero: number | null; tipo: Tipo } | null>(null);
   const [anexos, setAnexos] = useState<File[]>([]);
+  const [showItemErrors, setShowItemErrors] = useState(false);
   const [opcoes, setOpcoes] = useState<{ parcelamentos: string[]; condicoes_pagamento: string[] }>({
     parcelamentos: [],
     condicoes_pagamento: [],
@@ -112,6 +128,17 @@ function SolicitarPage() {
       .catch(() => {});
   }, []);
 
+  // Salva rascunho no navegador (debounced)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const t = setTimeout(() => {
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(form));
+      } catch {}
+    }, 500);
+    return () => clearTimeout(t);
+  }, [form]);
+
   const update = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
 
   const updateItem = (idx: number, patch: Partial<ItemRow>) =>
@@ -124,19 +151,24 @@ function SolicitarPage() {
   const removeItem = (idx: number) =>
     setForm((f) => ({ ...f, itens: f.itens.length > 1 ? f.itens.filter((_, i) => i !== idx) : f.itens }));
 
+  function itemInvalido(it: ItemRow): boolean {
+    return it.descricao.trim().length === 0 || !(Number(it.quantidade) > 0);
+  }
+
   function canAdvance(): boolean {
     if (step === 0) return !!form.tipo;
     if (step === 1) {
       if (form.titulo.trim().length === 0) return false;
+      if (!form.data_solicitacao) return false;
       if (form.tipo === "demanda" && form.is_reembolso && form.reembolsar_para.trim().length === 0) return false;
       return true;
     }
     if (step === 2) {
       if (form.solicitante_nome.trim().length === 0) return false;
       if (form.tipo === "compra") {
-        return form.itens.some(
-          (it) => it.descricao.trim().length > 0 && Number(it.quantidade) > 0,
-        );
+        // Todos os itens listados devem estar completos (descricao + qtd > 0)
+        if (form.itens.length === 0) return false;
+        return form.itens.every((it) => !itemInvalido(it));
       }
       return form.descricao.trim().length > 0;
     }
