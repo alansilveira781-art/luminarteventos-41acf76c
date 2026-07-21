@@ -293,10 +293,14 @@ function SolicitarPage() {
           <div className="pt-4 flex flex-col gap-2">
             <Button
               onClick={() => {
-                setForm(initial);
+                try {
+                  localStorage.removeItem(DRAFT_KEY);
+                } catch {}
+                setForm({ ...initial, data_solicitacao: hojeISO() });
                 setStep(0);
                 setDone(null);
                 setAnexos([]);
+                setShowItemErrors(false);
               }}
             >
               Enviar outra solicitação
