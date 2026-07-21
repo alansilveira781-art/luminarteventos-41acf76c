@@ -49,11 +49,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { NotificationBell } from "@/components/NotificationBell";
 
-type NavItem = { title: string; url: string; icon: any; group: string; module?: string; adminOnly?: boolean; moduleAdminOnly?: string };
+type NavItem = { title: string; url: string; icon: any; group: string; module?: string; adminOnly?: boolean; moduleAdminOnly?: string; expectadorEventos?: boolean };
 
 const allItems: NavItem[] = [
   { title: "Início", url: "/", icon: LayoutDashboard, group: "Visão geral" },
   { title: "Meus Pedidos", url: "/meus-pedidos", icon: ClipboardList, group: "Visão geral" },
+  { title: "Calendário de Eventos", url: "/calendario-publico", icon: CalendarDays, group: "Visão geral", expectadorEventos: true },
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, group: "Estoque", module: "estoque" },
   { title: "Estoque", url: "/estoque", icon: Package, group: "Estoque", module: "estoque" },
   { title: "Solicitantes", url: "/solicitantes", icon: Users, group: "Estoque", module: "estoque" },
@@ -148,10 +149,30 @@ function getContext(pathname: string): "home" | "estoque" | "compras" | "finance
 }
 
 function useNavItems(pathname: string) {
-  const { isAdmin, hasModule, modulos } = useAuth();
+  const { isAdmin, hasModule, modulos, user } = useAuth();
   const ctx = getContext(pathname);
+
+  // Consulta reativa ao flag "expectador de eventos" do próprio usuário.
+  const { data: perfil } = useQuery({
+    enabled: !!user,
+    queryKey: ["sidebar-perfil-expectador", user?.id],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("profiles")
+        .select("is_expectador_eventos")
+        .eq("id", user!.id)
+        .maybeSingle();
+      return data as { is_expectador_eventos: boolean } | null;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const isExpectadorEventos = !!perfil?.is_expectador_eventos;
+
   return allItems.filter((i) => {
     if (i.url === "/") return true;
+    if (i.expectadorEventos) {
+      return isAdmin || hasModule("eventos") || isExpectadorEventos;
+    }
     if (i.adminOnly) return ctx === "admin" && isAdmin;
     if (i.moduleAdminOnly) {
       return ctx === i.moduleAdminOnly && (isAdmin || modulos.some((m) => m.slug === i.moduleAdminOnly && m.is_admin));
