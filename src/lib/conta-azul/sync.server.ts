@@ -383,17 +383,9 @@ function buildRateios(
         });
       }
     }
-    return fatias.map((p) => ({
-      lancamento_external_id: lancId,
-      tipo,
-      centro_custo_external_id: p.cc,
-      categoria_external_id: p.cat,
-      valor: p.valor,
-      percentual: p.pct,
-      ordem: p.ordem,
-      synced_at: syncedAt,
-    }));
+    return finalizarFatias(fatias, total, lancId, tipo, syncedAt);
   }
+
 
   // --- 2. Formatos legados (defensivo, itens não enriquecidos ou pré-parcelas) ---
   const nested = it.detalhe_rateio ?? it.rateios_detalhe ?? null;
