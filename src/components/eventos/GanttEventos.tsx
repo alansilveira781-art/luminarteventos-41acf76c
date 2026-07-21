@@ -32,9 +32,9 @@ export type EventoCal = {
 
 type Modo = "semanal" | "mensal" | "anual";
 
-const COR_MONTAGEM = "#EF9F27";
+const COR_MONTAGEM = "#16A34A";
 const COR_EVENTO = "#378ADD";
-const COR_DESMONTAGEM = "#888780";
+const COR_DESMONTAGEM = "#EF9F27";
 
 function parseDay(iso: string): Date {
   const d = iso.length >= 10 ? iso.slice(0, 10) : iso;
