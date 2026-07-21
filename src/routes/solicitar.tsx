@@ -516,6 +516,8 @@ function SolicitarPage() {
                 maxLength={120}
                 onChange={(e) => update({ solicitante_nome: e.target.value })}
                 placeholder="Nome completo"
+                autoComplete="name"
+                name="solicitante_nome"
               />
             </Field>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -526,6 +528,8 @@ function SolicitarPage() {
                   maxLength={160}
                   onChange={(e) => update({ solicitante_email: e.target.value })}
                   placeholder="seu@email.com"
+                  autoComplete="email"
+                  name="solicitante_email"
                 />
               </Field>
               <Field label="Telefone">
@@ -534,6 +538,8 @@ function SolicitarPage() {
                   maxLength={40}
                   onChange={(e) => update({ solicitante_telefone: e.target.value })}
                   placeholder="(00) 00000-0000"
+                  autoComplete="tel"
+                  name="solicitante_telefone"
                 />
               </Field>
             </div>
