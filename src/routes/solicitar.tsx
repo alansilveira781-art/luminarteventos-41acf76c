@@ -205,18 +205,24 @@ function SolicitarPage() {
 
   async function submit() {
     if (!form.tipo) return;
+    // Validação: se for compra, todos os itens listados devem estar completos.
+    if (form.tipo === "compra") {
+      if (form.itens.length === 0 || form.itens.some((it) => itemInvalido(it))) {
+        setShowItemErrors(true);
+        toast.error("Preencha a descrição e a quantidade de todos os itens (ou remova as linhas em branco).");
+        return;
+      }
+    }
     setSending(true);
     try {
       const itensValidos =
         form.tipo === "compra"
-          ? form.itens
-              .filter((it) => it.descricao.trim().length > 0 && Number(it.quantidade) > 0)
-              .map((it) => ({
-                descricao: it.descricao.trim(),
-                quantidade: Number(it.quantidade),
-                unidade: it.unidade.trim(),
-                valor_unitario: it.valor_unitario ? Number(it.valor_unitario) : null,
-              }))
+          ? form.itens.map((it) => ({
+              descricao: it.descricao.trim(),
+              quantidade: Number(it.quantidade),
+              unidade: it.unidade.trim(),
+              valor_unitario: it.valor_unitario ? Number(it.valor_unitario) : null,
+            }))
           : undefined;
 
       const payload = {
@@ -228,12 +234,13 @@ function SolicitarPage() {
         solicitante_email: form.solicitante_email.trim(),
         solicitante_telefone: form.solicitante_telefone.trim(),
         descricao: form.descricao.trim(),
-        valor_total: form.valor_total ? Number(form.valor_total) : null,
+        valor_total: null,
         itens: itensValidos,
         pago: form.tipo === "demanda" && !form.is_reembolso ? form.pago : null,
         parcelamento: form.is_reembolso ? "" : (form.parcelamento || ""),
         condicao_pagamento: form.is_reembolso ? "" : (form.condicao_pagamento || ""),
         data_compra: form.is_reembolso ? "" : (form.data_compra || ""),
+        data_solicitacao: form.data_solicitacao || "",
         is_reembolso: form.tipo === "demanda" ? form.is_reembolso : false,
         reembolsar_para: form.is_reembolso ? form.reembolsar_para.trim() : "",
       };
@@ -255,6 +262,9 @@ function SolicitarPage() {
       if (json.anexos_falhados && json.anexos_falhados > 0) {
         toast.warning(`${json.anexos_falhados} anexo(s) não puderam ser enviados.`);
       }
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+      } catch {}
       setDone({ numero: json.numero ?? null, tipo: form.tipo });
     } catch (e: any) {
       toast.error(e.message ?? "Erro ao enviar solicitação");
