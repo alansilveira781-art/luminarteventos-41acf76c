@@ -187,11 +187,16 @@ function AReceberPage() {
       </div>
 
       {openId && (
-        <ReceberDialog compraId={openId} onClose={() => { setOpenId(null); qc.invalidateQueries({ queryKey: ["compras-receber"] }); }} />
+        <ReceberDialog
+          compraId={openId}
+          compraNumero={compras.find((c) => c.id === openId)?.numero ?? null}
+          onClose={() => { setOpenId(null); qc.invalidateQueries({ queryKey: ["compras-receber"] }); }}
+        />
       )}
       {openDemandaId && (
         <ReceberDemandaDialog
           demandaId={openDemandaId}
+          demandaNumero={demandas.find((d) => d.id === openDemandaId)?.numero ?? null}
           onClose={() => {
             setOpenDemandaId(null);
             qc.invalidateQueries({ queryKey: ["demandas-receber"] });
