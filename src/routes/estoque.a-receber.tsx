@@ -894,6 +894,28 @@ function ReceberDemandaDialog({ demandaId, onClose }: { demandaId: string; onClo
       (await sb.from("fornecedores").select("*").eq("status", "ativo").order("nome")).data ?? [],
   });
 
+  const { data: anexos = [] } = useQuery({
+    queryKey: ["demanda-anexos", demandaId],
+    queryFn: async () => {
+      const { data, error } = await sb
+        .from("demanda_anexos")
+        .select("*")
+        .eq("demanda_id", demandaId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  const [previewAnexo, setPreviewAnexo] = useState<any | null>(null);
+
+  function fmtSizeD(n?: number | null) {
+    if (!n) return "—";
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / 1024 / 1024).toFixed(2)} MB`;
+  }
+
   const [linhas, setLinhas] = useState<LinhaRecDem[]>([novaLinhaRecDem()]);
   const [fornecedorId, setFornecedorId] = useState("");
   const [notaFiscal, setNotaFiscal] = useState("");
