@@ -398,7 +398,7 @@ function ReceberDialog({ compraId, compraNumero, onClose }: { compraId: string; 
           responsavel_lancamento: compra?.comprador ?? null,
           observacoes:
             (observacoes ? observacoes + " — " : "") +
-            `Recebimento da compra ${compra?.numero != null ? `COMPRA-${compra.numero}` : compraId}${fornecedorNome ? ` - Fornecedor: ${fornecedorNome}` : ""}` +
+            `Recebimento da compra ${(compraNumero ?? compra?.numero) != null ? `COMPRA-${compraNumero ?? compra?.numero}` : compraId}${fornecedorNome ? ` - Fornecedor: ${fornecedorNome}` : ""}` +
             (it.evento_projeto ? ` — EVENTO/PROJETO: ${it.evento_projeto}` : ""),
 
         }).select("id");
