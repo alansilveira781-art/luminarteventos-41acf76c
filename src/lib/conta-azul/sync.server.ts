@@ -489,7 +489,57 @@ function buildRateios(
     logRateioSemValor(lancId, tipo, pairs.length).catch(() => {});
     return null;
   }
-  return valores.map((p) => ({
+  const fatiasLegacy = valores.map((p: any) => ({
+    ordem: p.ordem,
+    cc: p.cc,
+    cat: p.cat,
+    valor: p.valor,
+    pct: p.pct ?? null,
+  }));
+  return finalizarFatias(fatiasLegacy, total, lancId, tipo, syncedAt);
+}
+
+/** Valida e reescala fatias para que a soma bata com o valor do lançamento
+ *  (parcela). Corrige o bug em que `evento.rateio[]` traz os valores do
+ *  contrato inteiro (soma das parcelas) em vez da parcela — cada fatia é
+ *  reescalada proporcionalmente por `total / soma`. Se não for possível
+ *  reescalar (soma ou total zero), retorna null e registra no log; o caller
+ *  marca `detalhe_synced_at` para não travar a fila. */
+function finalizarFatias(
+  fatias: Array<{ ordem: number; cc: string | null; cat: string | null; valor: number; pct: number | null }>,
+  total: number,
+  lancId: string,
+  tipo: "pagar" | "receber",
+  syncedAt: string,
+) {
+  if (!fatias || fatias.length === 0) return null;
+  const soma = fatias.reduce((s, f) => s + (Number.isFinite(f.valor) ? f.valor : 0), 0);
+  const totalNum = Number.isFinite(total) ? Number(total) : 0;
+
+  if (totalNum <= 0 || soma <= 0) {
+    logRateioDesbalanceado(lancId, tipo, soma, totalNum, "total_ou_soma_zero").catch(() => {});
+    return null;
+  }
+
+  const diff = Math.abs(soma - totalNum);
+  let ajustadas = fatias;
+  if (diff > 0.01) {
+    const fator = totalNum / soma;
+    ajustadas = fatias.map((f) => ({ ...f, valor: Math.round(f.valor * fator * 100) / 100 }));
+    // Ajusta resíduo de arredondamento na maior fatia para bater exatamente.
+    const somaFinal = ajustadas.reduce((s, f) => s + f.valor, 0);
+    const resto = Math.round((totalNum - somaFinal) * 100) / 100;
+    if (Math.abs(resto) >= 0.01 && ajustadas.length > 0) {
+      let iMax = 0;
+      for (let i = 1; i < ajustadas.length; i++) {
+        if (Math.abs(ajustadas[i].valor) > Math.abs(ajustadas[iMax].valor)) iMax = i;
+      }
+      ajustadas[iMax] = { ...ajustadas[iMax], valor: Math.round((ajustadas[iMax].valor + resto) * 100) / 100 };
+    }
+    logRateioDesbalanceado(lancId, tipo, soma, totalNum, "reescalado").catch(() => {});
+  }
+
+  return ajustadas.map((p) => ({
     lancamento_external_id: lancId,
     tipo,
     centro_custo_external_id: p.cc,
@@ -500,6 +550,31 @@ function buildRateios(
     synced_at: syncedAt,
   }));
 }
+
+const _rateioDesbalancSeen = new Set<string>();
+async function logRateioDesbalanceado(
+  lancId: string,
+  tipo: "pagar" | "receber",
+  soma: number,
+  total: number,
+  motivo: string,
+) {
+  const key = `${tipo}:${lancId}`;
+  if (_rateioDesbalancSeen.has(key)) return;
+  _rateioDesbalancSeen.add(key);
+  if (_rateioDesbalancSeen.size > 200) return;
+  try {
+    await sb.from("ca_sync_log").insert({
+      recurso: "reprocessar_rateios",
+      status: motivo === "reescalado" ? "ok" : "erro",
+      started_at: new Date().toISOString(),
+      finished_at: new Date().toISOString(),
+      qtd_registros: 0,
+      mensagem: `Lançamento ${tipo} ${lancId}: soma das fatias=${soma.toFixed(2)}, valor esperado=${total.toFixed(2)} (${motivo}).`,
+    });
+  } catch {}
+}
+
 
 
 
