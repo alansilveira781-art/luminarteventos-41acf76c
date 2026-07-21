@@ -46,11 +46,16 @@ type FormState = {
   parcelamento: string;
   condicao_pagamento: string;
   data_compra: string;
+  data_solicitacao: string;
   is_reembolso: boolean;
   reembolsar_para: string;
 };
 
 const emptyItem = (): ItemRow => ({ descricao: "", quantidade: "1", unidade: "un", valor_unitario: "" });
+
+function hojeISO() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 const initial: FormState = {
   tipo: null,
@@ -67,9 +72,12 @@ const initial: FormState = {
   parcelamento: "",
   condicao_pagamento: "",
   data_compra: "",
+  data_solicitacao: hojeISO(),
   is_reembolso: false,
   reembolsar_para: "",
 };
+
+const DRAFT_KEY = "solicitar:draft:v1";
 
 const TIPOS_DEMANDA_PAGAVEIS = ["alimentacao", "estacionamento", "manutencao_galpao"];
 
