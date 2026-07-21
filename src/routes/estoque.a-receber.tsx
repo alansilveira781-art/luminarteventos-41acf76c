@@ -480,7 +480,7 @@ function ReceberDialog({ compraId, compraNumero, onClose }: { compraId: string; 
           <DialogTitle className="flex items-center gap-2 flex-wrap">
             <span>Validar recebimento</span>
             <span className="text-xs font-mono px-2 py-0.5 rounded bg-muted">
-              COMPRA-{compra?.numero ?? "—"}
+              COMPRA-{compraNumero ?? compra?.numero ?? "—"}
             </span>
           </DialogTitle>
         </DialogHeader>
