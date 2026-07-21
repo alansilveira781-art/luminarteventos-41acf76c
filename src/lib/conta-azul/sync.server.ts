@@ -1558,9 +1558,16 @@ export async function reprocessarRateios(
     }
   }
 
-  const restantes = Math.max(0, allTargets.length - processados);
-  // Se o lote encheu até o limite, provavelmente ainda há candidatos na fila.
-  const provavelmenteHaMais = !opts.ids && allTargets.length >= limite;
+  // Restantes reais: em modo "todos", conta no banco todos os lançamentos
+  // ainda não sincronizados nesta rodada (detalhe_synced_at nulo ou anterior
+  // ao início). Em "suspeitos"/ids explícitos, cai no cálculo local.
+  let restantes = Math.max(0, allTargets.length - processados);
+  if (!opts.ids && modo === "todos") {
+    let total = 0;
+    for (const t of tipos) total += await contarPendentes(t);
+    restantes = total;
+  }
+  const provavelmenteHaMais = !opts.ids && (restantes > 0 || allTargets.length >= limite);
   const concluido = restantes === 0 && processados >= idsAlvo.length && !provavelmenteHaMais;
 
   const durMs = Date.now() - inicioMs;
