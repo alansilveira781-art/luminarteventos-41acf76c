@@ -1029,6 +1029,7 @@ function ReceberDemandaDialog({ demandaId, onClose }: { demandaId: string; onClo
 
         if (l.demanda_item_id) {
           await sb.from("demanda_itens").update({
+            item_id: l.item_id,
             recebido: true,
             quantidade_recebida: qtd,
             recebido_em: new Date().toISOString(),
