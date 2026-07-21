@@ -46,11 +46,16 @@ type FormState = {
   parcelamento: string;
   condicao_pagamento: string;
   data_compra: string;
+  data_solicitacao: string;
   is_reembolso: boolean;
   reembolsar_para: string;
 };
 
 const emptyItem = (): ItemRow => ({ descricao: "", quantidade: "1", unidade: "un", valor_unitario: "" });
+
+function hojeISO() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 const initial: FormState = {
   tipo: null,
@@ -67,9 +72,12 @@ const initial: FormState = {
   parcelamento: "",
   condicao_pagamento: "",
   data_compra: "",
+  data_solicitacao: hojeISO(),
   is_reembolso: false,
   reembolsar_para: "",
 };
+
+const DRAFT_KEY = "solicitar:draft:v1";
 
 const TIPOS_DEMANDA_PAGAVEIS = ["alimentacao", "estacionamento", "manutencao_galpao"];
 
@@ -85,10 +93,26 @@ function fmtSize(n: number) {
 
 function SolicitarPage() {
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState<FormState>(initial);
+  const [form, setForm] = useState<FormState>(() => {
+    if (typeof window === "undefined") return initial;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return initial;
+      const parsed = JSON.parse(raw);
+      return {
+        ...initial,
+        ...parsed,
+        itens: Array.isArray(parsed?.itens) && parsed.itens.length > 0 ? parsed.itens : initial.itens,
+        data_solicitacao: parsed?.data_solicitacao || hojeISO(),
+      } as FormState;
+    } catch {
+      return initial;
+    }
+  });
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState<{ numero: number | null; tipo: Tipo } | null>(null);
   const [anexos, setAnexos] = useState<File[]>([]);
+  const [showItemErrors, setShowItemErrors] = useState(false);
   const [opcoes, setOpcoes] = useState<{ parcelamentos: string[]; condicoes_pagamento: string[] }>({
     parcelamentos: [],
     condicoes_pagamento: [],
@@ -104,6 +128,17 @@ function SolicitarPage() {
       .catch(() => {});
   }, []);
 
+  // Salva rascunho no navegador (debounced)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const t = setTimeout(() => {
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(form));
+      } catch {}
+    }, 500);
+    return () => clearTimeout(t);
+  }, [form]);
+
   const update = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
 
   const updateItem = (idx: number, patch: Partial<ItemRow>) =>
@@ -116,19 +151,24 @@ function SolicitarPage() {
   const removeItem = (idx: number) =>
     setForm((f) => ({ ...f, itens: f.itens.length > 1 ? f.itens.filter((_, i) => i !== idx) : f.itens }));
 
+  function itemInvalido(it: ItemRow): boolean {
+    return it.descricao.trim().length === 0 || !(Number(it.quantidade) > 0);
+  }
+
   function canAdvance(): boolean {
     if (step === 0) return !!form.tipo;
     if (step === 1) {
       if (form.titulo.trim().length === 0) return false;
+      if (!form.data_solicitacao) return false;
       if (form.tipo === "demanda" && form.is_reembolso && form.reembolsar_para.trim().length === 0) return false;
       return true;
     }
     if (step === 2) {
       if (form.solicitante_nome.trim().length === 0) return false;
       if (form.tipo === "compra") {
-        return form.itens.some(
-          (it) => it.descricao.trim().length > 0 && Number(it.quantidade) > 0,
-        );
+        // Todos os itens listados devem estar completos (descricao + qtd > 0)
+        if (form.itens.length === 0) return false;
+        return form.itens.every((it) => !itemInvalido(it));
       }
       return form.descricao.trim().length > 0;
     }
@@ -165,18 +205,24 @@ function SolicitarPage() {
 
   async function submit() {
     if (!form.tipo) return;
+    // Validação: se for compra, todos os itens listados devem estar completos.
+    if (form.tipo === "compra") {
+      if (form.itens.length === 0 || form.itens.some((it) => itemInvalido(it))) {
+        setShowItemErrors(true);
+        toast.error("Preencha a descrição e a quantidade de todos os itens (ou remova as linhas em branco).");
+        return;
+      }
+    }
     setSending(true);
     try {
       const itensValidos =
         form.tipo === "compra"
-          ? form.itens
-              .filter((it) => it.descricao.trim().length > 0 && Number(it.quantidade) > 0)
-              .map((it) => ({
-                descricao: it.descricao.trim(),
-                quantidade: Number(it.quantidade),
-                unidade: it.unidade.trim(),
-                valor_unitario: it.valor_unitario ? Number(it.valor_unitario) : null,
-              }))
+          ? form.itens.map((it) => ({
+              descricao: it.descricao.trim(),
+              quantidade: Number(it.quantidade),
+              unidade: it.unidade.trim(),
+              valor_unitario: it.valor_unitario ? Number(it.valor_unitario) : null,
+            }))
           : undefined;
 
       const payload = {
@@ -188,12 +234,13 @@ function SolicitarPage() {
         solicitante_email: form.solicitante_email.trim(),
         solicitante_telefone: form.solicitante_telefone.trim(),
         descricao: form.descricao.trim(),
-        valor_total: form.valor_total ? Number(form.valor_total) : null,
+        valor_total: null,
         itens: itensValidos,
         pago: form.tipo === "demanda" && !form.is_reembolso ? form.pago : null,
         parcelamento: form.is_reembolso ? "" : (form.parcelamento || ""),
         condicao_pagamento: form.is_reembolso ? "" : (form.condicao_pagamento || ""),
         data_compra: form.is_reembolso ? "" : (form.data_compra || ""),
+        data_solicitacao: form.data_solicitacao || "",
         is_reembolso: form.tipo === "demanda" ? form.is_reembolso : false,
         reembolsar_para: form.is_reembolso ? form.reembolsar_para.trim() : "",
       };
@@ -215,6 +262,9 @@ function SolicitarPage() {
       if (json.anexos_falhados && json.anexos_falhados > 0) {
         toast.warning(`${json.anexos_falhados} anexo(s) não puderam ser enviados.`);
       }
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+      } catch {}
       setDone({ numero: json.numero ?? null, tipo: form.tipo });
     } catch (e: any) {
       toast.error(e.message ?? "Erro ao enviar solicitação");
@@ -243,10 +293,14 @@ function SolicitarPage() {
           <div className="pt-4 flex flex-col gap-2">
             <Button
               onClick={() => {
-                setForm(initial);
+                try {
+                  localStorage.removeItem(DRAFT_KEY);
+                } catch {}
+                setForm({ ...initial, data_solicitacao: hojeISO() });
                 setStep(0);
                 setDone(null);
                 setAnexos([]);
+                setShowItemErrors(false);
               }}
             >
               Enviar outra solicitação
@@ -325,14 +379,19 @@ function SolicitarPage() {
                 maxLength={160}
                 onChange={(e) => update({ fornecedor: e.target.value })}
                 placeholder="Opcional"
+                autoComplete="organization"
               />
             </Field>
-            <Field label="Valor estimado total (R$)">
-              <MoneyInput
-                value={Number(String(form.valor_total).replace(",", ".")) || 0}
-                onChange={(n) => update({ valor_total: n ? String(n) : "" })}
-                placeholder="Opcional"
+            <Field label="Data da solicitação *">
+              <Input
+                type="date"
+                value={form.data_solicitacao}
+                max={hojeISO()}
+                onChange={(e) => update({ data_solicitacao: e.target.value })}
               />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Você pode alterar caso esteja registrando com atraso.
+              </p>
             </Field>
 
             {!isCompra && (
@@ -457,6 +516,8 @@ function SolicitarPage() {
                 maxLength={120}
                 onChange={(e) => update({ solicitante_nome: e.target.value })}
                 placeholder="Nome completo"
+                autoComplete="name"
+                name="solicitante_nome"
               />
             </Field>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -467,6 +528,8 @@ function SolicitarPage() {
                   maxLength={160}
                   onChange={(e) => update({ solicitante_email: e.target.value })}
                   placeholder="seu@email.com"
+                  autoComplete="email"
+                  name="solicitante_email"
                 />
               </Field>
               <Field label="Telefone">
@@ -475,6 +538,8 @@ function SolicitarPage() {
                   maxLength={40}
                   onChange={(e) => update({ solicitante_telefone: e.target.value })}
                   placeholder="(00) 00000-0000"
+                  autoComplete="tel"
+                  name="solicitante_telefone"
                 />
               </Field>
             </div>
@@ -490,59 +555,65 @@ function SolicitarPage() {
                   </Button>
                 </div>
                 <div className="space-y-3">
-                  {form.itens.map((it, idx) => (
-                    <div
-                      key={idx}
-                      className="rounded-lg border border-border p-3 space-y-2 bg-muted/20"
-                    >
-                      <div className="flex items-start gap-2">
-                        <div className="flex-1 space-y-2">
-                          <Input
-                            value={it.descricao}
-                            maxLength={300}
-                            onChange={(e) => updateItem(idx, { descricao: e.target.value })}
-                            placeholder="Descrição do item"
-                          />
-                          <div className="grid grid-cols-3 gap-2">
+                  {form.itens.map((it, idx) => {
+                    const descInvalido = showItemErrors && it.descricao.trim().length === 0;
+                    const qtdInvalido = showItemErrors && !(Number(it.quantidade) > 0);
+                    return (
+                      <div
+                        key={idx}
+                        className="rounded-lg border border-border p-3 space-y-2 bg-muted/20"
+                      >
+                        <div className="flex items-start gap-2">
+                          <div className="flex-1 space-y-2">
                             <Input
-                              type="text"
-                              inputMode="decimal"
-                              value={it.quantidade}
-                              onFocus={(e) => e.currentTarget.select()}
-                              onChange={(e) => {
-                                const v = e.target.value.replace(/[^\d,.-]/g, "");
-                                updateItem(idx, { quantidade: v });
-                              }}
-                              placeholder="Qtd"
+                              value={it.descricao}
+                              maxLength={300}
+                              onChange={(e) => updateItem(idx, { descricao: e.target.value })}
+                              placeholder="Descrição do item *"
+                              className={descInvalido ? "border-destructive focus-visible:ring-destructive" : ""}
                             />
-                            <Input
-                              value={it.unidade}
-                              maxLength={20}
-                              onChange={(e) => updateItem(idx, { unidade: e.target.value })}
-                              placeholder="Un."
-                            />
-                            <MoneyInput
-                              hidePrefix
-                              value={Number(String(it.valor_unitario).replace(",", ".")) || 0}
-                              onChange={(n) => updateItem(idx, { valor_unitario: String(n) })}
-                              placeholder="Vlr unit."
-                            />
+                            <div className="grid grid-cols-3 gap-2">
+                              <Input
+                                type="text"
+                                inputMode="decimal"
+                                value={it.quantidade}
+                                onFocus={(e) => e.currentTarget.select()}
+                                onChange={(e) => {
+                                  const v = e.target.value.replace(/[^\d,.-]/g, "");
+                                  updateItem(idx, { quantidade: v });
+                                }}
+                                placeholder="Qtd *"
+                                className={qtdInvalido ? "border-destructive focus-visible:ring-destructive" : ""}
+                              />
+                              <Input
+                                value={it.unidade}
+                                maxLength={20}
+                                onChange={(e) => updateItem(idx, { unidade: e.target.value })}
+                                placeholder="Un."
+                              />
+                              <MoneyInput
+                                hidePrefix
+                                value={Number(String(it.valor_unitario).replace(",", ".")) || 0}
+                                onChange={(n) => updateItem(idx, { valor_unitario: String(n) })}
+                                placeholder="Vlr unit."
+                              />
+                            </div>
                           </div>
+                          {form.itens.length > 1 && (
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => removeItem(idx)}
+                              className="text-muted-foreground hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
-                        {form.itens.length > 1 && (
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => removeItem(idx)}
-                            className="text-muted-foreground hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 <Field label="Observações (opcional)">
                   <Textarea

@@ -472,20 +472,20 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            Validar recebimento
-            {compra?.numero != null && (
-              <span className="ml-2 text-xs font-mono text-muted-foreground">COMPRA-{compra.numero}</span>
-            )}
+          <DialogTitle className="flex items-center gap-2 flex-wrap">
+            <span>Validar recebimento</span>
+            <span className="text-xs font-mono px-2 py-0.5 rounded bg-muted">
+              COMPRA-{compra?.numero ?? "—"}
+            </span>
           </DialogTitle>
         </DialogHeader>
 
-        {(compra?.numero != null || compra?.solicitante) && (
+        {compra?.solicitante && (
           <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
-            {compra?.numero != null && <span className="font-mono">COMPRA-{compra.numero}</span>}
-            {compra?.solicitante && <span>Solicitante: <span className="text-foreground font-medium">{compra.solicitante}</span></span>}
+            <span>Solicitante: <span className="text-foreground font-medium">{compra.solicitante}</span></span>
           </div>
         )}
+
 
 
 
@@ -894,6 +894,28 @@ function ReceberDemandaDialog({ demandaId, onClose }: { demandaId: string; onClo
       (await sb.from("fornecedores").select("*").eq("status", "ativo").order("nome")).data ?? [],
   });
 
+  const { data: anexos = [] } = useQuery({
+    queryKey: ["demanda-anexos", demandaId],
+    queryFn: async () => {
+      const { data, error } = await sb
+        .from("demanda_anexos")
+        .select("*")
+        .eq("demanda_id", demandaId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  const [previewAnexo, setPreviewAnexo] = useState<any | null>(null);
+
+  function fmtSizeD(n?: number | null) {
+    if (!n) return "—";
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / 1024 / 1024).toFixed(2)} MB`;
+  }
+
   const [linhas, setLinhas] = useState<LinhaRecDem[]>([novaLinhaRecDem()]);
   const [fornecedorId, setFornecedorId] = useState("");
   const [notaFiscal, setNotaFiscal] = useState("");
@@ -1007,6 +1029,7 @@ function ReceberDemandaDialog({ demandaId, onClose }: { demandaId: string; onClo
 
         if (l.demanda_item_id) {
           await sb.from("demanda_itens").update({
+            item_id: l.item_id,
             recebido: true,
             quantidade_recebida: qtd,
             recebido_em: new Date().toISOString(),
@@ -1039,13 +1062,19 @@ function ReceberDemandaDialog({ demandaId, onClose }: { demandaId: string; onClo
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            Validar recebimento
-            {demanda?.numero != null && (
-              <span className="ml-2 text-xs font-mono text-muted-foreground">DESPESA-{demanda.numero}</span>
-            )}
+          <DialogTitle className="flex items-center gap-2 flex-wrap">
+            <span>Validar recebimento</span>
+            <span className="text-xs font-mono px-2 py-0.5 rounded bg-muted">
+              DESPESA-{demanda?.numero ?? "—"}
+            </span>
           </DialogTitle>
         </DialogHeader>
+
+        {demanda?.solicitante && (
+          <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
+            <span>Solicitante: <span className="text-foreground font-medium">{demanda.solicitante}</span></span>
+          </div>
+        )}
 
         {statusBlocked && (
           <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
@@ -1055,6 +1084,7 @@ function ReceberDemandaDialog({ demandaId, onClose }: { demandaId: string; onClo
             </div>
           </div>
         )}
+
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-md border border-border p-3 bg-muted/20">
           <div>
@@ -1168,6 +1198,35 @@ function ReceberDemandaDialog({ demandaId, onClose }: { demandaId: string; onClo
             </span>
           </div>
         </div>
+
+        {anexos.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-sm font-semibold">Anexos da solicitação</div>
+            <div className="flex flex-wrap gap-2">
+              {anexos.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => setPreviewAnexo(a)}
+                  className="text-left rounded-md border border-border bg-muted/30 hover:bg-muted px-3 py-2 text-xs max-w-[240px] truncate"
+                  title={a.nome}
+                >
+                  <div className="font-medium truncate">{a.nome}</div>
+                  <div className="text-[10px] text-muted-foreground">{fmtSizeD(a.tamanho)}</div>
+                </button>
+              ))}
+            </div>
+            {previewAnexo && (
+              <AnexoViewer
+                bucket="demanda-anexos"
+                anexo={previewAnexo}
+                open={!!previewAnexo}
+                onOpenChange={(o) => !o && setPreviewAnexo(null)}
+              />
+            )}
+          </div>
+        )}
+
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>

@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_expectador_eventos boolean NOT NULL DEFAULT false;

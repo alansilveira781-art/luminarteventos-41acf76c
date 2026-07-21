@@ -83,12 +83,13 @@ function UsuariosPage() {
     queryKey: ["admin-users"],
     queryFn: async () => {
       const [{ data: profiles }, { data: roles }, { data: ums }] = await Promise.all([
-        supabase.from("profiles").select("id,email,display_name,created_at").order("created_at", { ascending: false }),
+        supabase.from("profiles").select("id,email,display_name,created_at,is_expectador_eventos").order("created_at", { ascending: false }),
         supabase.from("user_roles").select("user_id,role"),
         supabase.from("user_modulos").select("user_id,modulo_id,is_admin"),
       ]);
       return (profiles ?? []).map((p: any) => ({
         ...p,
+        is_expectador_eventos: !!p.is_expectador_eventos,
         roles: (roles ?? []).filter((r: any) => r.user_id === p.id).map((r: any) => r.role),
         modulos: (ums ?? [])
           .filter((u: any) => u.user_id === p.id)
@@ -253,6 +254,7 @@ function EditAccess({ user, onClose }: { user: any; onClose: () => void }) {
   const [displayName, setDisplayName] = useState<string>(user.display_name ?? "");
   const [email, setEmail] = useState<string>(user.email ?? "");
   const [password, setPassword] = useState<string>("");
+  const [expectadorEventos, setExpectadorEventos] = useState<boolean>(!!user.is_expectador_eventos);
 
   const updateAccount = useMutation({
     mutationFn: async () => {
@@ -286,6 +288,9 @@ function EditAccess({ user, onClose }: { user: any; onClose: () => void }) {
           mods.map((m) => ({ user_id: user.id, modulo_id: m.modulo_id, is_admin: m.is_admin })),
         );
       }
+      if (expectadorEventos !== !!user.is_expectador_eventos) {
+        await (supabase as any).from("profiles").update({ is_expectador_eventos: expectadorEventos }).eq("id", user.id);
+      }
     },
     onSuccess: () => {
       toast.success("Acessos atualizados");
@@ -312,6 +317,15 @@ function EditAccess({ user, onClose }: { user: any; onClose: () => void }) {
           <label className="flex items-center gap-2 cursor-pointer">
             <Checkbox checked={isAdmin} onCheckedChange={(v) => setIsAdmin(!!v)} />
             <span className="text-sm font-medium">Administrador (acessa tudo)</span>
+          </label>
+          <label className="flex items-start gap-2 cursor-pointer">
+            <Checkbox checked={expectadorEventos} onCheckedChange={(v) => setExpectadorEventos(!!v)} className="mt-0.5" />
+            <span className="text-sm">
+              <span className="font-medium">Pode ver Calendário de Eventos</span>
+              <span className="block text-[11px] text-muted-foreground">
+                Libera acesso ao Calendário sem precisar do módulo Eventos.
+              </span>
+            </span>
           </label>
           <div className={isAdmin ? "opacity-40 pointer-events-none" : ""}>
             <div className="text-xs uppercase text-muted-foreground mb-2">Módulos liberados</div>

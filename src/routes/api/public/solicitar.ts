@@ -30,6 +30,12 @@ const baseSchema = z.object({
   parcelamento: z.string().trim().max(100).optional().or(z.literal("")),
   condicao_pagamento: z.string().trim().max(100).optional().or(z.literal("")),
   data_compra: z.string().trim().max(20).optional().or(z.literal("")),
+  data_solicitacao: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .or(z.literal("")),
   is_reembolso: z.boolean().optional(),
   reembolsar_para: z.string().trim().max(160).optional().or(z.literal("")),
 });
@@ -203,6 +209,9 @@ export const Route = createFileRoute("/api/public/solicitar")({
           (d.descricao ? `\n\n${d.descricao}` : "") +
           reembolsoNota;
 
+        const hoje = new Date().toISOString().slice(0, 10);
+        const dataSolicitacao = d.data_solicitacao || hoje;
+
         if (d.tipo === "compra") {
           const somaItens = d.itens!.reduce(
             (acc, it) => acc + (it.valor_unitario ?? 0) * it.quantidade,
@@ -219,7 +228,7 @@ export const Route = createFileRoute("/api/public/solicitar")({
               fornecedor: d.fornecedor || null,
               observacoes,
               valor_total: valorTotal,
-              data_solicitacao: new Date().toISOString().slice(0, 10),
+              data_solicitacao: dataSolicitacao,
               tipo_compra: d.subtipo || null,
             })
             .select("id, numero")
@@ -274,7 +283,7 @@ export const Route = createFileRoute("/api/public/solicitar")({
           descritivo: d.descricao || null,
           observacoes,
           valor_total: d.valor_total ?? null,
-          data_solicitacao: new Date().toISOString().slice(0, 10),
+          data_solicitacao: dataSolicitacao,
           tipo_demanda: d.is_reembolso ? "reembolso" : (d.subtipo || null),
         };
         if (!d.is_reembolso && d.pago === true) {
