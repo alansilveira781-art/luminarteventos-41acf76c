@@ -1,30 +1,45 @@
-## Problema
+## Objetivo
 
-No diálogo **Validar recebimento** dos cards de **Compra** em `/estoque/a-receber`, o rótulo aparece como `COMPRA-—` (sem número), enquanto o card de **Despesa** mostra corretamente `DESPESA-170`. A causa é que o badge (`src/routes/estoque.a-receber.tsx`, linha 478) depende de uma segunda consulta assíncrona (`compra-receber-info`) para renderizar o número, e nesse fluxo a query cai no fallback `"—"` (loading ou dado ausente para esse `compraId`).
+Padronizar a seção **"Itens recebidos"** do diálogo de **Despesa** (`ReceberDemandaDialog`) para ficar idêntica à de **Compra** (`ReceberDialog`), como no print enviado: um card por item, com descrição em destaque, linha "Pedido: qtd unidade", campos inline **QTD RECEBIDA / CUST. UNIT. / DESCONTO / FRETE / IPI / OUTROS / TOTAL LINHA** e o bloco tracejado de associação (**Selecionar item existente** / **Cadastrar novo item**) quando o item da despesa ainda não estiver vinculado a um item de estoque.
 
-O card da listagem já conhece o `numero` (consulta principal `compras-receber` na linha 79), então basta passar esse valor como prop ao diálogo e usá-lo diretamente no rótulo — assim o badge fica idêntico ao do card, independente do estado da consulta interna.
+## Escopo (apenas UI/estado local)
 
-## Mudanças (apenas UI, escopo mínimo)
+Arquivo: `src/routes/estoque.a-receber.tsx` — função `ReceberDemandaDialog`.
 
-Arquivo: `src/routes/estoque.a-receber.tsx`
+### 1. Trocar o modelo de estado
+- Remover `linhas`/`setLinhas`, `LinhaRecDem`, `novaLinhaRecDem`, `adicionarLinha`, `removerLinha` e o botão "Adicionar item".
+- Iterar diretamente sobre `demandaItens` (a mesma fonte já usada hoje), no mesmo padrão do compra: um card por linha da despesa, com `descricao`, `quantidade` e `unidade` vindos do próprio item.
+- Introduzir os mesmos hooks locais do compra:
+  - `extras: Record<demanda_item_id, { quantidade?, valor_unitario?, desconto, frete, ipi, outros_custos }>` + helpers `getExtra` / `setExtra`, inicializados a partir de `demandaItens` (mesma lógica atual de pré-preencher qtd e valor).
+  - `itemMap: Record<demanda_item_id, item_id>` para itens ainda não associados, mais o toggle "Desfazer associação" (idêntico ao compra).
 
-1. **Passar `numero` como prop ao abrir o diálogo de compra**
-   - Linha ~190: `<ReceberDialog compraId={openId} ... />` → também passar `compraNumero={compras.find(c => c.id === openId)?.numero ?? null}`.
-   - Ajustar a assinatura de `ReceberDialog` (linha 215) para aceitar `compraNumero: number | null`.
+### 2. Layout do card do item (espelho exato do compra)
+Para cada `it` de `demandaItens`, renderizar o mesmo bloco das linhas 557-657 (`ReceberDialog`), adaptando apenas os nomes dos handlers:
+- Título: `it.descricao`.
+- Subtítulo: `Pedido: {qtd} {unidade}`.
+- Se `it.evento_projeto` existir, mostrar `EVENTO/PROJETO:` (em despesas hoje não há esse campo — omitir se não houver).
+- Linha de campos: `Qtd recebida`, `Cust. unit.` (MoneyInput, 4 casas), `Desconto`, `Frete`, `IPI`, `Outros`, `Total linha` (calculado).
+- Bloco de associação idêntico ao do compra: quando `!it.item_id && !itemMap[it.id]`, mostrar caixa tracejada com **Selecionar item existente** (`ItemSearchSelect`) e **Cadastrar novo item** (`CadastrarItemInline`, já existente no arquivo). Quando associado, mostrar mensagem de sucesso + "Desfazer associação".
 
-2. **Usar a prop no badge do cabeçalho**
-   - Linha 478: trocar `COMPRA-{compra?.numero ?? "—"}` por `COMPRA-{compraNumero ?? compra?.numero ?? "—"}` para garantir exibição imediata.
+### 3. Ajuste da mutation `finalizar`
+- Continuar iterando pelos itens da despesa, mas usando `extras` para os valores editáveis e `it.item_id ?? itemMap[it.id]` como destino no estoque.
+- Só criar `movimentacoes` para linhas com `item_id` resolvido e `quantidade > 0` (mesmo critério do compra em `linhasInvalidas`).
+- Persistir a associação em `demanda_itens.item_id` quando vier de `itemMap` (já acontece hoje, apenas re-adaptado à nova estrutura).
+- Manter validações atuais (fornecedor, empresa, data, status `a_receber`) e mensagens de erro.
+- Mantém `origem = DESPESA-<numero>` já implementado.
 
-3. **Mesmo tratamento nas observações do recebimento** (para consistência)
-   - Linha 396: usar `compraNumero ?? compra?.numero` na string `COMPRA-...`.
+### 4. Rodapé/Total
+- Recalcular `totalRecebimento` a partir de `demandaItens` + `extras`, mesma fórmula do compra.
+- Botão "Finalizar recebimento" fica desabilitado quando não houver nenhuma linha válida (qtd > 0 e item associado), espelhando `linhasInvalidas`.
 
-4. **Espelhar o padrão em Despesa (defensivo, sem alterar comportamento visível)**
-   - Passar `demandaNumero` como prop ao `ReceberDemandaDialog` e usá-lo no badge (linha 1068) e na origem (linha 997), garantindo que ambos os fluxos usem exatamente a mesma fonte do card.
-
-Não há alterações de RLS, banco, queries de dados ou lógica de negócio — só encaminhamento do `numero` que já é conhecido no momento do clique.
+### 5. Não alterar
+- Cabeçalho, banner de status bloqueado, dados gerais (data/empresa/fornecedor/NF), seção de anexos, comportamento de fechar/invalidar queries.
+- Nenhuma mudança em banco, RLS, tipos gerados, ou em `ReceberDialog` (compra).
 
 ## Validação
 
-- Abrir um card de compra em `/estoque/a-receber` e confirmar que o cabeçalho exibe `COMPRA-<numero>` imediatamente.
-- Repetir com um card de despesa para confirmar que continua exibindo `DESPESA-<numero>`.
-- Conferir que o texto de observação da entrada gerada contém `COMPRA-<numero>` correto.
+1. Abrir uma despesa em `/estoque/a-receber` e conferir visual idêntico ao card do compra do print.
+2. Item sem `item_id`: aparece o bloco tracejado; associar via busca ou "Cadastrar novo item" funciona; "Desfazer associação" volta o estado.
+3. Alterar qtd/custo/desconto/frete/IPI/outros atualiza `Total linha` e o total geral do recebimento.
+4. Finalizar gera entrada em `movimentacoes`, marca `demanda_itens.recebido = true` e finaliza a demanda.
+5. Anexos continuam aparecendo e abrindo no `AnexoViewer`.
