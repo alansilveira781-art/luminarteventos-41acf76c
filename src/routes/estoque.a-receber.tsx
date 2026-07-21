@@ -852,7 +852,7 @@ function novaLinhaRecDem(): LinhaRecDem {
   };
 }
 
-function ReceberDemandaDialog({ demandaId, onClose }: { demandaId: string; onClose: () => void }) {
+function ReceberDemandaDialog({ demandaId, demandaNumero, onClose }: { demandaId: string; demandaNumero: number | null; onClose: () => void }) {
   const qc = useQueryClient();
 
   const { data: demanda } = useQuery({
