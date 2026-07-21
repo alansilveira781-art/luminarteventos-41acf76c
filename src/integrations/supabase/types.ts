@@ -3526,6 +3526,7 @@ export type Database = {
           display_name: string | null
           email: string | null
           id: string
+          is_expectador_eventos: boolean
           updated_at: string
         }
         Insert: {
@@ -3533,6 +3534,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id: string
+          is_expectador_eventos?: boolean
           updated_at?: string
         }
         Update: {
@@ -3540,6 +3542,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          is_expectador_eventos?: boolean
           updated_at?: string
         }
         Relationships: []
