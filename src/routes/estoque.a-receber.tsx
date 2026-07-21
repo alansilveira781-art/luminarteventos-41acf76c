@@ -1218,12 +1218,10 @@ function ReceberDemandaDialog({ demandaId, onClose }: { demandaId: string; onClo
             </div>
             {previewAnexo && (
               <AnexoViewer
-                open={!!previewAnexo}
-                onClose={() => setPreviewAnexo(null)}
                 bucket="demanda-anexos"
-                path={previewAnexo.path}
-                filename={previewAnexo.nome}
-                mime={previewAnexo.mime_type}
+                anexo={previewAnexo}
+                open={!!previewAnexo}
+                onOpenChange={(o) => !o && setPreviewAnexo(null)}
               />
             )}
           </div>
