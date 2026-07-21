@@ -472,20 +472,20 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            Validar recebimento
-            {compra?.numero != null && (
-              <span className="ml-2 text-xs font-mono text-muted-foreground">COMPRA-{compra.numero}</span>
-            )}
+          <DialogTitle className="flex items-center gap-2 flex-wrap">
+            <span>Validar recebimento</span>
+            <span className="text-xs font-mono px-2 py-0.5 rounded bg-muted">
+              COMPRA-{compra?.numero ?? "—"}
+            </span>
           </DialogTitle>
         </DialogHeader>
 
-        {(compra?.numero != null || compra?.solicitante) && (
+        {compra?.solicitante && (
           <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
-            {compra?.numero != null && <span className="font-mono">COMPRA-{compra.numero}</span>}
-            {compra?.solicitante && <span>Solicitante: <span className="text-foreground font-medium">{compra.solicitante}</span></span>}
+            <span>Solicitante: <span className="text-foreground font-medium">{compra.solicitante}</span></span>
           </div>
         )}
+
 
 
 
