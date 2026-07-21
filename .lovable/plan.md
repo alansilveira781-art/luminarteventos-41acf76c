@@ -1,22 +1,30 @@
-## Ajuste no Calendário Público: botão "Voltar para os módulos"
+## Problema
 
-### Contexto
-A rota `src/routes/calendario-publico.tsx` já possui a lógica de autorização: usuários logados que são admin, têm acesso ao módulo `eventos` ou têm a flag `is_expectador_eventos` veem o calendário. O usuário quer que esses usuários autorizados (admins/editores) tenham um botão para voltar aos módulos internos, enquanto mantém a visualização pública limpa para telas/TVs quando não logado.
+No diálogo **Validar recebimento** dos cards de **Compra** em `/estoque/a-receber`, o rótulo aparece como `COMPRA-—` (sem número), enquanto o card de **Despesa** mostra corretamente `DESPESA-170`. A causa é que o badge (`src/routes/estoque.a-receber.tsx`, linha 478) depende de uma segunda consulta assíncrona (`compra-receber-info`) para renderizar o número, e nesse fluxo a query cai no fallback `"—"` (loading ou dado ausente para esse `compraId`).
 
-### Alterações
-1. **Adicionar botão de retorno no cabeçalho**
-   - Arquivo: `src/routes/calendario-publico.tsx`
-   - Local: dentro do `return` principal (quando `autorizado` é true), na linha do cabeçalho ao lado do título.
-   - Implementação: usar `<Link to="/">` do TanStack Router com texto "← Voltar para os módulos".
-   - Estilo: `Button variant="outline" size="sm"` ou similar, posicionado à direita no desktop e acima/abaixo no mobile (flex-col em sm).
+O card da listagem já conhece o `numero` (consulta principal `compras-receber` na linha 79), então basta passar esse valor como prop ao diálogo e usá-lo diretamente no rótulo — assim o badge fica idêntico ao do card, independente do estado da consulta interna.
 
-2. **Garantir responsividade**
-   - Ajustar o container do cabeçalho para `items-start sm:items-center` e permitir quebra de linha, mantendo o relógio visível.
+## Mudanças (apenas UI, escopo mínimo)
 
-### Fora de escopo
-- Não alterar a tela de acesso negado (ela já tem um botão "Voltar" para `/`).
-- Não alterar cores do Gantt nem do diálogo de detalhes neste ajuste.
+Arquivo: `src/routes/estoque.a-receber.tsx`
 
-### Validação
-- Verificar no preview que usuários logados/autorizados veem o botão e que ele navega para `/`.
-- Verificar que a visualização pública (não logada) permanece sem o botão.
+1. **Passar `numero` como prop ao abrir o diálogo de compra**
+   - Linha ~190: `<ReceberDialog compraId={openId} ... />` → também passar `compraNumero={compras.find(c => c.id === openId)?.numero ?? null}`.
+   - Ajustar a assinatura de `ReceberDialog` (linha 215) para aceitar `compraNumero: number | null`.
+
+2. **Usar a prop no badge do cabeçalho**
+   - Linha 478: trocar `COMPRA-{compra?.numero ?? "—"}` por `COMPRA-{compraNumero ?? compra?.numero ?? "—"}` para garantir exibição imediata.
+
+3. **Mesmo tratamento nas observações do recebimento** (para consistência)
+   - Linha 396: usar `compraNumero ?? compra?.numero` na string `COMPRA-...`.
+
+4. **Espelhar o padrão em Despesa (defensivo, sem alterar comportamento visível)**
+   - Passar `demandaNumero` como prop ao `ReceberDemandaDialog` e usá-lo no badge (linha 1068) e na origem (linha 997), garantindo que ambos os fluxos usem exatamente a mesma fonte do card.
+
+Não há alterações de RLS, banco, queries de dados ou lógica de negócio — só encaminhamento do `numero` que já é conhecido no momento do clique.
+
+## Validação
+
+- Abrir um card de compra em `/estoque/a-receber` e confirmar que o cabeçalho exibe `COMPRA-<numero>` imediatamente.
+- Repetir com um card de despesa para confirmar que continua exibindo `DESPESA-<numero>`.
+- Conferir que o texto de observação da entrada gerada contém `COMPRA-<numero>` correto.

@@ -187,11 +187,16 @@ function AReceberPage() {
       </div>
 
       {openId && (
-        <ReceberDialog compraId={openId} onClose={() => { setOpenId(null); qc.invalidateQueries({ queryKey: ["compras-receber"] }); }} />
+        <ReceberDialog
+          compraId={openId}
+          compraNumero={compras.find((c) => c.id === openId)?.numero ?? null}
+          onClose={() => { setOpenId(null); qc.invalidateQueries({ queryKey: ["compras-receber"] }); }}
+        />
       )}
       {openDemandaId && (
         <ReceberDemandaDialog
           demandaId={openDemandaId}
+          demandaNumero={demandas.find((d) => d.id === openDemandaId)?.numero ?? null}
           onClose={() => {
             setOpenDemandaId(null);
             qc.invalidateQueries({ queryKey: ["demandas-receber"] });
@@ -212,7 +217,7 @@ type LinhaExtra = {
   outros_custos: number;
 };
 
-function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () => void }) {
+function ReceberDialog({ compraId, compraNumero, onClose }: { compraId: string; compraNumero: number | null; onClose: () => void }) {
   const qc = useQueryClient();
 
   const { data: compra } = useQuery({
@@ -393,7 +398,7 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
           responsavel_lancamento: compra?.comprador ?? null,
           observacoes:
             (observacoes ? observacoes + " — " : "") +
-            `Recebimento da compra ${compra?.numero != null ? `COMPRA-${compra.numero}` : compraId}${fornecedorNome ? ` - Fornecedor: ${fornecedorNome}` : ""}` +
+            `Recebimento da compra ${(compraNumero ?? compra?.numero) != null ? `COMPRA-${compraNumero ?? compra?.numero}` : compraId}${fornecedorNome ? ` - Fornecedor: ${fornecedorNome}` : ""}` +
             (it.evento_projeto ? ` — EVENTO/PROJETO: ${it.evento_projeto}` : ""),
 
         }).select("id");
@@ -475,7 +480,7 @@ function ReceberDialog({ compraId, onClose }: { compraId: string; onClose: () =>
           <DialogTitle className="flex items-center gap-2 flex-wrap">
             <span>Validar recebimento</span>
             <span className="text-xs font-mono px-2 py-0.5 rounded bg-muted">
-              COMPRA-{compra?.numero ?? "—"}
+              COMPRA-{compraNumero ?? compra?.numero ?? "—"}
             </span>
           </DialogTitle>
         </DialogHeader>
@@ -847,7 +852,7 @@ function novaLinhaRecDem(): LinhaRecDem {
   };
 }
 
-function ReceberDemandaDialog({ demandaId, onClose }: { demandaId: string; onClose: () => void }) {
+function ReceberDemandaDialog({ demandaId, demandaNumero, onClose }: { demandaId: string; demandaNumero: number | null; onClose: () => void }) {
   const qc = useQueryClient();
 
   const { data: demanda } = useQuery({
@@ -994,7 +999,7 @@ function ReceberDemandaDialog({ demandaId, onClose }: { demandaId: string; onClo
       const { data: numData, error: numErr } = await sb.rpc("next_requisicao_numero");
       if (numErr) throw numErr;
       const requisicaoNumero = numData as number;
-      const origem = demanda?.numero != null ? `DESPESA-${demanda.numero}` : demandaId;
+      const origem = (demandaNumero ?? demanda?.numero) != null ? `DESPESA-${demandaNumero ?? demanda?.numero}` : demandaId;
 
       for (const l of linhasValidas) {
         const qtd = Number(l.quantidade);
@@ -1065,7 +1070,7 @@ function ReceberDemandaDialog({ demandaId, onClose }: { demandaId: string; onClo
           <DialogTitle className="flex items-center gap-2 flex-wrap">
             <span>Validar recebimento</span>
             <span className="text-xs font-mono px-2 py-0.5 rounded bg-muted">
-              DESPESA-{demanda?.numero ?? "—"}
+              DESPESA-{demandaNumero ?? demanda?.numero ?? "—"}
             </span>
           </DialogTitle>
         </DialogHeader>
