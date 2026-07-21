@@ -1435,6 +1435,10 @@ export async function reprocessarRateios(
       return ((data ?? []) as any[]).map((r) => String(r.external_id)).filter(Boolean);
     }
 
+    // Modo "todos": todo lançamento é candidato — inclusive os sem nenhuma
+    // fatia gravada (dashboard mostra valor cheio no centro errado) e os
+    // com fatia única. Priorizamos os SEM rateio, depois fatia única, depois
+    // os com 2+ fatias (mantendo a ordem por detalhe_synced_at ASC NULLS FIRST).
     const tabela = tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
     const POOL = Math.max(max * 5, 200);
     const { data: invs, error: e1 } = await sb
@@ -1445,32 +1449,42 @@ export async function reprocessarRateios(
     if (e1) throw e1;
     const ordemIds = (invs ?? []).map((r: any) => String(r.external_id));
     if (ordemIds.length === 0) return [];
-    const grupos = new Map<string, { valores: Set<number>; count: number }>();
+    const contagem = new Map<string, number>();
     for (let i = 0; i < ordemIds.length; i += 200) {
       const chunk = ordemIds.slice(i, i + 200);
       const { data, error } = await sb
         .from("ca_lancamento_rateios")
-        .select("lancamento_external_id,valor")
+        .select("lancamento_external_id")
         .eq("tipo", tipo)
         .in("lancamento_external_id", chunk);
       if (error) throw error;
       for (const r of (data ?? []) as any[]) {
         const id = String(r.lancamento_external_id);
-        const g = grupos.get(id) ?? { valores: new Set<number>(), count: 0 };
-        g.valores.add(Number(r.valor));
-        g.count += 1;
-        grupos.set(id, g);
+        contagem.set(id, (contagem.get(id) ?? 0) + 1);
       }
     }
-    const out: string[] = [];
+    const semRateio: string[] = [];
+    const fatiaUnica: string[] = [];
+    const multiFatia: string[] = [];
     for (const id of ordemIds) {
-      const g = grupos.get(id);
-      if (!g || g.count < 2) continue;
-      if (apenasSuspeitos && g.valores.size !== 1) continue;
-      out.push(id);
-      if (out.length >= max) break;
+      const c = contagem.get(id) ?? 0;
+      if (c === 0) semRateio.push(id);
+      else if (c === 1) fatiaUnica.push(id);
+      else multiFatia.push(id);
     }
-    return out;
+    return [...semRateio, ...fatiaUnica, ...multiFatia].slice(0, max);
+  }
+
+  /** Conta lançamentos ainda pendentes de reprocessamento nesta rodada:
+   *  aqueles sem `detalhe_synced_at` ou com timestamp anterior ao início. */
+  async function contarPendentes(tipo: "pagar" | "receber"): Promise<number> {
+    const tabela = tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
+    const { count, error } = await sb
+      .from(tabela)
+      .select("external_id", { count: "exact", head: true })
+      .or(`detalhe_synced_at.is.null,detalhe_synced_at.lt.${inicioIso}`);
+    if (error) throw error;
+    return count ?? 0;
   }
 
   let allTargets: Array<{ id: string; tipo: "pagar" | "receber" }> = [];
