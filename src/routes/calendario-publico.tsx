@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { GanttEventos, type EventoCal } from "@/components/eventos/GanttEventos";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ export const Route = createFileRoute("/calendario-publico")({
     meta: [
       { title: "Calendário de Eventos — Grupo Luminart" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: CalendarioPublico,
@@ -41,7 +43,26 @@ function fmtRange(ini?: string | null, fim?: string | null): string {
 }
 
 function CalendarioPublico() {
+  const { user, loading: authLoading, isAdmin, hasModule } = useAuth();
+
+  const { data: perfil, isLoading: perfilLoading } = useQuery({
+    enabled: !!user,
+    queryKey: ["perfil-expectador-eventos", user?.id],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("profiles")
+        .select("is_expectador_eventos")
+        .eq("id", user!.id)
+        .maybeSingle();
+      return data as { is_expectador_eventos: boolean } | null;
+    },
+  });
+
+  const autorizado =
+    !!user && (isAdmin || hasModule("eventos") || !!perfil?.is_expectador_eventos);
+
   const { data: eventos = [], isLoading } = useQuery({
+    enabled: autorizado,
     queryKey: ["eventos-publico"],
     queryFn: async () => {
       const { data } = await (supabase as any)
@@ -63,6 +84,47 @@ function CalendarioPublico() {
   }, []);
 
   const [selecionado, setSelecionado] = useState<EventoCal | null>(null);
+
+  if (authLoading || (user && perfilLoading)) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center text-muted-foreground">
+        Carregando…
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center p-6">
+        <div className="max-w-md text-center space-y-4">
+          <h1 className="text-2xl font-semibold">Calendário de Eventos</h1>
+          <p className="text-muted-foreground text-sm">
+            Este calendário é restrito. Faça login com uma conta autorizada para visualizar.
+          </p>
+          <Button asChild>
+            <Link to="/auth">Fazer login</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!autorizado) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center p-6">
+        <div className="max-w-md text-center space-y-3">
+          <h1 className="text-2xl font-semibold">Acesso não autorizado</h1>
+          <p className="text-muted-foreground text-sm">
+            Sua conta ainda não tem permissão para ver o Calendário de Eventos. Peça a um administrador para liberar o acesso.
+          </p>
+          <Button asChild variant="outline">
+            <Link to="/">Voltar</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
 
   return (
     <div className="min-h-dvh bg-background text-foreground p-6 sm:p-10">

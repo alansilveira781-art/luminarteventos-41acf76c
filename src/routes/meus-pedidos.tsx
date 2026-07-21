@@ -91,17 +91,42 @@ function MeusPedidos() {
   const [selected, setSelected] = useState<Pedido | null>(null);
   const [hideFinalizados, setHideFinalizados] = useState(false);
 
-  const email = user?.email ?? "";
+  const email = (user?.email ?? "").trim().toLowerCase();
   const uid = user?.id ?? "";
+  const emailLocal = email.includes("@") ? email.split("@")[0] : "";
 
-  const orFilter = uid
-    ? `solicitante_id.eq.${uid},created_by.eq.${uid}` +
-      (email ? `,solicitante.ilike.%${email}%,observacoes.ilike.%${email}%` : "")
-    : "";
+  const { data: perfil } = useQuery({
+    enabled: !!user,
+    queryKey: ["meus-pedidos-perfil", uid],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("profiles")
+        .select("display_name")
+        .eq("id", uid)
+        .maybeSingle();
+      return data as { display_name: string | null } | null;
+    },
+  });
+  const displayName = (perfil?.display_name ?? "").trim();
+
+  const orParts: string[] = [];
+  if (uid) {
+    orParts.push(`solicitante_id.eq.${uid}`, `created_by.eq.${uid}`);
+  }
+  if (email) {
+    orParts.push(`solicitante.ilike.%${email}%`, `observacoes.ilike.%${email}%`);
+  }
+  if (emailLocal && emailLocal !== email) {
+    orParts.push(`solicitante.ilike.%${emailLocal}%`);
+  }
+  if (displayName) {
+    orParts.push(`solicitante.ilike.%${displayName}%`);
+  }
+  const orFilter = orParts.join(",");
 
   const { data: compras = [] } = useQuery({
-    enabled: !!user,
-    queryKey: ["meus-pedidos", "compras", uid, email],
+    enabled: !!user && !!orFilter,
+    queryKey: ["meus-pedidos", "compras", uid, email, displayName],
     queryFn: async () => {
       const { data, error } = await sb
         .from("compras")
@@ -132,8 +157,8 @@ function MeusPedidos() {
   });
 
   const { data: demandas = [] } = useQuery({
-    enabled: !!user,
-    queryKey: ["meus-pedidos", "demandas", uid, email],
+    enabled: !!user && !!orFilter,
+    queryKey: ["meus-pedidos", "demandas", uid, email, displayName],
     queryFn: async () => {
       const { data, error } = await sb
         .from("demandas")
