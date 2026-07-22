@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/dialog";
 import { Pencil, Plus, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   useVendedores, useCerimoniais, useDecoradores, useCadastroMutations,
 } from "@/lib/comercial/cadastros";
