@@ -11,6 +11,7 @@ import {
   rankingConsultor, valorPorClassificacao, getAno,
 } from "@/lib/comercial/vendas-metrics";
 import { supabase } from "@/integrations/supabase/client";
+import { brlFull } from "@/lib/comercial/format";
 import { DollarSign, ShoppingCart, Percent, Receipt } from "lucide-react";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, LabelList,
