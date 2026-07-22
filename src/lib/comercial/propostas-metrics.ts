@@ -7,8 +7,8 @@ const MESES = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
 
-function parseDataInicio(p: Proposta): Date | null {
-  const s = p.evento?.dataInicio || p.createdAt;
+function parseDataRegistro(p: Proposta): Date | null {
+  const s = p.createdAt;
   if (!s) return null;
   const d = new Date(s);
   return isNaN(d.getTime()) ? null : d;
@@ -16,7 +16,7 @@ function parseDataInicio(p: Proposta): Date | null {
 
 export function aplicarFiltrosPropostas(propostas: Proposta[], f: Filtros): Proposta[] {
   return propostas.filter((p) => {
-    const d = parseDataInicio(p);
+    const d = parseDataRegistro(p);
     if (f.ano !== "Todos") {
       if (!d || d.getFullYear() !== f.ano) return false;
     }
@@ -65,7 +65,7 @@ export function kpisPropostas(propostas: Proposta[]): PropostasKpis {
 export function evolucaoMensalPropostas(propostas: Proposta[]) {
   const buckets = Array.from({ length: 12 }, () => ({ criadas: 0, fechadas: 0 }));
   for (const p of propostas) {
-    const d = parseDataInicio(p);
+    const d = parseDataRegistro(p);
     if (!d) continue;
     const m = d.getMonth();
     buckets[m].criadas += 1;

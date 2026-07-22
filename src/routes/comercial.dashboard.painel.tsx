@@ -8,7 +8,7 @@ import { KpiCard } from "@/components/comercial/dashboard/KpiCard";
 import { GaugeRealVsMeta } from "@/components/comercial/dashboard/GaugeRealVsMeta";
 import {
   kpis, evolucaoTrimestre, evolucaoTicketTrimestre,
-  rankingConsultor, valorPorClassificacao,
+  rankingConsultor, valorPorClassificacao, getAno,
 } from "@/lib/comercial/vendas-metrics";
 import { supabase } from "@/integrations/supabase/client";
 import { DollarSign, ShoppingCart, Percent, Receipt } from "lucide-react";
@@ -63,9 +63,7 @@ function PainelPage() {
     if (!rows.length) return;
     const anosComDados = new Set<number>();
     for (const r of rows) {
-      const a =
-        (r.anoEvento && r.anoEvento > 1900 ? r.anoEvento : null) ??
-        (r.ano && r.ano > 1900 ? r.ano : null);
+      const a = getAno(r);
       if (a) anosComDados.add(a);
     }
     if (anosComDados.size === 0) return;

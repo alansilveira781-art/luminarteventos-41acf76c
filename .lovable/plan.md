@@ -1,23 +1,32 @@
-## Problema
 
-Na Análise Detalhada, ao clicar em "reprocessar" numa categoria com lançamento que foi **excluído no Conta Azul**, o app tenta buscar o detalhe em `/financeiro/eventos-financeiros/parcelas/{id}` → API responde **404** → `caFetch` lança erro → `reprocessarRateios` conta como **falha** e mantém o lançamento local intacto. Resultado: toast "Falha ao reprocessar (3 erros)" e os lançamentos continuam aparecendo no dashboard.
+## Contexto
 
-## Correção
+O Painel de Vendas já filtra corretamente por data de registro (via `applyFilters` → `pickDateIso`, que prioriza `dataRegistro`). As demais abas ainda misturam data do evento em pontos específicos, o que faz KPIs, listagens e filtros divergirem do que o usuário espera.
 
-### 1. `src/lib/conta-azul/sync.server.ts` — `reprocessarRateios`
+Pontos confirmados no código:
 
-- Detectar 404 no `catch` (mensagem `Conta Azul API ... [404]`).
-- Quando 404: **remover** o lançamento local — `delete` em `ca_lancamento_rateios` e em `ca_contas_pagar` / `ca_contas_receber` para aquele `external_id`.
-- Contabilizar como `removidos` (novo contador), não como `falhas`.
-- Incluir `removidos` no retorno e no `ca_sync_log`.
+- `src/lib/comercial/propostas-metrics.ts` — a aba **Propostas** filtra e agrupa por `p.evento.dataInicio` (data do evento), não pela data de criação da proposta.
+- `src/routes/comercial.dashboard.index.tsx` — aba **Indicadores/Relatório**: a tabela detalhada ordena e exibe `dataEvento || dataRegistro`, e o auto-seleção de ano usa `anoEvento` antes de `ano`.
+- `src/routes/comercial.dashboard.painel.tsx` — mesma auto-seleção de ano baseada em `anoEvento` (Painel funciona porque o filtro real usa registro, mas a lógica está inconsistente).
 
-### 2. `src/components/financeiro/ContaAzulDashboard.tsx` — `CategoryReprocessButton`
+## Mudanças
 
-- Ler `removidos` da resposta.
-- Toast passa a considerar `removidos`: ex. "Rateios: X corrigidos · Y removidos" ou "Y lançamentos removidos (excluídos no Conta Azul)".
-- Só reportar `falhas` quando forem falhas reais (não-404).
-- Após concluir, invalidar as queries dos lançamentos (o `onDone` já dispara `refetch`, verificar que cobre a lista de lançamentos exibida).
+1. **`src/lib/comercial/propostas-metrics.ts`**
+   - `parseDataInicio` → renomear para `parseDataRegistro` e usar apenas `p.createdAt` (data de cadastro da proposta). Remover fallback para `evento.dataInicio`.
+   - `aplicarFiltrosPropostas` e `evolucaoMensalPropostas` passam a usar essa nova função — filtro por ano/mês e evolução mensal ficam por data de registro.
 
-## Fora de escopo
+2. **`src/routes/comercial.dashboard.index.tsx`**
+   - Ordenação de `linhasRelatorio`: usar `dataRegistro || dataEvento` (registro primeiro).
+   - Coluna de data da tabela (linha 464): exibir `fmtDataBR(r.dataRegistro || r.dataEvento)`.
+   - Auto-seleção de ano (linhas 132-151): substituir a lógica baseada em `anoEvento` por `getAno(r)` (já usa data de registro via `pickDateIso`).
 
-- Não alteramos a lógica geral de sync (`syncIncremental`), que já ignora ausências. Só o caminho de reprocesso manual passa a limpar registros órfãos.
+3. **`src/routes/comercial.dashboard.painel.tsx`**
+   - Auto-seleção de ano (linhas 62-81): mesma troca por `getAno(r)`, para manter consistência entre abas.
+
+Nenhuma outra aba precisa mudar — `vendedores`, `relatorios` e `indicadores` já dependem de `applyFilters`/`FiltrosBar`, que usam `pickDateIso` (registro).
+
+## Validação
+
+- Selecionar um ano com propostas cujo evento cai no ano seguinte: a proposta deve aparecer no ano em que foi cadastrada, não no ano do evento.
+- Na aba Indicadores, a tabela detalhada deve ordenar e exibir a coluna Data pela data de registro.
+- Nenhuma mudança em `vendas-metrics.ts` (regra central) — permanece "sempre pela data de registro".

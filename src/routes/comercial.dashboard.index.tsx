@@ -11,7 +11,7 @@ import {
   kpis, evolucaoTrimestre, evolucaoTicketTrimestre,
   rankingConsultor, valorPorClassificacao,
   comissoesPorVendedor, rankingCerimonial, rankingDecorador,
-  vendasPorTipoEvento, cleanText, compararAnos,
+  vendasPorTipoEvento, cleanText, compararAnos, getAno,
 } from "@/lib/comercial/vendas-metrics";
 import { supabase } from "@/integrations/supabase/client";
 import { DollarSign, ShoppingCart, Percent, Receipt } from "lucide-react";
@@ -133,9 +133,7 @@ function DashboardHome() {
     if (!rows.length) return;
     const anosComDados = new Set<number>();
     for (const r of rows) {
-      const a =
-        (r.anoEvento && r.anoEvento > 1900 ? r.anoEvento : null) ??
-        (r.ano && r.ano > 1900 ? r.ano : null);
+      const a = getAno(r);
       if (a) anosComDados.add(a);
     }
     if (anosComDados.size === 0) return;
@@ -161,8 +159,8 @@ function DashboardHome() {
 
   const linhasRelatorio = useMemo(() => {
     return [...filtered].sort((a, b) => {
-      const da = a.dataEvento || a.dataRegistro || "";
-      const db = b.dataEvento || b.dataRegistro || "";
+      const da = a.dataRegistro || a.dataEvento || "";
+      const db = b.dataRegistro || b.dataEvento || "";
       return db.localeCompare(da);
     });
   }, [filtered]);
@@ -461,7 +459,7 @@ function DashboardHome() {
                     </TableRow>
                   ) : linhasRelatorio.map((r, i) => (
                     <TableRow key={r.id ?? i}>
-                      <TableCell className="whitespace-nowrap">{fmtDataBR(r.dataEvento || r.dataRegistro)}</TableCell>
+                      <TableCell className="whitespace-nowrap">{fmtDataBR(r.dataRegistro || r.dataEvento)}</TableCell>
                       <TableCell className="whitespace-nowrap">{r.nomeEvento || "-"}</TableCell>
                       <TableCell className="whitespace-nowrap">{r.local || "-"}</TableCell>
                       <TableCell className="whitespace-nowrap">{r.consultor || "-"}</TableCell>
