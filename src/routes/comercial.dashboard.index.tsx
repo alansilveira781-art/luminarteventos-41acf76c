@@ -69,11 +69,20 @@ function DashboardHome() {
     if (!secoesLiberadas.includes(secao)) setSecao(secoesLiberadas[0]);
   }, [secoesLiberadas, secao]);
 
-  // Nome do usuário (para travar filtro de vendedor quando não for admin)
-  const meuNomeNorm = useMemo(() => {
-    const meta: any = user?.user_metadata ?? {};
-    return normalizarNome(meta.full_name ?? meta.name ?? user?.email ?? "");
-  }, [user]);
+  // Vendedor vinculado ao usuário logado — leitura direta do cadastro.
+  const { data: meuVendedor } = useQuery({
+    enabled: !!user?.id,
+    queryKey: ["meu-vendedor", user?.id],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("comercial_vendedores")
+        .select("nome")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      return (data?.nome as string | undefined) ?? null;
+    },
+    staleTime: 60_000,
+  });
 
   const [consultorSel, setConsultorSel] = useState<string | "Todos">("Todos");
 
@@ -86,15 +95,17 @@ function DashboardHome() {
     return [...set].sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [filtered]);
 
-  // Consultor associado ao usuário logado (casamento por nome normalizado)
+  // Casa o nome do cadastro com o nome que aparece nas vendas, tolerando variações leves.
   const meuConsultor = useMemo(() => {
-    if (!meuNomeNorm) return null;
-    // Considera todos os rows (não só filtered) para achar o nome cadastrado
+    if (!meuVendedor) return null;
+    const alvo = normalizarNome(meuVendedor);
     const nomes = new Set<string>();
     for (const r of rows) { const c = cleanText(r.consultor); if (c) nomes.add(c); }
-    for (const n of nomes) if (normalizarNome(n) === meuNomeNorm) return n;
-    return null;
-  }, [rows, meuNomeNorm]);
+    for (const n of nomes) if (normalizarNome(n) === alvo) return n;
+    // Se não encontrou nas vendas, devolve o próprio nome cadastrado para
+    // manter o filtro travado (mesmo que resulte em lista vazia).
+    return meuVendedor;
+  }, [rows, meuVendedor]);
 
   // Não-admin comercial: filtro travado no próprio vendedor.
   const vendedorTravado = !isAdminComercial;
