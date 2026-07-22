@@ -7,8 +7,8 @@ const MESES = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
 
-function parseDataInicio(p: Proposta): Date | null {
-  const s = p.evento?.dataInicio || p.createdAt;
+function parseDataRegistro(p: Proposta): Date | null {
+  const s = p.createdAt;
   if (!s) return null;
   const d = new Date(s);
   return isNaN(d.getTime()) ? null : d;
