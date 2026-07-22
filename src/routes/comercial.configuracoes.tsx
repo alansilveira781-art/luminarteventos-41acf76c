@@ -100,26 +100,20 @@ const DASH_ABAS: { key: keyof DashPerms; label: string }[] = [
 
 function AcessoDashboardCard() {
   const qc = useQueryClient();
+  const { data: usuarios = [], isLoading } = useUsuariosComercial();
 
-  const { data: usuarios = [], isLoading } = useQuery({
-    queryKey: ["comercial-usuarios-com-modulo"],
+  const { data: vendedoresLink = [] } = useQuery({
+    queryKey: ["comercial-vendedores-por-user"],
     queryFn: async () => {
-      const { data: mod } = await (supabase as any)
-        .from("modulos").select("id").eq("slug", "comercial").maybeSingle();
-      if (!mod?.id) return [];
-      const { data: um } = await (supabase as any)
-        .from("user_modulos").select("user_id, is_admin").eq("modulo_id", mod.id);
-      const ids = (um ?? []).map((r: any) => r.user_id);
-      if (ids.length === 0) return [];
-      const { data: profs } = await (supabase as any)
-        .from("profiles").select("id, display_name, email").in("id", ids);
-      const adminMap = new Map<string, boolean>((um ?? []).map((r: any) => [r.user_id, !!r.is_admin]));
-      return (profs ?? [])
-        .map((p: any) => ({ id: p.id as string, nome: (p.display_name || p.email) as string, is_admin: !!adminMap.get(p.id) }))
-        .sort((a: any, b: any) => a.nome.localeCompare(b.nome));
+      const { data } = await (supabase as any)
+        .from("comercial_vendedores")
+        .select("nome, user_id")
+        .not("user_id", "is", null);
+      return (data ?? []) as { nome: string; user_id: string }[];
     },
     staleTime: 60_000,
   });
+  const vendedorByUser = new Map(vendedoresLink.map((v) => [v.user_id, v.nome]));
 
   const { data: permsList = [] } = useQuery({
     queryKey: ["comercial-dashboard-permissoes"],
@@ -173,19 +167,24 @@ function AcessoDashboardCard() {
             <thead className="text-xs text-muted-foreground">
               <tr>
                 <th className="px-3 py-1 text-left">Usuário</th>
+                <th className="px-3 py-1 text-left">Vendedor vinculado</th>
                 {DASH_ABAS.map((a) => (
                   <th key={a.key} className="px-3 py-1 text-center w-28">{a.label}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {usuarios.map((u: any) => {
+              {usuarios.map((u) => {
                 const p = permsByUser.get(u.id);
+                const vend = vendedorByUser.get(u.id);
                 return (
                   <tr key={u.id} className="border-t border-border/50">
                     <td className="px-3 py-2">
                       {u.nome}
                       {u.is_admin && <span className="ml-2 text-[10px] uppercase tracking-wide text-emerald-600">admin</span>}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">
+                      {vend ?? "—"}
                     </td>
                     {DASH_ABAS.map((a) => {
                       const checked = u.is_admin ? true : (p ? !!p[a.key] : a.key === "ver_vendedores");
@@ -205,13 +204,14 @@ function AcessoDashboardCard() {
             </tbody>
           </table>
           <p className="text-xs text-muted-foreground mt-3">
-            Sem configuração explícita, o usuário vê apenas a aba <strong>Vendedores</strong> — restrita aos dados do próprio consultor (casamento por nome).
+            Sem configuração explícita, o usuário vê apenas a aba <strong>Vendedores</strong> — restrita ao vendedor vinculado em <em>Configurações → Vendedores</em>.
           </p>
         </div>
       )}
     </Card>
   );
 }
+
 
 /* ---------- Vendedores ---------- */
 type VendedorForm = {
