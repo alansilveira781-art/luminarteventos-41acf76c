@@ -1585,7 +1585,7 @@ export async function reprocessarRateios(
     }
   } else {
     for (const t of tipos) {
-      const cands = await listarCandidatos(t, modo === "suspeitos", limite);
+      const cands = await listarCandidatos(t, modo, limite);
       cands.forEach((id) => allTargets.push({ id, tipo: t }));
     }
   }
