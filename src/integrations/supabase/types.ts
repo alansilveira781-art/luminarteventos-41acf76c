@@ -770,6 +770,36 @@ export type Database = {
         }
         Relationships: []
       }
+      comercial_dashboard_permissoes: {
+        Row: {
+          created_at: string
+          updated_at: string
+          user_id: string
+          ver_indicadores: boolean
+          ver_painel: boolean
+          ver_relatorio: boolean
+          ver_vendedores: boolean
+        }
+        Insert: {
+          created_at?: string
+          updated_at?: string
+          user_id: string
+          ver_indicadores?: boolean
+          ver_painel?: boolean
+          ver_relatorio?: boolean
+          ver_vendedores?: boolean
+        }
+        Update: {
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+          ver_indicadores?: boolean
+          ver_painel?: boolean
+          ver_relatorio?: boolean
+          ver_vendedores?: boolean
+        }
+        Relationships: []
+      }
       comercial_decoradores: {
         Row: {
           created_at: string
