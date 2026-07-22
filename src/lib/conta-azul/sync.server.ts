@@ -1494,10 +1494,10 @@ export async function reprocessarRateios(
    *  do Worker e causava resposta 0/500). */
   async function listarCandidatos(
     tipo: "pagar" | "receber",
-    apenasSuspeitos: boolean,
+    modoLista: "suspeitos" | "todos" | "periodo",
     max: number,
   ): Promise<string[]> {
-    if (apenasSuspeitos) {
+    if (modoLista === "suspeitos") {
       const { data, error } = await sb.rpc("ca_listar_rateios_suspeitos", {
         _tipo: tipo,
         _limite: max,
@@ -1506,20 +1506,29 @@ export async function reprocessarRateios(
       return ((data ?? []) as any[]).map((r) => String(r.external_id)).filter(Boolean);
     }
 
-    // Modo "todos": todo lançamento é candidato — inclusive os sem nenhuma
-    // fatia gravada (dashboard mostra valor cheio no centro errado) e os
-    // com fatia única. Priorizamos os SEM rateio, depois fatia única, depois
-    // os com 2+ fatias (mantendo a ordem por detalhe_synced_at ASC NULLS FIRST).
+    // Modo "todos" ou "periodo": todo lançamento é candidato. Em "periodo",
+    // filtramos por data_vencimento dentro da janela; ordem prioriza os que
+    // nunca foram sincronizados ou sincronizados antes deste início.
     const tabela = tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
-    const POOL = Math.max(max * 5, 200);
-    const { data: invs, error: e1 } = await sb
+    const POOL = modoLista === "periodo" ? Math.max(max * 10, 500) : Math.max(max * 5, 200);
+    let q = sb
       .from(tabela)
       .select("external_id,detalhe_synced_at")
+      .or(`detalhe_synced_at.is.null,detalhe_synced_at.lt.${inicioIso}`)
       .order("detalhe_synced_at", { ascending: true, nullsFirst: true })
       .limit(POOL);
+    if (modoLista === "periodo" && periodoFrom && periodoTo) {
+      q = q.gte("data_vencimento", periodoFrom).lte("data_vencimento", periodoTo);
+    }
+    const { data: invs, error: e1 } = await q;
     if (e1) throw e1;
     const ordemIds = (invs ?? []).map((r: any) => String(r.external_id));
     if (ordemIds.length === 0) return [];
+    if (modoLista === "periodo") {
+      // No modo periodo, processamos na ordem do banco (mais antigos primeiro),
+      // sem re-priorização por contagem de fatias — todos precisam ser refeitos.
+      return ordemIds.slice(0, max);
+    }
     const contagem = new Map<string, number>();
     for (let i = 0; i < ordemIds.length; i += 200) {
       const chunk = ordemIds.slice(i, i + 200);
@@ -1550,10 +1559,14 @@ export async function reprocessarRateios(
    *  aqueles sem `detalhe_synced_at` ou com timestamp anterior ao início. */
   async function contarPendentes(tipo: "pagar" | "receber"): Promise<number> {
     const tabela = tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
-    const { count, error } = await sb
+    let q = sb
       .from(tabela)
       .select("external_id", { count: "exact", head: true })
       .or(`detalhe_synced_at.is.null,detalhe_synced_at.lt.${inicioIso}`);
+    if (modo === "periodo" && periodoFrom && periodoTo) {
+      q = q.gte("data_vencimento", periodoFrom).lte("data_vencimento", periodoTo);
+    }
+    const { count, error } = await q;
     if (error) throw error;
     return count ?? 0;
   }
