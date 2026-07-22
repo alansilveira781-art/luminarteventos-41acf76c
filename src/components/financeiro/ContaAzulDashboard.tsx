@@ -978,7 +978,10 @@ function AnaliseDetalhada() {
           descricao: (c._rateado ? "[Rateado] " : "") + (c.descricao ?? ""),
           valor: isReceber ? v : -v,
           categoria_external_id: c.categoria_external_id,
+          external_id: c.external_id,
+          tipo: isReceber ? "receber" : "pagar",
         });
+
       });
     };
     push(receberRows, true);
