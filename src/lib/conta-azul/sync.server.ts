@@ -1682,14 +1682,16 @@ export async function reprocessarRateios(
     started_at: inicioIso,
     finished_at: new Date().toISOString(),
     qtd_registros: corrigidos,
-    mensagem: `[modo=${modo}] Reprocessados ${corrigidos}/${processados} rateios (falhas=${falhas}, restantes=${restantes}, dur=${durMs}ms).${detalhes.length ? "\n" + detalhes.join("\n") : ""}`,
+    mensagem: `[modo=${modo}] Reprocessados ${corrigidos}/${processados} rateios (falhas=${falhas}, removidos=${removidos}, restantes=${restantes}, dur=${durMs}ms).${detalhes.length ? "\n" + detalhes.join("\n") : ""}`,
   });
 
   return {
     tentados: processados,
     corrigidos,
     falhas,
+    removidos,
     detalhes,
+
     restantes,
     concluido,
     modo,
