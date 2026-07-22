@@ -20,6 +20,22 @@ import { toast } from "sonner";
 
 const sb = supabase as any;
 
+// Categorias excluídas apenas na aba Análise Detalhada (por pedido do usuário).
+// Comparação case-insensitive + trim + remoção de acentos, para tolerar variações.
+const normCat = (s: string) =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+const CATEGORIAS_EXCLUIDAS_ANALISE = new Set(
+  [
+    "CD - ACERVO DECORATIVO",
+    "CD - Decoração",
+    "CV - EPI INDIVIDUAL",
+    "MAQUINÁRIO",
+    "FARDAMENTO",
+  ].map(normCat),
+);
+const isCategoriaExcluidaAnalise = (nome?: string | null) =>
+  !!nome && CATEGORIAS_EXCLUIDAS_ANALISE.has(normCat(nome));
+
 type ContaPagar = {
   external_id: string;
   descricao: string | null;
@@ -859,10 +875,19 @@ function AnaliseDetalhada() {
   // 3. Monta linhas sintéticas (1 por fatia): herdam descrição/datas/status do pai
   //    e usam valor + categoria da fatia. Quantidade de rateios por lancamento_external_id
   //    determina o badge "Rateado".
-  const { pagarRows, receberRows } = useMemo(
-    () => montarLinhasPorCentro(rateiosData, pagarParents.data ?? [], receberParents.data ?? [], centroId),
-    [rateiosData, pagarParents.data, receberParents.data, centroId],
-  );
+  const { pagarRows, receberRows } = useMemo(() => {
+    const raw = montarLinhasPorCentro(rateiosData, pagarParents.data ?? [], receberParents.data ?? [], centroId);
+    const planoMapLocal = new Map<string, { nome: string }>();
+    planosArr.forEach((p) => planoMapLocal.set(p.external_id, { nome: p.nome }));
+    const excluir = (r: any) => {
+      const nome = r.categoria_external_id ? planoMapLocal.get(r.categoria_external_id)?.nome : null;
+      return isCategoriaExcluidaAnalise(nome);
+    };
+    return {
+      pagarRows: raw.pagarRows.filter((r: any) => !excluir(r)),
+      receberRows: raw.receberRows.filter((r: any) => !excluir(r)),
+    };
+  }, [rateiosData, pagarParents.data, receberParents.data, centroId, planosArr]);
 
   // Nome do centro selecionado — usado no casamento de saídas de estoque.
   const centroSelNomeEarly = centroId ? (ccs.find((c) => c.external_id === centroId)?.nome ?? "") : "";
@@ -903,6 +928,7 @@ function AnaliseDetalhada() {
       const valor = Number(m.valor_total || 0);
       if (!valor) { zeroed++; return; }
       const catNome = m.categoria?.trim() || "";
+      if (isCategoriaExcluidaAnalise(catNome)) return;
       const hit = catNome ? planoPorNome.get(norm(catNome)) : undefined;
       let g: DreGroupId;
       let key: string;
@@ -1021,6 +1047,7 @@ function AnaliseDetalhada() {
       const valor = Number(m.valor_total || 0);
       if (!valor) return;
       const catNome = m.categoria?.trim() || "";
+      if (isCategoriaExcluidaAnalise(catNome)) return;
       const hit = catNome ? planoPorNome.get(normTxt(catNome)) : undefined;
       const categoria_external_id = hit ? hit.external_id : `stock:${catNome || "Sem categoria"}`;
       const reqTag = m.requisicao_numero != null ? `REQ ${m.requisicao_numero}` : null;
