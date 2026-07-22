@@ -593,32 +593,48 @@ function DashboardHome() {
               valor={kVend.ticketMedio} anterior={kVend.ticketAnterior} pct={kVend.pctTicket} />
           </div>
 
-          <Card className="p-3">
-            <div className="text-xs font-medium text-foreground/70 mb-2">Consultores</div>
-            <div className="grid grid-cols-3 gap-2">
-              <Button
-                type="button"
-                variant={consultorSel === "Todos" ? "default" : "outline"}
-                size="sm"
-                className="w-full"
-                onClick={() => setConsultorSel("Todos")}
-              >
-                Todos
-              </Button>
-              {consultoresDisponiveis.map((c) => (
+          {vendedorTravado ? (
+            <Card className="p-3 flex items-center gap-2 text-xs">
+              {meuConsultor ? (
+                <>
+                  <span className="text-muted-foreground">Vendedor:</span>
+                  <span className="font-semibold">{meuConsultor}</span>
+                </>
+              ) : (
+                <span className="flex items-center gap-2 text-amber-600">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  Seu usuário ainda não está vinculado a um vendedor cadastrado. Peça ao administrador para ajustar o nome nas Configurações → Vendedores.
+                </span>
+              )}
+            </Card>
+          ) : (
+            <Card className="p-3">
+              <div className="text-xs font-medium text-foreground/70 mb-2">Consultores</div>
+              <div className="grid grid-cols-3 gap-2">
                 <Button
-                  key={c}
                   type="button"
-                  variant={consultorSel === c ? "default" : "outline"}
+                  variant={consultorSel === "Todos" ? "default" : "outline"}
                   size="sm"
-                  className="w-full truncate"
-                  onClick={() => setConsultorSel(c)}
+                  className="w-full"
+                  onClick={() => setConsultorSel("Todos")}
                 >
-                  {c}
+                  Todos
                 </Button>
-              ))}
-            </div>
-          </Card>
+                {consultoresDisponiveis.map((c) => (
+                  <Button
+                    key={c}
+                    type="button"
+                    variant={consultorSel === c ? "default" : "outline"}
+                    size="sm"
+                    className="w-full truncate"
+                    onClick={() => setConsultorSel(c)}
+                  >
+                    {c}
+                  </Button>
+                ))}
+              </div>
+            </Card>
+          )}
         </div>
 
         <Card className="p-4">
