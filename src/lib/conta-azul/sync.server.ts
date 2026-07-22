@@ -1472,11 +1472,13 @@ export async function reprocessarRateios(
   tentados: number;
   corrigidos: number;
   falhas: number;
+  removidos: number;
   detalhes: string[];
   restantes: number;
   concluido: boolean;
   modo: "suspeitos" | "todos" | "periodo";
 }> {
+
   const limite = Math.min(Math.max(opts.limite ?? 40, 1), 500);
   const modo: "suspeitos" | "todos" | "periodo" = opts.modo ?? "suspeitos";
   const periodoFrom = modo === "periodo" ? opts.from : undefined;
@@ -1596,8 +1598,10 @@ export async function reprocessarRateios(
   const syncedAt = new Date().toISOString();
   let corrigidos = 0;
   let falhas = 0;
+  let removidos = 0;
   let processados = 0;
   const detalhes: string[] = [];
+
 
   async function fetchDetalheComRetry(id: string) {
     try {
@@ -1637,9 +1641,25 @@ export async function reprocessarRateios(
       if (detalhes.length < 20) detalhes.push(`${alvo.id}: ${rs.length} fatias atualizadas`);
       await new Promise((r) => setTimeout(r, SLEEP_MS));
     } catch (e: any) {
-      falhas++;
-      if (detalhes.length < 20) detalhes.push(`${alvo.id}: ${String(e?.message ?? e).slice(0, 200)}`);
+      const msg = String(e?.message ?? e);
+      // 404 = lançamento excluído no Conta Azul: remover cópia local.
+      if (/\[404\]/.test(msg)) {
+        try {
+          const tabela = alvo.tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
+          await sb.from("ca_lancamento_rateios").delete().eq("tipo", alvo.tipo).eq("lancamento_external_id", alvo.id);
+          await sb.from(tabela).delete().eq("external_id", alvo.id);
+          removidos++;
+          if (detalhes.length < 20) detalhes.push(`${alvo.id}: removido (404 no Conta Azul)`);
+        } catch (delErr: any) {
+          falhas++;
+          if (detalhes.length < 20) detalhes.push(`${alvo.id}: falha ao remover local — ${String(delErr?.message ?? delErr).slice(0, 200)}`);
+        }
+      } else {
+        falhas++;
+        if (detalhes.length < 20) detalhes.push(`${alvo.id}: ${msg.slice(0, 200)}`);
+      }
     }
+
   }
 
   // Restantes reais: em modo "todos", conta no banco todos os lançamentos
@@ -1662,14 +1682,16 @@ export async function reprocessarRateios(
     started_at: inicioIso,
     finished_at: new Date().toISOString(),
     qtd_registros: corrigidos,
-    mensagem: `[modo=${modo}] Reprocessados ${corrigidos}/${processados} rateios (falhas=${falhas}, restantes=${restantes}, dur=${durMs}ms).${detalhes.length ? "\n" + detalhes.join("\n") : ""}`,
+    mensagem: `[modo=${modo}] Reprocessados ${corrigidos}/${processados} rateios (falhas=${falhas}, removidos=${removidos}, restantes=${restantes}, dur=${durMs}ms).${detalhes.length ? "\n" + detalhes.join("\n") : ""}`,
   });
 
   return {
     tentados: processados,
     corrigidos,
     falhas,
+    removidos,
     detalhes,
+
     restantes,
     concluido,
     modo,
