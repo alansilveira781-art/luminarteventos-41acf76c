@@ -1047,6 +1047,7 @@ function AnaliseDetalhada() {
       const valor = Number(m.valor_total || 0);
       if (!valor) return;
       const catNome = m.categoria?.trim() || "";
+      if (isCategoriaExcluidaAnalise(catNome)) return;
       const hit = catNome ? planoPorNome.get(normTxt(catNome)) : undefined;
       const categoria_external_id = hit ? hit.external_id : `stock:${catNome || "Sem categoria"}`;
       const reqTag = m.requisicao_numero != null ? `REQ ${m.requisicao_numero}` : null;
