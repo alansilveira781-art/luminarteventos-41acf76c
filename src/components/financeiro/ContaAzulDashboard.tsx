@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -8,11 +8,14 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   ComposedChart, Line, Legend,
 } from "recharts";
-import { PiggyBank as Piggy, Building2, BarChart3, Sprout, Users, X, ChevronRight, ChevronDown, Printer } from "lucide-react";
+import { PiggyBank as Piggy, Building2, BarChart3, Sprout, Users, X, ChevronRight, ChevronDown, Printer, RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DRE_STRUCTURE, grupoDoPlanoNome, isTransferencia, buildPrefixIndex, calcularDRECaixa, inPeriodo, montarLinhasPorCentro, type DreGroupId, type DreLine } from "@/lib/conta-azul/dre";
 import { useDreEstrutura } from "@/hooks/useDreEstrutura";
 import { agruparParcelamentos, type GroupedLancRow } from "@/lib/conta-azul/agrupar-parcelas";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+
 
 
 const sb = supabase as any;
