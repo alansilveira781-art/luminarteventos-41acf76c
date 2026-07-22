@@ -1464,7 +1464,9 @@ export async function reprocessarRateios(
     ids?: string[];
     tipo?: "pagar" | "receber";
     limite?: number;
-    modo?: "suspeitos" | "todos";
+    modo?: "suspeitos" | "todos" | "periodo";
+    from?: string;
+    to?: string;
   } = {},
 ): Promise<{
   tentados: number;
@@ -1473,10 +1475,12 @@ export async function reprocessarRateios(
   detalhes: string[];
   restantes: number;
   concluido: boolean;
-  modo: "suspeitos" | "todos";
+  modo: "suspeitos" | "todos" | "periodo";
 }> {
   const limite = Math.min(Math.max(opts.limite ?? 40, 1), 500);
-  const modo: "suspeitos" | "todos" = opts.modo ?? "suspeitos";
+  const modo: "suspeitos" | "todos" | "periodo" = opts.modo ?? "suspeitos";
+  const periodoFrom = modo === "periodo" ? opts.from : undefined;
+  const periodoTo = modo === "periodo" ? opts.to : undefined;
   const tipos: Array<"pagar" | "receber"> = opts.tipo ? [opts.tipo] : ["pagar", "receber"];
   const inicioMs = Date.now();
   const inicioIso = new Date(inicioMs).toISOString();
