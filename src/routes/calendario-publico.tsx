@@ -103,7 +103,7 @@ function CalendarioPublico() {
       const { data, error } = await (supabase as any)
         .from("eventos")
         .select(
-          "id,codigo_evento,nome,local,cidade,tipo,data_evento,data_evento_fim,data_montagem,data_montagem_fim,data_desmontagem,data_desmontagem_fim,produtor,observacoes,cor,situacao,hora_montagem,hora_desmontagem"
+          "id,codigo_evento,nome,local,cidade,tipo,data_evento,data_evento_fim,data_montagem,data_montagem_fim,data_desmontagem,data_desmontagem_fim,produtor,observacoes,cor,situacao,hora_inicio,hora_fim,hora_montagem,hora_desmontagem"
         )
         .order("data_evento");
       if (error) throw error;
