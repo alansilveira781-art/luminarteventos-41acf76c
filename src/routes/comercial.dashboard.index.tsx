@@ -244,6 +244,16 @@ function DashboardHome() {
   const realizado = k.vendasTotais;
   const semDadosFiltrados = rows.length > 0 && filtered.length === 0;
 
+  if (!permsLoading && !temAcessoAlgumaAba) {
+    return (
+      <Card className="p-8 text-sm text-muted-foreground text-center">
+        Você não tem acesso a nenhuma seção do Dashboard Comercial.
+        <br />
+        Fale com um administrador para liberar as abas em <em>Configurações → Acesso ao Dashboard</em>.
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {secao !== "indicadores" ? (
