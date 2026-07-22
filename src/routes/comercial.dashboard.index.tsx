@@ -27,6 +27,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { useDashboardPermissoes, normalizarNome } from "@/lib/comercial/dashboard-permissoes";
 import { useAuth } from "@/contexts/AuthContext";
 import { AlertTriangle } from "lucide-react";
+import { brlFull } from "@/lib/comercial/format";
 
 export const Route = createFileRoute("/comercial/dashboard/")({
   component: DashboardHome,
