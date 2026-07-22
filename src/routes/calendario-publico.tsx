@@ -224,15 +224,16 @@ function CalendarioPublico() {
               <div className="space-y-2 pt-2">
                 <div className="rounded-md border-l-4 border-blue-600 bg-blue-600/10 px-4 py-3">
                   <div className="text-xs uppercase tracking-wide text-blue-900 dark:text-blue-200 font-semibold">Evento</div>
-                  <div className="text-lg font-medium">{fmtRange(selecionado.data_evento, selecionado.data_evento_fim)}</div>
+                  <div className="text-lg font-medium">{fmtRangeComHora(selecionado.data_evento, selecionado.data_evento_fim, (selecionado as any).hora_inicio, (selecionado as any).hora_fim)}</div>
                 </div>
                 <div className="rounded-md border-l-4 border-amber-500 bg-amber-500/10 px-4 py-3">
                   <div className="text-xs uppercase tracking-wide text-amber-900 dark:text-amber-200 font-semibold">Montagem</div>
-                  <div className="text-lg font-medium">{fmtRange(selecionado.data_montagem, selecionado.data_montagem_fim)}</div>
+                  <div className="text-lg font-medium">{fmtRangeComHora(selecionado.data_montagem, selecionado.data_montagem_fim, (selecionado as any).hora_montagem, null)}</div>
                 </div>
                 <div className="rounded-md border-l-4 border-slate-400 bg-slate-400/10 px-4 py-3">
                   <div className="text-xs uppercase tracking-wide text-slate-700 dark:text-slate-200 font-semibold">Desmontagem</div>
-                  <div className="text-lg font-medium">{fmtRange(selecionado.data_desmontagem, selecionado.data_desmontagem_fim)}</div>
+                  <div className="text-lg font-medium">{fmtRangeComHora(selecionado.data_desmontagem, selecionado.data_desmontagem_fim, (selecionado as any).hora_desmontagem, null)}</div>
+
                 </div>
               </div>
 
