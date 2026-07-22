@@ -20,6 +20,22 @@ import { toast } from "sonner";
 
 const sb = supabase as any;
 
+// Categorias excluídas apenas na aba Análise Detalhada (por pedido do usuário).
+// Comparação case-insensitive + trim + remoção de acentos, para tolerar variações.
+const normCat = (s: string) =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+const CATEGORIAS_EXCLUIDAS_ANALISE = new Set(
+  [
+    "CD - ACERVO DECORATIVO",
+    "CD - Decoração",
+    "CV - EPI INDIVIDUAL",
+    "MAQUINÁRIO",
+    "FARDAMENTO",
+  ].map(normCat),
+);
+const isCategoriaExcluidaAnalise = (nome?: string | null) =>
+  !!nome && CATEGORIAS_EXCLUIDAS_ANALISE.has(normCat(nome));
+
 type ContaPagar = {
   external_id: string;
   descricao: string | null;
