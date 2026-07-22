@@ -328,11 +328,7 @@ function SaidasPage() {
     ].join(" ");
     return matchTokens(hay, qd);
   });
-  const eventosDisponiveis = useMemo(() => {
-    const s = new Set<string>();
-    (saidas ?? []).forEach((m: any) => { if (m.evento_projeto) s.add(m.evento_projeto); });
-    return Array.from(s).sort();
-  }, [saidas]);
+
   const grupos = useMemo(() => {
     const map = new Map<string, any>();
     for (const m of filteredBaseList) {
