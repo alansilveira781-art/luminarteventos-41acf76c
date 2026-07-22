@@ -258,6 +258,7 @@ function CategoryReprocessButton({
     setState({ running: true, done: 0, total: totalIds });
     let corrigidos = 0;
     let falhas = 0;
+    let removidos = 0;
     try {
       const headers = { ...(await authHeaders()), "Content-Type": "application/json" };
       const CHUNK = 20;
@@ -279,17 +280,16 @@ function CategoryReprocessButton({
               tentados: number;
               corrigidos: number;
               falhas: number;
+              removidos?: number;
               restantes: number;
               concluido: boolean;
             };
             corrigidos += r.corrigidos;
             falhas += r.falhas;
-            // Se o servidor cortou por budget, tenta o mesmo chunk de novo (menos os já processados).
-            // Aproximação: se restantes==0 ou tentados==pending.length, encerra o chunk.
+            removidos += r.removidos ?? 0;
             if (r.restantes === 0 || r.tentados >= pending.length) {
               pending = [];
             } else {
-              // servidor processou r.tentados; deixa os últimos (não-processados) para próxima tentativa.
               pending = pending.slice(r.tentados);
             }
           }
@@ -297,12 +297,14 @@ function CategoryReprocessButton({
           setState({ running: true, done, total: totalIds });
         }
       }
-      if (falhas === 0 && corrigidos > 0) {
-        toast.success(`Rateios reprocessados: ${corrigidos} corrigidos`);
-      } else if (corrigidos > 0) {
-        toast.message(`Rateios: ${corrigidos} corrigidos · ${falhas} falhas`);
-      } else if (falhas > 0) {
+      const partes: string[] = [];
+      if (corrigidos > 0) partes.push(`${corrigidos} corrigidos`);
+      if (removidos > 0) partes.push(`${removidos} removidos (excluídos no Conta Azul)`);
+      if (falhas > 0) partes.push(`${falhas} falhas`);
+      if (falhas > 0 && corrigidos === 0 && removidos === 0) {
         toast.error(`Falha ao reprocessar (${falhas} erros)`);
+      } else if (partes.length > 0) {
+        (falhas > 0 ? toast.message : toast.success)(`Rateios: ${partes.join(" · ")}`);
       } else {
         toast.message("Nada a corrigir nesta categoria.");
       }
@@ -313,6 +315,7 @@ function CategoryReprocessButton({
       setState({ running: false, done: 0, total: 0 });
     }
   };
+
 
   return (
     <button
