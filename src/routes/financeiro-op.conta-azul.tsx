@@ -46,7 +46,7 @@ function ContaAzulPage() {
   });
   const [from, setFrom] = useState(defaults.from);
   const [to, setTo] = useState(defaults.to);
-  const [busy, setBusy] = useState<null | "connect" | "sync" | "disconnect" | "reproc">(null);
+  const [busy, setBusy] = useState<null | "connect" | "sync" | "disconnect" | "reproc" | "recorte">(null);
   const [progress, setProgress] = useState<{ current: RecursoKey | null; done: number }>({
     current: null,
     done: 0,
@@ -58,9 +58,9 @@ function ContaAzulPage() {
     detalhes?: string[];
     restantes: number;
     concluido: boolean;
-    modo: "suspeitos" | "todos";
+    modo: "suspeitos" | "todos" | "periodo";
   };
-  const [reprocMode, setReprocMode] = useState<"suspeitos" | "todos" | null>(null);
+  const [reprocMode, setReprocMode] = useState<"suspeitos" | "todos" | "periodo" | null>(null);
   const [reprocProgress, setReprocProgress] = useState<ReprocResult | null>(null);
   const [reprocLastResult, setReprocLastResult] = useState<ReprocResult | null>(null);
   const [reprocTotals, setReprocTotals] = useState<{ corrigidos: number; falhas: number; lotes: number }>({
@@ -68,6 +68,10 @@ function ContaAzulPage() {
     falhas: 0,
     lotes: 0,
   });
+  const RECORTE_2026 = { from: "2026-01-01", to: "2026-12-31" };
+  const [histFrom, setHistFrom] = useState("2023-01-01");
+  const [histTo, setHistTo] = useState("2025-12-31");
+  const [recorteLabel, setRecorteLabel] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -126,33 +130,42 @@ function ContaAzulPage() {
     }
   }
 
-  async function handleSync(modo: "incremental" | "completo") {
-    setBusy("sync");
-    setProgress({ current: null, done: 0 });
+  async function runSyncRange(
+    rangeFrom: string,
+    rangeTo: string,
+    modo: "incremental" | "completo",
+  ): Promise<{ total: number; errors: string[] }> {
     const headers = { ...(await authHeaders()), "Content-Type": "application/json" };
     let total = 0;
     const errors: string[] = [];
-    try {
-      for (let i = 0; i < RECURSOS.length; i++) {
-        const r = RECURSOS[i];
-        setProgress({ current: r.key, done: i });
-        try {
-          const res = await fetch("/api/contaazul/sync", {
-            method: "POST",
-            headers,
-            body: JSON.stringify({ from, to, recurso: r.key, modo }),
-          });
-          if (!res.ok) throw new Error(await res.text());
-          const { qtd } = (await res.json()) as { qtd: number };
-          total += qtd ?? 0;
-        } catch (e: any) {
-          const raw = String(e?.message ?? e);
-          const friendly = /503|instabilidade|temporariamente/i.test(raw)
-            ? `${r.label}: Conta Azul instável no momento (503). Tente novamente em alguns minutos.`
-            : `${r.label}: ${raw}`;
-          errors.push(friendly);
-        }
+    for (let i = 0; i < RECURSOS.length; i++) {
+      const r = RECURSOS[i];
+      setProgress({ current: r.key, done: i });
+      try {
+        const res = await fetch("/api/contaazul/sync", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ from: rangeFrom, to: rangeTo, recurso: r.key, modo }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const { qtd } = (await res.json()) as { qtd: number };
+        total += qtd ?? 0;
+      } catch (e: any) {
+        const raw = String(e?.message ?? e);
+        const friendly = /503|instabilidade|temporariamente/i.test(raw)
+          ? `${r.label}: Conta Azul instável no momento (503). Tente novamente em alguns minutos.`
+          : `${r.label}: ${raw}`;
+        errors.push(friendly);
       }
+    }
+    return { total, errors };
+  }
+
+  async function handleSync(modo: "incremental" | "completo") {
+    setBusy("sync");
+    setProgress({ current: null, done: 0 });
+    try {
+      const { total, errors } = await runSyncRange(from, to, modo);
       if (errors.length > 0) {
         toast.error(`Sincronização parcial (${total} reg.). ${errors.join(" | ")}`);
       } else {
@@ -164,40 +177,43 @@ function ContaAzulPage() {
     }
   }
 
+  async function runReprocessLoop(
+    body: Record<string, unknown>,
+    modoLabel: "suspeitos" | "todos" | "periodo",
+    autoLoop: boolean,
+  ): Promise<ReprocResult | null> {
+    const headers = { ...(await authHeaders()), "Content-Type": "application/json" };
+    setReprocMode(modoLabel);
+    setReprocTotals({ corrigidos: 0, falhas: 0, lotes: 0 });
+    let lastResult: ReprocResult | null = null;
+    for (let i = 0; i < 200; i++) {
+      const res = await fetch("/api/contaazul/reprocessar-rateios", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ ...body, limite: 40 }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const r = (await res.json()) as ReprocResult;
+      lastResult = r;
+      setReprocProgress(r);
+      setReprocTotals((t) => ({
+        corrigidos: t.corrigidos + r.corrigidos,
+        falhas: t.falhas + r.falhas,
+        lotes: t.lotes + 1,
+      }));
+      if (r.concluido || !autoLoop) break;
+      if (r.tentados === 0) break;
+    }
+    return lastResult;
+  }
+
   async function handleReprocessarRateios(
     modo: "suspeitos" | "todos",
     opts: { auto?: boolean } = {},
   ) {
     setBusy("reproc");
-    setReprocMode(modo);
-    if (!opts.auto) setReprocTotals({ corrigidos: 0, falhas: 0, lotes: 0 });
-    else setReprocTotals({ corrigidos: 0, falhas: 0, lotes: 0 });
-    const headers = { ...(await authHeaders()), "Content-Type": "application/json" };
     try {
-      let lastResult: ReprocResult | null = null;
-      // Loop: modo "todos" com opts.auto=true continua chamando até concluido.
-      // Demais casos: um único lote.
-      // Limite de segurança de 200 lotes para evitar loop infinito.
-      for (let i = 0; i < 200; i++) {
-        const res = await fetch("/api/contaazul/reprocessar-rateios", {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ modo, limite: 40 }),
-        });
-        if (!res.ok) throw new Error(await res.text());
-        const r = (await res.json()) as ReprocResult;
-        lastResult = r;
-        setReprocProgress(r);
-        setReprocTotals((t) => ({
-          corrigidos: t.corrigidos + r.corrigidos,
-          falhas: t.falhas + r.falhas,
-          lotes: t.lotes + 1,
-        }));
-        if (r.concluido || modo !== "todos" || !opts.auto) break;
-        // Proteção: se um lote não processou nada, parar para não gastar recursos.
-        if (r.tentados === 0) break;
-
-      }
+      const lastResult = await runReprocessLoop({ modo }, modo, modo === "todos" && !!opts.auto);
       setReprocLastResult(lastResult);
       const detalhe = lastResult?.detalhes?.[0] ? ` ${lastResult.detalhes[0]}` : "";
       if (lastResult?.concluido) {
@@ -213,6 +229,42 @@ function ContaAzulPage() {
       toast.error(`Erro ao reprocessar: ${String(e?.message ?? e)}`);
     } finally {
       setBusy(null);
+    }
+  }
+
+  async function handleRecorte(rangeFrom: string, rangeTo: string, label: string) {
+    if (rangeFrom > rangeTo) {
+      toast.error("Data inicial deve ser anterior à final.");
+      return;
+    }
+    setBusy("recorte");
+    setRecorteLabel(label);
+    setProgress({ current: null, done: 0 });
+    try {
+      const { total, errors } = await runSyncRange(rangeFrom, rangeTo, "completo");
+      if (errors.length > 0) {
+        toast.error(`Sincronização parcial (${total} reg.). ${errors.join(" | ")}`);
+      } else {
+        toast.success(`Sincronização (${label}) concluída — ${total} registros. Iniciando reprocesso de rateios…`);
+      }
+      setProgress({ current: null, done: 0 });
+      const last = await runReprocessLoop(
+        { modo: "periodo", from: rangeFrom, to: rangeTo },
+        "periodo",
+        true,
+      );
+      setReprocLastResult(last);
+      if (last?.concluido) {
+        toast.success(`Rateios (${label}): ${last.corrigidos} corrigidos, ${last.falhas} falhas`);
+      } else if (last) {
+        toast.message(`Rateios (${label}): ${last.corrigidos} corrigidos, ${last.falhas} falhas. Restam ${last.restantes}.`);
+      }
+    } catch (e: any) {
+      toast.error(`Erro no recorte: ${String(e?.message ?? e)}`);
+    } finally {
+      setBusy(null);
+      setProgress({ current: null, done: 0 });
+      setRecorteLabel(null);
     }
   }
 
@@ -310,6 +362,94 @@ function ContaAzulPage() {
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
+              <RefreshCw className="h-4 w-4" /> Recortes rápidos (sincronismo + rateios)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Cada recorte roda a sincronização completa dos 5 recursos no período e, na sequência, reprocessa
+              automaticamente os rateios de todos os lançamentos com vencimento na janela — buscando o detalhe
+              atualizado no Conta Azul pelo token conectado.
+            </p>
+
+            <div className="rounded-md border p-3 space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-sm font-medium">Ano de 2026</div>
+                  <div className="text-xs text-muted-foreground">01/01/2026 → 31/12/2026</div>
+                </div>
+                <Button
+                  disabled={!canManage || !connected || busy !== null}
+                  onClick={() => handleRecorte(RECORTE_2026.from, RECORTE_2026.to, "2026")}
+                >
+                  {busy === "recorte" && recorteLabel === "2026" ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                  )}
+                  Sincronizar 2026
+                </Button>
+              </div>
+            </div>
+
+            <div className="rounded-md border p-3 space-y-2">
+              <div className="text-sm font-medium">Histórico (antes de 2026)</div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">De</Label>
+                  <Input
+                    type="date"
+                    max="2025-12-31"
+                    value={histFrom}
+                    onChange={(e) => setHistFrom(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Até</Label>
+                  <Input
+                    type="date"
+                    max="2025-12-31"
+                    value={histTo}
+                    onChange={(e) => setHistTo(e.target.value)}
+                  />
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                disabled={!canManage || !connected || busy !== null || !histFrom || !histTo || histTo >= "2026-01-01"}
+                onClick={() => handleRecorte(histFrom, histTo, `${histFrom} → ${histTo}`)}
+              >
+                {busy === "recorte" && recorteLabel && recorteLabel !== "2026" ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                )}
+                Sincronizar histórico
+              </Button>
+              {histTo >= "2026-01-01" && (
+                <p className="text-xs text-destructive">A data final deve ser anterior a 01/01/2026.</p>
+              )}
+            </div>
+
+            {busy === "recorte" && progress.current && (
+              <p className="text-xs text-muted-foreground">
+                Sincronizando {RECURSOS.find((r) => r.key === progress.current)?.label} ({progress.done + 1}/{RECURSOS.length})…
+              </p>
+            )}
+            {busy === "recorte" && reprocMode === "periodo" && reprocProgress && (
+              <p className="text-xs text-muted-foreground">
+                Reprocessando rateios: {reprocTotals.corrigidos} corrigidos · {reprocTotals.falhas} falhas ·
+                {" "}{reprocProgress.restantes} restantes
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
               <RefreshCw className="h-4 w-4" /> Reprocessar rateios
             </CardTitle>
           </CardHeader>
@@ -343,11 +483,11 @@ function ContaAzulPage() {
                 )}
                 Reprocessar tudo
               </Button>
-              {reprocLastResult && !reprocLastResult.concluido && busy === null && (
+              {reprocLastResult && !reprocLastResult.concluido && busy === null && reprocLastResult.modo !== "periodo" && (
                 <Button
                   variant="secondary"
                   disabled={!canManage || !connected}
-                  onClick={() => handleReprocessarRateios(reprocLastResult.modo, { auto: false })}
+                  onClick={() => handleReprocessarRateios(reprocLastResult.modo as "suspeitos" | "todos", { auto: false })}
                 >
                   <RefreshCw className="h-4 w-4 mr-1" />
                   Continuar (restam {reprocLastResult.restantes})
