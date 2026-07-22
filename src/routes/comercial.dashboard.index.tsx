@@ -159,8 +159,8 @@ function DashboardHome() {
 
   const linhasRelatorio = useMemo(() => {
     return [...filtered].sort((a, b) => {
-      const da = a.dataEvento || a.dataRegistro || "";
-      const db = b.dataEvento || b.dataRegistro || "";
+      const da = a.dataRegistro || a.dataEvento || "";
+      const db = b.dataRegistro || b.dataEvento || "";
       return db.localeCompare(da);
     });
   }, [filtered]);
