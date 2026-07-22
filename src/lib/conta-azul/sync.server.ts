@@ -1646,7 +1646,7 @@ export async function reprocessarRateios(
   // ainda não sincronizados nesta rodada (detalhe_synced_at nulo ou anterior
   // ao início). Em "suspeitos"/ids explícitos, cai no cálculo local.
   let restantes = Math.max(0, allTargets.length - processados);
-  if (!opts.ids && modo === "todos") {
+  if (!opts.ids && (modo === "todos" || modo === "periodo")) {
     let total = 0;
     for (const t of tipos) total += await contarPendentes(t);
     restantes = total;
