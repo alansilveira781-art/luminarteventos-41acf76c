@@ -1,35 +1,11 @@
-## Ajustes no Dashboard Comercial
+## Objetivo
+Remover a duplicata da venda "ABERTURA COCAL / BEACH PARK" com `data_registro = 26/06/2026`, mantendo a linha correta (registro 01/07/2026).
 
-### 1. Detalhamento de Vendas — usar somente Data de Registro
+## Ação
+- Excluir o registro `bc0c48dc-b2d4-4f3d-aa35-b38b4c2d3f2a` da tabela `comercial_vendas` (criado em 02/07 via sync antigo da planilha).
+- Manter `7e50a925-588f-461e-b39c-163c1dabd152` (data_registro 01/07/2026, criado em 13/07).
 
-Em `src/routes/comercial.dashboard.index.tsx`:
-- Ordenação (linhas ~216-218): trocar `a.dataRegistro || a.dataEvento` por apenas `a.dataRegistro` (mesmo para `b`).
-- Coluna Data (linha 515): trocar `fmtDataBR(r.dataRegistro || r.dataEvento)` por `fmtDataBR(r.dataRegistro)`.
+Após a exclusão, o Detalhamento de Vendas passará a mostrar apenas a linha com 01/07/2026.
 
-Isso alinha o Detalhamento com o restante do dashboard, que já usa exclusivamente a data de registro.
-
-### 2. Tooltip com valor exato nos valores abreviados
-
-Objetivo: onde o valor aparece abreviado ("R$ 1,2 Mi", "R$ 350 Mil"), ao passar o mouse deve aparecer o valor completo (ex.: "R$ 1.234.567,89").
-
-**a) KPI Cards (`src/components/comercial/dashboard/KpiCard.tsx`)**
-- Envolver o valor principal e o valor "anterior" em `<span title={valorCompletoFormatado}>` quando `isMoney`.
-- Adicionar helper `brlFull(v)` retornando `v.toLocaleString("pt-BR", { style:"currency", currency:"BRL" })`.
-
-**b) Gráficos Recharts (todos os `<Tooltip>` que usam `brlAbrev` como formatter)**
-
-Arquivos afetados:
-- `src/routes/comercial.dashboard.painel.tsx` (Evolução Vendas, Ticket, Ranking Consultores, Classificação)
-- `src/routes/comercial.dashboard.index.tsx` (mesmos gráficos + Comissões, Cerimonial, Decorador, Tipo de Evento, Ano A vs B, Pizza Classificação)
-- Demais abas do dashboard que reutilizam o mesmo padrão (`comercial.dashboard.vendedores.tsx`, `comercial.dashboard.indicadores.tsx`, `comercial.dashboard.relatorios.tsx`, `comercial.dashboard.propostas.tsx`) — varrer e aplicar a mesma correção onde houver `brlAbrev` no formatter do Tooltip.
-
-Trocar em todos os `<Tooltip formatter={(v) => brlAbrev(v)} ...>` para usar o valor **completo** (`brlFull`), já que o Tooltip é o lugar natural para ver o número exato. Os `<LabelList>` continuam abreviados (é o comportamento desejado para caber no gráfico).
-
-**c) Rótulos abreviados em tabelas/legendas fora de Recharts** (ex.: linha 819 do index)
-- Adicionar `title={brlFull(value)}` no elemento que renderiza o texto abreviado.
-
-### Detalhes técnicos
-
-- Criar `brlFull` uma vez em um utilitário compartilhado (ex.: `src/lib/comercial/format.ts`) e importar nos arquivos, evitando duplicação.
-- Não alterar `brlAbrev` — continua sendo usado em labels de gráfico e KPI para responsividade.
-- Sem mudanças em lógica de negócio, apenas apresentação.
+## Observação
+Isto não altera o comportamento futuro: se a planilha for reenviada com a mesma linha "26/06", ela voltará a ser inserida. Caso queira prevenir novas duplicatas, me avise depois para adicionar dedupe no upload/insert (ou índice único no banco).
