@@ -23,6 +23,31 @@ import {
 } from "@/lib/comercial/bonificacao";
 import { TIPOS_EVENTO } from "@/lib/comercial/types";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+type UsuarioComercial = { id: string; nome: string; is_admin: boolean };
+
+function useUsuariosComercial() {
+  return useQuery({
+    queryKey: ["comercial-usuarios-com-modulo"],
+    queryFn: async (): Promise<UsuarioComercial[]> => {
+      const { data: mod } = await (supabase as any)
+        .from("modulos").select("id").eq("slug", "comercial").maybeSingle();
+      if (!mod?.id) return [];
+      const { data: um } = await (supabase as any)
+        .from("user_modulos").select("user_id, is_admin").eq("modulo_id", mod.id);
+      const ids = (um ?? []).map((r: any) => r.user_id);
+      if (ids.length === 0) return [];
+      const { data: profs } = await (supabase as any)
+        .from("profiles").select("id, display_name, email").in("id", ids);
+      const adminMap = new Map<string, boolean>((um ?? []).map((r: any) => [r.user_id, !!r.is_admin]));
+      return ((profs ?? []) as any[])
+        .map((p) => ({ id: p.id as string, nome: (p.display_name || p.email) as string, is_admin: !!adminMap.get(p.id) }))
+        .sort((a, b) => a.nome.localeCompare(b.nome));
+    },
+    staleTime: 60_000,
+  });
+}
 
 export const Route = createFileRoute("/comercial/configuracoes")({
   component: ComercialConfiguracoes,
