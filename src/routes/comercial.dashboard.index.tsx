@@ -51,7 +51,30 @@ type Secao = "painel" | "relatorio" | "vendedores" | "indicadores";
 
 function DashboardHome() {
   const { rows, filtered, previous, filtros, setFiltros } = useDashboard();
-  const [secao, setSecao] = useState<Secao>("painel");
+  const { perms, isAdminComercial, temAcessoAlgumaAba, loading: permsLoading } = useDashboardPermissoes();
+  const { user } = useAuth();
+
+  const secoesLiberadas = useMemo(() => {
+    const arr: Secao[] = [];
+    if (perms.ver_painel) arr.push("painel");
+    if (perms.ver_relatorio) arr.push("relatorio");
+    if (perms.ver_vendedores) arr.push("vendedores");
+    if (perms.ver_indicadores) arr.push("indicadores");
+    return arr;
+  }, [perms]);
+
+  const [secao, setSecao] = useState<Secao>(secoesLiberadas[0] ?? "painel");
+  useEffect(() => {
+    if (secoesLiberadas.length === 0) return;
+    if (!secoesLiberadas.includes(secao)) setSecao(secoesLiberadas[0]);
+  }, [secoesLiberadas, secao]);
+
+  // Nome do usuário (para travar filtro de vendedor quando não for admin)
+  const meuNomeNorm = useMemo(() => {
+    const meta: any = user?.user_metadata ?? {};
+    return normalizarNome(meta.full_name ?? meta.name ?? user?.email ?? "");
+  }, [user]);
+
   const [consultorSel, setConsultorSel] = useState<string | "Todos">("Todos");
 
   const consultoresDisponiveis = useMemo(() => {
