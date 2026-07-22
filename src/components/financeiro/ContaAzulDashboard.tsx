@@ -368,9 +368,13 @@ function PainelFinanceiro() {
   const [mes, setMes] = useState(0);
   const anoEfetivo = ano;
   const { planos, pagar, receber } = useContaAzulData(anoEfetivo, mes);
+  const { isAdmin, isModuleAdmin } = useAuth();
+  const canReprocess = isAdmin || isModuleAdmin("financeiro");
+  const qc = useQueryClient();
 
   const [categoriaSel, setCategoriaSel] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
 
   const planosArr = planos.data ?? [];
   const planoMap = useMemo(() => {
