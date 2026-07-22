@@ -86,6 +86,24 @@ function DashboardHome() {
     return [...set].sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [filtered]);
 
+  // Consultor associado ao usuário logado (casamento por nome normalizado)
+  const meuConsultor = useMemo(() => {
+    if (!meuNomeNorm) return null;
+    // Considera todos os rows (não só filtered) para achar o nome cadastrado
+    const nomes = new Set<string>();
+    for (const r of rows) { const c = cleanText(r.consultor); if (c) nomes.add(c); }
+    for (const n of nomes) if (normalizarNome(n) === meuNomeNorm) return n;
+    return null;
+  }, [rows, meuNomeNorm]);
+
+  // Não-admin comercial: filtro travado no próprio vendedor.
+  const vendedorTravado = !isAdminComercial;
+  useEffect(() => {
+    if (!vendedorTravado) return;
+    if (meuConsultor && consultorSel !== meuConsultor) setConsultorSel(meuConsultor);
+    if (!meuConsultor && consultorSel !== "Todos") setConsultorSel("Todos");
+  }, [vendedorTravado, meuConsultor, consultorSel]);
+
   const vendedoresRows = useMemo(() => {
     if (consultorSel === "Todos") return filtered;
     return filtered.filter((r) => cleanText(r.consultor) === consultorSel);
