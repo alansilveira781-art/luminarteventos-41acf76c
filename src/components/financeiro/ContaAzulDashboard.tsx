@@ -1309,17 +1309,35 @@ function AnaliseDetalhada() {
                 );
               }
               const isSel = row.catId === categoriaSel;
+              const catLancs = row.catId ? lancamentos.filter((l) => l.categoria_external_id === row.catId) : [];
               return (
-                <button
+                <div
                   key={row.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => row.catId && onClickCategoria(row.catId)}
-                  className={`grid grid-cols-[1fr,140px,70px] w-full px-3 py-1 border-t border-border text-xs text-left hover:bg-accent ${isSel ? "bg-accent" : ""}`}
+                  onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && row.catId) { e.preventDefault(); onClickCategoria(row.catId); } }}
+                  className={`grid grid-cols-[1fr,140px,70px] w-full px-3 py-1 border-t border-border text-xs text-left hover:bg-accent cursor-pointer ${isSel ? "bg-accent" : ""}`}
                 >
-                  <div className="pl-7 truncate" title={row.label}>{row.label}</div>
+                  <div className="pl-7 truncate flex items-center gap-1.5" title={row.label}>
+                    <span className="truncate">{row.label}</span>
+                    {canReprocess && row.catId && catLancs.length > 0 && (
+                      <CategoryReprocessButton
+                        catId={row.catId}
+                        lancs={catLancs}
+                        onDone={() => {
+                          qc.invalidateQueries({ queryKey: ["ca-rateios-cc", centroId] });
+                          qc.invalidateQueries({ queryKey: ["ca-pagar-parents"] });
+                          qc.invalidateQueries({ queryKey: ["ca-receber-parents"] });
+                        }}
+                      />
+                    )}
+                  </div>
                   <div className={`text-right tabular-nums ${row.valor < 0 ? "text-rose-600" : ""}`}>{fmtMoney(row.valor)}</div>
                   <div className="text-right tabular-nums text-muted-foreground">{fmtPct(row.pct)}</div>
-                </button>
+                </div>
               );
+
             })}
           </div>
           {linhaLucro && (
