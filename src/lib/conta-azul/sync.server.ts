@@ -1598,8 +1598,10 @@ export async function reprocessarRateios(
   const syncedAt = new Date().toISOString();
   let corrigidos = 0;
   let falhas = 0;
+  let removidos = 0;
   let processados = 0;
   const detalhes: string[] = [];
+
 
   async function fetchDetalheComRetry(id: string) {
     try {
