@@ -48,12 +48,143 @@ function ComercialConfiguracoes() {
         />
       </Card>
 
+      <AcessoDashboardCard />
+
       <VendedoresCard />
       <CerimoniaisCard />
       <DecoradoresCard />
       <ProdutoresCard />
       <AlcadasCard isAdmin={isAdmin} />
     </div>
+  );
+}
+
+/* ---------- Acesso ao Dashboard ---------- */
+type DashPerms = {
+  ver_painel: boolean;
+  ver_relatorio: boolean;
+  ver_vendedores: boolean;
+  ver_indicadores: boolean;
+};
+const DASH_ABAS: { key: keyof DashPerms; label: string }[] = [
+  { key: "ver_painel", label: "Painel" },
+  { key: "ver_relatorio", label: "Relatório" },
+  { key: "ver_vendedores", label: "Vendedores" },
+  { key: "ver_indicadores", label: "Indicadores" },
+];
+
+function AcessoDashboardCard() {
+  const qc = useQueryClient();
+
+  const { data: usuarios = [], isLoading } = useQuery({
+    queryKey: ["comercial-usuarios-com-modulo"],
+    queryFn: async () => {
+      const { data: mod } = await (supabase as any)
+        .from("modulos").select("id").eq("slug", "comercial").maybeSingle();
+      if (!mod?.id) return [];
+      const { data: um } = await (supabase as any)
+        .from("user_modulos").select("user_id, is_admin").eq("modulo_id", mod.id);
+      const ids = (um ?? []).map((r: any) => r.user_id);
+      if (ids.length === 0) return [];
+      const { data: profs } = await (supabase as any)
+        .from("profiles").select("id, display_name, email").in("id", ids);
+      const adminMap = new Map<string, boolean>((um ?? []).map((r: any) => [r.user_id, !!r.is_admin]));
+      return (profs ?? [])
+        .map((p: any) => ({ id: p.id as string, nome: (p.display_name || p.email) as string, is_admin: !!adminMap.get(p.id) }))
+        .sort((a: any, b: any) => a.nome.localeCompare(b.nome));
+    },
+    staleTime: 60_000,
+  });
+
+  const { data: permsList = [] } = useQuery({
+    queryKey: ["comercial-dashboard-permissoes"],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("comercial_dashboard_permissoes")
+        .select("user_id, ver_painel, ver_relatorio, ver_vendedores, ver_indicadores");
+      return (data ?? []) as (DashPerms & { user_id: string })[];
+    },
+    staleTime: 30_000,
+  });
+  const permsByUser = new Map(permsList.map((p) => [p.user_id, p]));
+
+  const mut = useMutation({
+    mutationFn: async ({ user_id, patch }: { user_id: string; patch: Partial<DashPerms> }) => {
+      const existing = permsByUser.get(user_id);
+      const row = {
+        user_id,
+        ver_painel: existing?.ver_painel ?? false,
+        ver_relatorio: existing?.ver_relatorio ?? false,
+        ver_vendedores: existing?.ver_vendedores ?? true,
+        ver_indicadores: existing?.ver_indicadores ?? false,
+        ...patch,
+      };
+      const { error } = await (supabase as any)
+        .from("comercial_dashboard_permissoes")
+        .upsert(row, { onConflict: "user_id" });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["comercial-dashboard-permissoes"] }),
+    onError: (e: any) => toast.error(e?.message || "Falha ao salvar"),
+  });
+
+  return (
+    <Card className="p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold">Acesso ao Dashboard Comercial</h2>
+        <span className="text-xs text-muted-foreground">
+          Administradores do módulo veem tudo automaticamente
+        </span>
+      </div>
+      {isLoading ? (
+        <div className="text-sm text-muted-foreground flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
+        </div>
+      ) : usuarios.length === 0 ? (
+        <div className="text-sm text-muted-foreground">Nenhum usuário com o módulo Comercial.</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-xs text-muted-foreground">
+              <tr>
+                <th className="px-3 py-1 text-left">Usuário</th>
+                {DASH_ABAS.map((a) => (
+                  <th key={a.key} className="px-3 py-1 text-center w-28">{a.label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {usuarios.map((u: any) => {
+                const p = permsByUser.get(u.id);
+                return (
+                  <tr key={u.id} className="border-t border-border/50">
+                    <td className="px-3 py-2">
+                      {u.nome}
+                      {u.is_admin && <span className="ml-2 text-[10px] uppercase tracking-wide text-emerald-600">admin</span>}
+                    </td>
+                    {DASH_ABAS.map((a) => {
+                      const checked = u.is_admin ? true : (p ? !!p[a.key] : a.key === "ver_vendedores");
+                      return (
+                        <td key={a.key} className="px-3 py-2 text-center">
+                          <Switch
+                            checked={checked}
+                            disabled={u.is_admin || mut.isPending}
+                            onCheckedChange={(v) => mut.mutate({ user_id: u.id, patch: { [a.key]: v } as Partial<DashPerms> })}
+                          />
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <p className="text-xs text-muted-foreground mt-3">
+            Sem configuração explícita, o usuário vê apenas a aba <strong>Vendedores</strong> — restrita aos dados do próprio consultor (casamento por nome).
+          </p>
+        </div>
+      )}
+    </Card>
   );
 }
 
