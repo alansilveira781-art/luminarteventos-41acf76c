@@ -1,49 +1,46 @@
-# Recortes de sincronização Conta Azul
+### Objetivo
 
-Adicionar dois botões dedicados na aba **Financeiro Op → Conta Azul**, que rodam a sincronização completa (plano de contas, centros de custo, contas a pagar, contas a receber e extrato) para um período fixo e, ao final, reprocessam automaticamente os rateios apenas dos lançamentos daquele período.
+Evitar reprocessamentos históricos gigantescos (que estouram o token do Conta Azul) permitindo reprocessar rateios categoria por categoria, direto do dashboard, apenas dos lançamentos já carregados na tela.
 
-## UX na página `financeiro-op.conta-azul.tsx`
+### Como vai funcionar
 
-Novo card **"Recortes rápidos"** abaixo do card de sincronização atual:
+Em `src/components/financeiro/ContaAzulDashboard.tsx`, cada linha de categoria do Demonstrativo (nos dois dashboards — Painel Financeiro em regime de caixa e Análise Detalhada em competência) ganha um botão discreto (ícone `RefreshCw`, `variant="ghost"`, `size="icon"`, aparecendo em hover) ao lado do nome da categoria.
 
-- **Botão "Sincronizar 2026"** — período fixo 01/01/2026 → 31/12/2026. Sem inputs.
-- **Bloco "Histórico (antes de 2026)"** — dois inputs De/Até (default: De = 01/01/2023, Até = 31/12/2025), com validação `to < 2026-01-01`. Botão **"Sincronizar histórico"**.
-- Barra de progresso reaproveitando o estado `progress` existente (recurso atual X/5).
-- Ao finalizar cada recorte, dispara automaticamente o reprocessamento de rateios **restrito aos external_ids do período**, com contador de lotes já usado hoje.
+Ao clicar:
 
-## Backend
+1. O front coleta os `external_id` dos lançamentos daquela categoria já filtrados pelo período visível na tela (usa o `lancamentos`/`lancFiltrados` que a própria linha já agrega — nada de novo query).
+2. Divide em lotes de 20 ids e chama `POST /api/contaazul/reprocessar-rateios` com `{ ids: [...], tipo, limite: chunk.length }` em sequência até acabar. O endpoint e o `reprocessarRateios` do servidor já aceitam a lista explícita de ids — nenhuma mudança de backend necessária.
+3. Mostra progresso no próprio botão (spinner + contador `n/total`) e um `toast` final com `X corrigidos · Y falhas`.
+4. Só admins do módulo financeiro veem o botão (mesma checagem que hoje libera "Reprocessar tudo" na página `/financeiro-op/conta-azul`).
 
-### 1. Novo endpoint `POST /api/contaazul/sync-recorte`
-Body: `{ from: "YYYY-MM-DD", to: "YYYY-MM-DD" }` (valida `from <= to`).
-- Chama `syncTudo(from, to, { incremental: false })` — que já roda os 5 recursos em sequência.
-- Retorna `{ resultados, external_ids_pagar, external_ids_receber }` para o cliente poder pedir o reprocesso em lotes.
+### Por que isso resolve o problema do token
 
-Alternativa mais simples e preferida: manter o loop atual no client (que já mostra progresso por recurso) e apenas garantir que o botão passe as datas fixas certas. Nesse caso não precisa de endpoint novo — só de nova função no client que chama `/api/contaazul/sync` para cada recurso com `modo: "completo"` e as datas do recorte.
+- A janela de trabalho é sempre pequena (uma categoria dentro do período do dashboard, tipicamente dezenas de lançamentos), então cabe em uma ou duas chamadas curtas — bem abaixo do tempo em que o access_token expira.
+- Se algo falhar, dá para reclicar só naquela categoria sem refazer o histórico inteiro.
+- O botão "Sincronizar histórico" em `/financeiro-op/conta-azul` continua existindo para quem preferir o lote grande.
 
-### 2. Endpoint `reprocessar-rateios` — novo modo `periodo`
-Em `src/routes/api/contaazul/reprocessar-rateios.ts` e `reprocessarRateios` em `sync.server.ts`:
-- Aceitar `{ modo: "periodo", from, to, limite }`.
-- `listarCandidatos` filtra `ca_contas_pagar` / `ca_contas_receber` por `data_vencimento BETWEEN from AND to` (mesma coluna que a Análise Detalhada usa em regime de competência), ordenado por `detalhe_synced_at ASC NULLS FIRST`.
-- Reaproveita a lógica de reescalonamento de fatias já existente (`buildRateios` + `finalizarFatias`).
+### Detalhes técnicos
 
-### 3. Client — orquestração
-Nova função `handleRecorte(from, to)` em `financeiro-op.conta-azul.tsx`:
-1. Loop dos 5 recursos chamando `/api/contaazul/sync` com `modo: "completo"` (reaproveita `handleSync`, extraindo a lógica em função parametrizada por datas).
-2. Após concluído, chama `/api/contaazul/reprocessar-rateios` com `{ modo: "periodo", from, to, limite: 40 }` em loop até `concluido: true` (mesma proteção de 200 lotes já existente).
-3. Toast final com totais: registros sincronizados + rateios corrigidos.
+Arquivo alterado: `src/components/financeiro/ContaAzulDashboard.tsx` apenas.
 
-## Correção dos rateios
-A lógica de rateio correta já existe (`buildRateios` + `finalizarFatias`, que rescala pelo `valor_parcela / soma_rateios_contrato` e valida tolerância de R$ 0,01). O que muda: garantir que **todo lançamento do recorte passe pelo reprocesso**, não só suspeitos. É isso que o modo `periodo` acima faz — força reprocesso completo dentro da janela sincronizada, usando o token OAuth atual para buscar `/financeiro/eventos-financeiros/parcelas/{id}` de cada lançamento.
+- Adicionar `external_id: string` ao tipo `LancRow` e ao `push()` que monta `lancamentos`. As queries `pagarCols`/`receberCols` já trazem o campo — é só passá-lo adiante, sem query nova.
+- Novo helper local `reprocessarCategoria(catId, tipo)` que:
+  - Deriva `ids = [...new Set(lancamentos.filter(l => l.categoria_external_id === catId).map(l => l.external_id))]`.
+  - Loop em chunks de 20 chamando `fetch("/api/contaazul/reprocessar-rateios", { method: "POST", headers: { ...authHeaders, "Content-Type": "application/json" }, body: JSON.stringify({ ids: chunk, tipo, limite: chunk.length }) })`.
+  - Reenvia o mesmo chunk enquanto a resposta trouxer `restantes > 0`, com teto de 3 tentativas por chunk — o servidor corta o lote ao atingir `BUDGET_MS`, e somar apenas `corrigidos` esconderia os itens não processados.
+  - Acumula `corrigidos`/`falhas` do retorno e atualiza estado local `reprocByCat: Record<catId, { running, done, total, corrigidos, falhas }>`.
+  - Ao final: `qc.invalidateQueries` das queries do dashboard (`ca-*`) e `toast.success/error`.
+- `tipo` (`"pagar"` | `"receber"`) é derivado do grupo do DRE a que a linha pertence e enviado no payload. Sem ele o servidor consulta as duas tabelas por chunk e pode truncar o lote.
+- `authHeaders()` copiado do mesmo padrão já usado em `src/routes/financeiro-op.conta-azul.tsx` (`supabase.auth.getSession()` → `Authorization: Bearer`).
+- Botão renderizado dentro do `<tr>` de cada categoria (`kind === "detail"`, nunca em header/calc), com `onClick` que faz `stopPropagation` para não disparar o `onClickCategoria` de filtro.
+- Nenhuma mudança em `sync.server.ts`, endpoints, migrações ou permissões.
 
-## Detalhes técnicos
+### Nota sobre o efeito visível
 
-- Datas 2026 hard-coded como constantes no componente (`RECORTE_2026 = { from: "2026-01-01", to: "2026-12-31" }`).
-- Input do histórico usa `<Input type="date" max="2025-12-31">`.
-- Reaproveita `busy`, `progress`, `reprocProgress`, `reprocTotals` já existentes — sem novo estado global.
-- Sem migração de schema.
-- Sem alteração no cron / D-1 / job histórico existente (`ca_sync_jobs`) — os recortes rodam sob demanda, síncronos, do lado do usuário.
+O Demonstrativo agrega por `categoria_external_id` direto de `ca_contas_pagar`/`ca_contas_receber` — não lê `ca_lancamento_rateios`. O reprocessamento corrige as fatias daqueles lançamentos, mas o valor da própria linha do Demonstrativo não muda. Quem reflete a correção é a Análise por Centro de Custo, que consome os rateios.
 
-## Arquivos afetados
-- `src/routes/financeiro-op.conta-azul.tsx` — novo card, `handleRecorte`, refactor pequeno do `handleSync` para aceitar `{ from, to }`.
-- `src/routes/api/contaazul/reprocessar-rateios.ts` — aceitar novo modo `periodo` no schema Zod.
-- `src/lib/conta-azul/sync.server.ts` — `reprocessarRateios` e `listarCandidatos` aceitando filtro por `from/to`.
+### Fora de escopo
+
+- Não altera a UI/fluxo do `/financeiro-op/conta-azul` (recortes 2026 / histórico continuam iguais).
+- Não altera a lógica de `buildRateios`/`finalizarFatias` no servidor.
+- Não mexe em receitas do estoque (`stock:*`), que não têm rateio no Conta Azul — para essas o botão fica oculto.

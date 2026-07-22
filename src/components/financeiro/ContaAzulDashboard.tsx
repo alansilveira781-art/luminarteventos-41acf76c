@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -8,11 +8,14 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   ComposedChart, Line, Legend,
 } from "recharts";
-import { PiggyBank as Piggy, Building2, BarChart3, Sprout, Users, X, ChevronRight, ChevronDown, Printer } from "lucide-react";
+import { PiggyBank as Piggy, Building2, BarChart3, Sprout, Users, X, ChevronRight, ChevronDown, Printer, RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DRE_STRUCTURE, grupoDoPlanoNome, isTransferencia, buildPrefixIndex, calcularDRECaixa, inPeriodo, montarLinhasPorCentro, type DreGroupId, type DreLine } from "@/lib/conta-azul/dre";
 import { useDreEstrutura } from "@/hooks/useDreEstrutura";
 import { agruparParcelamentos, type GroupedLancRow } from "@/lib/conta-azul/agrupar-parcelas";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+
 
 
 const sb = supabase as any;
@@ -204,7 +207,133 @@ type LancRow = {
   descricao: string | null;
   valor: number;
   categoria_external_id: string | null;
+  external_id?: string;
+  tipo?: "pagar" | "receber";
 };
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+/** Botão discreto de reprocesso de rateios de uma categoria.
+ *  Recebe os external_ids dos lançamentos daquela categoria (já filtrados pelo período visível)
+ *  e chama /api/contaazul/reprocessar-rateios em lotes pequenos, evitando expirar o token. */
+function CategoryReprocessButton({
+  catId,
+  lancs,
+  onDone,
+}: {
+  catId: string;
+  lancs: LancRow[];
+  onDone?: () => void;
+}) {
+  const [state, setState] = useState<{ running: boolean; done: number; total: number }>({
+    running: false,
+    done: 0,
+    total: 0,
+  });
+
+  // Agrupa ids por tipo (pagar/receber). Ignora linhas sem external_id/tipo (ex.: saídas de estoque).
+  const idsPorTipo = useMemo(() => {
+    const map: Record<"pagar" | "receber", string[]> = { pagar: [], receber: [] };
+    const seen = new Set<string>();
+    for (const l of lancs) {
+      if (!l.external_id || !l.tipo) continue;
+      const k = `${l.tipo}:${l.external_id}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      map[l.tipo].push(l.external_id);
+    }
+    return map;
+  }, [lancs]);
+
+  const totalIds = idsPorTipo.pagar.length + idsPorTipo.receber.length;
+  if (totalIds === 0) return null;
+
+  const handleClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (state.running) return;
+    setState({ running: true, done: 0, total: totalIds });
+    let corrigidos = 0;
+    let falhas = 0;
+    try {
+      const headers = { ...(await authHeaders()), "Content-Type": "application/json" };
+      const CHUNK = 20;
+      const MAX_RETRIES = 3;
+      let done = 0;
+      for (const tipo of ["pagar", "receber"] as const) {
+        const ids = idsPorTipo[tipo];
+        for (let i = 0; i < ids.length; i += CHUNK) {
+          const chunk = ids.slice(i, i + CHUNK);
+          let pending = chunk;
+          for (let attempt = 0; attempt < MAX_RETRIES && pending.length > 0; attempt++) {
+            const res = await fetch("/api/contaazul/reprocessar-rateios", {
+              method: "POST",
+              headers,
+              body: JSON.stringify({ ids: pending, tipo, limite: pending.length }),
+            });
+            if (!res.ok) throw new Error(await res.text());
+            const r = (await res.json()) as {
+              tentados: number;
+              corrigidos: number;
+              falhas: number;
+              restantes: number;
+              concluido: boolean;
+            };
+            corrigidos += r.corrigidos;
+            falhas += r.falhas;
+            // Se o servidor cortou por budget, tenta o mesmo chunk de novo (menos os já processados).
+            // Aproximação: se restantes==0 ou tentados==pending.length, encerra o chunk.
+            if (r.restantes === 0 || r.tentados >= pending.length) {
+              pending = [];
+            } else {
+              // servidor processou r.tentados; deixa os últimos (não-processados) para próxima tentativa.
+              pending = pending.slice(r.tentados);
+            }
+          }
+          done += chunk.length;
+          setState({ running: true, done, total: totalIds });
+        }
+      }
+      if (falhas === 0 && corrigidos > 0) {
+        toast.success(`Rateios reprocessados: ${corrigidos} corrigidos`);
+      } else if (corrigidos > 0) {
+        toast.message(`Rateios: ${corrigidos} corrigidos · ${falhas} falhas`);
+      } else if (falhas > 0) {
+        toast.error(`Falha ao reprocessar (${falhas} erros)`);
+      } else {
+        toast.message("Nada a corrigir nesta categoria.");
+      }
+      onDone?.();
+    } catch (err: any) {
+      toast.error(`Erro no reprocessamento: ${String(err?.message ?? err)}`);
+    } finally {
+      setState({ running: false, done: 0, total: 0 });
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={state.running}
+      title={`Reprocessar rateios desta categoria (${totalIds} lanç.)`}
+      className="opacity-40 hover:opacity-100 focus:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted/60 shrink-0"
+    >
+      {state.running ? (
+        <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          {state.done}/{state.total}
+        </span>
+      ) : (
+        <RefreshCw className="h-3 w-3" />
+      )}
+    </button>
+  );
+}
+
 
 const GROUP_LABEL: Record<string, string> = {
   RB: "(+) Receita Bruta",
@@ -239,9 +368,13 @@ function PainelFinanceiro() {
   const [mes, setMes] = useState(0);
   const anoEfetivo = ano;
   const { planos, pagar, receber } = useContaAzulData(anoEfetivo, mes);
+  const { isAdmin, isModuleAdmin } = useAuth();
+  const canReprocess = isAdmin || isModuleAdmin("financeiro");
+  const qc = useQueryClient();
 
   const [categoriaSel, setCategoriaSel] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
 
   const planosArr = planos.data ?? [];
   const planoMap = useMemo(() => {
@@ -290,7 +423,10 @@ function PainelFinanceiro() {
           descricao: c.descricao,
           valor: isReceber ? v : -v,
           categoria_external_id: c.categoria_external_id,
+          external_id: c.external_id,
+          tipo: isReceber ? "receber" : "pagar",
         });
+
       });
     };
     push(receber.data ?? [], true);
@@ -433,17 +569,31 @@ function PainelFinanceiro() {
                 );
               }
               const isSel = row.catId === categoriaSel;
+              const catLancs = row.catId ? lancamentos.filter((l) => l.categoria_external_id === row.catId) : [];
               return (
-                <button
+                <div
                   key={row.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => row.catId && onClickCategoria(row.catId)}
-                  className={`grid grid-cols-[1fr,140px,70px] w-full px-3 py-1 border-t border-border text-xs text-left hover:bg-accent ${isSel ? "bg-accent" : ""}`}
+                  onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && row.catId) { e.preventDefault(); onClickCategoria(row.catId); } }}
+                  className={`grid grid-cols-[1fr,140px,70px] w-full px-3 py-1 border-t border-border text-xs text-left hover:bg-accent cursor-pointer ${isSel ? "bg-accent" : ""}`}
                 >
-                  <div className="pl-7 truncate" title={row.label}>{row.label}</div>
+                  <div className="pl-7 truncate flex items-center gap-1.5" title={row.label}>
+                    <span className="truncate">{row.label}</span>
+                    {canReprocess && row.catId && catLancs.length > 0 && (
+                      <CategoryReprocessButton
+                        catId={row.catId}
+                        lancs={catLancs}
+                        onDone={() => qc.invalidateQueries({ queryKey: ["ca-pagar"] })}
+                      />
+                    )}
+                  </div>
                   <div className={`text-right tabular-nums ${row.valor < 0 ? "text-rose-600" : ""}`}>{fmtMoney(row.valor)}</div>
                   <div className="text-right tabular-nums text-muted-foreground">{fmtPct(row.pct)}</div>
-                </button>
+                </div>
               );
+
             })}
           </div>
           {linhaLucro && (
@@ -508,6 +658,10 @@ function AnaliseDetalhada() {
   const [categoriaSel, setCategoriaSel] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const { isAdmin, isModuleAdmin } = useAuth();
+  const canReprocess = isAdmin || isModuleAdmin("financeiro");
+  const qc = useQueryClient();
+
 
   // Planos e centros são pequenos — carrega sempre.
   const planos = useQuery({
@@ -846,7 +1000,11 @@ function AnaliseDetalhada() {
           descricao: (c._rateado ? "[Rateado] " : "") + (c.descricao ?? ""),
           valor: isReceber ? v : -v,
           categoria_external_id: c.categoria_external_id,
+          external_id: c.lancamento_external_id ?? c.external_id,
+          tipo: isReceber ? "receber" : "pagar",
         });
+
+
       });
     };
     push(receberRows, true);
@@ -1151,17 +1309,35 @@ function AnaliseDetalhada() {
                 );
               }
               const isSel = row.catId === categoriaSel;
+              const catLancs = row.catId ? lancamentos.filter((l) => l.categoria_external_id === row.catId) : [];
               return (
-                <button
+                <div
                   key={row.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => row.catId && onClickCategoria(row.catId)}
-                  className={`grid grid-cols-[1fr,140px,70px] w-full px-3 py-1 border-t border-border text-xs text-left hover:bg-accent ${isSel ? "bg-accent" : ""}`}
+                  onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && row.catId) { e.preventDefault(); onClickCategoria(row.catId); } }}
+                  className={`grid grid-cols-[1fr,140px,70px] w-full px-3 py-1 border-t border-border text-xs text-left hover:bg-accent cursor-pointer ${isSel ? "bg-accent" : ""}`}
                 >
-                  <div className="pl-7 truncate" title={row.label}>{row.label}</div>
+                  <div className="pl-7 truncate flex items-center gap-1.5" title={row.label}>
+                    <span className="truncate">{row.label}</span>
+                    {canReprocess && row.catId && catLancs.length > 0 && (
+                      <CategoryReprocessButton
+                        catId={row.catId}
+                        lancs={catLancs}
+                        onDone={() => {
+                          qc.invalidateQueries({ queryKey: ["ca-rateios-cc", centroId] });
+                          qc.invalidateQueries({ queryKey: ["ca-pagar-parents"] });
+                          qc.invalidateQueries({ queryKey: ["ca-receber-parents"] });
+                        }}
+                      />
+                    )}
+                  </div>
                   <div className={`text-right tabular-nums ${row.valor < 0 ? "text-rose-600" : ""}`}>{fmtMoney(row.valor)}</div>
                   <div className="text-right tabular-nums text-muted-foreground">{fmtPct(row.pct)}</div>
-                </button>
+                </div>
               );
+
             })}
           </div>
           {linhaLucro && (
