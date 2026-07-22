@@ -459,7 +459,7 @@ function DashboardHome() {
                     </TableRow>
                   ) : linhasRelatorio.map((r, i) => (
                     <TableRow key={r.id ?? i}>
-                      <TableCell className="whitespace-nowrap">{fmtDataBR(r.dataEvento || r.dataRegistro)}</TableCell>
+                      <TableCell className="whitespace-nowrap">{fmtDataBR(r.dataRegistro || r.dataEvento)}</TableCell>
                       <TableCell className="whitespace-nowrap">{r.nomeEvento || "-"}</TableCell>
                       <TableCell className="whitespace-nowrap">{r.local || "-"}</TableCell>
                       <TableCell className="whitespace-nowrap">{r.consultor || "-"}</TableCell>
