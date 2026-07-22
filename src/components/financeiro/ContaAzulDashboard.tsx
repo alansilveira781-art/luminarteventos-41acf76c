@@ -658,6 +658,10 @@ function AnaliseDetalhada() {
   const [categoriaSel, setCategoriaSel] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const { isAdmin, isModuleAdmin } = useAuth();
+  const canReprocess = isAdmin || isModuleAdmin("financeiro");
+  const qc = useQueryClient();
+
 
   // Planos e centros são pequenos — carrega sempre.
   const planos = useQuery({
