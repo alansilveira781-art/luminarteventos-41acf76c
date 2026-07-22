@@ -1472,11 +1472,13 @@ export async function reprocessarRateios(
   tentados: number;
   corrigidos: number;
   falhas: number;
+  removidos: number;
   detalhes: string[];
   restantes: number;
   concluido: boolean;
   modo: "suspeitos" | "todos" | "periodo";
 }> {
+
   const limite = Math.min(Math.max(opts.limite ?? 40, 1), 500);
   const modo: "suspeitos" | "todos" | "periodo" = opts.modo ?? "suspeitos";
   const periodoFrom = modo === "periodo" ? opts.from : undefined;
