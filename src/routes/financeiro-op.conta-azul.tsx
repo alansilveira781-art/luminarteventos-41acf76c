@@ -130,33 +130,42 @@ function ContaAzulPage() {
     }
   }
 
-  async function handleSync(modo: "incremental" | "completo") {
-    setBusy("sync");
-    setProgress({ current: null, done: 0 });
+  async function runSyncRange(
+    rangeFrom: string,
+    rangeTo: string,
+    modo: "incremental" | "completo",
+  ): Promise<{ total: number; errors: string[] }> {
     const headers = { ...(await authHeaders()), "Content-Type": "application/json" };
     let total = 0;
     const errors: string[] = [];
-    try {
-      for (let i = 0; i < RECURSOS.length; i++) {
-        const r = RECURSOS[i];
-        setProgress({ current: r.key, done: i });
-        try {
-          const res = await fetch("/api/contaazul/sync", {
-            method: "POST",
-            headers,
-            body: JSON.stringify({ from, to, recurso: r.key, modo }),
-          });
-          if (!res.ok) throw new Error(await res.text());
-          const { qtd } = (await res.json()) as { qtd: number };
-          total += qtd ?? 0;
-        } catch (e: any) {
-          const raw = String(e?.message ?? e);
-          const friendly = /503|instabilidade|temporariamente/i.test(raw)
-            ? `${r.label}: Conta Azul instável no momento (503). Tente novamente em alguns minutos.`
-            : `${r.label}: ${raw}`;
-          errors.push(friendly);
-        }
+    for (let i = 0; i < RECURSOS.length; i++) {
+      const r = RECURSOS[i];
+      setProgress({ current: r.key, done: i });
+      try {
+        const res = await fetch("/api/contaazul/sync", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ from: rangeFrom, to: rangeTo, recurso: r.key, modo }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const { qtd } = (await res.json()) as { qtd: number };
+        total += qtd ?? 0;
+      } catch (e: any) {
+        const raw = String(e?.message ?? e);
+        const friendly = /503|instabilidade|temporariamente/i.test(raw)
+          ? `${r.label}: Conta Azul instável no momento (503). Tente novamente em alguns minutos.`
+          : `${r.label}: ${raw}`;
+        errors.push(friendly);
       }
+    }
+    return { total, errors };
+  }
+
+  async function handleSync(modo: "incremental" | "completo") {
+    setBusy("sync");
+    setProgress({ current: null, done: 0 });
+    try {
+      const { total, errors } = await runSyncRange(from, to, modo);
       if (errors.length > 0) {
         toast.error(`Sincronização parcial (${total} reg.). ${errors.join(" | ")}`);
       } else {
@@ -168,40 +177,43 @@ function ContaAzulPage() {
     }
   }
 
+  async function runReprocessLoop(
+    body: Record<string, unknown>,
+    modoLabel: "suspeitos" | "todos" | "periodo",
+    autoLoop: boolean,
+  ): Promise<ReprocResult | null> {
+    const headers = { ...(await authHeaders()), "Content-Type": "application/json" };
+    setReprocMode(modoLabel);
+    setReprocTotals({ corrigidos: 0, falhas: 0, lotes: 0 });
+    let lastResult: ReprocResult | null = null;
+    for (let i = 0; i < 200; i++) {
+      const res = await fetch("/api/contaazul/reprocessar-rateios", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ ...body, limite: 40 }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const r = (await res.json()) as ReprocResult;
+      lastResult = r;
+      setReprocProgress(r);
+      setReprocTotals((t) => ({
+        corrigidos: t.corrigidos + r.corrigidos,
+        falhas: t.falhas + r.falhas,
+        lotes: t.lotes + 1,
+      }));
+      if (r.concluido || !autoLoop) break;
+      if (r.tentados === 0) break;
+    }
+    return lastResult;
+  }
+
   async function handleReprocessarRateios(
     modo: "suspeitos" | "todos",
     opts: { auto?: boolean } = {},
   ) {
     setBusy("reproc");
-    setReprocMode(modo);
-    if (!opts.auto) setReprocTotals({ corrigidos: 0, falhas: 0, lotes: 0 });
-    else setReprocTotals({ corrigidos: 0, falhas: 0, lotes: 0 });
-    const headers = { ...(await authHeaders()), "Content-Type": "application/json" };
     try {
-      let lastResult: ReprocResult | null = null;
-      // Loop: modo "todos" com opts.auto=true continua chamando até concluido.
-      // Demais casos: um único lote.
-      // Limite de segurança de 200 lotes para evitar loop infinito.
-      for (let i = 0; i < 200; i++) {
-        const res = await fetch("/api/contaazul/reprocessar-rateios", {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ modo, limite: 40 }),
-        });
-        if (!res.ok) throw new Error(await res.text());
-        const r = (await res.json()) as ReprocResult;
-        lastResult = r;
-        setReprocProgress(r);
-        setReprocTotals((t) => ({
-          corrigidos: t.corrigidos + r.corrigidos,
-          falhas: t.falhas + r.falhas,
-          lotes: t.lotes + 1,
-        }));
-        if (r.concluido || modo !== "todos" || !opts.auto) break;
-        // Proteção: se um lote não processou nada, parar para não gastar recursos.
-        if (r.tentados === 0) break;
-
-      }
+      const lastResult = await runReprocessLoop({ modo }, modo, modo === "todos" && !!opts.auto);
       setReprocLastResult(lastResult);
       const detalhe = lastResult?.detalhes?.[0] ? ` ${lastResult.detalhes[0]}` : "";
       if (lastResult?.concluido) {
@@ -217,6 +229,42 @@ function ContaAzulPage() {
       toast.error(`Erro ao reprocessar: ${String(e?.message ?? e)}`);
     } finally {
       setBusy(null);
+    }
+  }
+
+  async function handleRecorte(rangeFrom: string, rangeTo: string, label: string) {
+    if (rangeFrom > rangeTo) {
+      toast.error("Data inicial deve ser anterior à final.");
+      return;
+    }
+    setBusy("recorte");
+    setRecorteLabel(label);
+    setProgress({ current: null, done: 0 });
+    try {
+      const { total, errors } = await runSyncRange(rangeFrom, rangeTo, "completo");
+      if (errors.length > 0) {
+        toast.error(`Sincronização parcial (${total} reg.). ${errors.join(" | ")}`);
+      } else {
+        toast.success(`Sincronização (${label}) concluída — ${total} registros. Iniciando reprocesso de rateios…`);
+      }
+      setProgress({ current: null, done: 0 });
+      const last = await runReprocessLoop(
+        { modo: "periodo", from: rangeFrom, to: rangeTo },
+        "periodo",
+        true,
+      );
+      setReprocLastResult(last);
+      if (last?.concluido) {
+        toast.success(`Rateios (${label}): ${last.corrigidos} corrigidos, ${last.falhas} falhas`);
+      } else if (last) {
+        toast.message(`Rateios (${label}): ${last.corrigidos} corrigidos, ${last.falhas} falhas. Restam ${last.restantes}.`);
+      }
+    } catch (e: any) {
+      toast.error(`Erro no recorte: ${String(e?.message ?? e)}`);
+    } finally {
+      setBusy(null);
+      setProgress({ current: null, done: 0 });
+      setRecorteLabel(null);
     }
   }
 
