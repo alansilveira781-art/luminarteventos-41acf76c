@@ -875,10 +875,19 @@ function AnaliseDetalhada() {
   // 3. Monta linhas sintéticas (1 por fatia): herdam descrição/datas/status do pai
   //    e usam valor + categoria da fatia. Quantidade de rateios por lancamento_external_id
   //    determina o badge "Rateado".
-  const { pagarRows, receberRows } = useMemo(
-    () => montarLinhasPorCentro(rateiosData, pagarParents.data ?? [], receberParents.data ?? [], centroId),
-    [rateiosData, pagarParents.data, receberParents.data, centroId],
-  );
+  const { pagarRows, receberRows } = useMemo(() => {
+    const raw = montarLinhasPorCentro(rateiosData, pagarParents.data ?? [], receberParents.data ?? [], centroId);
+    const planoMapLocal = new Map<string, { nome: string }>();
+    planosArr.forEach((p) => planoMapLocal.set(p.external_id, { nome: p.nome }));
+    const excluir = (r: any) => {
+      const nome = r.categoria_external_id ? planoMapLocal.get(r.categoria_external_id)?.nome : null;
+      return isCategoriaExcluidaAnalise(nome);
+    };
+    return {
+      pagarRows: raw.pagarRows.filter((r: any) => !excluir(r)),
+      receberRows: raw.receberRows.filter((r: any) => !excluir(r)),
+    };
+  }, [rateiosData, pagarParents.data, receberParents.data, centroId, planosArr]);
 
   // Nome do centro selecionado — usado no casamento de saídas de estoque.
   const centroSelNomeEarly = centroId ? (ccs.find((c) => c.external_id === centroId)?.nome ?? "") : "";
