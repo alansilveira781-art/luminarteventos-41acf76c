@@ -1,32 +1,44 @@
-
 ## Contexto
 
-O Painel de Vendas já filtra corretamente por data de registro (via `applyFilters` → `pickDateIso`, que prioriza `dataRegistro`). As demais abas ainda misturam data do evento em pontos específicos, o que faz KPIs, listagens e filtros divergirem do que o usuário espera.
+Na aba **Saídas** do módulo Estoque (`src/routes/saidas.tsx`), dois pontos causam a dificuldade:
 
-Pontos confirmados no código:
+1. **Maio não aparece**
+   - A query `saidas` faz `.order("data_movimento", desc).limit(500)`. Se hoje já existem mais de 500 saídas mais recentes que maio, os registros de maio simplesmente não são carregados — nenhum filtro de período vai trazê-los de volta.
+   - Além disso, o filtro padrão é `PeriodoPreset = "mes"` (mês atual), então mesmo com dados carregados o usuário precisa mudar o período para ver maio.
 
-- `src/lib/comercial/propostas-metrics.ts` — a aba **Propostas** filtra e agrupa por `p.evento.dataInicio` (data do evento), não pela data de criação da proposta.
-- `src/routes/comercial.dashboard.index.tsx` — aba **Indicadores/Relatório**: a tabela detalhada ordena e exibe `dataEvento || dataRegistro`, e o auto-seleção de ano usa `anoEvento` antes de `ano`.
-- `src/routes/comercial.dashboard.painel.tsx` — mesma auto-seleção de ano baseada em `anoEvento` (Painel funciona porque o filtro real usa registro, mas a lógica está inconsistente).
+2. **Filtro de Evento genérico**
+   - O filtro atual (linha 449) é um `<Select>` alimentado por `eventosDisponiveis` — apenas os valores distintos já digitados em `evento_projeto`. Não usa a lista unificada Planilha + Calendário como nos demais módulos.
+   - Já existe `EventoSheetCombobox` importado no arquivo (usado no formulário de nova saída), pronto para reuso.
 
 ## Mudanças
 
-1. **`src/lib/comercial/propostas-metrics.ts`**
-   - `parseDataInicio` → renomear para `parseDataRegistro` e usar apenas `p.createdAt` (data de cadastro da proposta). Remover fallback para `evento.dataInicio`.
-   - `aplicarFiltrosPropostas` e `evolucaoMensalPropostas` passam a usar essa nova função — filtro por ano/mês e evolução mensal ficam por data de registro.
+### 1. `src/routes/saidas.tsx` — carregar tudo por período (sem limit fixo)
 
-2. **`src/routes/comercial.dashboard.index.tsx`**
-   - Ordenação de `linhasRelatorio`: usar `dataRegistro || dataEvento` (registro primeiro).
-   - Coluna de data da tabela (linha 464): exibir `fmtDataBR(r.dataRegistro || r.dataEvento)`.
-   - Auto-seleção de ano (linhas 132-151): substituir a lógica baseada em `anoEvento` por `getAno(r)` (já usa data de registro via `pickDateIso`).
+- Substituir a query única `["saidas"]` por uma consulta filtrada pelo `periodo` selecionado:
+  - `queryKey: ["saidas", periodo.from, periodo.to]`
+  - Usar `fetchAllRows` (paginado) em `movimentacoes` com `tipo=saida` e, quando houver `periodo.from/to`, aplicar `.gte("data_movimento", from)` e `.lte("data_movimento", to)` — assim o preset "Todos" ou "Personalizado" trazem qualquer mês (inclusive maio) sem o teto de 500.
+  - Manter ordenação desc por `data_movimento`.
+- Remover o `filterByPeriodo` client-side (fica redundante), mantendo a variável `gruposPeriodo` apenas como alias de `grupos` para não mexer no restante do render.
+- Nenhuma mudança em mutations, agrupamento por requisição ou paginação.
 
-3. **`src/routes/comercial.dashboard.painel.tsx`**
-   - Auto-seleção de ano (linhas 62-81): mesma troca por `getAno(r)`, para manter consistência entre abas.
+### 2. `src/routes/saidas.tsx` — filtro de Evento igual aos outros módulos
 
-Nenhuma outra aba precisa mudar — `vendedores`, `relatorios` e `indicadores` já dependem de `applyFilters`/`FiltrosBar`, que usam `pickDateIso` (registro).
+- Trocar o `<Select>` de `filterEvento` (≈ linhas 449-460) por `EventoSheetCombobox`:
+  ```tsx
+  <EventoSheetCombobox
+    value={filterEvento === "__all" ? null : filterEvento}
+    onChange={(v) => setFilterEvento(v ?? "__all")}
+    placeholder="Filtrar por evento…"
+  />
+  ```
+- Remover o `useMemo` `eventosDisponiveis` (não é mais usado).
+- A comparação em `filteredBaseList` (`m.evento_projeto === filterEvento`) continua válida, pois o combobox devolve o `id` do evento, mesmo formato salvo no campo.
+
+Nada muda no formulário de cadastro/edição de saída — ele já usa `EventoSheetCombobox`.
 
 ## Validação
 
-- Selecionar um ano com propostas cujo evento cai no ano seguinte: a proposta deve aparecer no ano em que foi cadastrada, não no ano do evento.
-- Na aba Indicadores, a tabela detalhada deve ordenar e exibir a coluna Data pela data de registro.
-- Nenhuma mudança em `vendas-metrics.ts` (regra central) — permanece "sempre pela data de registro".
+- Selecionar preset **Personalizado** cobrindo maio/2026: as saídas do mês devem aparecer normalmente, mesmo com mais de 500 registros posteriores.
+- Preset **Todos**: carrega tudo (paginado), sem o teto de 500.
+- Filtro de Evento: abre o combobox com busca, lista Planilha + Calendário, e ao selecionar um evento a tabela filtra pelo `id` correspondente.
+- Filtros existentes (item, empresa, busca livre, ordenação, seleção em massa) seguem funcionando.
