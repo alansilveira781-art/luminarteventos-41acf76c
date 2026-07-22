@@ -928,6 +928,7 @@ function AnaliseDetalhada() {
       const valor = Number(m.valor_total || 0);
       if (!valor) { zeroed++; return; }
       const catNome = m.categoria?.trim() || "";
+      if (isCategoriaExcluidaAnalise(catNome)) return;
       const hit = catNome ? planoPorNome.get(norm(catNome)) : undefined;
       let g: DreGroupId;
       let key: string;
