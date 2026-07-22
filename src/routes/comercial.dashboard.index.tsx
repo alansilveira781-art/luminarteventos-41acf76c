@@ -336,38 +336,26 @@ function DashboardHome() {
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant={secao === "painel" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setSecao("painel")}
-        >
-          Painel de Vendas
-        </Button>
-        <Button
-          type="button"
-          variant={secao === "relatorio" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setSecao("relatorio")}
-        >
-          Relatório de Vendas
-        </Button>
-        <Button
-          type="button"
-          variant={secao === "vendedores" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setSecao("vendedores")}
-        >
-          Vendedores
-        </Button>
-        <Button
-          type="button"
-          variant={secao === "indicadores" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setSecao("indicadores")}
-        >
-          Indicadores
-        </Button>
+        {perms.ver_painel && (
+          <Button type="button" variant={secao === "painel" ? "default" : "outline"} size="sm" onClick={() => setSecao("painel")}>
+            Painel de Vendas
+          </Button>
+        )}
+        {perms.ver_relatorio && (
+          <Button type="button" variant={secao === "relatorio" ? "default" : "outline"} size="sm" onClick={() => setSecao("relatorio")}>
+            Relatório de Vendas
+          </Button>
+        )}
+        {perms.ver_vendedores && (
+          <Button type="button" variant={secao === "vendedores" ? "default" : "outline"} size="sm" onClick={() => setSecao("vendedores")}>
+            Vendedores
+          </Button>
+        )}
+        {perms.ver_indicadores && (
+          <Button type="button" variant={secao === "indicadores" ? "default" : "outline"} size="sm" onClick={() => setSecao("indicadores")}>
+            Indicadores
+          </Button>
+        )}
       </div>
 
       {secao === "painel" && (
