@@ -151,6 +151,12 @@ function CalendarioPublico() {
         <div className="rounded-xl border bg-card p-6 text-base sm:text-lg">
           {isLoading ? (
             <p className="text-center text-muted-foreground py-16 text-xl">Carregando…</p>
+          ) : eventosError ? (
+            <div className="text-center py-16 space-y-3">
+              <p className="text-destructive text-lg">Não foi possível carregar os eventos.</p>
+              <p className="text-sm text-muted-foreground">{(eventosError as any)?.message ?? "Erro desconhecido"}</p>
+              <Button variant="outline" onClick={() => refetchEventos()}>Tentar novamente</Button>
+            </div>
           ) : (
             <GanttEventos
               eventos={eventos}
@@ -159,6 +165,7 @@ function CalendarioPublico() {
               onSelectEvento={(ev: EventoCal) => setSelecionado(ev)}
             />
           )}
+
         </div>
       </div>
 
