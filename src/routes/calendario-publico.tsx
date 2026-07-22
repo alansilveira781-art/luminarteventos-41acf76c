@@ -42,6 +42,41 @@ function fmtRange(ini?: string | null, fim?: string | null): string {
   return `${fmtDay(ini)} - ${fmtDay(fim)}`;
 }
 
+function fmtHora(h?: string | null): string {
+  if (!h) return "";
+  const s = String(h).trim();
+  const m = s.match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return "";
+  return `${m[1].padStart(2, "0")}:${m[2]}`;
+}
+
+function fmtRangeComHora(
+  ini?: string | null,
+  fim?: string | null,
+  horaIni?: string | null,
+  horaFim?: string | null,
+): string {
+  if (!ini && !fim) return "—";
+  const hi = fmtHora(horaIni);
+  const hf = fmtHora(horaFim);
+  const iniStr = stripDate(ini);
+  const fimStr = stripDate(fim);
+  const mesmoDia = !fimStr || fimStr === iniStr;
+
+  if (mesmoDia) {
+    const base = fmtDay(ini ?? fim);
+    if (hi && hf) return `${base} ${hi} → ${hf}`;
+    if (hi) return `${base} ${hi}`;
+    if (hf) return `${base} até ${hf}`;
+    return base;
+  }
+
+  const left = `${fmtDay(ini)}${hi ? ` ${hi}` : ""}`;
+  const right = `${fmtDay(fim)}${hf ? ` ${hf}` : ""}`;
+  return `${left} → ${right}`;
+}
+
+
 function CalendarioPublico() {
   const { user, loading: authLoading, isAdmin, hasModule } = useAuth();
 
@@ -68,7 +103,7 @@ function CalendarioPublico() {
       const { data, error } = await (supabase as any)
         .from("eventos")
         .select(
-          "id,codigo_evento,nome,local,cidade,tipo,data_evento,data_evento_fim,data_montagem,data_montagem_fim,data_desmontagem,data_desmontagem_fim,produtor,observacoes,cor,situacao,hora_montagem,hora_desmontagem"
+          "id,codigo_evento,nome,local,cidade,tipo,data_evento,data_evento_fim,data_montagem,data_montagem_fim,data_desmontagem,data_desmontagem_fim,produtor,observacoes,cor,situacao,hora_inicio,hora_fim,hora_montagem,hora_desmontagem"
         )
         .order("data_evento");
       if (error) throw error;
@@ -189,15 +224,16 @@ function CalendarioPublico() {
               <div className="space-y-2 pt-2">
                 <div className="rounded-md border-l-4 border-blue-600 bg-blue-600/10 px-4 py-3">
                   <div className="text-xs uppercase tracking-wide text-blue-900 dark:text-blue-200 font-semibold">Evento</div>
-                  <div className="text-lg font-medium">{fmtRange(selecionado.data_evento, selecionado.data_evento_fim)}</div>
+                  <div className="text-lg font-medium">{fmtRangeComHora(selecionado.data_evento, selecionado.data_evento_fim, (selecionado as any).hora_inicio, (selecionado as any).hora_fim)}</div>
                 </div>
                 <div className="rounded-md border-l-4 border-amber-500 bg-amber-500/10 px-4 py-3">
                   <div className="text-xs uppercase tracking-wide text-amber-900 dark:text-amber-200 font-semibold">Montagem</div>
-                  <div className="text-lg font-medium">{fmtRange(selecionado.data_montagem, selecionado.data_montagem_fim)}</div>
+                  <div className="text-lg font-medium">{fmtRangeComHora(selecionado.data_montagem, selecionado.data_montagem_fim, (selecionado as any).hora_montagem, null)}</div>
                 </div>
                 <div className="rounded-md border-l-4 border-slate-400 bg-slate-400/10 px-4 py-3">
                   <div className="text-xs uppercase tracking-wide text-slate-700 dark:text-slate-200 font-semibold">Desmontagem</div>
-                  <div className="text-lg font-medium">{fmtRange(selecionado.data_desmontagem, selecionado.data_desmontagem_fim)}</div>
+                  <div className="text-lg font-medium">{fmtRangeComHora(selecionado.data_desmontagem, selecionado.data_desmontagem_fim, (selecionado as any).hora_desmontagem, null)}</div>
+
                 </div>
               </div>
 
