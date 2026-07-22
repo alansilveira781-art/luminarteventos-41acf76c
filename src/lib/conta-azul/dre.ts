@@ -328,6 +328,7 @@ export function montarLinhasPorCentro(
     if (!par) return;
     const row = {
       external_id: `${r.lancamento_external_id}#${r.ordem}`,
+      lancamento_external_id: r.lancamento_external_id,
       descricao: par.descricao,
       fornecedor_nome: par.fornecedor_nome ?? null,
       cliente_nome: par.cliente_nome ?? null,
