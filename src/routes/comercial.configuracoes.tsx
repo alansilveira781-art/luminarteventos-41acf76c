@@ -23,6 +23,31 @@ import {
 } from "@/lib/comercial/bonificacao";
 import { TIPOS_EVENTO } from "@/lib/comercial/types";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+type UsuarioComercial = { id: string; nome: string; is_admin: boolean };
+
+function useUsuariosComercial() {
+  return useQuery({
+    queryKey: ["comercial-usuarios-com-modulo"],
+    queryFn: async (): Promise<UsuarioComercial[]> => {
+      const { data: mod } = await (supabase as any)
+        .from("modulos").select("id").eq("slug", "comercial").maybeSingle();
+      if (!mod?.id) return [];
+      const { data: um } = await (supabase as any)
+        .from("user_modulos").select("user_id, is_admin").eq("modulo_id", mod.id);
+      const ids = (um ?? []).map((r: any) => r.user_id);
+      if (ids.length === 0) return [];
+      const { data: profs } = await (supabase as any)
+        .from("profiles").select("id, display_name, email").in("id", ids);
+      const adminMap = new Map<string, boolean>((um ?? []).map((r: any) => [r.user_id, !!r.is_admin]));
+      return ((profs ?? []) as any[])
+        .map((p) => ({ id: p.id as string, nome: (p.display_name || p.email) as string, is_admin: !!adminMap.get(p.id) }))
+        .sort((a, b) => a.nome.localeCompare(b.nome));
+    },
+    staleTime: 60_000,
+  });
+}
 
 export const Route = createFileRoute("/comercial/configuracoes")({
   component: ComercialConfiguracoes,
@@ -75,26 +100,20 @@ const DASH_ABAS: { key: keyof DashPerms; label: string }[] = [
 
 function AcessoDashboardCard() {
   const qc = useQueryClient();
+  const { data: usuarios = [], isLoading } = useUsuariosComercial();
 
-  const { data: usuarios = [], isLoading } = useQuery({
-    queryKey: ["comercial-usuarios-com-modulo"],
+  const { data: vendedoresLink = [] } = useQuery({
+    queryKey: ["comercial-vendedores-por-user"],
     queryFn: async () => {
-      const { data: mod } = await (supabase as any)
-        .from("modulos").select("id").eq("slug", "comercial").maybeSingle();
-      if (!mod?.id) return [];
-      const { data: um } = await (supabase as any)
-        .from("user_modulos").select("user_id, is_admin").eq("modulo_id", mod.id);
-      const ids = (um ?? []).map((r: any) => r.user_id);
-      if (ids.length === 0) return [];
-      const { data: profs } = await (supabase as any)
-        .from("profiles").select("id, display_name, email").in("id", ids);
-      const adminMap = new Map<string, boolean>((um ?? []).map((r: any) => [r.user_id, !!r.is_admin]));
-      return (profs ?? [])
-        .map((p: any) => ({ id: p.id as string, nome: (p.display_name || p.email) as string, is_admin: !!adminMap.get(p.id) }))
-        .sort((a: any, b: any) => a.nome.localeCompare(b.nome));
+      const { data } = await (supabase as any)
+        .from("comercial_vendedores")
+        .select("nome, user_id")
+        .not("user_id", "is", null);
+      return (data ?? []) as { nome: string; user_id: string }[];
     },
     staleTime: 60_000,
   });
+  const vendedorByUser = new Map(vendedoresLink.map((v) => [v.user_id, v.nome]));
 
   const { data: permsList = [] } = useQuery({
     queryKey: ["comercial-dashboard-permissoes"],
@@ -148,19 +167,24 @@ function AcessoDashboardCard() {
             <thead className="text-xs text-muted-foreground">
               <tr>
                 <th className="px-3 py-1 text-left">Usuário</th>
+                <th className="px-3 py-1 text-left">Vendedor vinculado</th>
                 {DASH_ABAS.map((a) => (
                   <th key={a.key} className="px-3 py-1 text-center w-28">{a.label}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {usuarios.map((u: any) => {
+              {usuarios.map((u) => {
                 const p = permsByUser.get(u.id);
+                const vend = vendedorByUser.get(u.id);
                 return (
                   <tr key={u.id} className="border-t border-border/50">
                     <td className="px-3 py-2">
                       {u.nome}
                       {u.is_admin && <span className="ml-2 text-[10px] uppercase tracking-wide text-emerald-600">admin</span>}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">
+                      {vend ?? "—"}
                     </td>
                     {DASH_ABAS.map((a) => {
                       const checked = u.is_admin ? true : (p ? !!p[a.key] : a.key === "ver_vendedores");
@@ -180,13 +204,14 @@ function AcessoDashboardCard() {
             </tbody>
           </table>
           <p className="text-xs text-muted-foreground mt-3">
-            Sem configuração explícita, o usuário vê apenas a aba <strong>Vendedores</strong> — restrita aos dados do próprio consultor (casamento por nome).
+            Sem configuração explícita, o usuário vê apenas a aba <strong>Vendedores</strong> — restrita ao vendedor vinculado em <em>Configurações → Vendedores</em>.
           </p>
         </div>
       )}
     </Card>
   );
 }
+
 
 /* ---------- Vendedores ---------- */
 type VendedorForm = {
@@ -196,6 +221,7 @@ type VendedorForm = {
   percentual_comissao: number;
   gatilho_meta: number;
   gatilho_valor: number;
+  user_id: string | null;
 };
 
 function fmtBRL(v: number) {
@@ -205,8 +231,17 @@ function fmtBRL(v: number) {
 function VendedoresCard() {
   const { data = [], isLoading } = useVendedores();
   const { upsert, remove } = useCadastroMutations("comercial_vendedores", "comercial-vendedores");
+  const qc = useQueryClient();
+  const { data: usuarios = [] } = useUsuariosComercial();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<VendedorForm | null>(null);
+
+  // Mapa usuário → nome, para exibir na coluna
+  const nomeUsuario = new Map(usuarios.map((u) => [u.id, u.nome]));
+  // Usuários já vinculados a OUTRO vendedor (para bloquear no select)
+  const vinculadosOutro = new Set(
+    data.filter((v) => v.user_id && v.id !== editing?.id).map((v) => v.user_id as string),
+  );
 
   return (
     <Card className="p-4">
@@ -221,6 +256,7 @@ function VendedoresCard() {
               percentual_comissao: 0,
               gatilho_meta: 0,
               gatilho_valor: 0,
+              user_id: null,
             });
             setOpen(true);
           }}
@@ -231,15 +267,16 @@ function VendedoresCard() {
       <CrudTable
         isLoading={isLoading}
         empty="Nenhum vendedor cadastrado."
-        columns={["Nome", "Comissão", ""]}
+        columns={["Nome", "Comissão", "Usuário", ""]}
         rows={data.map((v) => {
           const isGatilho = v.tipo_comissao === "gatilho";
           const label = isGatilho
             ? `${fmtBRL(Number(v.gatilho_valor) || 0)} se faturar ${fmtBRL(Number(v.gatilho_meta) || 0)}`
             : `${Number(v.percentual_comissao).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
+          const usuarioLabel = v.user_id ? (nomeUsuario.get(v.user_id) ?? "—") : "—";
           return {
             id: v.id,
-            cells: [v.nome, label],
+            cells: [v.nome, label, usuarioLabel],
             onEdit: () => {
               setEditing({
                 id: v.id,
@@ -248,6 +285,7 @@ function VendedoresCard() {
                 percentual_comissao: Number(v.percentual_comissao) || 0,
                 gatilho_meta: Number(v.gatilho_meta) || 0,
                 gatilho_valor: Number(v.gatilho_valor) || 0,
+                user_id: v.user_id ?? null,
               });
               setOpen(true);
             },
@@ -270,6 +308,9 @@ function VendedoresCard() {
                 e.preventDefault();
                 const nome = editing.nome.trim();
                 if (!nome) return toast.error("Informe o nome");
+                if (editing.user_id && vinculadosOutro.has(editing.user_id)) {
+                  return toast.error("Este usuário já está vinculado a outro vendedor.");
+                }
                 let payload: Record<string, any>;
                 if (editing.tipo_comissao === "percentual") {
                   const pct = Number(editing.percentual_comissao);
@@ -281,6 +322,7 @@ function VendedoresCard() {
                     percentual_comissao: pct,
                     gatilho_meta: null,
                     gatilho_valor: null,
+                    user_id: editing.user_id,
                   };
                 } else {
                   const meta = Number(editing.gatilho_meta);
@@ -294,16 +336,44 @@ function VendedoresCard() {
                     percentual_comissao: 0,
                     gatilho_meta: meta,
                     gatilho_valor: valor,
+                    user_id: editing.user_id,
                   };
                 }
                 upsert.mutate(payload, {
-                  onSuccess: () => { toast.success("Salvo"); setOpen(false); },
+                  onSuccess: () => {
+                    toast.success("Salvo");
+                    qc.invalidateQueries({ queryKey: ["comercial-vendedores-por-user"] });
+                    setOpen(false);
+                  },
                 });
               }}
             >
               <div className="space-y-1">
                 <Label>Nome</Label>
                 <Input value={editing.nome} onChange={(e) => setEditing({ ...editing, nome: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label>Usuário vinculado</Label>
+                <Select
+                  value={editing.user_id ?? "__none__"}
+                  onValueChange={(v) => setEditing({ ...editing, user_id: v === "__none__" ? null : v })}
+                >
+                  <SelectTrigger><SelectValue placeholder="Sem vínculo" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— Sem vínculo —</SelectItem>
+                    {usuarios.map((u) => {
+                      const jaVinculado = vinculadosOutro.has(u.id);
+                      return (
+                        <SelectItem key={u.id} value={u.id} disabled={jaVinculado}>
+                          {u.nome}{jaVinculado ? " (já vinculado)" : ""}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  O usuário vinculado passa a ver apenas os dados desse vendedor no Dashboard.
+                </p>
               </div>
               <div className="space-y-1">
                 <Label>Modelo de comissão</Label>

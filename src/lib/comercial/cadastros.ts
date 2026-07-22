@@ -10,6 +10,7 @@ export type Vendedor = {
   tipo_comissao: "percentual" | "gatilho";
   gatilho_meta: number | null;
   gatilho_valor: number | null;
+  user_id: string | null;
 };
 
 export type Cerimonial = { id: string; nome: string; percentual_bv: number };
@@ -38,7 +39,7 @@ export function useVendedores() {
     queryFn: async (): Promise<Vendedor[]> => {
       const { data, error } = await sb
         .from("comercial_vendedores")
-        .select("id,nome,percentual_comissao,tipo_comissao,gatilho_meta,gatilho_valor")
+        .select("id,nome,percentual_comissao,tipo_comissao,gatilho_meta,gatilho_valor,user_id")
         .order("nome");
 
       if (error) throw error;
