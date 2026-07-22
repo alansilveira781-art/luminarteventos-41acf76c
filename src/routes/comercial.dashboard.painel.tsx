@@ -8,7 +8,7 @@ import { KpiCard } from "@/components/comercial/dashboard/KpiCard";
 import { GaugeRealVsMeta } from "@/components/comercial/dashboard/GaugeRealVsMeta";
 import {
   kpis, evolucaoTrimestre, evolucaoTicketTrimestre,
-  rankingConsultor, valorPorClassificacao,
+  rankingConsultor, valorPorClassificacao, getAno,
 } from "@/lib/comercial/vendas-metrics";
 import { supabase } from "@/integrations/supabase/client";
 import { DollarSign, ShoppingCart, Percent, Receipt } from "lucide-react";
