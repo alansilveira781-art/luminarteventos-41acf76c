@@ -42,6 +42,41 @@ function fmtRange(ini?: string | null, fim?: string | null): string {
   return `${fmtDay(ini)} - ${fmtDay(fim)}`;
 }
 
+function fmtHora(h?: string | null): string {
+  if (!h) return "";
+  const s = String(h).trim();
+  const m = s.match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return "";
+  return `${m[1].padStart(2, "0")}:${m[2]}`;
+}
+
+function fmtRangeComHora(
+  ini?: string | null,
+  fim?: string | null,
+  horaIni?: string | null,
+  horaFim?: string | null,
+): string {
+  if (!ini && !fim) return "—";
+  const hi = fmtHora(horaIni);
+  const hf = fmtHora(horaFim);
+  const iniStr = stripDate(ini);
+  const fimStr = stripDate(fim);
+  const mesmoDia = !fimStr || fimStr === iniStr;
+
+  if (mesmoDia) {
+    const base = fmtDay(ini ?? fim);
+    if (hi && hf) return `${base} ${hi} → ${hf}`;
+    if (hi) return `${base} ${hi}`;
+    if (hf) return `${base} até ${hf}`;
+    return base;
+  }
+
+  const left = `${fmtDay(ini)}${hi ? ` ${hi}` : ""}`;
+  const right = `${fmtDay(fim)}${hf ? ` ${hf}` : ""}`;
+  return `${left} → ${right}`;
+}
+
+
 function CalendarioPublico() {
   const { user, loading: authLoading, isAdmin, hasModule } = useAuth();
 
