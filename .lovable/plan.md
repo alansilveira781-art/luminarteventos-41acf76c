@@ -1,38 +1,21 @@
-## Correção: expectadores não veem eventos no Calendário Público
+## O que mudar
 
-### Causa
-O gate no front (`src/routes/calendario-publico.tsx`) libera a tela para `profiles.is_expectador_eventos = true`, mas o RLS de `public.eventos` só permite SELECT para admin e membros do módulo `eventos`. Resultado: query retorna zero linhas silenciosamente.
+No diálogo do Calendário de Eventos (aberto ao clicar em um card), cada um dos três blocos coloridos — **Evento**, **Montagem** e **Desmontagem** — passa a exibir também os horários informados no cadastro, além das datas que já aparecem hoje.
 
-### Passos
+Formatos:
 
-**1. Migration — nova política de SELECT em `public.eventos` para expectadores**
+- **Evento**: `21/04/2026 08:00 → 20/07/2026 22:00` (usa `hora_inicio` e `hora_fim`). Se for o mesmo dia: `21/04/2026 08:00 → 22:00`. Sem horário: mantém só as datas.
+- **Montagem**: `20/04/2026 07:00` (data + `hora_montagem`). Se houver `data_montagem_fim`: `20/04/2026 07:00 → 21/04/2026`.
+- **Desmontagem**: `20/07/2026 22:00` (data + `hora_desmontagem`). Idem para intervalo.
 
-- Criar função `SECURITY DEFINER` `public.is_expectador_eventos(_user_id uuid)` que retorna `true` se `profiles.is_expectador_eventos = true` para aquele usuário. Evita recursão RLS entre `eventos` e `profiles` (mesmo padrão de `has_role`/`is_admin`).
-  - `search_path = public`, `stable`, `language sql`.
-- Garantir `GRANT SELECT ON public.eventos TO authenticated` (idempotente).
-- Criar policy adicional (não substitui as existentes):
-  ```sql
-  CREATE POLICY "Expectadores podem ver eventos"
-    ON public.eventos
-    FOR SELECT
-    TO authenticated
-    USING (public.is_expectador_eventos(auth.uid()));
-  ```
-- Não tocar em políticas atuais (admin / módulo eventos). Nada para `anon`. Nenhuma policy de INSERT/UPDATE/DELETE.
+Quando qualquer horário estiver vazio no cadastro, o bloco continua exibindo apenas as datas (comportamento atual), sem "—:—".
 
-**2. Melhoria de robustez no front — `src/routes/calendario-publico.tsx`**
+## Onde mexer (detalhes técnicos)
 
-- Na query `["eventos-publico"]`, capturar `error` do Supabase e lançar (`if (error) throw error`) para que o React Query exponha o erro em vez de exibir tela vazia.
-- Adicionar bloco visual de erro (mensagem curta) quando `isError`, com botão de recarregar.
+- `src/routes/calendario-publico.tsx`
+  - Ampliar o `select` da query `eventos-publico` para incluir `hora_inicio` e `hora_fim` (hoje já traz `hora_montagem` e `hora_desmontagem`, mas não os do evento).
+  - Adicionar helper local `fmtRangeComHora(inicio, fim, horaInicio, horaFim)` que anexa `HH:mm` quando existir e colapsa para "mesmo dia" quando `inicio === fim`.
+  - Substituir os 3 `fmtRange(...)` dos blocos Evento / Montagem / Desmontagem pelas novas chamadas com horário.
+- Tipo local `EventoCal` no arquivo: acrescentar `hora_inicio?: string | null` e `hora_fim?: string | null`.
 
-### Verificação
-
-- Logar com usuário só com `is_expectador_eventos = true` (sem módulos): `/calendario-publico` lista os eventos.
-- Mesmo usuário: tentar `insert/update/delete` em `eventos` via cliente continua bloqueado por RLS.
-- Admin e membros do módulo `eventos` seguem enxergando tudo como antes.
-
-### Detalhes técnicos
-
-- Função nova: `public.is_expectador_eventos(uuid) returns boolean` — SECURITY DEFINER, evita ler `profiles` sob RLS a partir da policy de `eventos`.
-- Nenhum ajuste em `profiles` RLS necessário (a função definer contorna).
-- Nenhum grant para `anon` — mantém a remoção deliberada de 20260710221819.
+Nenhuma alteração no banco, no Gantt ou em outras rotas.
