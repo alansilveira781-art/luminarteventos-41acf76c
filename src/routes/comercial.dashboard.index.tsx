@@ -11,7 +11,7 @@ import {
   kpis, evolucaoTrimestre, evolucaoTicketTrimestre,
   rankingConsultor, valorPorClassificacao,
   comissoesPorVendedor, rankingCerimonial, rankingDecorador,
-  vendasPorTipoEvento, cleanText, compararAnos,
+  vendasPorTipoEvento, cleanText, compararAnos, getAno,
 } from "@/lib/comercial/vendas-metrics";
 import { supabase } from "@/integrations/supabase/client";
 import { DollarSign, ShoppingCart, Percent, Receipt } from "lucide-react";
