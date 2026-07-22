@@ -419,7 +419,10 @@ function PainelFinanceiro() {
           descricao: c.descricao,
           valor: isReceber ? v : -v,
           categoria_external_id: c.categoria_external_id,
+          external_id: c.external_id,
+          tipo: isReceber ? "receber" : "pagar",
         });
+
       });
     };
     push(receber.data ?? [], true);
