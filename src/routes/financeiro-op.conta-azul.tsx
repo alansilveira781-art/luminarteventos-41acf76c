@@ -46,7 +46,7 @@ function ContaAzulPage() {
   });
   const [from, setFrom] = useState(defaults.from);
   const [to, setTo] = useState(defaults.to);
-  const [busy, setBusy] = useState<null | "connect" | "sync" | "disconnect" | "reproc">(null);
+  const [busy, setBusy] = useState<null | "connect" | "sync" | "disconnect" | "reproc" | "recorte">(null);
   const [progress, setProgress] = useState<{ current: RecursoKey | null; done: number }>({
     current: null,
     done: 0,
@@ -58,9 +58,9 @@ function ContaAzulPage() {
     detalhes?: string[];
     restantes: number;
     concluido: boolean;
-    modo: "suspeitos" | "todos";
+    modo: "suspeitos" | "todos" | "periodo";
   };
-  const [reprocMode, setReprocMode] = useState<"suspeitos" | "todos" | null>(null);
+  const [reprocMode, setReprocMode] = useState<"suspeitos" | "todos" | "periodo" | null>(null);
   const [reprocProgress, setReprocProgress] = useState<ReprocResult | null>(null);
   const [reprocLastResult, setReprocLastResult] = useState<ReprocResult | null>(null);
   const [reprocTotals, setReprocTotals] = useState<{ corrigidos: number; falhas: number; lotes: number }>({
@@ -68,6 +68,10 @@ function ContaAzulPage() {
     falhas: 0,
     lotes: 0,
   });
+  const RECORTE_2026 = { from: "2026-01-01", to: "2026-12-31" };
+  const [histFrom, setHistFrom] = useState("2023-01-01");
+  const [histTo, setHistTo] = useState("2025-12-31");
+  const [recorteLabel, setRecorteLabel] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
