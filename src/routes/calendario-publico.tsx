@@ -61,21 +61,23 @@ function CalendarioPublico() {
   const autorizado =
     !!user && (isAdmin || hasModule("eventos") || !!perfil?.is_expectador_eventos);
 
-  const { data: eventos = [], isLoading } = useQuery({
+  const { data: eventos = [], isLoading, error: eventosError, refetch: refetchEventos } = useQuery({
     enabled: autorizado,
     queryKey: ["eventos-publico"],
     queryFn: async () => {
-      const { data } = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from("eventos")
         .select(
           "id,codigo_evento,nome,local,cidade,tipo,data_evento,data_evento_fim,data_montagem,data_montagem_fim,data_desmontagem,data_desmontagem_fim,produtor,observacoes,cor,situacao,hora_montagem,hora_desmontagem"
         )
         .order("data_evento");
+      if (error) throw error;
       return (data ?? []) as EventoCal[];
     },
     refetchInterval: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
   });
+
 
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
