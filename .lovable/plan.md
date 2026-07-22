@@ -1,86 +1,42 @@
-## 1. Quadro de Vendas — arrastar o card inteiro
+# Vincular Vendedor ao Usuário pelo cadastro
 
-**Arquivo:** `src/routes/comercial.index.tsx`
+Hoje a aba **Vendedores** do Dashboard tenta descobrir "qual consultor é o usuário logado" comparando o nome do perfil com o nome do vendedor por normalização de texto. Isso é frágil (basta diferença de acento, apelido ou sobrenome para quebrar) e não usa o cadastro real.
 
-- No `KanbanCard`, aplicar `useDraggable` (`listeners`/`attributes`) no wrapper do card, e não só no botão `⋮⋮`.
-- Manter o `⋮⋮` como alça visual (mesmos listeners) — continua funcionando, mas o card todo passa a ser pegador.
-- Envolver os botões de ação (Editar, Detalhes, Marcar venda/perda, Criar Proposta, Imprimir) com `onPointerDown={(e) => e.stopPropagation()}` para que o clique nunca seja interpretado como início de arraste.
-- Manter `activationConstraint: { distance: 5 }` no `PointerSensor`, evitando que um clique curto em texto vire drag acidental.
+Vamos amarrar tudo ao cadastro em **Configurações → Vendedores (Consultor(a))**: cada vendedor passa a ter um usuário responsável, e todo o restante lê essa amarração.
 
-## 2. Configurações do Comercial — liberar abas do Dashboard por usuário
+## Mudanças
 
-**Objetivo:** admin escolhe, por usuário, quais das 4 seções do Dashboard Comercial ele enxerga: Painel de Vendas, Relatório de Vendas, Vendedores, Indicadores. Também controla se o usuário vê a página Dashboard.
+### 1. Banco
+- Adicionar coluna `user_id uuid` em `comercial_vendedores`, referenciando `auth.users(id)`, `UNIQUE` (um usuário só pode ser um vendedor) e `ON DELETE SET NULL`.
+- Sem migração automática de dados: como o vínculo é sensível, o administrador escolhe manualmente na tela quem é quem.
 
-### Modelo de dados (migração)
+### 2. Configurações → Vendedores (Consultor(a))
+- Novo campo no formulário de cadastro/edição: **"Usuário vinculado"** — combobox listando os usuários que têm acesso ao módulo Comercial (mesma consulta já usada no card "Acesso ao Dashboard").
+- Nova coluna **"Usuário"** na tabela, mostrando o nome/e-mail do usuário vinculado (ou "—").
+- Validação: bloqueia salvar quando o usuário escolhido já estiver vinculado a outro vendedor.
 
-Nova tabela `comercial_dashboard_permissoes`:
+### 3. Dashboard Comercial → aba Vendedores
+- Substituir o casamento por nome pelo vínculo salvo: buscar em `comercial_vendedores` o registro `user_id = auth.uid()` e usar o `nome` desse vendedor para travar o filtro.
+- Mensagem de aviso quando o usuário não tiver vendedor vinculado passa a orientar: "Peça ao administrador para vincular seu usuário em Configurações → Vendedores".
+- Administradores do módulo continuam vendo o seletor completo de "Consultores".
 
-- `user_id uuid` (FK `auth.users`, único)
-- `ver_painel bool default true`
-- `ver_relatorio bool default true`
-- `ver_vendedores bool default true`
-- `ver_indicadores bool default true`
+### 4. Card "Acesso ao Dashboard Comercial"
+- Adicionar uma coluna curta indicando o **vendedor vinculado** (ou "—") ao lado do nome de cada usuário, para o administrador entender rapidamente quem já está amarrado.
 
-RLS:
-- Admin (via `has_role`): `ALL`.
-- Usuário autenticado: `SELECT` da própria linha (para o front saber o que renderizar).
+## Fora do escopo
+- Não vamos usar esse vínculo em outros lugares (propostas, cards, comissões) neste passo — apenas no filtro do Dashboard. Se quiser estender depois (ex.: filtrar propostas/cards pelo `user_id` do vendedor), fazemos em um segundo passo.
+- O helper `normalizarNome` fica no código por enquanto (não é mais usado no filtro), pode ser removido em uma limpeza posterior.
 
-Grants padrão (`authenticated`, `service_role`). Sem acesso `anon`.
+## Detalhes técnicos
 
-Regra de fallback quando o usuário **não tem linha**: para admins do módulo comercial, tudo liberado; para usuários comuns com o módulo comercial, só a aba **Vendedores** liberada por padrão (assim já resolve o caso "vendedor só vê o dele").
-
-### UI — `src/routes/comercial.configuracoes.tsx`
-
-Novo card **"Acesso ao Dashboard"** (visível só para admin do comercial):
-
-- Lista os usuários com o módulo `comercial` (join `user_modulos` + `profiles`/`auth`).
-- Cada linha traz 4 switches (Painel / Relatório / Vendedores / Indicadores) que fazem `upsert` na nova tabela.
-
-### Aplicação das permissões
-
-- **`src/routes/comercial.dashboard.tsx`**: `useQuery` na tabela para o usuário logado; expõe `permissoes` via `DashboardCtx` (adicionar campo). Se todas as flags forem `false`, mostrar mensagem "Você não tem acesso ao Dashboard" ao invés do `<Outlet />`.
-- **`src/routes/comercial.dashboard.index.tsx`**:
-  - Ocultar botões das seções não liberadas em `Secao`.
-  - Ao carregar, escolher `secao` inicial como a primeira liberada.
-  - Se o usuário mudar `secao` para uma proibida (não acontece pelos botões, mas guarda), força para a primeira liberada.
-- **`src/components/AppSidebar.tsx`**: quando nenhuma das 4 flags estiver ativa, esconder o item "Dashboard" do grupo Comercial (para usuários não-admin). Usa o mesmo hook/consulta.
-
-## 3. Aba Vendedores — filtro fixo no próprio vendedor
-
-**Regra combinada:** casar `user.user_metadata.full_name` (ou `profiles.nome`) com `comercial_vendedores.nome`, normalizando (trim, minúsculas, sem acentos).
-
-**Arquivo:** `src/routes/comercial.dashboard.index.tsx` (bloco `secao === "vendedores"`).
-
-- Se o usuário for admin do comercial → mantém o `Select` de consultor com "Todos" e a lista completa.
-- Se **não** for admin:
-  - Calcular `meuNome` a partir do perfil.
-  - Procurar em `consultoresDisponiveis` a entrada que casa com `meuNome` normalizado.
-  - Setar `consultorSel` fixo nesse nome e **ocultar o Select** (mostrar um chip "Vendedor: Fulano").
-  - Se não achar correspondência, mostrar aviso "Seu usuário ainda não está vinculado a um vendedor cadastrado — peça ao administrador para ajustar o nome nas Configurações → Vendedores".
-- Como a seção Vendedores já ficará com `consultorSel` travado, todos os gráficos/KPIs já ficam filtrados só nesse vendedor.
-
-## 4. Observações
-
-- Nenhuma mudança em Painel/Relatório/Indicadores além do controle de visibilidade — os dados continuam globais para quem tem acesso a essas abas.
-- O vínculo por nome depende do cadastro estar exatamente com o mesmo nome do usuário; a mensagem de aviso já orienta a correção sem quebrar a tela.
-- Migração roda antes das mudanças de código (o types.ts é regenerado depois da aprovação).
-
-### Detalhes técnicos (para revisão)
-
-```text
-comercial_dashboard_permissoes
-  user_id (PK, FK auth.users)
-  ver_painel, ver_relatorio, ver_vendedores, ver_indicadores (bool)
-  created_at, updated_at
-
-RLS
-  admin  → ALL
-  self   → SELECT WHERE user_id = auth.uid()
-```
-
-Ordem de implementação:
-1. Migração da tabela + RLS + grants.
-2. Card de permissões nas Configurações.
-3. Hook `useDashboardPermissoes` + gating em `comercial.dashboard.tsx` / `index.tsx` / `AppSidebar.tsx`.
-4. Filtro travado na aba Vendedores.
-5. Arraste do card inteiro no Quadro.
+- Migração:
+  ```sql
+  ALTER TABLE public.comercial_vendedores
+    ADD COLUMN user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL;
+  CREATE UNIQUE INDEX comercial_vendedores_user_id_key
+    ON public.comercial_vendedores(user_id) WHERE user_id IS NOT NULL;
+  ```
+- `src/lib/comercial/cadastros.ts`: incluir `user_id` no tipo e no upsert.
+- `src/routes/comercial.configuracoes.tsx` (`VendedoresCard`): novo `Select` de usuário no diálogo; nova coluna na tabela.
+- `src/routes/comercial.dashboard.index.tsx`: nova query `comercial_vendedores.select("nome, user_id").eq("user_id", user.id).maybeSingle()` substitui `meuNomeNorm` / `normalizarNome` no cálculo de `meuConsultor`.
+- `AcessoDashboardCard` em Configurações: juntar `comercial_vendedores` no lookup existente por `user_id`.

@@ -1207,6 +1207,7 @@ export type Database = {
           nome: string
           percentual_comissao: number
           tipo_comissao: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -1216,6 +1217,7 @@ export type Database = {
           nome: string
           percentual_comissao?: number
           tipo_comissao?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -1225,6 +1227,7 @@ export type Database = {
           nome?: string
           percentual_comissao?: number
           tipo_comissao?: string
+          user_id?: string | null
         }
         Relationships: []
       }
