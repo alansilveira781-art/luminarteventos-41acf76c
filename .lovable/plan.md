@@ -1,45 +1,49 @@
-## Objetivo
+# Recortes de sincronização Conta Azul
 
-Padronizar a seção **"Itens recebidos"** do diálogo de **Despesa** (`ReceberDemandaDialog`) para ficar idêntica à de **Compra** (`ReceberDialog`), como no print enviado: um card por item, com descrição em destaque, linha "Pedido: qtd unidade", campos inline **QTD RECEBIDA / CUST. UNIT. / DESCONTO / FRETE / IPI / OUTROS / TOTAL LINHA** e o bloco tracejado de associação (**Selecionar item existente** / **Cadastrar novo item**) quando o item da despesa ainda não estiver vinculado a um item de estoque.
+Adicionar dois botões dedicados na aba **Financeiro Op → Conta Azul**, que rodam a sincronização completa (plano de contas, centros de custo, contas a pagar, contas a receber e extrato) para um período fixo e, ao final, reprocessam automaticamente os rateios apenas dos lançamentos daquele período.
 
-## Escopo (apenas UI/estado local)
+## UX na página `financeiro-op.conta-azul.tsx`
 
-Arquivo: `src/routes/estoque.a-receber.tsx` — função `ReceberDemandaDialog`.
+Novo card **"Recortes rápidos"** abaixo do card de sincronização atual:
 
-### 1. Trocar o modelo de estado
-- Remover `linhas`/`setLinhas`, `LinhaRecDem`, `novaLinhaRecDem`, `adicionarLinha`, `removerLinha` e o botão "Adicionar item".
-- Iterar diretamente sobre `demandaItens` (a mesma fonte já usada hoje), no mesmo padrão do compra: um card por linha da despesa, com `descricao`, `quantidade` e `unidade` vindos do próprio item.
-- Introduzir os mesmos hooks locais do compra:
-  - `extras: Record<demanda_item_id, { quantidade?, valor_unitario?, desconto, frete, ipi, outros_custos }>` + helpers `getExtra` / `setExtra`, inicializados a partir de `demandaItens` (mesma lógica atual de pré-preencher qtd e valor).
-  - `itemMap: Record<demanda_item_id, item_id>` para itens ainda não associados, mais o toggle "Desfazer associação" (idêntico ao compra).
+- **Botão "Sincronizar 2026"** — período fixo 01/01/2026 → 31/12/2026. Sem inputs.
+- **Bloco "Histórico (antes de 2026)"** — dois inputs De/Até (default: De = 01/01/2023, Até = 31/12/2025), com validação `to < 2026-01-01`. Botão **"Sincronizar histórico"**.
+- Barra de progresso reaproveitando o estado `progress` existente (recurso atual X/5).
+- Ao finalizar cada recorte, dispara automaticamente o reprocessamento de rateios **restrito aos external_ids do período**, com contador de lotes já usado hoje.
 
-### 2. Layout do card do item (espelho exato do compra)
-Para cada `it` de `demandaItens`, renderizar o mesmo bloco das linhas 557-657 (`ReceberDialog`), adaptando apenas os nomes dos handlers:
-- Título: `it.descricao`.
-- Subtítulo: `Pedido: {qtd} {unidade}`.
-- Se `it.evento_projeto` existir, mostrar `EVENTO/PROJETO:` (em despesas hoje não há esse campo — omitir se não houver).
-- Linha de campos: `Qtd recebida`, `Cust. unit.` (MoneyInput, 4 casas), `Desconto`, `Frete`, `IPI`, `Outros`, `Total linha` (calculado).
-- Bloco de associação idêntico ao do compra: quando `!it.item_id && !itemMap[it.id]`, mostrar caixa tracejada com **Selecionar item existente** (`ItemSearchSelect`) e **Cadastrar novo item** (`CadastrarItemInline`, já existente no arquivo). Quando associado, mostrar mensagem de sucesso + "Desfazer associação".
+## Backend
 
-### 3. Ajuste da mutation `finalizar`
-- Continuar iterando pelos itens da despesa, mas usando `extras` para os valores editáveis e `it.item_id ?? itemMap[it.id]` como destino no estoque.
-- Só criar `movimentacoes` para linhas com `item_id` resolvido e `quantidade > 0` (mesmo critério do compra em `linhasInvalidas`).
-- Persistir a associação em `demanda_itens.item_id` quando vier de `itemMap` (já acontece hoje, apenas re-adaptado à nova estrutura).
-- Manter validações atuais (fornecedor, empresa, data, status `a_receber`) e mensagens de erro.
-- Mantém `origem = DESPESA-<numero>` já implementado.
+### 1. Novo endpoint `POST /api/contaazul/sync-recorte`
+Body: `{ from: "YYYY-MM-DD", to: "YYYY-MM-DD" }` (valida `from <= to`).
+- Chama `syncTudo(from, to, { incremental: false })` — que já roda os 5 recursos em sequência.
+- Retorna `{ resultados, external_ids_pagar, external_ids_receber }` para o cliente poder pedir o reprocesso em lotes.
 
-### 4. Rodapé/Total
-- Recalcular `totalRecebimento` a partir de `demandaItens` + `extras`, mesma fórmula do compra.
-- Botão "Finalizar recebimento" fica desabilitado quando não houver nenhuma linha válida (qtd > 0 e item associado), espelhando `linhasInvalidas`.
+Alternativa mais simples e preferida: manter o loop atual no client (que já mostra progresso por recurso) e apenas garantir que o botão passe as datas fixas certas. Nesse caso não precisa de endpoint novo — só de nova função no client que chama `/api/contaazul/sync` para cada recurso com `modo: "completo"` e as datas do recorte.
 
-### 5. Não alterar
-- Cabeçalho, banner de status bloqueado, dados gerais (data/empresa/fornecedor/NF), seção de anexos, comportamento de fechar/invalidar queries.
-- Nenhuma mudança em banco, RLS, tipos gerados, ou em `ReceberDialog` (compra).
+### 2. Endpoint `reprocessar-rateios` — novo modo `periodo`
+Em `src/routes/api/contaazul/reprocessar-rateios.ts` e `reprocessarRateios` em `sync.server.ts`:
+- Aceitar `{ modo: "periodo", from, to, limite }`.
+- `listarCandidatos` filtra `ca_contas_pagar` / `ca_contas_receber` por `data_vencimento BETWEEN from AND to` (mesma coluna que a Análise Detalhada usa em regime de competência), ordenado por `detalhe_synced_at ASC NULLS FIRST`.
+- Reaproveita a lógica de reescalonamento de fatias já existente (`buildRateios` + `finalizarFatias`).
 
-## Validação
+### 3. Client — orquestração
+Nova função `handleRecorte(from, to)` em `financeiro-op.conta-azul.tsx`:
+1. Loop dos 5 recursos chamando `/api/contaazul/sync` com `modo: "completo"` (reaproveita `handleSync`, extraindo a lógica em função parametrizada por datas).
+2. Após concluído, chama `/api/contaazul/reprocessar-rateios` com `{ modo: "periodo", from, to, limite: 40 }` em loop até `concluido: true` (mesma proteção de 200 lotes já existente).
+3. Toast final com totais: registros sincronizados + rateios corrigidos.
 
-1. Abrir uma despesa em `/estoque/a-receber` e conferir visual idêntico ao card do compra do print.
-2. Item sem `item_id`: aparece o bloco tracejado; associar via busca ou "Cadastrar novo item" funciona; "Desfazer associação" volta o estado.
-3. Alterar qtd/custo/desconto/frete/IPI/outros atualiza `Total linha` e o total geral do recebimento.
-4. Finalizar gera entrada em `movimentacoes`, marca `demanda_itens.recebido = true` e finaliza a demanda.
-5. Anexos continuam aparecendo e abrindo no `AnexoViewer`.
+## Correção dos rateios
+A lógica de rateio correta já existe (`buildRateios` + `finalizarFatias`, que rescala pelo `valor_parcela / soma_rateios_contrato` e valida tolerância de R$ 0,01). O que muda: garantir que **todo lançamento do recorte passe pelo reprocesso**, não só suspeitos. É isso que o modo `periodo` acima faz — força reprocesso completo dentro da janela sincronizada, usando o token OAuth atual para buscar `/financeiro/eventos-financeiros/parcelas/{id}` de cada lançamento.
+
+## Detalhes técnicos
+
+- Datas 2026 hard-coded como constantes no componente (`RECORTE_2026 = { from: "2026-01-01", to: "2026-12-31" }`).
+- Input do histórico usa `<Input type="date" max="2025-12-31">`.
+- Reaproveita `busy`, `progress`, `reprocProgress`, `reprocTotals` já existentes — sem novo estado global.
+- Sem migração de schema.
+- Sem alteração no cron / D-1 / job histórico existente (`ca_sync_jobs`) — os recortes rodam sob demanda, síncronos, do lado do usuário.
+
+## Arquivos afetados
+- `src/routes/financeiro-op.conta-azul.tsx` — novo card, `handleRecorte`, refactor pequeno do `handleSync` para aceitar `{ from, to }`.
+- `src/routes/api/contaazul/reprocessar-rateios.ts` — aceitar novo modo `periodo` no schema Zod.
+- `src/lib/conta-azul/sync.server.ts` — `reprocessarRateios` e `listarCandidatos` aceitando filtro por `from/to`.
