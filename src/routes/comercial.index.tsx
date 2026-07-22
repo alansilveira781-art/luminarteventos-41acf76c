@@ -414,16 +414,15 @@ function KanbanCard({
     <div
       ref={setNodeRef}
       style={style}
-      className={`rounded-md border border-border bg-card p-2.5 text-xs shadow-sm ${isDragging ? "opacity-50" : ""}`}
+      {...listeners}
+      {...attributes}
+      className={`rounded-md border border-border bg-card p-2.5 text-xs shadow-sm cursor-grab active:cursor-grabbing select-none ${isDragging ? "opacity-50" : ""}`}
     >
       <div className="flex items-start gap-2">
-        <button
-          type="button"
-          {...listeners}
-          {...attributes}
-          className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground select-none"
-          aria-label="Mover"
-        >⋮⋮</button>
+        <span
+          className="text-muted-foreground hover:text-foreground select-none"
+          aria-hidden="true"
+        >⋮⋮</span>
         <div className="flex-1 min-w-0">
           <div className="font-medium text-sm truncate text-foreground">{card.clienteNome}</div>
           {card.eventoNome && <div className="text-[11px] text-muted-foreground truncate">{card.eventoNome}</div>}
@@ -443,7 +442,10 @@ function KanbanCard({
               Perda: {card.motivoPerda}
             </span>
           )}
-          <div className="flex flex-wrap gap-1 mt-2">
+          <div
+            className="flex flex-wrap gap-1 mt-2"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
             <ActionBtn onClick={onVenda} label="Marcar como venda" icon={<CheckCircle2 className="h-3 w-3" />} className="text-emerald-600 hover:bg-emerald-500/10" />
             <ActionBtn onClick={onPerda} label="Marcar como perda" icon={<XCircle className="h-3 w-3" />} className="text-rose-600 hover:bg-rose-500/10" />
             <ActionBtn onClick={onEdit} label="Editar" icon={<Pencil className="h-3 w-3" />} />

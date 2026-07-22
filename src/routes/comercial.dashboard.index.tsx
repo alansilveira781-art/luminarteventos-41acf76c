@@ -24,6 +24,9 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { useDashboardPermissoes, normalizarNome } from "@/lib/comercial/dashboard-permissoes";
+import { useAuth } from "@/contexts/AuthContext";
+import { AlertTriangle } from "lucide-react";
 
 export const Route = createFileRoute("/comercial/dashboard/")({
   component: DashboardHome,
@@ -48,7 +51,30 @@ type Secao = "painel" | "relatorio" | "vendedores" | "indicadores";
 
 function DashboardHome() {
   const { rows, filtered, previous, filtros, setFiltros } = useDashboard();
-  const [secao, setSecao] = useState<Secao>("painel");
+  const { perms, isAdminComercial, temAcessoAlgumaAba, loading: permsLoading } = useDashboardPermissoes();
+  const { user } = useAuth();
+
+  const secoesLiberadas = useMemo(() => {
+    const arr: Secao[] = [];
+    if (perms.ver_painel) arr.push("painel");
+    if (perms.ver_relatorio) arr.push("relatorio");
+    if (perms.ver_vendedores) arr.push("vendedores");
+    if (perms.ver_indicadores) arr.push("indicadores");
+    return arr;
+  }, [perms]);
+
+  const [secao, setSecao] = useState<Secao>(secoesLiberadas[0] ?? "painel");
+  useEffect(() => {
+    if (secoesLiberadas.length === 0) return;
+    if (!secoesLiberadas.includes(secao)) setSecao(secoesLiberadas[0]);
+  }, [secoesLiberadas, secao]);
+
+  // Nome do usuário (para travar filtro de vendedor quando não for admin)
+  const meuNomeNorm = useMemo(() => {
+    const meta: any = user?.user_metadata ?? {};
+    return normalizarNome(meta.full_name ?? meta.name ?? user?.email ?? "");
+  }, [user]);
+
   const [consultorSel, setConsultorSel] = useState<string | "Todos">("Todos");
 
   const consultoresDisponiveis = useMemo(() => {
@@ -59,6 +85,24 @@ function DashboardHome() {
     }
     return [...set].sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [filtered]);
+
+  // Consultor associado ao usuário logado (casamento por nome normalizado)
+  const meuConsultor = useMemo(() => {
+    if (!meuNomeNorm) return null;
+    // Considera todos os rows (não só filtered) para achar o nome cadastrado
+    const nomes = new Set<string>();
+    for (const r of rows) { const c = cleanText(r.consultor); if (c) nomes.add(c); }
+    for (const n of nomes) if (normalizarNome(n) === meuNomeNorm) return n;
+    return null;
+  }, [rows, meuNomeNorm]);
+
+  // Não-admin comercial: filtro travado no próprio vendedor.
+  const vendedorTravado = !isAdminComercial;
+  useEffect(() => {
+    if (!vendedorTravado) return;
+    if (meuConsultor && consultorSel !== meuConsultor) setConsultorSel(meuConsultor);
+    if (!meuConsultor && consultorSel !== "Todos") setConsultorSel("Todos");
+  }, [vendedorTravado, meuConsultor, consultorSel]);
 
   const vendedoresRows = useMemo(() => {
     if (consultorSel === "Todos") return filtered;
@@ -200,6 +244,16 @@ function DashboardHome() {
   const realizado = k.vendasTotais;
   const semDadosFiltrados = rows.length > 0 && filtered.length === 0;
 
+  if (!permsLoading && !temAcessoAlgumaAba) {
+    return (
+      <Card className="p-8 text-sm text-muted-foreground text-center">
+        Você não tem acesso a nenhuma seção do Dashboard Comercial.
+        <br />
+        Fale com um administrador para liberar as abas em <em>Configurações → Acesso ao Dashboard</em>.
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {secao !== "indicadores" ? (
@@ -282,38 +336,26 @@ function DashboardHome() {
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant={secao === "painel" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setSecao("painel")}
-        >
-          Painel de Vendas
-        </Button>
-        <Button
-          type="button"
-          variant={secao === "relatorio" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setSecao("relatorio")}
-        >
-          Relatório de Vendas
-        </Button>
-        <Button
-          type="button"
-          variant={secao === "vendedores" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setSecao("vendedores")}
-        >
-          Vendedores
-        </Button>
-        <Button
-          type="button"
-          variant={secao === "indicadores" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setSecao("indicadores")}
-        >
-          Indicadores
-        </Button>
+        {perms.ver_painel && (
+          <Button type="button" variant={secao === "painel" ? "default" : "outline"} size="sm" onClick={() => setSecao("painel")}>
+            Painel de Vendas
+          </Button>
+        )}
+        {perms.ver_relatorio && (
+          <Button type="button" variant={secao === "relatorio" ? "default" : "outline"} size="sm" onClick={() => setSecao("relatorio")}>
+            Relatório de Vendas
+          </Button>
+        )}
+        {perms.ver_vendedores && (
+          <Button type="button" variant={secao === "vendedores" ? "default" : "outline"} size="sm" onClick={() => setSecao("vendedores")}>
+            Vendedores
+          </Button>
+        )}
+        {perms.ver_indicadores && (
+          <Button type="button" variant={secao === "indicadores" ? "default" : "outline"} size="sm" onClick={() => setSecao("indicadores")}>
+            Indicadores
+          </Button>
+        )}
       </div>
 
       {secao === "painel" && (
@@ -551,32 +593,48 @@ function DashboardHome() {
               valor={kVend.ticketMedio} anterior={kVend.ticketAnterior} pct={kVend.pctTicket} />
           </div>
 
-          <Card className="p-3">
-            <div className="text-xs font-medium text-foreground/70 mb-2">Consultores</div>
-            <div className="grid grid-cols-3 gap-2">
-              <Button
-                type="button"
-                variant={consultorSel === "Todos" ? "default" : "outline"}
-                size="sm"
-                className="w-full"
-                onClick={() => setConsultorSel("Todos")}
-              >
-                Todos
-              </Button>
-              {consultoresDisponiveis.map((c) => (
+          {vendedorTravado ? (
+            <Card className="p-3 flex items-center gap-2 text-xs">
+              {meuConsultor ? (
+                <>
+                  <span className="text-muted-foreground">Vendedor:</span>
+                  <span className="font-semibold">{meuConsultor}</span>
+                </>
+              ) : (
+                <span className="flex items-center gap-2 text-amber-600">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  Seu usuário ainda não está vinculado a um vendedor cadastrado. Peça ao administrador para ajustar o nome nas Configurações → Vendedores.
+                </span>
+              )}
+            </Card>
+          ) : (
+            <Card className="p-3">
+              <div className="text-xs font-medium text-foreground/70 mb-2">Consultores</div>
+              <div className="grid grid-cols-3 gap-2">
                 <Button
-                  key={c}
                   type="button"
-                  variant={consultorSel === c ? "default" : "outline"}
+                  variant={consultorSel === "Todos" ? "default" : "outline"}
                   size="sm"
-                  className="w-full truncate"
-                  onClick={() => setConsultorSel(c)}
+                  className="w-full"
+                  onClick={() => setConsultorSel("Todos")}
                 >
-                  {c}
+                  Todos
                 </Button>
-              ))}
-            </div>
-          </Card>
+                {consultoresDisponiveis.map((c) => (
+                  <Button
+                    key={c}
+                    type="button"
+                    variant={consultorSel === c ? "default" : "outline"}
+                    size="sm"
+                    className="w-full truncate"
+                    onClick={() => setConsultorSel(c)}
+                  >
+                    {c}
+                  </Button>
+                ))}
+              </div>
+            </Card>
+          )}
         </div>
 
         <Card className="p-4">

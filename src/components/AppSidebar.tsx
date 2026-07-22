@@ -170,6 +170,29 @@ function useNavItems(pathname: string) {
   });
   const isExpectadorEventos = !!perfil?.is_expectador_eventos;
 
+  // Permissões do Dashboard Comercial: esconde o item quando o usuário não
+  // tem acesso a nenhuma das 4 abas.
+  const isComercialAdmin = isAdmin || modulos.some((m) => m.slug === "comercial" && m.is_admin);
+  const temComercial = isAdmin || hasModule("comercial");
+  const { data: dashPerms } = useQuery({
+    enabled: !!user && temComercial && !isComercialAdmin,
+    queryKey: ["sidebar-comercial-dash-perms", user?.id],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("comercial_dashboard_permissoes")
+        .select("ver_painel, ver_relatorio, ver_vendedores, ver_indicadores")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      return data as { ver_painel: boolean; ver_relatorio: boolean; ver_vendedores: boolean; ver_indicadores: boolean } | null;
+    },
+    staleTime: 60_000,
+  });
+  const podeVerComercialDashboard =
+    isComercialAdmin ||
+    (dashPerms
+      ? (dashPerms.ver_painel || dashPerms.ver_relatorio || dashPerms.ver_vendedores || dashPerms.ver_indicadores)
+      : temComercial); // sem linha: fallback padrão (Vendedores liberado)
+
   return allItems.filter((i) => {
     if (i.url === "/") return true;
     if (i.expectadorEventos) {
@@ -183,7 +206,12 @@ function useNavItems(pathname: string) {
     if (i.module === "compras") return ctx === "compras" && (isAdmin || hasModule("compras"));
     if (i.module === "financeiro") return ctx === "financeiro" && (isAdmin || hasModule("financeiro"));
     if (i.module === "financeiro_op") return ctx === "financeiro_op" && (isAdmin || hasModule("financeiro_op"));
-    if (i.module === "comercial") return ctx === "comercial" && (isAdmin || hasModule("comercial"));
+    if (i.module === "comercial") {
+      if (ctx !== "comercial") return false;
+      if (!(isAdmin || hasModule("comercial"))) return false;
+      if (i.url === "/comercial/dashboard" && !podeVerComercialDashboard) return false;
+      return true;
+    }
     if (i.module === "contabil") return ctx === "contabil" && (isAdmin || hasModule("contabil"));
     if (i.module === "juridico") return ctx === "juridico" && (isAdmin || hasModule("juridico"));
     if (i.module === "patrimonio") return ctx === "patrimonio" && (isAdmin || hasModule("patrimonio"));
