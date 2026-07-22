@@ -198,17 +198,31 @@ function SaidasPage() {
   });
 
 
+  const fromIso = periodo.from ? periodo.from.toISOString() : null;
+  const toIso = periodo.to ? periodo.to.toISOString() : null;
   const { data: saidas } = useQuery({
-    queryKey: ["saidas"],
+    queryKey: ["saidas", fromIso, toIso],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("movimentacoes")
-        .select("*, item:itens(nome,codigo,unidade,quantidade_atual), solicitante:solicitantes(nome)")
-        .eq("tipo", "saida")
-        .order("data_movimento", { ascending: false })
-        .limit(500);
-      if (error) throw error;
-      return data;
+      const pageSize = 1000;
+      const all: any[] = [];
+      let start = 0;
+      while (true) {
+        let q = supabase
+          .from("movimentacoes")
+          .select("*, item:itens(nome,codigo,unidade,quantidade_atual), solicitante:solicitantes(nome)")
+          .eq("tipo", "saida")
+          .order("data_movimento", { ascending: false })
+          .range(start, start + pageSize - 1);
+        if (fromIso) q = q.gte("data_movimento", fromIso);
+        if (toIso) q = q.lte("data_movimento", toIso);
+        const { data, error } = await q;
+        if (error) throw error;
+        const rows = data ?? [];
+        all.push(...rows);
+        if (rows.length < pageSize) break;
+        start += pageSize;
+      }
+      return all;
     },
   });
 
@@ -314,11 +328,7 @@ function SaidasPage() {
     ].join(" ");
     return matchTokens(hay, qd);
   });
-  const eventosDisponiveis = useMemo(() => {
-    const s = new Set<string>();
-    (saidas ?? []).forEach((m: any) => { if (m.evento_projeto) s.add(m.evento_projeto); });
-    return Array.from(s).sort();
-  }, [saidas]);
+
   const grupos = useMemo(() => {
     const map = new Map<string, any>();
     for (const m of filteredBaseList) {
@@ -446,15 +456,14 @@ function SaidasPage() {
               ))}
             </datalist>
           </div>
-          <Select value={filterEvento} onValueChange={setFilterEvento}>
-            <SelectTrigger className="w-[200px]"><SelectValue placeholder="Filtrar por evento/projeto" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all">Todos eventos/projetos</SelectItem>
-              {eventosDisponiveis.map((ev) => (
-                <SelectItem key={ev} value={ev}>{ev}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="w-[260px]">
+            <EventoSheetCombobox
+              value={filterEvento === "__all" ? null : filterEvento}
+              onChange={(v) => setFilterEvento(v ?? "__all")}
+              placeholder="Filtrar por evento…"
+            />
+          </div>
+
           <Select value={filterEmpresa} onValueChange={setFilterEmpresa}>
             <SelectTrigger className="w-[200px]"><SelectValue placeholder="Filtrar por empresa" /></SelectTrigger>
             <SelectContent>
