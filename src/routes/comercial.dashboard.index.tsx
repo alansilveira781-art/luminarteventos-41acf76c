@@ -24,6 +24,9 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { useDashboardPermissoes, normalizarNome } from "@/lib/comercial/dashboard-permissoes";
+import { useAuth } from "@/contexts/AuthContext";
+import { AlertTriangle } from "lucide-react";
 
 export const Route = createFileRoute("/comercial/dashboard/")({
   component: DashboardHome,
