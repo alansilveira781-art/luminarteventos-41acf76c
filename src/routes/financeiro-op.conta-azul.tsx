@@ -395,11 +395,11 @@ function ContaAzulPage() {
                 )}
                 Reprocessar tudo
               </Button>
-              {reprocLastResult && !reprocLastResult.concluido && busy === null && (
+              {reprocLastResult && !reprocLastResult.concluido && busy === null && reprocLastResult.modo !== "periodo" && (
                 <Button
                   variant="secondary"
                   disabled={!canManage || !connected}
-                  onClick={() => handleReprocessarRateios(reprocLastResult.modo, { auto: false })}
+                  onClick={() => handleReprocessarRateios(reprocLastResult.modo as "suspeitos" | "todos", { auto: false })}
                 >
                   <RefreshCw className="h-4 w-4 mr-1" />
                   Continuar (restam {reprocLastResult.restantes})
