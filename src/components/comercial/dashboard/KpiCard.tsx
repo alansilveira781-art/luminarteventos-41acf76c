@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/card";
 import type { LucideIcon } from "lucide-react";
+import { brlFull } from "@/lib/comercial/format";
 
 const brl = (v: number) =>
   v >= 1_000_000
@@ -30,6 +31,7 @@ export function KpiCard({
   anteriorLabel?: string;
 }) {
   const fmt = (v: number) => (isMoney ? brl(v) : num(v));
+  const tip = (v: number) => (isMoney ? brlFull(v) : num(v));
   return (
     <Card className="p-5">
       <div className="flex items-start justify-between gap-3">
@@ -38,12 +40,12 @@ export function KpiCard({
           <Icon className="h-5 w-5" />
         </div>
       </div>
-      <div className="mt-2 text-3xl font-bold tracking-tight">{fmt(valor)}</div>
+      <div className="mt-2 text-3xl font-bold tracking-tight cursor-help" title={tip(valor)}>{fmt(valor)}</div>
       {anterior !== undefined && (
         <div className="mt-3 pt-3 border-t border-border/60 flex items-center gap-6 text-xs">
           <div>
             <div className="text-muted-foreground">{anteriorLabel}</div>
-            <div className="font-medium text-foreground">{fmt(anterior)}</div>
+            <div className="font-medium text-foreground cursor-help" title={tip(anterior)}>{fmt(anterior)}</div>
           </div>
           {pct !== undefined && (
             <div>

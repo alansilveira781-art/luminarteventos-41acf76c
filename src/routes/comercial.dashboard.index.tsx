@@ -27,6 +27,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { useDashboardPermissoes, normalizarNome } from "@/lib/comercial/dashboard-permissoes";
 import { useAuth } from "@/contexts/AuthContext";
 import { AlertTriangle } from "lucide-react";
+import { brlFull } from "@/lib/comercial/format";
 
 export const Route = createFileRoute("/comercial/dashboard/")({
   component: DashboardHome,
@@ -214,8 +215,8 @@ function DashboardHome() {
 
   const linhasRelatorio = useMemo(() => {
     return [...filtered].sort((a, b) => {
-      const da = a.dataRegistro || a.dataEvento || "";
-      const db = b.dataRegistro || b.dataEvento || "";
+      const da = a.dataRegistro || "";
+      const db = b.dataRegistro || "";
       return db.localeCompare(da);
     });
   }, [filtered]);
@@ -394,7 +395,7 @@ function DashboardHome() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="trim" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                   <YAxis hide domain={["dataMin - 100000", "dataMax + 100000"]} />
-                  <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                  <Tooltip formatter={(v: number) => brlFull(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
                   <Line type="monotone" dataKey="valor" stroke="#1e3a8a" strokeWidth={3} dot={{ r: 5, strokeWidth: 2, fill: "#fff" }}>
                     <LabelList dataKey="valor" position="top" dy={-6} formatter={(v: number) => brlAbrev(v)} fontSize={11} />
                   </Line>
@@ -415,7 +416,7 @@ function DashboardHome() {
                   <YAxis yAxisId="left" hide domain={["dataMin - 1000", "dataMax + 1000"]} />
                   <YAxis yAxisId="right" orientation="right" hide domain={["dataMin - 2", "dataMax + 2"]} />
                   <Tooltip
-                    formatter={(v: number, name) => name === "Ticket Médio" ? brlAbrev(v) : v.toLocaleString("pt-BR")}
+                    formatter={(v: number, name) => name === "Ticket Médio" ? brlFull(v) : v.toLocaleString("pt-BR")}
                     contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }}
                   />
                   <Legend />
@@ -441,7 +442,7 @@ function DashboardHome() {
                 <BarChart data={ranking} layout="vertical" margin={{ top: 4, right: 60, left: 10, bottom: 0 }}>
                   <XAxis type="number" hide />
                   <YAxis type="category" dataKey="nome" width={110} stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                  <Tooltip formatter={(v: number) => brlFull(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
                   <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]}>
                     <LabelList dataKey="valor" position="right" formatter={(v: number) => brlAbrev(v)} fontSize={11} />
                   </Bar>
@@ -457,7 +458,7 @@ function DashboardHome() {
                 <BarChart data={porClass} layout="vertical" margin={{ top: 4, right: 60, left: 10, bottom: 0 }}>
                   <XAxis type="number" hide />
                   <YAxis type="category" dataKey="nome" width={110} stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                  <Tooltip formatter={(v: number) => brlFull(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
                   <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]}>
                     <LabelList dataKey="valor" position="right" formatter={(v: number) => brlAbrev(v)} fontSize={11} />
                   </Bar>
@@ -512,7 +513,7 @@ function DashboardHome() {
                     </TableRow>
                   ) : linhasRelatorio.map((r, i) => (
                     <TableRow key={r.id ?? i}>
-                      <TableCell className="whitespace-nowrap">{fmtDataBR(r.dataRegistro || r.dataEvento)}</TableCell>
+                      <TableCell className="whitespace-nowrap">{fmtDataBR(r.dataRegistro)}</TableCell>
                       <TableCell className="whitespace-nowrap">{r.nomeEvento || "-"}</TableCell>
                       <TableCell className="whitespace-nowrap">{r.local || "-"}</TableCell>
                       <TableCell className="whitespace-nowrap">{r.consultor || "-"}</TableCell>
@@ -539,7 +540,7 @@ function DashboardHome() {
                 <BarChart data={comissoes} layout="vertical" margin={{ top: 4, right: 80, left: 10, bottom: 0 }}>
                   <XAxis type="number" hide />
                   <YAxis type="category" dataKey="nome" width={110} stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                  <Tooltip formatter={(v: number) => brlFull(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
                   <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]}>
                     <LabelList dataKey="valor" position="right" formatter={(v: number) => brlAbrev(v)} fontSize={11} />
                   </Bar>
@@ -558,7 +559,7 @@ function DashboardHome() {
                   <BarChart data={rankCerim} layout="vertical" margin={{ top: 4, right: 70, left: 10, bottom: 0 }}>
                     <XAxis type="number" hide />
                     <YAxis type="category" dataKey="nome" width={120} stroke="hsl(var(--muted-foreground))" fontSize={11} interval={0} />
-                    <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                    <Tooltip formatter={(v: number) => brlFull(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
                     <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]}>
                       <LabelList dataKey="valor" position="right" formatter={(v: number) => brlAbrev(v)} fontSize={11} />
                     </Bar>
@@ -576,7 +577,7 @@ function DashboardHome() {
                   <BarChart data={rankDecor} layout="vertical" margin={{ top: 4, right: 70, left: 10, bottom: 0 }}>
                     <XAxis type="number" hide />
                     <YAxis type="category" dataKey="nome" width={120} stroke="hsl(var(--muted-foreground))" fontSize={11} interval={0} />
-                    <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                    <Tooltip formatter={(v: number) => brlFull(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
                     <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]}>
                       <LabelList dataKey="valor" position="right" formatter={(v: number) => brlAbrev(v)} fontSize={11} />
                     </Bar>
@@ -658,7 +659,7 @@ function DashboardHome() {
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="trim" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                 <YAxis hide domain={["dataMin - 100000", "dataMax + 100000"]} />
-                <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                <Tooltip formatter={(v: number) => brlFull(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
                 <Line type="monotone" dataKey="valor" stroke="#1e3a8a" strokeWidth={3} dot={{ r: 5, strokeWidth: 2, fill: "#fff" }}>
                   <LabelList dataKey="valor" position="top" dy={-6} formatter={(v: number) => brlAbrev(v)} fontSize={11} />
                 </Line>
@@ -676,7 +677,7 @@ function DashboardHome() {
                   <BarChart data={tipoEvento} layout="vertical" margin={{ top: 4, right: 70, left: 10, bottom: 0 }}>
                     <XAxis type="number" hide />
                     <YAxis type="category" dataKey="nome" width={110} stroke="hsl(var(--muted-foreground))" fontSize={11} interval={0} />
-                    <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                    <Tooltip formatter={(v: number) => brlFull(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
                     <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]}>
                       <LabelList dataKey="valor" position="right" formatter={(v: number) => brlAbrev(v)} fontSize={11} />
                     </Bar>
@@ -694,7 +695,7 @@ function DashboardHome() {
                   <BarChart data={cerimVend} layout="vertical" margin={{ top: 4, right: 70, left: 10, bottom: 0 }}>
                     <XAxis type="number" hide />
                     <YAxis type="category" dataKey="nome" width={120} stroke="hsl(var(--muted-foreground))" fontSize={11} interval={0} />
-                    <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                    <Tooltip formatter={(v: number) => brlFull(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
                     <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]}>
                       <LabelList dataKey="valor" position="right" formatter={(v: number) => brlAbrev(v)} fontSize={11} />
                     </Bar>
@@ -712,7 +713,7 @@ function DashboardHome() {
                   <BarChart data={decorVend} layout="vertical" margin={{ top: 4, right: 70, left: 10, bottom: 0 }}>
                     <XAxis type="number" hide />
                     <YAxis type="category" dataKey="nome" width={120} stroke="hsl(var(--muted-foreground))" fontSize={11} interval={0} />
-                    <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                    <Tooltip formatter={(v: number) => brlFull(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
                     <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]}>
                       <LabelList dataKey="valor" position="right" formatter={(v: number) => brlAbrev(v)} fontSize={11} />
                     </Bar>
@@ -737,7 +738,7 @@ function DashboardHome() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="trim" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                   <YAxis hide domain={["dataMin - 100000", "dataMax + 100000"]} />
-                  <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                  <Tooltip formatter={(v: number) => brlFull(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
                   <Legend />
                   <Line type="monotone" dataKey="anoA" name={`Ano A (${indAnoA})`} stroke="#0ea5e9" strokeWidth={3} dot={{ r: 5, strokeWidth: 2, fill: "#fff" }}>
                     <LabelList dataKey="anoA" position="top" dy={-6} formatter={(v: number) => brlAbrev(v)} fontSize={11} />
@@ -797,7 +798,7 @@ function DashboardHome() {
                 <div className="h-96">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart margin={{ top: 40, right: 80, bottom: 40, left: 80 }}>
-                      <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                      <Tooltip formatter={(v: number) => brlFull(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
                       <Legend
                         layout="horizontal"
                         align="center"

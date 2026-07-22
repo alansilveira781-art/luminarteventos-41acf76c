@@ -11,6 +11,7 @@ import {
   rankingConsultor, valorPorClassificacao, getAno,
 } from "@/lib/comercial/vendas-metrics";
 import { supabase } from "@/integrations/supabase/client";
+import { brlFull } from "@/lib/comercial/format";
 import { DollarSign, ShoppingCart, Percent, Receipt } from "lucide-react";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, LabelList,
@@ -156,7 +157,7 @@ function PainelPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="trim" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                   <YAxis hide domain={["dataMin - 100000", "dataMax + 100000"]} />
-                  <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                  <Tooltip formatter={(v: number) => brlFull(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
                   <Line type="monotone" dataKey="valor" stroke="#1e3a8a" strokeWidth={3} dot={{ r: 5, strokeWidth: 2, fill: "#fff" }}>
                     <LabelList dataKey="valor" position="top" dy={-6} formatter={(v: number) => brlAbrev(v)} fontSize={11} />
                   </Line>
@@ -177,7 +178,7 @@ function PainelPage() {
                   <YAxis yAxisId="left" hide domain={["dataMin - 1000", "dataMax + 1000"]} />
                   <YAxis yAxisId="right" orientation="right" hide domain={["dataMin - 2", "dataMax + 2"]} />
                   <Tooltip
-                    formatter={(v: number, name) => name === "Ticket Médio" ? brlAbrev(v) : v.toLocaleString("pt-BR")}
+                    formatter={(v: number, name) => name === "Ticket Médio" ? brlFull(v) : v.toLocaleString("pt-BR")}
                     contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }}
                   />
                   <Legend />
@@ -203,7 +204,7 @@ function PainelPage() {
                 <BarChart data={ranking} layout="vertical" margin={{ top: 4, right: 60, left: 10, bottom: 0 }}>
                   <XAxis type="number" hide />
                   <YAxis type="category" dataKey="nome" width={110} stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                  <Tooltip formatter={(v: number) => brlFull(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
                   <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]}>
                     <LabelList dataKey="valor" position="right" formatter={(v: number) => brlAbrev(v)} fontSize={11} />
                   </Bar>
@@ -219,7 +220,7 @@ function PainelPage() {
                 <BarChart data={porClass} layout="vertical" margin={{ top: 4, right: 60, left: 10, bottom: 0 }}>
                   <XAxis type="number" hide />
                   <YAxis type="category" dataKey="nome" width={110} stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <Tooltip formatter={(v: number) => brlAbrev(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+                  <Tooltip formatter={(v: number) => brlFull(v)} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
                   <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]}>
                     <LabelList dataKey="valor" position="right" formatter={(v: number) => brlAbrev(v)} fontSize={11} />
                   </Bar>
