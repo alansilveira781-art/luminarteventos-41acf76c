@@ -133,9 +133,7 @@ function DashboardHome() {
     if (!rows.length) return;
     const anosComDados = new Set<number>();
     for (const r of rows) {
-      const a =
-        (r.anoEvento && r.anoEvento > 1900 ? r.anoEvento : null) ??
-        (r.ano && r.ano > 1900 ? r.ano : null);
+      const a = getAno(r);
       if (a) anosComDados.add(a);
     }
     if (anosComDados.size === 0) return;
