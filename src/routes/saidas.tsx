@@ -456,15 +456,14 @@ function SaidasPage() {
               ))}
             </datalist>
           </div>
-          <Select value={filterEvento} onValueChange={setFilterEvento}>
-            <SelectTrigger className="w-[200px]"><SelectValue placeholder="Filtrar por evento/projeto" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all">Todos eventos/projetos</SelectItem>
-              {eventosDisponiveis.map((ev) => (
-                <SelectItem key={ev} value={ev}>{ev}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="w-[260px]">
+            <EventoSheetCombobox
+              value={filterEvento === "__all" ? null : filterEvento}
+              onChange={(v) => setFilterEvento(v ?? "__all")}
+              placeholder="Filtrar por evento…"
+            />
+          </div>
+
           <Select value={filterEmpresa} onValueChange={setFilterEmpresa}>
             <SelectTrigger className="w-[200px]"><SelectValue placeholder="Filtrar por empresa" /></SelectTrigger>
             <SelectContent>
