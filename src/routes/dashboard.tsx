@@ -589,7 +589,7 @@ function Kpi({
           <Icon className="h-4 w-4" />
         </div>
       </div>
-      <div className="text-3xl font-semibold tabular-nums text-foreground">{value}</div>
+      <div className="text-3xl font-semibold tabular-nums text-foreground">{typeof value === "number" ? value.toLocaleString("pt-BR") : value}</div>
     </div>
   );
 }
