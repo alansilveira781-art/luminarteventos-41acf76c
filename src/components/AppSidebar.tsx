@@ -44,6 +44,11 @@ import {
   FileBarChart,
   CalendarDays,
   ClipboardList,
+  Factory,
+  Layers,
+  Boxes as BoxesIcon,
+  Activity,
+  ClipboardCheck as ClipboardCheckIcon,
 
 } from "lucide-react";
 import logo from "@/assets/luminart-logo-white.png";

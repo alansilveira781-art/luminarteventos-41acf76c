@@ -15,6 +15,7 @@ import { Route as SaidasRouteImport } from './routes/saidas'
 import { Route as RhRouteImport } from './routes/rh'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as PatrimonioRouteImport } from './routes/patrimonio'
+import { Route as OperacaoRouteImport } from './routes/operacao'
 import { Route as NotificacoesRouteImport } from './routes/notificacoes'
 import { Route as MeusPedidosRouteImport } from './routes/meus-pedidos'
 import { Route as JuridicoRouteImport } from './routes/juridico'
@@ -34,6 +35,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RhIndexRouteImport } from './routes/rh.index'
 import { Route as PatrimonioIndexRouteImport } from './routes/patrimonio.index'
+import { Route as OperacaoIndexRouteImport } from './routes/operacao.index'
 import { Route as JuridicoIndexRouteImport } from './routes/juridico.index'
 import { Route as FinanceiroIndexRouteImport } from './routes/financeiro.index'
 import { Route as FinanceiroOpIndexRouteImport } from './routes/financeiro-op.index'
@@ -48,6 +50,10 @@ import { Route as PatrimonioEntradasRouteImport } from './routes/patrimonio.entr
 import { Route as PatrimonioDevolucoesRouteImport } from './routes/patrimonio.devolucoes'
 import { Route as PatrimonioDashboardRouteImport } from './routes/patrimonio.dashboard'
 import { Route as PatrimonioAReceberRouteImport } from './routes/patrimonio.a-receber'
+import { Route as OperacaoSetoresRouteImport } from './routes/operacao.setores'
+import { Route as OperacaoRelatorioRouteImport } from './routes/operacao.relatorio'
+import { Route as OperacaoAprovacoesRouteImport } from './routes/operacao.aprovacoes'
+import { Route as OperacaoAcervoRouteImport } from './routes/operacao.acervo'
 import { Route as JuridicoModelosRouteImport } from './routes/juridico.modelos'
 import { Route as FinanceiroRotinasRouteImport } from './routes/financeiro.rotinas'
 import { Route as FinanceiroDashboardRouteImport } from './routes/financeiro.dashboard'
@@ -130,6 +136,11 @@ const RelatoriosRoute = RelatoriosRouteImport.update({
 const PatrimonioRoute = PatrimonioRouteImport.update({
   id: '/patrimonio',
   path: '/patrimonio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OperacaoRoute = OperacaoRouteImport.update({
+  id: '/operacao',
+  path: '/operacao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotificacoesRoute = NotificacoesRouteImport.update({
@@ -227,6 +238,11 @@ const PatrimonioIndexRoute = PatrimonioIndexRouteImport.update({
   path: '/',
   getParentRoute: () => PatrimonioRoute,
 } as any)
+const OperacaoIndexRoute = OperacaoIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OperacaoRoute,
+} as any)
 const JuridicoIndexRoute = JuridicoIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -296,6 +312,26 @@ const PatrimonioAReceberRoute = PatrimonioAReceberRouteImport.update({
   id: '/a-receber',
   path: '/a-receber',
   getParentRoute: () => PatrimonioRoute,
+} as any)
+const OperacaoSetoresRoute = OperacaoSetoresRouteImport.update({
+  id: '/setores',
+  path: '/setores',
+  getParentRoute: () => OperacaoRoute,
+} as any)
+const OperacaoRelatorioRoute = OperacaoRelatorioRouteImport.update({
+  id: '/relatorio',
+  path: '/relatorio',
+  getParentRoute: () => OperacaoRoute,
+} as any)
+const OperacaoAprovacoesRoute = OperacaoAprovacoesRouteImport.update({
+  id: '/aprovacoes',
+  path: '/aprovacoes',
+  getParentRoute: () => OperacaoRoute,
+} as any)
+const OperacaoAcervoRoute = OperacaoAcervoRouteImport.update({
+  id: '/acervo',
+  path: '/acervo',
+  getParentRoute: () => OperacaoRoute,
 } as any)
 const JuridicoModelosRoute = JuridicoModelosRouteImport.update({
   id: '/modelos',
@@ -593,6 +629,7 @@ export interface FileRoutesByFullPath {
   '/juridico': typeof JuridicoRouteWithChildren
   '/meus-pedidos': typeof MeusPedidosRoute
   '/notificacoes': typeof NotificacoesRoute
+  '/operacao': typeof OperacaoRouteWithChildren
   '/patrimonio': typeof PatrimonioRouteWithChildren
   '/relatorios': typeof RelatoriosRoute
   '/rh': typeof RhRouteWithChildren
@@ -632,6 +669,10 @@ export interface FileRoutesByFullPath {
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
+  '/operacao/acervo': typeof OperacaoAcervoRoute
+  '/operacao/aprovacoes': typeof OperacaoAprovacoesRoute
+  '/operacao/relatorio': typeof OperacaoRelatorioRoute
+  '/operacao/setores': typeof OperacaoSetoresRoute
   '/patrimonio/a-receber': typeof PatrimonioAReceberRoute
   '/patrimonio/dashboard': typeof PatrimonioDashboardRoute
   '/patrimonio/devolucoes': typeof PatrimonioDevolucoesRoute
@@ -646,6 +687,7 @@ export interface FileRoutesByFullPath {
   '/financeiro-op/': typeof FinanceiroOpIndexRoute
   '/financeiro/': typeof FinanceiroIndexRoute
   '/juridico/': typeof JuridicoIndexRoute
+  '/operacao/': typeof OperacaoIndexRoute
   '/patrimonio/': typeof PatrimonioIndexRoute
   '/rh/': typeof RhIndexRoute
   '/api/contaazul/historico': typeof ApiContaazulHistoricoRoute
@@ -715,6 +757,10 @@ export interface FileRoutesByTo {
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
+  '/operacao/acervo': typeof OperacaoAcervoRoute
+  '/operacao/aprovacoes': typeof OperacaoAprovacoesRoute
+  '/operacao/relatorio': typeof OperacaoRelatorioRoute
+  '/operacao/setores': typeof OperacaoSetoresRoute
   '/patrimonio/a-receber': typeof PatrimonioAReceberRoute
   '/patrimonio/dashboard': typeof PatrimonioDashboardRoute
   '/patrimonio/devolucoes': typeof PatrimonioDevolucoesRoute
@@ -729,6 +775,7 @@ export interface FileRoutesByTo {
   '/financeiro-op': typeof FinanceiroOpIndexRoute
   '/financeiro': typeof FinanceiroIndexRoute
   '/juridico': typeof JuridicoIndexRoute
+  '/operacao': typeof OperacaoIndexRoute
   '/patrimonio': typeof PatrimonioIndexRoute
   '/rh': typeof RhIndexRoute
   '/api/contaazul/historico': typeof ApiContaazulHistoricoRoute
@@ -771,6 +818,7 @@ export interface FileRoutesById {
   '/juridico': typeof JuridicoRouteWithChildren
   '/meus-pedidos': typeof MeusPedidosRoute
   '/notificacoes': typeof NotificacoesRoute
+  '/operacao': typeof OperacaoRouteWithChildren
   '/patrimonio': typeof PatrimonioRouteWithChildren
   '/relatorios': typeof RelatoriosRoute
   '/rh': typeof RhRouteWithChildren
@@ -810,6 +858,10 @@ export interface FileRoutesById {
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
+  '/operacao/acervo': typeof OperacaoAcervoRoute
+  '/operacao/aprovacoes': typeof OperacaoAprovacoesRoute
+  '/operacao/relatorio': typeof OperacaoRelatorioRoute
+  '/operacao/setores': typeof OperacaoSetoresRoute
   '/patrimonio/a-receber': typeof PatrimonioAReceberRoute
   '/patrimonio/dashboard': typeof PatrimonioDashboardRoute
   '/patrimonio/devolucoes': typeof PatrimonioDevolucoesRoute
@@ -824,6 +876,7 @@ export interface FileRoutesById {
   '/financeiro-op/': typeof FinanceiroOpIndexRoute
   '/financeiro/': typeof FinanceiroIndexRoute
   '/juridico/': typeof JuridicoIndexRoute
+  '/operacao/': typeof OperacaoIndexRoute
   '/patrimonio/': typeof PatrimonioIndexRoute
   '/rh/': typeof RhIndexRoute
   '/api/contaazul/historico': typeof ApiContaazulHistoricoRoute
@@ -867,6 +920,7 @@ export interface FileRouteTypes {
     | '/juridico'
     | '/meus-pedidos'
     | '/notificacoes'
+    | '/operacao'
     | '/patrimonio'
     | '/relatorios'
     | '/rh'
@@ -906,6 +960,10 @@ export interface FileRouteTypes {
     | '/financeiro/dashboard'
     | '/financeiro/rotinas'
     | '/juridico/modelos'
+    | '/operacao/acervo'
+    | '/operacao/aprovacoes'
+    | '/operacao/relatorio'
+    | '/operacao/setores'
     | '/patrimonio/a-receber'
     | '/patrimonio/dashboard'
     | '/patrimonio/devolucoes'
@@ -920,6 +978,7 @@ export interface FileRouteTypes {
     | '/financeiro-op/'
     | '/financeiro/'
     | '/juridico/'
+    | '/operacao/'
     | '/patrimonio/'
     | '/rh/'
     | '/api/contaazul/historico'
@@ -989,6 +1048,10 @@ export interface FileRouteTypes {
     | '/financeiro/dashboard'
     | '/financeiro/rotinas'
     | '/juridico/modelos'
+    | '/operacao/acervo'
+    | '/operacao/aprovacoes'
+    | '/operacao/relatorio'
+    | '/operacao/setores'
     | '/patrimonio/a-receber'
     | '/patrimonio/dashboard'
     | '/patrimonio/devolucoes'
@@ -1003,6 +1066,7 @@ export interface FileRouteTypes {
     | '/financeiro-op'
     | '/financeiro'
     | '/juridico'
+    | '/operacao'
     | '/patrimonio'
     | '/rh'
     | '/api/contaazul/historico'
@@ -1044,6 +1108,7 @@ export interface FileRouteTypes {
     | '/juridico'
     | '/meus-pedidos'
     | '/notificacoes'
+    | '/operacao'
     | '/patrimonio'
     | '/relatorios'
     | '/rh'
@@ -1083,6 +1148,10 @@ export interface FileRouteTypes {
     | '/financeiro/dashboard'
     | '/financeiro/rotinas'
     | '/juridico/modelos'
+    | '/operacao/acervo'
+    | '/operacao/aprovacoes'
+    | '/operacao/relatorio'
+    | '/operacao/setores'
     | '/patrimonio/a-receber'
     | '/patrimonio/dashboard'
     | '/patrimonio/devolucoes'
@@ -1097,6 +1166,7 @@ export interface FileRouteTypes {
     | '/financeiro-op/'
     | '/financeiro/'
     | '/juridico/'
+    | '/operacao/'
     | '/patrimonio/'
     | '/rh/'
     | '/api/contaazul/historico'
@@ -1139,6 +1209,7 @@ export interface RootRouteChildren {
   JuridicoRoute: typeof JuridicoRouteWithChildren
   MeusPedidosRoute: typeof MeusPedidosRoute
   NotificacoesRoute: typeof NotificacoesRoute
+  OperacaoRoute: typeof OperacaoRouteWithChildren
   PatrimonioRoute: typeof PatrimonioRouteWithChildren
   RelatoriosRoute: typeof RelatoriosRoute
   RhRoute: typeof RhRouteWithChildren
@@ -1204,6 +1275,13 @@ declare module '@tanstack/react-router' {
       path: '/patrimonio'
       fullPath: '/patrimonio'
       preLoaderRoute: typeof PatrimonioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/operacao': {
+      id: '/operacao'
+      path: '/operacao'
+      fullPath: '/operacao'
+      preLoaderRoute: typeof OperacaoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notificacoes': {
@@ -1339,6 +1417,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PatrimonioIndexRouteImport
       parentRoute: typeof PatrimonioRoute
     }
+    '/operacao/': {
+      id: '/operacao/'
+      path: '/'
+      fullPath: '/operacao/'
+      preLoaderRoute: typeof OperacaoIndexRouteImport
+      parentRoute: typeof OperacaoRoute
+    }
     '/juridico/': {
       id: '/juridico/'
       path: '/'
@@ -1436,6 +1521,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/patrimonio/a-receber'
       preLoaderRoute: typeof PatrimonioAReceberRouteImport
       parentRoute: typeof PatrimonioRoute
+    }
+    '/operacao/setores': {
+      id: '/operacao/setores'
+      path: '/setores'
+      fullPath: '/operacao/setores'
+      preLoaderRoute: typeof OperacaoSetoresRouteImport
+      parentRoute: typeof OperacaoRoute
+    }
+    '/operacao/relatorio': {
+      id: '/operacao/relatorio'
+      path: '/relatorio'
+      fullPath: '/operacao/relatorio'
+      preLoaderRoute: typeof OperacaoRelatorioRouteImport
+      parentRoute: typeof OperacaoRoute
+    }
+    '/operacao/aprovacoes': {
+      id: '/operacao/aprovacoes'
+      path: '/aprovacoes'
+      fullPath: '/operacao/aprovacoes'
+      preLoaderRoute: typeof OperacaoAprovacoesRouteImport
+      parentRoute: typeof OperacaoRoute
+    }
+    '/operacao/acervo': {
+      id: '/operacao/acervo'
+      path: '/acervo'
+      fullPath: '/operacao/acervo'
+      preLoaderRoute: typeof OperacaoAcervoRouteImport
+      parentRoute: typeof OperacaoRoute
     }
     '/juridico/modelos': {
       id: '/juridico/modelos'
@@ -1991,6 +2104,26 @@ const JuridicoRouteWithChildren = JuridicoRoute._addFileChildren(
   JuridicoRouteChildren,
 )
 
+interface OperacaoRouteChildren {
+  OperacaoAcervoRoute: typeof OperacaoAcervoRoute
+  OperacaoAprovacoesRoute: typeof OperacaoAprovacoesRoute
+  OperacaoRelatorioRoute: typeof OperacaoRelatorioRoute
+  OperacaoSetoresRoute: typeof OperacaoSetoresRoute
+  OperacaoIndexRoute: typeof OperacaoIndexRoute
+}
+
+const OperacaoRouteChildren: OperacaoRouteChildren = {
+  OperacaoAcervoRoute: OperacaoAcervoRoute,
+  OperacaoAprovacoesRoute: OperacaoAprovacoesRoute,
+  OperacaoRelatorioRoute: OperacaoRelatorioRoute,
+  OperacaoSetoresRoute: OperacaoSetoresRoute,
+  OperacaoIndexRoute: OperacaoIndexRoute,
+}
+
+const OperacaoRouteWithChildren = OperacaoRoute._addFileChildren(
+  OperacaoRouteChildren,
+)
+
 interface PatrimonioRouteChildren {
   PatrimonioAReceberRoute: typeof PatrimonioAReceberRoute
   PatrimonioDashboardRoute: typeof PatrimonioDashboardRoute
@@ -2041,6 +2174,7 @@ const rootRouteChildren: RootRouteChildren = {
   JuridicoRoute: JuridicoRouteWithChildren,
   MeusPedidosRoute: MeusPedidosRoute,
   NotificacoesRoute: NotificacoesRoute,
+  OperacaoRoute: OperacaoRouteWithChildren,
   PatrimonioRoute: PatrimonioRouteWithChildren,
   RelatoriosRoute: RelatoriosRoute,
   RhRoute: RhRouteWithChildren,
