@@ -1,15 +1,15 @@
-import * as XLSX from "xlsx";
-
 export type ImportRow = Record<string, any>;
 
 export async function parseSpreadsheet(file: File): Promise<ImportRow[]> {
+  const XLSX = await import("xlsx");
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: "array" });
   const ws = wb.Sheets[wb.SheetNames[0]];
   return XLSX.utils.sheet_to_json<ImportRow>(ws, { defval: "", raw: false });
 }
 
-export function downloadTemplate(filename: string, headers: string[], example: Record<string, any>) {
+export async function downloadTemplate(filename: string, headers: string[], example: Record<string, any>) {
+  const XLSX = await import("xlsx");
   const ws = XLSX.utils.json_to_sheet([example], { header: headers });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Modelo");

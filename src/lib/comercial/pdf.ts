@@ -1,4 +1,4 @@
-import jsPDF from "jspdf";
+import type jsPDF from "jspdf";
 import logoUrl from "@/assets/luminart-logo.png";
 import type { Proposta, DescricaoItem, Ambiente } from "./types";
 import {
@@ -513,7 +513,8 @@ function drawInvestimentoPage(doc: jsPDF, p: Proposta) {
 // API pública
 // ─────────────────────────────────────────────────────────────
 export async function gerarPropostaPDF(p: Proposta) {
-  const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape" });
+  const { jsPDF: JsPDFCtor } = await import("jspdf");
+  const doc = new JsPDFCtor({ unit: "mm", format: "a4", orientation: "landscape" });
   doc.setFont("helvetica");
 
   const logo = await loadImage(logoUrl as unknown as string);

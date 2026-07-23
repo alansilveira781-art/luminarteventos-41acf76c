@@ -1,8 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { lazy, Suspense } from "react";
+import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { UberDashboard } from "@/components/financeiro/UberDashboard";
-import { ContaAzulDashboard } from "@/components/financeiro/ContaAzulDashboard";
+
+const UberDashboard = lazy(() =>
+  import("@/components/financeiro/UberDashboard").then((m) => ({ default: m.UberDashboard })),
+);
+const ContaAzulDashboard = lazy(() =>
+  import("@/components/financeiro/ContaAzulDashboard").then((m) => ({ default: m.ContaAzulDashboard })),
+);
+
+const ChartFallback = () => (
+  <div className="flex items-center justify-center py-12 text-muted-foreground">
+    <Loader2 className="h-5 w-5 animate-spin" />
+  </div>
+);
 
 export const Route = createFileRoute("/financeiro-op/dashboard")({
   component: FinanceiroOpDashboard,
@@ -32,14 +45,17 @@ function FinanceiroOpDashboard() {
 
       <TabsContent value="contaazul" className="mt-0">
         <PageHeader title="Financeiro (Conta Azul)" description="Painel, análise por evento e fluxo de caixa" />
-        <ContaAzulDashboard />
+        <Suspense fallback={<ChartFallback />}>
+          <ContaAzulDashboard />
+        </Suspense>
       </TabsContent>
 
       <TabsContent value="uber" className="mt-0">
         <PageHeader title="Dashboard Uber" description="Base completa importada na aba Uber" />
-        <UberDashboard />
+        <Suspense fallback={<ChartFallback />}>
+          <UberDashboard />
+        </Suspense>
       </TabsContent>
     </Tabs>
   );
 }
-

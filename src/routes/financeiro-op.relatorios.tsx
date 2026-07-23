@@ -4,8 +4,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Printer, Search } from "lucide-react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -194,7 +192,12 @@ function CartoesReport() {
 
   const emitido = format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
 
-  const exportPdf = () => {
+  const exportPdf = async () => {
+    const [{ jsPDF }, autoTableMod] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ]);
+    const autoTable = autoTableMod.default;
     const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
 

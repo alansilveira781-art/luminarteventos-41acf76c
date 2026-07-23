@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, Fragment, useEffect } from "react";
+import { useMemo, useState, Fragment, useEffect, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -227,7 +227,9 @@ function RelatoriosPage() {
       </div>
 
       {relatorioAtivo === "periodo" && (
-        <RelatorioVendasPeriodo rows={rows} isLoading={isLoading} error={error} />
+        <Suspense fallback={<div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+          <RelatorioVendasPeriodo rows={rows} isLoading={isLoading} error={error} />
+        </Suspense>
       )}
 
       {relatorioAtivo === "bonificacao" && (
