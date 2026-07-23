@@ -391,10 +391,21 @@ function NovoContratoWizard({
 
         {modo && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="md:col-span-2">
+            <div>
+              <Label>Tipo *</Label>
+              <Select value={tipo} onValueChange={(v) => setTipo(v as "contrato" | "aditivo")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="contrato">Contrato</SelectItem>
+                  <SelectItem value="aditivo">Aditivo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label>Título *</Label>
               <Input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Ex.: Contrato ABERTURA COCAL" />
             </div>
+
             <div>
               <Label>Empresa</Label>
               <Select value={empresa} onValueChange={setEmpresa}>
