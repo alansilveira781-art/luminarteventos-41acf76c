@@ -38,6 +38,8 @@ const STATUS_LABELS: Record<string, string> = STATUSES.reduce((a, s) => ({ ...a,
 type Contrato = {
   id: string;
   titulo: string;
+  tipo: "contrato" | "aditivo";
+  numero: number | null;
   empresa: string | null;
   cliente_nome: string | null;
   cliente_documento: string | null;
@@ -55,6 +57,12 @@ type Contrato = {
   modelo_id: string | null;
   corpo_html: string | null;
 };
+
+export function contratoCodigo(c: Pick<Contrato, "tipo" | "numero">) {
+  const t = (c.tipo || "contrato").toUpperCase();
+  return c.numero ? `${t}-${c.numero}` : t;
+}
+
 
 const brl = (v: number | null) =>
   Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
