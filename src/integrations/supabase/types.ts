@@ -1421,6 +1421,10 @@ export type Database = {
       }
       compras: {
         Row: {
+          aprovacao_operacao: string | null
+          aprovacao_operacao_em: string | null
+          aprovacao_operacao_motivo: string | null
+          aprovacao_operacao_por: string | null
           comprador: string | null
           condicao_pagamento: string | null
           created_at: string
@@ -1439,7 +1443,9 @@ export type Database = {
           numero_nf: string | null
           numeros_nf: string[]
           observacoes: string | null
+          op_ordem_id: string | null
           ordem: number
+          origem: string
           parcelamento: string | null
           responsavel_id: string | null
           responsavel_nome: string | null
@@ -1454,6 +1460,10 @@ export type Database = {
           valor_total: number | null
         }
         Insert: {
+          aprovacao_operacao?: string | null
+          aprovacao_operacao_em?: string | null
+          aprovacao_operacao_motivo?: string | null
+          aprovacao_operacao_por?: string | null
           comprador?: string | null
           condicao_pagamento?: string | null
           created_at?: string
@@ -1472,7 +1482,9 @@ export type Database = {
           numero_nf?: string | null
           numeros_nf?: string[]
           observacoes?: string | null
+          op_ordem_id?: string | null
           ordem?: number
+          origem?: string
           parcelamento?: string | null
           responsavel_id?: string | null
           responsavel_nome?: string | null
@@ -1487,6 +1499,10 @@ export type Database = {
           valor_total?: number | null
         }
         Update: {
+          aprovacao_operacao?: string | null
+          aprovacao_operacao_em?: string | null
+          aprovacao_operacao_motivo?: string | null
+          aprovacao_operacao_por?: string | null
           comprador?: string | null
           condicao_pagamento?: string | null
           created_at?: string
@@ -1505,7 +1521,9 @@ export type Database = {
           numero_nf?: string | null
           numeros_nf?: string[]
           observacoes?: string | null
+          op_ordem_id?: string | null
           ordem?: number
+          origem?: string
           parcelamento?: string | null
           responsavel_id?: string | null
           responsavel_nome?: string | null
@@ -1519,7 +1537,15 @@ export type Database = {
           updated_at?: string
           valor_total?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "compras_op_ordem_id_fkey"
+            columns: ["op_ordem_id"]
+            isOneToOne: false
+            referencedRelation: "op_ordens"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       compras_exclusoes: {
         Row: {
@@ -2189,6 +2215,10 @@ export type Database = {
       }
       demandas: {
         Row: {
+          aprovacao_operacao: string | null
+          aprovacao_operacao_em: string | null
+          aprovacao_operacao_motivo: string | null
+          aprovacao_operacao_por: string | null
           categoria_external_id: string | null
           comprador: string | null
           condicao_pagamento: string | null
@@ -2209,7 +2239,9 @@ export type Database = {
           numero_nf: string | null
           numeros_nf: string[]
           observacoes: string | null
+          op_ordem_id: string | null
           ordem: number
+          origem: string
           parcelamento: string | null
           responsavel_id: string | null
           responsavel_nome: string | null
@@ -2224,6 +2256,10 @@ export type Database = {
           valor_total: number | null
         }
         Insert: {
+          aprovacao_operacao?: string | null
+          aprovacao_operacao_em?: string | null
+          aprovacao_operacao_motivo?: string | null
+          aprovacao_operacao_por?: string | null
           categoria_external_id?: string | null
           comprador?: string | null
           condicao_pagamento?: string | null
@@ -2244,7 +2280,9 @@ export type Database = {
           numero_nf?: string | null
           numeros_nf?: string[]
           observacoes?: string | null
+          op_ordem_id?: string | null
           ordem?: number
+          origem?: string
           parcelamento?: string | null
           responsavel_id?: string | null
           responsavel_nome?: string | null
@@ -2259,6 +2297,10 @@ export type Database = {
           valor_total?: number | null
         }
         Update: {
+          aprovacao_operacao?: string | null
+          aprovacao_operacao_em?: string | null
+          aprovacao_operacao_motivo?: string | null
+          aprovacao_operacao_por?: string | null
           categoria_external_id?: string | null
           comprador?: string | null
           condicao_pagamento?: string | null
@@ -2279,7 +2321,9 @@ export type Database = {
           numero_nf?: string | null
           numeros_nf?: string[]
           observacoes?: string | null
+          op_ordem_id?: string | null
           ordem?: number
+          origem?: string
           parcelamento?: string | null
           responsavel_id?: string | null
           responsavel_nome?: string | null
@@ -2299,6 +2343,13 @@ export type Database = {
             columns: ["evento_projeto_id"]
             isOneToOne: false
             referencedRelation: "eventos_projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandas_op_ordem_id_fkey"
+            columns: ["op_ordem_id"]
+            isOneToOne: false
+            referencedRelation: "op_ordens"
             referencedColumns: ["id"]
           },
         ]
