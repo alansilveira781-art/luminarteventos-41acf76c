@@ -521,7 +521,7 @@ function ContratoDetalhesDialog({
     <Dialog open={!!contrato} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-3xl max-h-[92vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Contrato — {contrato.titulo}</DialogTitle>
+          <DialogTitle>{contratoCodigo(contrato)} — {contrato.titulo}</DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="dados" className="flex-1 overflow-hidden flex flex-col">
