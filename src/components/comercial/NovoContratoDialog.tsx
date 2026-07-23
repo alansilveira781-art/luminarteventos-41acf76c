@@ -46,11 +46,13 @@ export function NovoContratoDialog({
 }) {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<Record<string, any>>({});
+  const [propostaFile, setPropostaFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setStep(0);
+    setPropostaFile(null);
     setForm({
       empresa: EMPRESAS[0],
       titulo: defaults?.titulo ?? "",
@@ -97,13 +99,41 @@ export function NovoContratoDialog({
         .filter(Boolean)
         .join(" — ");
     }
-    const { error } = await (supabase as any).from("juridico_contratos").insert(payload);
+    const { data: created, error } = await (supabase as any)
+      .from("juridico_contratos")
+      .insert(payload)
+      .select("id")
+      .single();
+    if (error) { setSaving(false); return toast.error(error.message); }
+
+    if (propostaFile && created?.id) {
+      try {
+        const safe = propostaFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const path = `${created.id}/${Date.now()}_${safe}`;
+        const { error: upErr } = await (supabase as any).storage
+          .from("juridico-anexos")
+          .upload(path, propostaFile, { contentType: propostaFile.type || undefined });
+        if (upErr) throw upErr;
+        await (supabase as any).from("juridico_anexos").insert({
+          contrato_id: created.id,
+          nome: propostaFile.name,
+          path,
+          mime_type: propostaFile.type || null,
+          tamanho: propostaFile.size,
+          tipo: "proposta",
+          uploaded_by: userId,
+        });
+      } catch (e: any) {
+        toast.error(`Contrato criado, mas falhou ao anexar proposta: ${e.message ?? e}`);
+      }
+    }
+
     setSaving(false);
-    if (error) return toast.error(error.message);
     toast.success("Contrato criado no Jurídico");
     onOpenChange(false);
     onSaved?.();
   }
+
 
   const progress = ((step + 1) / STEPS.length) * 100;
 
@@ -190,8 +220,22 @@ export function NovoContratoDialog({
               <Label>Data de fechamento</Label>
               <Input type="date" value={form.data_fechamento ?? ""} onChange={(e) => setForm({ ...form, data_fechamento: e.target.value })} />
             </div>
+            <div className="col-span-2">
+              <Label>Anexar proposta (PDF/Word)</Label>
+              <Input
+                type="file"
+                accept=".pdf,.doc,.docx"
+                onChange={(e) => setPropostaFile(e.target.files?.[0] ?? null)}
+              />
+              {propostaFile && (
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {propostaFile.name} · {(propostaFile.size / 1024).toFixed(1)} KB — será anexada ao card do Jurídico.
+                </p>
+              )}
+            </div>
           </div>
         )}
+
 
         <DialogFooter className="gap-2 mt-2">
           {step === 0 ? (
