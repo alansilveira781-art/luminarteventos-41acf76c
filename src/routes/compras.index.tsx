@@ -507,19 +507,17 @@ function Card({
     <div
       ref={setNodeRef}
       style={style}
-      className={`rounded-md border border-border bg-card p-2.5 text-xs shadow-sm ${isDragging ? "opacity-50" : ""}`}
+      {...(canMove ? { ...listeners, ...attributes } : {})}
+      onClick={onOpen}
+      title={canMove ? undefined : blockedMsg ?? undefined}
+      className={`rounded-md border border-border bg-card p-2.5 text-xs shadow-sm ${isDragging ? "opacity-50" : ""} ${canMove ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
     >
       <div className="flex items-start gap-2">
-        <button
-          type="button"
-          {...listeners}
-          {...attributes}
-          disabled={!canMove}
-          title={canMove ? undefined : blockedMsg ?? undefined}
-          className={`text-muted-foreground select-none ${canMove ? "cursor-grab active:cursor-grabbing hover:text-foreground" : "cursor-not-allowed opacity-40"}`}
-          aria-label="Mover"
-        >⋮⋮</button>
-        <button type="button" onClick={onOpen} className="flex-1 text-left min-w-0">
+        <span
+          aria-hidden
+          className={`text-muted-foreground select-none ${canMove ? "" : "opacity-40"}`}
+        >⋮⋮</span>
+        <div className="flex-1 text-left min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="font-medium text-sm truncate text-foreground flex-1 min-w-0">
               {compra.titulo || compra.fornecedor || "Compra sem título"}
@@ -556,10 +554,11 @@ function Card({
               </div>
             )}
           </div>
-        </button>
+        </div>
         {onMigrar && (
           <button
             type="button"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onMigrar(); }}
             className="shrink-0 p-0.5 text-muted-foreground hover:text-primary"
             title="Migrar para Despesa"
@@ -571,6 +570,7 @@ function Card({
         {onAdvance && nextStatusLabel && (
           <button
             type="button"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); if (!advanceDisabled) onAdvance(); }}
             disabled={advanceDisabled}
             className={`shrink-0 p-0.5 transition-colors ${advanceDisabled ? "text-muted-foreground/40 cursor-not-allowed" : "text-muted-foreground hover:text-primary"}`}
@@ -582,6 +582,7 @@ function Card({
         )}
       </div>
     </div>
+
   );
 }
 
