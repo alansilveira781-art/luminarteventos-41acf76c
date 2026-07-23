@@ -274,22 +274,24 @@ function CardItem({
       ref={setNodeRef}
       style={style}
       onClick={() => onOpen(card)}
+      {...(podeMover ? { ...listeners, ...attributes } : {})}
       className={cn(
-        "rounded-md border border-border bg-card p-2.5 text-xs shadow-sm cursor-pointer hover:border-primary/60 transition-colors",
+        "rounded-md border border-border bg-card p-2.5 text-xs shadow-sm hover:border-primary/60 transition-colors",
+        podeMover ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
         isDragging && "opacity-50",
       )}
     >
       <div className="flex items-start gap-2">
         <span
+          aria-hidden
           className={cn(
             "text-muted-foreground select-none shrink-0",
-            podeMover ? "cursor-grab active:cursor-grabbing hover:text-foreground" : "cursor-not-allowed opacity-40",
+            !podeMover && "opacity-40",
           )}
-          {...(podeMover ? { ...listeners, ...attributes } : {})}
-          aria-label="Mover"
         >
           ⋮⋮
         </span>
+
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="font-medium text-sm truncate text-foreground flex-1 min-w-0">
