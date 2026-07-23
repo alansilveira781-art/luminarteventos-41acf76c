@@ -209,8 +209,7 @@ function Dashboard() {
   const baixo = itens?.filter((i) => i.status === "baixo_estoque").length ?? 0;
   const sem = itens?.filter((i) => i.status === "sem_estoque").length ?? 0;
   const manut = itens?.filter((i) => i.status === "em_manutencao").length ?? 0;
-  const disponivel = itens?.filter((i) => i.status === "disponivel")
-    .reduce((soma, i) => soma + Number(i.quantidade_atual || 0), 0) ?? 0;
+  const disponivel = itens?.filter((i) => i.status === "disponivel").length ?? 0;
   // Conta requisições (grupos) por tipo no período: linhas com mesmo requisicao_numero
   // contam como 1; linhas sem requisicao_numero contam individualmente.
   const countRequisicoes = (tipo: "entrada" | "saida" | "devolucao", aplicarFiltroAjuste: boolean) => {
@@ -590,7 +589,7 @@ function Kpi({
           <Icon className="h-4 w-4" />
         </div>
       </div>
-      <div className="text-3xl font-semibold tabular-nums text-foreground">{value}</div>
+      <div className="text-3xl font-semibold tabular-nums text-foreground">{typeof value === "number" ? value.toLocaleString("pt-BR") : value}</div>
     </div>
   );
 }
