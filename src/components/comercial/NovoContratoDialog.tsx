@@ -220,8 +220,22 @@ export function NovoContratoDialog({
               <Label>Data de fechamento</Label>
               <Input type="date" value={form.data_fechamento ?? ""} onChange={(e) => setForm({ ...form, data_fechamento: e.target.value })} />
             </div>
+            <div className="col-span-2">
+              <Label>Anexar proposta (PDF/Word)</Label>
+              <Input
+                type="file"
+                accept=".pdf,.doc,.docx"
+                onChange={(e) => setPropostaFile(e.target.files?.[0] ?? null)}
+              />
+              {propostaFile && (
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {propostaFile.name} · {(propostaFile.size / 1024).toFixed(1)} KB — será anexada ao card do Jurídico.
+                </p>
+              )}
+            </div>
           </div>
         )}
+
 
         <DialogFooter className="gap-2 mt-2">
           {step === 0 ? (
