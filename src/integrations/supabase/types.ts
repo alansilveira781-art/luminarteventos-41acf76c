@@ -1421,6 +1421,10 @@ export type Database = {
       }
       compras: {
         Row: {
+          aprovacao_operacao: string | null
+          aprovacao_operacao_em: string | null
+          aprovacao_operacao_motivo: string | null
+          aprovacao_operacao_por: string | null
           comprador: string | null
           condicao_pagamento: string | null
           created_at: string
@@ -1439,7 +1443,9 @@ export type Database = {
           numero_nf: string | null
           numeros_nf: string[]
           observacoes: string | null
+          op_ordem_id: string | null
           ordem: number
+          origem: string
           parcelamento: string | null
           responsavel_id: string | null
           responsavel_nome: string | null
@@ -1454,6 +1460,10 @@ export type Database = {
           valor_total: number | null
         }
         Insert: {
+          aprovacao_operacao?: string | null
+          aprovacao_operacao_em?: string | null
+          aprovacao_operacao_motivo?: string | null
+          aprovacao_operacao_por?: string | null
           comprador?: string | null
           condicao_pagamento?: string | null
           created_at?: string
@@ -1472,7 +1482,9 @@ export type Database = {
           numero_nf?: string | null
           numeros_nf?: string[]
           observacoes?: string | null
+          op_ordem_id?: string | null
           ordem?: number
+          origem?: string
           parcelamento?: string | null
           responsavel_id?: string | null
           responsavel_nome?: string | null
@@ -1487,6 +1499,10 @@ export type Database = {
           valor_total?: number | null
         }
         Update: {
+          aprovacao_operacao?: string | null
+          aprovacao_operacao_em?: string | null
+          aprovacao_operacao_motivo?: string | null
+          aprovacao_operacao_por?: string | null
           comprador?: string | null
           condicao_pagamento?: string | null
           created_at?: string
@@ -1505,7 +1521,9 @@ export type Database = {
           numero_nf?: string | null
           numeros_nf?: string[]
           observacoes?: string | null
+          op_ordem_id?: string | null
           ordem?: number
+          origem?: string
           parcelamento?: string | null
           responsavel_id?: string | null
           responsavel_nome?: string | null
@@ -1519,7 +1537,15 @@ export type Database = {
           updated_at?: string
           valor_total?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "compras_op_ordem_id_fkey"
+            columns: ["op_ordem_id"]
+            isOneToOne: false
+            referencedRelation: "op_ordens"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       compras_exclusoes: {
         Row: {
@@ -2189,6 +2215,10 @@ export type Database = {
       }
       demandas: {
         Row: {
+          aprovacao_operacao: string | null
+          aprovacao_operacao_em: string | null
+          aprovacao_operacao_motivo: string | null
+          aprovacao_operacao_por: string | null
           categoria_external_id: string | null
           comprador: string | null
           condicao_pagamento: string | null
@@ -2209,7 +2239,9 @@ export type Database = {
           numero_nf: string | null
           numeros_nf: string[]
           observacoes: string | null
+          op_ordem_id: string | null
           ordem: number
+          origem: string
           parcelamento: string | null
           responsavel_id: string | null
           responsavel_nome: string | null
@@ -2224,6 +2256,10 @@ export type Database = {
           valor_total: number | null
         }
         Insert: {
+          aprovacao_operacao?: string | null
+          aprovacao_operacao_em?: string | null
+          aprovacao_operacao_motivo?: string | null
+          aprovacao_operacao_por?: string | null
           categoria_external_id?: string | null
           comprador?: string | null
           condicao_pagamento?: string | null
@@ -2244,7 +2280,9 @@ export type Database = {
           numero_nf?: string | null
           numeros_nf?: string[]
           observacoes?: string | null
+          op_ordem_id?: string | null
           ordem?: number
+          origem?: string
           parcelamento?: string | null
           responsavel_id?: string | null
           responsavel_nome?: string | null
@@ -2259,6 +2297,10 @@ export type Database = {
           valor_total?: number | null
         }
         Update: {
+          aprovacao_operacao?: string | null
+          aprovacao_operacao_em?: string | null
+          aprovacao_operacao_motivo?: string | null
+          aprovacao_operacao_por?: string | null
           categoria_external_id?: string | null
           comprador?: string | null
           condicao_pagamento?: string | null
@@ -2279,7 +2321,9 @@ export type Database = {
           numero_nf?: string | null
           numeros_nf?: string[]
           observacoes?: string | null
+          op_ordem_id?: string | null
           ordem?: number
+          origem?: string
           parcelamento?: string | null
           responsavel_id?: string | null
           responsavel_nome?: string | null
@@ -2299,6 +2343,13 @@ export type Database = {
             columns: ["evento_projeto_id"]
             isOneToOne: false
             referencedRelation: "eventos_projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandas_op_ordem_id_fkey"
+            columns: ["op_ordem_id"]
+            isOneToOne: false
+            referencedRelation: "op_ordens"
             referencedColumns: ["id"]
           },
         ]
@@ -3517,6 +3568,394 @@ export type Database = {
           id?: string
           modulo_slug?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      op_acervo: {
+        Row: {
+          ativo: boolean
+          categoria: string | null
+          codigo: string | null
+          created_at: string
+          descricao: string | null
+          dimensoes: string | null
+          estado: string
+          id: string
+          imagem_url: string | null
+          localizacao: string | null
+          nome: string
+          observacoes: string | null
+          quantidade: number
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          categoria?: string | null
+          codigo?: string | null
+          created_at?: string
+          descricao?: string | null
+          dimensoes?: string | null
+          estado?: string
+          id?: string
+          imagem_url?: string | null
+          localizacao?: string | null
+          nome: string
+          observacoes?: string | null
+          quantidade?: number
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          categoria?: string | null
+          codigo?: string | null
+          created_at?: string
+          descricao?: string | null
+          dimensoes?: string | null
+          estado?: string
+          id?: string
+          imagem_url?: string | null
+          localizacao?: string | null
+          nome?: string
+          observacoes?: string | null
+          quantidade?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      op_ordem_anexos: {
+        Row: {
+          created_at: string
+          id: string
+          mime_type: string | null
+          nome: string
+          ordem_id: string
+          path: string
+          tamanho: number | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          nome: string
+          ordem_id: string
+          path: string
+          tamanho?: number | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          nome?: string
+          ordem_id?: string
+          path?: string
+          tamanho?: number | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "op_ordem_anexos_ordem_id_fkey"
+            columns: ["ordem_id"]
+            isOneToOne: false
+            referencedRelation: "op_ordens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      op_ordem_apontamentos: {
+        Row: {
+          created_at: string
+          etapa_id: string
+          executado_por: string | null
+          finalizado_em: string | null
+          id: string
+          iniciado_em: string
+          observacoes: string | null
+          ordem_id: string
+        }
+        Insert: {
+          created_at?: string
+          etapa_id: string
+          executado_por?: string | null
+          finalizado_em?: string | null
+          id?: string
+          iniciado_em?: string
+          observacoes?: string | null
+          ordem_id: string
+        }
+        Update: {
+          created_at?: string
+          etapa_id?: string
+          executado_por?: string | null
+          finalizado_em?: string | null
+          id?: string
+          iniciado_em?: string
+          observacoes?: string | null
+          ordem_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "op_ordem_apontamentos_etapa_id_fkey"
+            columns: ["etapa_id"]
+            isOneToOne: false
+            referencedRelation: "op_setor_etapas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "op_ordem_apontamentos_ordem_id_fkey"
+            columns: ["ordem_id"]
+            isOneToOne: false
+            referencedRelation: "op_ordens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      op_ordem_comentarios: {
+        Row: {
+          created_at: string
+          id: string
+          mencoes: string[] | null
+          ordem_id: string
+          texto: string
+          user_id: string | null
+          user_nome: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mencoes?: string[] | null
+          ordem_id: string
+          texto: string
+          user_id?: string | null
+          user_nome?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mencoes?: string[] | null
+          ordem_id?: string
+          texto?: string
+          user_id?: string | null
+          user_nome?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "op_ordem_comentarios_ordem_id_fkey"
+            columns: ["ordem_id"]
+            isOneToOne: false
+            referencedRelation: "op_ordens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      op_ordem_historico: {
+        Row: {
+          acao: string
+          created_at: string
+          detalhes: string | null
+          id: string
+          ordem_id: string
+          status_anterior: string | null
+          status_novo: string | null
+          user_id: string | null
+          user_nome: string | null
+        }
+        Insert: {
+          acao: string
+          created_at?: string
+          detalhes?: string | null
+          id?: string
+          ordem_id: string
+          status_anterior?: string | null
+          status_novo?: string | null
+          user_id?: string | null
+          user_nome?: string | null
+        }
+        Update: {
+          acao?: string
+          created_at?: string
+          detalhes?: string | null
+          id?: string
+          ordem_id?: string
+          status_anterior?: string | null
+          status_novo?: string | null
+          user_id?: string | null
+          user_nome?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "op_ordem_historico_ordem_id_fkey"
+            columns: ["ordem_id"]
+            isOneToOne: false
+            referencedRelation: "op_ordens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      op_ordens: {
+        Row: {
+          acervo_id: string | null
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          etapa_atual_id: string | null
+          evento_ref: string | null
+          id: string
+          numero: number
+          ordem: number
+          origem: string
+          prazo: string | null
+          proposta_id: string | null
+          proposta_item_id: string | null
+          quantidade: number
+          responsavel_id: string | null
+          setor_id: string
+          status: string
+          tipo_unidade: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          acervo_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          etapa_atual_id?: string | null
+          evento_ref?: string | null
+          id?: string
+          numero?: number
+          ordem?: number
+          origem?: string
+          prazo?: string | null
+          proposta_id?: string | null
+          proposta_item_id?: string | null
+          quantidade?: number
+          responsavel_id?: string | null
+          setor_id: string
+          status?: string
+          tipo_unidade?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          acervo_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          etapa_atual_id?: string | null
+          evento_ref?: string | null
+          id?: string
+          numero?: number
+          ordem?: number
+          origem?: string
+          prazo?: string | null
+          proposta_id?: string | null
+          proposta_item_id?: string | null
+          quantidade?: number
+          responsavel_id?: string | null
+          setor_id?: string
+          status?: string
+          tipo_unidade?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "op_ordens_acervo_id_fkey"
+            columns: ["acervo_id"]
+            isOneToOne: false
+            referencedRelation: "op_acervo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "op_ordens_etapa_atual_id_fkey"
+            columns: ["etapa_atual_id"]
+            isOneToOne: false
+            referencedRelation: "op_setor_etapas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "op_ordens_proposta_id_fkey"
+            columns: ["proposta_id"]
+            isOneToOne: false
+            referencedRelation: "comercial_propostas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "op_ordens_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "op_setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      op_setor_etapas: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          ordem: number
+          setor_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          ordem: number
+          setor_id: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          ordem?: number
+          setor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "op_setor_etapas_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "op_setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      op_setores: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          ordem: number
+          responsavel_id: string | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          ordem?: number
+          responsavel_id?: string | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          ordem?: number
+          responsavel_id?: string | null
+          slug?: string
+          updated_at?: string
         }
         Relationships: []
       }
