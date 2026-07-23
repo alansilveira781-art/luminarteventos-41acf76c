@@ -126,7 +126,7 @@ function emptyForm(): FormState {
     data_registro: todayIso(),
     data_evento: "",
 
-    tipo: "",
+    tipo: "Venda",
     nome_evento: "",
     local: "",
     cidade: "",
