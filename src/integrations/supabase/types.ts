@@ -3040,12 +3040,14 @@ export type Database = {
           forma_pagamento: string | null
           id: string
           modelo_id: string | null
+          numero: number | null
           observacoes: string | null
           ordem: number
           proposta_numero: number | null
           proposta_ref: string | null
           responsavel: string | null
           status: string
+          tipo: string
           titulo: string
           updated_at: string
           valor: number | null
@@ -3065,12 +3067,14 @@ export type Database = {
           forma_pagamento?: string | null
           id?: string
           modelo_id?: string | null
+          numero?: number | null
           observacoes?: string | null
           ordem?: number
           proposta_numero?: number | null
           proposta_ref?: string | null
           responsavel?: string | null
           status?: string
+          tipo?: string
           titulo: string
           updated_at?: string
           valor?: number | null
@@ -3090,12 +3094,14 @@ export type Database = {
           forma_pagamento?: string | null
           id?: string
           modelo_id?: string | null
+          numero?: number | null
           observacoes?: string | null
           ordem?: number
           proposta_numero?: number | null
           proposta_ref?: string | null
           responsavel?: string | null
           status?: string
+          tipo?: string
           titulo?: string
           updated_at?: string
           valor?: number | null

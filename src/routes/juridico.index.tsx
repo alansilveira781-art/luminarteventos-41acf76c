@@ -38,6 +38,8 @@ const STATUS_LABELS: Record<string, string> = STATUSES.reduce((a, s) => ({ ...a,
 type Contrato = {
   id: string;
   titulo: string;
+  tipo: "contrato" | "aditivo";
+  numero: number | null;
   empresa: string | null;
   cliente_nome: string | null;
   cliente_documento: string | null;
@@ -55,6 +57,12 @@ type Contrato = {
   modelo_id: string | null;
   corpo_html: string | null;
 };
+
+export function contratoCodigo(c: Pick<Contrato, "tipo" | "numero">) {
+  const t = (c.tipo || "contrato").toUpperCase();
+  return c.numero ? `${t}-${c.numero}` : t;
+}
+
 
 const brl = (v: number | null) =>
   Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -203,13 +211,19 @@ function Card({ card, onOpen, onDelete }: { card: Contrato; onOpen: () => void; 
       <div className="flex items-start gap-2">
         <span aria-hidden className="text-muted-foreground select-none">⋮⋮</span>
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-sm truncate text-foreground">{card.titulo}</div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-mono font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+              {contratoCodigo(card)}
+            </span>
+          </div>
+          <div className="font-medium text-sm truncate text-foreground mt-1">{card.titulo}</div>
           {card.cliente_nome && <div className="text-[11px] text-muted-foreground truncate">{card.cliente_nome}</div>}
           <div className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
             {card.empresa && <div>{card.empresa}</div>}
             {card.responsavel && <div>Resp.: {card.responsavel}</div>}
             {!!card.valor && <div className="font-medium text-foreground">{brl(card.valor)}</div>}
             {card.proposta_numero && <div>Proposta #{card.proposta_numero}</div>}
+
           </div>
           <div className="flex gap-1 mt-2">
             <button
@@ -253,6 +267,7 @@ function NovoContratoWizard({
   onSaved: (created: Contrato) => void;
 }) {
   const [modo, setModo] = useState<NovoModo | null>(null);
+  const [tipo, setTipo] = useState<"contrato" | "aditivo">("contrato");
   const [titulo, setTitulo] = useState("");
   const [empresa, setEmpresa] = useState<string>(EMPRESAS[0]);
   const [clienteNome, setClienteNome] = useState("");
@@ -269,13 +284,20 @@ function NovoContratoWizard({
     enabled: open,
   });
 
+  const modelosFiltrados = useMemo(() => {
+    const compat = modelos.filter((m: any) => (m.tipo ?? "").toLowerCase() === tipo);
+    return compat.length ? compat : modelos;
+  }, [modelos, tipo]);
+
   useEffect(() => {
     if (open) {
       setModo(null);
+      setTipo("contrato");
       setTitulo(""); setEmpresa(EMPRESAS[0]); setClienteNome("");
       setModeloId(""); setPendingFile(null);
     }
   }, [open]);
+
 
   async function criar() {
     if (!titulo.trim()) { toast.error("Informe o título"); return; }
@@ -286,6 +308,7 @@ function NovoContratoWizard({
       const modelo = modelos.find((m: any) => m.id === modeloId);
       const payload: any = {
         titulo: titulo.trim(),
+        tipo,
         empresa: empresa || null,
         cliente_nome: clienteNome || null,
         status: defaultStatus,
@@ -368,10 +391,21 @@ function NovoContratoWizard({
 
         {modo && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="md:col-span-2">
+            <div>
+              <Label>Tipo *</Label>
+              <Select value={tipo} onValueChange={(v) => setTipo(v as "contrato" | "aditivo")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="contrato">Contrato</SelectItem>
+                  <SelectItem value="aditivo">Aditivo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label>Título *</Label>
               <Input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Ex.: Contrato ABERTURA COCAL" />
             </div>
+
             <div>
               <Label>Empresa</Label>
               <Select value={empresa} onValueChange={setEmpresa}>
@@ -392,7 +426,7 @@ function NovoContratoWizard({
                 <Select value={modeloId} onValueChange={setModeloId}>
                   <SelectTrigger><SelectValue placeholder="Selecione o modelo" /></SelectTrigger>
                   <SelectContent>
-                    {modelos.map((m: any) => (
+                    {modelosFiltrados.map((m: any) => (
                       <SelectItem key={m.id} value={m.id}>
                         [{m.tipo}] {m.nome}
                       </SelectItem>
@@ -487,7 +521,7 @@ function ContratoDetalhesDialog({
     <Dialog open={!!contrato} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-3xl max-h-[92vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Contrato — {contrato.titulo}</DialogTitle>
+          <DialogTitle>{contratoCodigo(contrato)} — {contrato.titulo}</DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="dados" className="flex-1 overflow-hidden flex flex-col">

@@ -126,7 +126,7 @@ function emptyForm(): FormState {
     data_registro: todayIso(),
     data_evento: "",
 
-    tipo: "",
+    tipo: "Venda",
     nome_evento: "",
     local: "",
     cidade: "",
@@ -679,7 +679,16 @@ function VendasPage() {
                 onChange={(e) => setForm({ ...form, data_registro: e.target.value })} required />
             </Field>
             <Field label="Tipo">
-              <Input value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })} />
+              <Select
+                value={form.tipo || "Venda"}
+                onValueChange={(v) => setForm({ ...form, tipo: v })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Venda">Venda</SelectItem>
+                  <SelectItem value="Extra">Extra</SelectItem>
+                </SelectContent>
+              </Select>
             </Field>
             <Field label="Empresa">
               <SelectFree value={form.empresa} options={EMPRESAS}
