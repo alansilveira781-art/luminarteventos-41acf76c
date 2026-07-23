@@ -2937,6 +2937,94 @@ export type Database = {
         }
         Relationships: []
       }
+      juridico_anexos: {
+        Row: {
+          contrato_id: string
+          created_at: string
+          id: string
+          mime_type: string | null
+          nome: string
+          path: string
+          tamanho: number | null
+          tipo: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          contrato_id: string
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          nome: string
+          path: string
+          tamanho?: number | null
+          tipo?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          contrato_id?: string
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          nome?: string
+          path?: string
+          tamanho?: number | null
+          tipo?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "juridico_anexos_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "juridico_contratos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      juridico_comentarios: {
+        Row: {
+          contrato_id: string
+          created_at: string
+          id: string
+          mencoes: string[] | null
+          texto: string
+          updated_at: string
+          user_id: string | null
+          user_nome: string | null
+        }
+        Insert: {
+          contrato_id: string
+          created_at?: string
+          id?: string
+          mencoes?: string[] | null
+          texto: string
+          updated_at?: string
+          user_id?: string | null
+          user_nome?: string | null
+        }
+        Update: {
+          contrato_id?: string
+          created_at?: string
+          id?: string
+          mencoes?: string[] | null
+          texto?: string
+          updated_at?: string
+          user_id?: string | null
+          user_nome?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "juridico_comentarios_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "juridico_contratos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       juridico_contratos: {
         Row: {
           cliente_documento: string | null
@@ -3019,6 +3107,50 @@ export type Database = {
             columns: ["modelo_id"]
             isOneToOne: false
             referencedRelation: "juridico_modelos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      juridico_historico: {
+        Row: {
+          acao: string
+          contrato_id: string
+          created_at: string
+          detalhe: string | null
+          id: string
+          status_anterior: string | null
+          status_novo: string | null
+          user_id: string | null
+          user_nome: string | null
+        }
+        Insert: {
+          acao: string
+          contrato_id: string
+          created_at?: string
+          detalhe?: string | null
+          id?: string
+          status_anterior?: string | null
+          status_novo?: string | null
+          user_id?: string | null
+          user_nome?: string | null
+        }
+        Update: {
+          acao?: string
+          contrato_id?: string
+          created_at?: string
+          detalhe?: string | null
+          id?: string
+          status_anterior?: string | null
+          status_novo?: string | null
+          user_id?: string | null
+          user_nome?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "juridico_historico_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "juridico_contratos"
             referencedColumns: ["id"]
           },
         ]
