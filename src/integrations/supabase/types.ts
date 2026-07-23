@@ -3520,6 +3520,74 @@ export type Database = {
         }
         Relationships: []
       }
+      op_setor_etapas: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          ordem: number
+          setor_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          ordem: number
+          setor_id: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          ordem?: number
+          setor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "op_setor_etapas_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "op_setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      op_setores: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          ordem: number
+          responsavel_id: string | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          ordem?: number
+          responsavel_id?: string | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          ordem?: number
+          responsavel_id?: string | null
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       parcelamentos: {
         Row: {
           created_at: string
