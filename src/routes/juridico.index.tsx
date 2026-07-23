@@ -222,6 +222,7 @@ function Card({ card, onOpen, onDelete }: { card: Contrato; onOpen: () => void; 
             {card.empresa && <div>{card.empresa}</div>}
             {card.responsavel && <div>Resp.: {card.responsavel}</div>}
             {!!card.valor && <div className="font-medium text-foreground">{brl(card.valor)}</div>}
+            {card.proposta_numero && <div>Proposta #{card.proposta_numero}</div>}
 
           </div>
           <div className="flex gap-1 mt-2">
