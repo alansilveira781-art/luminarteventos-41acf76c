@@ -415,7 +415,7 @@ function NovoContratoWizard({
                 <Select value={modeloId} onValueChange={setModeloId}>
                   <SelectTrigger><SelectValue placeholder="Selecione o modelo" /></SelectTrigger>
                   <SelectContent>
-                    {modelos.map((m: any) => (
+                    {modelosFiltrados.map((m: any) => (
                       <SelectItem key={m.id} value={m.id}>
                         [{m.tipo}] {m.nome}
                       </SelectItem>
