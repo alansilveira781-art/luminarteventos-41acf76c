@@ -44,6 +44,11 @@ import {
   FileBarChart,
   CalendarDays,
   ClipboardList,
+  Factory,
+  Layers,
+  Boxes as BoxesIcon,
+  Activity,
+  ClipboardCheck as ClipboardCheckIcon,
 
 } from "lucide-react";
 import logo from "@/assets/luminart-logo-white.png";
@@ -107,10 +112,15 @@ const allItems: NavItem[] = [
   { title: "Calendário", url: "/eventos", icon: CalendarDays, group: "Eventos", module: "eventos" },
   { title: "Configurações", url: "/eventos/configuracoes", icon: Settings, group: "Eventos", module: "eventos" },
   { title: "Recrutamento", url: "/rh", icon: UserPlus, group: "Recursos Humanos", module: "rh" },
+  { title: "Quadro de produção", url: "/operacao", icon: Factory, group: "Operação", module: "operacao" },
+  { title: "Acervo", url: "/operacao/acervo", icon: BoxesIcon, group: "Operação", module: "operacao" },
+  { title: "Setores e etapas", url: "/operacao/setores", icon: Layers, group: "Operação", module: "operacao", moduleAdminOnly: "operacao" },
+  { title: "Aprovações", url: "/operacao/aprovacoes", icon: ClipboardCheckIcon, group: "Operação", module: "operacao" },
+  { title: "Gargalo", url: "/operacao/relatorio", icon: Activity, group: "Operação", module: "operacao" },
   { title: "Administração", url: "/admin", icon: Shield, group: "Administração", adminOnly: true },
 ];
 
-const groups = ["Visão geral", "Estoque", "Compras", "Despesas", "Financeiro", "Comercial", "Eventos", "Contábil", "Jurídico", "Patrimônio", "Recursos Humanos", "Administração"];
+const groups = ["Visão geral", "Estoque", "Compras", "Despesas", "Financeiro", "Comercial", "Eventos", "Contábil", "Jurídico", "Patrimônio", "Operação", "Recursos Humanos", "Administração"];
 
 
 const ESTOQUE_ROUTES = ["/dashboard", "/estoque", "/solicitantes", "/fornecedores", "/entradas", "/saidas", "/devolucoes", "/relatorios"];
@@ -122,6 +132,7 @@ const CONTABIL_ROUTES = ["/contabil"];
 const JURIDICO_ROUTES = ["/juridico"];
 const PATRIMONIO_ROUTES = ["/patrimonio"];
 const RH_ROUTES = ["/rh"];
+const OPERACAO_ROUTES = ["/operacao"];
 const EVENTOS_ROUTES = ["/eventos"];
 
 function isActiveUrl(pathname: string, url: string, allUrls: string[] = []) {
@@ -135,9 +146,10 @@ function isActiveUrl(pathname: string, url: string, allUrls: string[] = []) {
   return pathname.startsWith(url + "/");
 }
 
-function getContext(pathname: string): "home" | "estoque" | "compras" | "financeiro" | "financeiro_op" | "comercial" | "contabil" | "juridico" | "patrimonio" | "rh" | "eventos" | "admin" {
+function getContext(pathname: string): "home" | "estoque" | "compras" | "financeiro" | "financeiro_op" | "comercial" | "contabil" | "juridico" | "patrimonio" | "rh" | "operacao" | "eventos" | "admin" {
   if (pathname.startsWith("/admin")) return "admin";
   if (EVENTOS_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) return "eventos";
+  if (OPERACAO_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) return "operacao";
   if (RH_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) return "rh";
   if (PATRIMONIO_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) return "patrimonio";
   if (JURIDICO_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) return "juridico";
@@ -216,6 +228,7 @@ function useNavItems(pathname: string) {
     if (i.module === "juridico") return ctx === "juridico" && (isAdmin || hasModule("juridico"));
     if (i.module === "patrimonio") return ctx === "patrimonio" && (isAdmin || hasModule("patrimonio"));
     if (i.module === "rh") return ctx === "rh" && (isAdmin || hasModule("rh"));
+    if (i.module === "operacao") return ctx === "operacao" && (isAdmin || hasModule("operacao"));
     if (i.module === "eventos") return ctx === "eventos" && (isAdmin || hasModule("eventos"));
     return true;
   });
