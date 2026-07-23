@@ -112,10 +112,15 @@ const allItems: NavItem[] = [
   { title: "Calendário", url: "/eventos", icon: CalendarDays, group: "Eventos", module: "eventos" },
   { title: "Configurações", url: "/eventos/configuracoes", icon: Settings, group: "Eventos", module: "eventos" },
   { title: "Recrutamento", url: "/rh", icon: UserPlus, group: "Recursos Humanos", module: "rh" },
+  { title: "Quadro de produção", url: "/operacao", icon: Factory, group: "Operação", module: "operacao" },
+  { title: "Acervo", url: "/operacao/acervo", icon: BoxesIcon, group: "Operação", module: "operacao" },
+  { title: "Setores e etapas", url: "/operacao/setores", icon: Layers, group: "Operação", module: "operacao", moduleAdminOnly: "operacao" },
+  { title: "Aprovações", url: "/operacao/aprovacoes", icon: ClipboardCheckIcon, group: "Operação", module: "operacao" },
+  { title: "Gargalo", url: "/operacao/relatorio", icon: Activity, group: "Operação", module: "operacao" },
   { title: "Administração", url: "/admin", icon: Shield, group: "Administração", adminOnly: true },
 ];
 
-const groups = ["Visão geral", "Estoque", "Compras", "Despesas", "Financeiro", "Comercial", "Eventos", "Contábil", "Jurídico", "Patrimônio", "Recursos Humanos", "Administração"];
+const groups = ["Visão geral", "Estoque", "Compras", "Despesas", "Financeiro", "Comercial", "Eventos", "Contábil", "Jurídico", "Patrimônio", "Operação", "Recursos Humanos", "Administração"];
 
 
 const ESTOQUE_ROUTES = ["/dashboard", "/estoque", "/solicitantes", "/fornecedores", "/entradas", "/saidas", "/devolucoes", "/relatorios"];
