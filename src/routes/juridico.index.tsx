@@ -211,13 +211,18 @@ function Card({ card, onOpen, onDelete }: { card: Contrato; onOpen: () => void; 
       <div className="flex items-start gap-2">
         <span aria-hidden className="text-muted-foreground select-none">⋮⋮</span>
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-sm truncate text-foreground">{card.titulo}</div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-mono font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+              {contratoCodigo(card)}
+            </span>
+          </div>
+          <div className="font-medium text-sm truncate text-foreground mt-1">{card.titulo}</div>
           {card.cliente_nome && <div className="text-[11px] text-muted-foreground truncate">{card.cliente_nome}</div>}
           <div className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
             {card.empresa && <div>{card.empresa}</div>}
             {card.responsavel && <div>Resp.: {card.responsavel}</div>}
             {!!card.valor && <div className="font-medium text-foreground">{brl(card.valor)}</div>}
-            {card.proposta_numero && <div>Proposta #{card.proposta_numero}</div>}
+
           </div>
           <div className="flex gap-1 mt-2">
             <button
