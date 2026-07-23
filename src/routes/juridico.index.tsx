@@ -267,6 +267,7 @@ function NovoContratoWizard({
   onSaved: (created: Contrato) => void;
 }) {
   const [modo, setModo] = useState<NovoModo | null>(null);
+  const [tipo, setTipo] = useState<"contrato" | "aditivo">("contrato");
   const [titulo, setTitulo] = useState("");
   const [empresa, setEmpresa] = useState<string>(EMPRESAS[0]);
   const [clienteNome, setClienteNome] = useState("");
@@ -283,13 +284,20 @@ function NovoContratoWizard({
     enabled: open,
   });
 
+  const modelosFiltrados = useMemo(() => {
+    const compat = modelos.filter((m: any) => (m.tipo ?? "").toLowerCase() === tipo);
+    return compat.length ? compat : modelos;
+  }, [modelos, tipo]);
+
   useEffect(() => {
     if (open) {
       setModo(null);
+      setTipo("contrato");
       setTitulo(""); setEmpresa(EMPRESAS[0]); setClienteNome("");
       setModeloId(""); setPendingFile(null);
     }
   }, [open]);
+
 
   async function criar() {
     if (!titulo.trim()) { toast.error("Informe o título"); return; }
