@@ -5,7 +5,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { Settings, Plus, Pencil, Trash2, Loader2, Download, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
-import * as XLSX from "xlsx";
+type XLSXNs = typeof import("xlsx");
+let _xlsxPromise: Promise<XLSXNs> | null = null;
+const loadXLSX = () => (_xlsxPromise ??= import("xlsx"));
 
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -599,7 +601,7 @@ function FechamentoTab() {
   const totalDias = linhas.reduce((acc, l) => acc + l.dias, 0);
   const totalMinutos = linhas.reduce((acc, l) => acc + l.minutos, 0);
 
-  const exportar = (formato: "xlsx" | "csv") => {
+  const exportar = async (formato: "xlsx" | "csv") => {
     const header = ["Diarista", "Chave Pix", "Qtde de dias", "Total de horas", "Total a pagar"];
     const body = linhas.map((l) => [
       l.diarista?.nome ?? "—",
@@ -628,6 +630,7 @@ function FechamentoTab() {
       return;
     }
 
+    const XLSX = await loadXLSX();
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([
       ["Fechamento — Diaristas"],

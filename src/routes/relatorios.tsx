@@ -11,8 +11,6 @@ import { FormField, FormSection } from "@/components/FormSection";
 import { Download, FileText, Printer } from "lucide-react";
 import { isAjusteMovimentacao } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 
 export const Route = createFileRoute("/relatorios")({
   component: RelatoriosPage,
@@ -91,7 +89,12 @@ function RelatoriosPage() {
     URL.revokeObjectURL(url);
   };
 
-  const exportPdf = () => {
+  const exportPdf = async () => {
+    const [{ jsPDF }, autoTableMod] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ]);
+    const autoTable = autoTableMod.default;
     const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
 

@@ -9,7 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FormField, FormSection } from "@/components/FormSection";
 import { Trash2, Save, Download } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import * as XLSX from "xlsx";
+type XLSXNs = typeof import("xlsx");
+let _xlsxPromise: Promise<XLSXNs> | null = null;
+const loadXLSX = () => (_xlsxPromise ??= import("xlsx"));
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { EMPRESAS } from "@/lib/empresas";
@@ -198,8 +200,9 @@ function ApuracoesPage() {
     return rows;
   };
 
-  const exportarExcel = () => {
+  const exportarExcel = async () => {
     const rows = buildRows();
+    const XLSX = await loadXLSX();
     const wb = XLSX.utils.book_new();
     const header = [
       ["Rascunho de Apuração"],

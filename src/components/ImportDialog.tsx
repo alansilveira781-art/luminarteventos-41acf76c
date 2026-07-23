@@ -73,7 +73,7 @@ export function ImportDialog({
                   <div className="text-xs text-muted-foreground">Preencha as colunas e salve o arquivo</div>
                 </div>
               </div>
-              <Button type="button" variant="outline" onClick={() => downloadTemplate(templateFilename, templateHeaders, templateExample)}>
+              <Button type="button" variant="outline" onClick={async () => { await downloadTemplate(templateFilename, templateHeaders, templateExample); }}>
                 <Download className="h-4 w-4 mr-1" /> Baixar modelo
               </Button>
             </div>

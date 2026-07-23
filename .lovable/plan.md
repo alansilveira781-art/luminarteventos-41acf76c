@@ -1,30 +1,53 @@
-## Módulo Jurídico — numeração de ID por tipo
+## Objetivo
+Reduzir o peso do carregamento inicial das rotas convertendo `xlsx`, `jspdf`/`jspdf-autotable` e `recharts` de imports estáticos para dinâmicos, sem alterar comportamento nem o code splitting já existente.
 
-Hoje os cards do Jurídico não têm um identificador amigável (só `id` UUID). Vamos replicar o padrão de `COMPRA-XXX` (sequência Postgres + coluna `numero`) e diferenciar contrato de aditivo.
+## 1. `xlsx` — import dinâmico dentro dos handlers
 
-### Banco
-- Migração:
-  - Adicionar coluna `tipo text not null default 'contrato'` em `public.juridico_contratos` com check em (`'contrato'`, `'aditivo'`).
-  - Criar duas sequências independentes: `juridico_contrato_numero_seq` e `juridico_aditivo_numero_seq`.
-  - Adicionar coluna `numero integer` (única por `tipo`).
-  - Trigger `BEFORE INSERT` que, se `numero IS NULL`, faz `nextval` da sequência correspondente ao `tipo`.
-  - Backfill: preencher `numero` nos contratos existentes usando `juridico_contrato_numero_seq` na ordem `created_at`.
-  - Ajustar `setval` das sequências para o maior valor atual.
+Arquivos afetados:
+- `src/lib/import-utils.ts` — tornar `parseSpreadsheet` e `downloadTemplate` `async` e mover `const XLSX = await import("xlsx")` para dentro de cada função. Atualizar chamadores (ex. `ImportDialog` já faz `await parseSpreadsheet`; `downloadTemplate` passa a ser awaited no handler do botão, com estado "Gerando…").
+- `src/components/estoque/ConferenciaEgestorDialog.tsx` — mover import para dentro da função de exportação/leitura, adicionando estado `busy` no botão.
+- `src/routes/financeiro-op.diaristas.index.tsx` — mover para dentro do handler de exportação.
+- `src/routes/contabil.apuracoes.tsx` — mover para dentro do handler "Exportar Excel"; já há dropdown com PDF/Excel, adicionar indicador de carregamento.
 
-### UI Jurídico (`src/routes/juridico.index.tsx`)
-- Novo passo inicial (ou seletor) no diálogo "Novo contrato" para escolher **Contrato** ou **Aditivo** (além das opções existentes "criar pelo modelo" / "anexar pronto").
-- Exibir no card e no diálogo o ID no formato `CONTRATO-1` / `ADITIVO-1` (uppercase, igual `COMPRA-XXX`).
-- Incluir `numero` e `tipo` no `select` do Kanban, na busca (`num = ${tipo}-${numero}`) e no cabeçalho do `ContratoDialog`.
-- Modelos (`juridico_modelos`) já têm `tipo`; ao escolher "Aditivo", filtrar modelos com `tipo='aditivo'` (fallback: mostrar todos se não houver).
+## 2. `jspdf` + `jspdf-autotable` — import dinâmico
 
-## Módulo Comercial — Vendas: campo Tipo vira seletor
+Padrão: dentro da função geradora, `const [{ jsPDF }, autoTableMod] = await Promise.all([import("jspdf"), import("jspdf-autotable")]); const autoTable = autoTableMod.default;`.
 
-Em `src/routes/comercial.vendas.tsx` (diálogo Nova/Editar venda, linha ~681):
-- Substituir o `<Input>` do campo **Tipo** por um `Select` (padrão igual ao de **Empresa**) com apenas duas opções: `Venda` e `Extra`.
-- Ao criar uma linha nova, deixar `Venda` como valor padrão.
-- Nenhuma migração de dados: o campo continua sendo `text` na tabela `comercial_vendas`; linhas antigas com outros valores permanecem, mas o seletor força os novos registros aos dois valores permitidos.
-- Não altero o filtro superior de Tipo nem a coluna da tabela (o usuário só pediu o campo de criação).
+Arquivos:
+- `src/lib/comercial/pdf.ts` — tornar a função de geração `async` e importar dinamicamente uma vez lá dentro. Atualizar todos os call sites para `await`.
+- `src/routes/relatorios.tsx` — mover imports para o handler do botão "Gerar PDF", com estado de loading.
+- `src/routes/financeiro-op.relatorios.tsx` — idem.
+
+## 3. `recharts` — `lazy()` + `Suspense` por gráfico
+
+Estratégia: para cada rota/componente que consome `recharts` e em que o gráfico não é o conteúdo imediato principal, extrair o bloco do gráfico para um componente filho em arquivo separado (mesma pasta, sufixo `.chart.tsx`) e importá-lo via `const Chart = lazy(() => import("./Foo.chart"))` com `<Suspense fallback={<div className="h-[300px]" />}>`.
+
+Arquivos a converter (gráficos em abas/seções secundárias):
+- `src/routes/comercial.dashboard.index.tsx`
+- `src/routes/comercial.dashboard.propostas.tsx`
+- `src/routes/comercial.dashboard.painel.tsx`
+- `src/routes/financeiro.dashboard.tsx`
+- `src/routes/patrimonio.dashboard.tsx`
+- `src/routes/dashboard.tsx`
+- `src/routes/compras.dashboard.tsx`
+- `src/components/financeiro/ContaAzulDashboard.tsx`
+- `src/components/financeiro/UberDashboard.tsx`
+- `src/components/comercial/RelatorioVendasPeriodo.tsx`
+- `src/components/comercial/dashboard/GaugeRealVsMeta.tsx`
+
+Não alterar:
+- `src/components/ui/chart.tsx` (wrapper genérico shadcn; já é reexportado só onde há gráfico e o lazy será feito no consumidor).
 
 ## Fora de escopo
-- Não altero regras de negócio de Compras, Financeiro nem dashboards.
-- Não removo a coluna `proposta_numero`/`proposta_ref` do Jurídico (retrocompat, como acordado antes).
+- Não mexer em `AnexoViewer.tsx` nem `vendas-parse.server.ts` (já dinâmicos).
+- Não alterar configuração de code splitting nem `vite.config.ts`.
+
+## Verificação
+- `bun run build` e confirmar que os chunks `xlsx`, `jspdf`, `jspdf-autotable` e `recharts` viram chunks separados, ausentes do bundle inicial e das rotas que não usam a função.
+- Teste manual: importar planilha (Estoque/Diaristas), exportar Excel (Apuração), gerar PDF (Comercial/Relatórios/Diaristas) e abrir cada dashboard para ver gráficos renderizarem após pequeno fallback.
+
+## Detalhes técnicos
+- `import * as XLSX from "xlsx"` → `const XLSX = await import("xlsx")` (namespace).
+- `import jsPDF from "jspdf"` → `const { jsPDF } = await import("jspdf")` (named em ESM moderno) — se o build reclamar, usar `const { default: jsPDF } = await import("jspdf")`.
+- `import autoTable from "jspdf-autotable"` → `const autoTable = (await import("jspdf-autotable")).default`.
+- `recharts`: componentes são named exports; o wrapper filho re-exporta o gráfico como `default` para permitir `React.lazy`.

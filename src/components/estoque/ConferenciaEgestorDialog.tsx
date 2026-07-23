@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState } from "react";
-import * as XLSX from "xlsx";
+type XLSXNs = typeof import("xlsx");
+let _xlsxPromise: Promise<XLSXNs> | null = null;
+const loadXLSX = () => (_xlsxPromise ??= import("xlsx"));
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -59,7 +61,7 @@ function parseSaldoEgestor(raw: any): number {
   return neg ? -val : val;
 }
 
-function lerAOA(buf: ArrayBuffer): any[][] {
+async function lerAOA(buf: ArrayBuffer): Promise<any[][]> {
   const bytes = new Uint8Array(buf);
   const head = new TextDecoder("utf-8").decode(bytes.slice(0, 256)).toLowerCase();
   const isHTML = head.includes("<!doctype") || head.includes("<html") || head.includes("<table");
@@ -81,13 +83,14 @@ function lerAOA(buf: ArrayBuffer): any[][] {
     return rows;
   }
 
+  const XLSX = await loadXLSX();
   const wb = XLSX.read(buf, { type: "array" });
   const ws = wb.Sheets[wb.SheetNames[0]];
   return XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", raw: false });
 }
 
-function parseEgestor(file: ArrayBuffer): EgestorRow[] {
-  const aoa = lerAOA(file);
+async function parseEgestor(file: ArrayBuffer): Promise<EgestorRow[]> {
+  const aoa = await lerAOA(file);
   let headerIdx = -1;
   for (let i = 0; i < Math.min(aoa.length, 10); i++) {
     const first = String(aoa[i]?.[0] ?? "").trim().toLowerCase();
@@ -159,7 +162,7 @@ export function ConferenciaEgestorDialog({
     setBusy(true);
     try {
       const buf = await file.arrayBuffer();
-      const egestor = parseEgestor(buf);
+      const egestor = await parseEgestor(buf);
 
       const all: SistemaItem[] = [];
       let from = 0;
@@ -366,7 +369,7 @@ export function ConferenciaEgestorDialog({
     setSelected(ns);
   };
 
-  const exportar = () => {
+  const exportar = async () => {
     if (!filtradas.length) return toast.error("Nada para exportar");
     const data = filtradas.map((l) => ({
       Nome: l.nome,
@@ -377,6 +380,7 @@ export function ConferenciaEgestorDialog({
       Status: statusLabel(l.status),
       Inativo: l.inativo ? "Sim" : "",
     }));
+    const XLSX = await loadXLSX();
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Conferencia");
