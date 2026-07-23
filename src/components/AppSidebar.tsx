@@ -146,9 +146,10 @@ function isActiveUrl(pathname: string, url: string, allUrls: string[] = []) {
   return pathname.startsWith(url + "/");
 }
 
-function getContext(pathname: string): "home" | "estoque" | "compras" | "financeiro" | "financeiro_op" | "comercial" | "contabil" | "juridico" | "patrimonio" | "rh" | "eventos" | "admin" {
+function getContext(pathname: string): "home" | "estoque" | "compras" | "financeiro" | "financeiro_op" | "comercial" | "contabil" | "juridico" | "patrimonio" | "rh" | "operacao" | "eventos" | "admin" {
   if (pathname.startsWith("/admin")) return "admin";
   if (EVENTOS_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) return "eventos";
+  if (OPERACAO_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) return "operacao";
   if (RH_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) return "rh";
   if (PATRIMONIO_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) return "patrimonio";
   if (JURIDICO_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) return "juridico";
