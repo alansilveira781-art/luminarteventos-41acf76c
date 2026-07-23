@@ -308,6 +308,7 @@ function NovoContratoWizard({
       const modelo = modelos.find((m: any) => m.id === modeloId);
       const payload: any = {
         titulo: titulo.trim(),
+        tipo,
         empresa: empresa || null,
         cliente_nome: clienteNome || null,
         status: defaultStatus,
