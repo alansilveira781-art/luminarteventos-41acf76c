@@ -45,6 +45,8 @@ import { Route as ContabilIndexRouteImport } from './routes/contabil.index'
 import { Route as ComprasIndexRouteImport } from './routes/compras.index'
 import { Route as ComercialIndexRouteImport } from './routes/comercial.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as RhEpisRouteImport } from './routes/rh.epis'
+import { Route as RhColaboradoresRouteImport } from './routes/rh.colaboradores'
 import { Route as PatrimonioSaidasRouteImport } from './routes/patrimonio.saidas'
 import { Route as PatrimonioEntradasRouteImport } from './routes/patrimonio.entradas'
 import { Route as PatrimonioDevolucoesRouteImport } from './routes/patrimonio.devolucoes'
@@ -287,6 +289,16 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRoute,
+} as any)
+const RhEpisRoute = RhEpisRouteImport.update({
+  id: '/epis',
+  path: '/epis',
+  getParentRoute: () => RhRoute,
+} as any)
+const RhColaboradoresRoute = RhColaboradoresRouteImport.update({
+  id: '/colaboradores',
+  path: '/colaboradores',
+  getParentRoute: () => RhRoute,
 } as any)
 const PatrimonioSaidasRoute = PatrimonioSaidasRouteImport.update({
   id: '/saidas',
@@ -678,6 +690,8 @@ export interface FileRoutesByFullPath {
   '/patrimonio/devolucoes': typeof PatrimonioDevolucoesRoute
   '/patrimonio/entradas': typeof PatrimonioEntradasRoute
   '/patrimonio/saidas': typeof PatrimonioSaidasRoute
+  '/rh/colaboradores': typeof RhColaboradoresRoute
+  '/rh/epis': typeof RhEpisRoute
   '/admin/': typeof AdminIndexRoute
   '/comercial/': typeof ComercialIndexRoute
   '/compras/': typeof ComprasIndexRoute
@@ -766,6 +780,8 @@ export interface FileRoutesByTo {
   '/patrimonio/devolucoes': typeof PatrimonioDevolucoesRoute
   '/patrimonio/entradas': typeof PatrimonioEntradasRoute
   '/patrimonio/saidas': typeof PatrimonioSaidasRoute
+  '/rh/colaboradores': typeof RhColaboradoresRoute
+  '/rh/epis': typeof RhEpisRoute
   '/admin': typeof AdminIndexRoute
   '/comercial': typeof ComercialIndexRoute
   '/compras': typeof ComprasIndexRoute
@@ -867,6 +883,8 @@ export interface FileRoutesById {
   '/patrimonio/devolucoes': typeof PatrimonioDevolucoesRoute
   '/patrimonio/entradas': typeof PatrimonioEntradasRoute
   '/patrimonio/saidas': typeof PatrimonioSaidasRoute
+  '/rh/colaboradores': typeof RhColaboradoresRoute
+  '/rh/epis': typeof RhEpisRoute
   '/admin/': typeof AdminIndexRoute
   '/comercial/': typeof ComercialIndexRoute
   '/compras/': typeof ComprasIndexRoute
@@ -969,6 +987,8 @@ export interface FileRouteTypes {
     | '/patrimonio/devolucoes'
     | '/patrimonio/entradas'
     | '/patrimonio/saidas'
+    | '/rh/colaboradores'
+    | '/rh/epis'
     | '/admin/'
     | '/comercial/'
     | '/compras/'
@@ -1057,6 +1077,8 @@ export interface FileRouteTypes {
     | '/patrimonio/devolucoes'
     | '/patrimonio/entradas'
     | '/patrimonio/saidas'
+    | '/rh/colaboradores'
+    | '/rh/epis'
     | '/admin'
     | '/comercial'
     | '/compras'
@@ -1157,6 +1179,8 @@ export interface FileRouteTypes {
     | '/patrimonio/devolucoes'
     | '/patrimonio/entradas'
     | '/patrimonio/saidas'
+    | '/rh/colaboradores'
+    | '/rh/epis'
     | '/admin/'
     | '/comercial/'
     | '/compras/'
@@ -1486,6 +1510,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/rh/epis': {
+      id: '/rh/epis'
+      path: '/epis'
+      fullPath: '/rh/epis'
+      preLoaderRoute: typeof RhEpisRouteImport
+      parentRoute: typeof RhRoute
+    }
+    '/rh/colaboradores': {
+      id: '/rh/colaboradores'
+      path: '/colaboradores'
+      fullPath: '/rh/colaboradores'
+      preLoaderRoute: typeof RhColaboradoresRouteImport
+      parentRoute: typeof RhRoute
     }
     '/patrimonio/saidas': {
       id: '/patrimonio/saidas'
@@ -2147,10 +2185,14 @@ const PatrimonioRouteWithChildren = PatrimonioRoute._addFileChildren(
 )
 
 interface RhRouteChildren {
+  RhColaboradoresRoute: typeof RhColaboradoresRoute
+  RhEpisRoute: typeof RhEpisRoute
   RhIndexRoute: typeof RhIndexRoute
 }
 
 const RhRouteChildren: RhRouteChildren = {
+  RhColaboradoresRoute: RhColaboradoresRoute,
+  RhEpisRoute: RhEpisRoute,
   RhIndexRoute: RhIndexRoute,
 }
 
@@ -2200,13 +2242,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
