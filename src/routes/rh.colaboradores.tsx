@@ -374,6 +374,14 @@ function ColaboradoresPage() {
         profiles={profiles}
         onSaved={load}
       />
+
+      <EdicaoLoteDialog
+        open={loteOpen}
+        onOpenChange={setLoteOpen}
+        ids={Array.from(selected)}
+        departamentos={departamentos}
+        onSaved={load}
+      />
     </>
   );
 }
