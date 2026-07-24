@@ -63,8 +63,11 @@ function ColaboradoresPage() {
   const [busca, setBusca] = useState("");
   const [fDep, setFDep] = useState<string>("__todos");
   const [fTipo, setFTipo] = useState<string>("__todos");
+  const [fStatus, setFStatus] = useState<"ativos" | "desligados" | "__todos">("ativos");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Colab | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [loteOpen, setLoteOpen] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -76,6 +79,7 @@ function ColaboradoresPage() {
     setRows((data as any) ?? []);
     setProfiles((ps as any) ?? []);
     setLoading(false);
+    setSelected(new Set());
   }
 
   useEffect(() => {
@@ -90,12 +94,32 @@ function ColaboradoresPage() {
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase();
     return rows.filter((r) => {
+      if (fStatus === "ativos" && !r.ativo) return false;
+      if (fStatus === "desligados" && r.ativo) return false;
       if (fDep !== "__todos" && r.departamento !== fDep) return false;
       if (fTipo !== "__todos" && r.tipo_contratacao !== fTipo) return false;
       if (q && !r.nome.toLowerCase().includes(q) && !r.documento.includes(q)) return false;
       return true;
     });
-  }, [rows, fDep, fTipo, busca]);
+  }, [rows, fDep, fTipo, fStatus, busca]);
+
+  const allVisibleSelected = filtrados.length > 0 && filtrados.every((r) => selected.has(r.id));
+  function toggleAll(v: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (v) filtrados.forEach((r) => next.add(r.id));
+      else filtrados.forEach((r) => next.delete(r.id));
+      return next;
+    });
+  }
+  function toggleOne(id: string, v: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (v) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
 
   async function toggleAtivo(c: Colab) {
     const { error } = await supabase.from("rh_colaboradores").update({ ativo: !c.ativo }).eq("id", c.id);
