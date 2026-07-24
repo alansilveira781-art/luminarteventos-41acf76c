@@ -45,7 +45,11 @@ export function EdicaoLoteDialog({
   }, [open, departamentos]);
 
   async function save() {
-    const payload: Record<string, unknown> = {};
+    const payload: {
+      tipo_contratacao?: TipoContratacao;
+      departamento?: string | null;
+      funcao?: string | null;
+    } = {};
     if (chgVinculo) payload.tipo_contratacao = vinculo;
     if (chgDep) payload.departamento = dep.trim() || null;
     if (chgFuncao) payload.funcao = funcao.trim() || null;
