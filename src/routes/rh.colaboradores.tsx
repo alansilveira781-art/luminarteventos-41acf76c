@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Power, Search, Printer } from "lucide-react";
+import { Plus, Pencil, Trash2, Power, Search, Printer, PencilLine, X } from "lucide-react";
 import logoUrl from "@/assets/luminart-logo.png";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { EdicaoLoteDialog } from "@/components/rh/EdicaoLoteDialog";
 
 export const Route = createFileRoute("/rh/colaboradores")({ component: ColaboradoresPage });
 
