@@ -12,7 +12,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { EMPRESAS } from "@/lib/empresas";
 import { gerarFichaEpiPdf } from "@/lib/rh/ficha-pdf";
 import { toast } from "sonner";
 
