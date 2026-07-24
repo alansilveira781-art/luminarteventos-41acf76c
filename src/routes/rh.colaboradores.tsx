@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Power, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Power, Search, Printer } from "lucide-react";
+import logoUrl from "@/assets/luminart-logo.png";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
