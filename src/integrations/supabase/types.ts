@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_empresas: {
+        Row: {
+          ativo: boolean
+          cnpj: string
+          created_at: string
+          endereco: string | null
+          id: string
+          inscricao_estadual: string | null
+          inscricao_municipal: string | null
+          nome_fantasia: string | null
+          razao_social: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cnpj: string
+          created_at?: string
+          endereco?: string | null
+          id?: string
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
+          nome_fantasia?: string | null
+          razao_social: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cnpj?: string
+          created_at?: string
+          endereco?: string | null
+          id?: string
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
+          nome_fantasia?: string | null
+          razao_social?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ca_centros_custo: {
         Row: {
           ativo: boolean
