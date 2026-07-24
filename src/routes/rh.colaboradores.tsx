@@ -292,6 +292,13 @@ function ColaboradoresPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[36px]">
+                <Checkbox
+                  checked={allVisibleSelected}
+                  onCheckedChange={(v) => toggleAll(Boolean(v))}
+                  aria-label="Selecionar todos"
+                />
+              </TableHead>
               <TableHead>Nome</TableHead>
               <TableHead>Departamento</TableHead>
               <TableHead>Função</TableHead>
@@ -304,19 +311,26 @@ function ColaboradoresPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-6">
+                <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-6">
                   Carregando…
                 </TableCell>
               </TableRow>
             ) : filtrados.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-6">
+                <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-6">
                   Nenhum colaborador cadastrado.
                 </TableCell>
               </TableRow>
             ) : (
               filtrados.map((c) => (
-                <TableRow key={c.id}>
+                <TableRow key={c.id} data-state={selected.has(c.id) ? "selected" : undefined}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selected.has(c.id)}
+                      onCheckedChange={(v) => toggleOne(c.id, Boolean(v))}
+                      aria-label={`Selecionar ${c.nome}`}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">{c.nome}</TableCell>
                   <TableCell>{c.departamento ?? "—"}</TableCell>
                   <TableCell>{c.funcao ?? "—"}</TableCell>
