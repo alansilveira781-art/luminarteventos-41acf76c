@@ -88,6 +88,7 @@ import { Route as ComercialClientesRouteImport } from './routes/comercial.client
 import { Route as ComercialCatalogoRouteImport } from './routes/comercial.catalogo'
 import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 import { Route as AdminModulosRouteImport } from './routes/admin.modulos'
+import { Route as AdminEmpresasRouteImport } from './routes/admin.empresas'
 import { Route as AdminDadosRouteImport } from './routes/admin.dados'
 import { Route as FinanceiroOpDiaristasIndexRouteImport } from './routes/financeiro-op.diaristas.index'
 import { Route as ComercialDashboardIndexRouteImport } from './routes/comercial.dashboard.index'
@@ -505,6 +506,11 @@ const AdminModulosRoute = AdminModulosRouteImport.update({
   path: '/modulos',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminEmpresasRoute = AdminEmpresasRouteImport.update({
+  id: '/empresas',
+  path: '/empresas',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminDadosRoute = AdminDadosRouteImport.update({
   id: '/dados',
   path: '/dados',
@@ -649,6 +655,7 @@ export interface FileRoutesByFullPath {
   '/solicitantes': typeof SolicitantesRoute
   '/solicitar': typeof SolicitarRoute
   '/admin/dados': typeof AdminDadosRoute
+  '/admin/empresas': typeof AdminEmpresasRoute
   '/admin/modulos': typeof AdminModulosRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/comercial/catalogo': typeof ComercialCatalogoRoute
@@ -740,6 +747,7 @@ export interface FileRoutesByTo {
   '/solicitantes': typeof SolicitantesRoute
   '/solicitar': typeof SolicitarRoute
   '/admin/dados': typeof AdminDadosRoute
+  '/admin/empresas': typeof AdminEmpresasRoute
   '/admin/modulos': typeof AdminModulosRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/comercial/catalogo': typeof ComercialCatalogoRoute
@@ -842,6 +850,7 @@ export interface FileRoutesById {
   '/solicitantes': typeof SolicitantesRoute
   '/solicitar': typeof SolicitarRoute
   '/admin/dados': typeof AdminDadosRoute
+  '/admin/empresas': typeof AdminEmpresasRoute
   '/admin/modulos': typeof AdminModulosRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/comercial/catalogo': typeof ComercialCatalogoRoute
@@ -946,6 +955,7 @@ export interface FileRouteTypes {
     | '/solicitantes'
     | '/solicitar'
     | '/admin/dados'
+    | '/admin/empresas'
     | '/admin/modulos'
     | '/admin/usuarios'
     | '/comercial/catalogo'
@@ -1037,6 +1047,7 @@ export interface FileRouteTypes {
     | '/solicitantes'
     | '/solicitar'
     | '/admin/dados'
+    | '/admin/empresas'
     | '/admin/modulos'
     | '/admin/usuarios'
     | '/comercial/catalogo'
@@ -1138,6 +1149,7 @@ export interface FileRouteTypes {
     | '/solicitantes'
     | '/solicitar'
     | '/admin/dados'
+    | '/admin/empresas'
     | '/admin/modulos'
     | '/admin/usuarios'
     | '/comercial/catalogo'
@@ -1812,6 +1824,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminModulosRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/empresas': {
+      id: '/admin/empresas'
+      path: '/empresas'
+      fullPath: '/admin/empresas'
+      preLoaderRoute: typeof AdminEmpresasRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/dados': {
       id: '/admin/dados'
       path: '/dados'
@@ -1964,6 +1983,7 @@ declare module '@tanstack/react-router' {
 
 interface AdminRouteChildren {
   AdminDadosRoute: typeof AdminDadosRoute
+  AdminEmpresasRoute: typeof AdminEmpresasRoute
   AdminModulosRoute: typeof AdminModulosRoute
   AdminUsuariosRoute: typeof AdminUsuariosRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -1971,6 +1991,7 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminDadosRoute: AdminDadosRoute,
+  AdminEmpresasRoute: AdminEmpresasRoute,
   AdminModulosRoute: AdminModulosRoute,
   AdminUsuariosRoute: AdminUsuariosRoute,
   AdminIndexRoute: AdminIndexRoute,
