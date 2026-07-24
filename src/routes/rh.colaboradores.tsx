@@ -139,7 +139,8 @@ function ColaboradoresPage() {
     if (busca.trim()) filtros.push(`Busca: "${busca.trim()}"`);
     if (fDep !== "__todos") filtros.push(`Departamento: ${fDep}`);
     if (fTipo !== "__todos") filtros.push(`Vínculo: ${TIPO_LABEL[fTipo as TipoContratacao] ?? fTipo}`);
-    const filtrosLabel = filtros.length ? filtros.join(" · ") : "Todos os colaboradores";
+    filtros.push(`Status: ${fStatus === "ativos" ? "Ativos" : fStatus === "desligados" ? "Desligados" : "Todos"}`);
+    const filtrosLabel = filtros.join(" · ");
     const hoje = new Date().toLocaleString("pt-BR");
     const rowsHtml = filtrados
       .map(
