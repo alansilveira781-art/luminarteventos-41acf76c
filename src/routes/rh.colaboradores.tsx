@@ -262,7 +262,31 @@ function ColaboradoresPage() {
             <SelectItem value="pj">PJ</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={fStatus} onValueChange={(v) => setFStatus(v as typeof fStatus)}>
+          <SelectTrigger className="w-[160px] h-9">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ativos">Ativos</SelectItem>
+            <SelectItem value="desligados">Desligados</SelectItem>
+            <SelectItem value="__todos">Todos</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
+
+      {selected.size > 0 && (
+        <div className="flex items-center justify-between gap-2 mb-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+          <span className="font-medium">{selected.size} colaborador(es) selecionado(s)</span>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => setLoteOpen(true)}>
+              <PencilLine className="h-3.5 w-3.5 mr-1" /> Editar em lote
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+              <X className="h-3.5 w-3.5 mr-1" /> Limpar
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="rounded-md border border-border overflow-auto">
         <Table>
