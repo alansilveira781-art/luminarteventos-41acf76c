@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Power, Search, Printer } from "lucide-react";
+import { Plus, Pencil, Trash2, Power, Search, Printer, PencilLine, X } from "lucide-react";
 import logoUrl from "@/assets/luminart-logo.png";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { EdicaoLoteDialog } from "@/components/rh/EdicaoLoteDialog";
 
 export const Route = createFileRoute("/rh/colaboradores")({ component: ColaboradoresPage });
 
@@ -61,8 +63,11 @@ function ColaboradoresPage() {
   const [busca, setBusca] = useState("");
   const [fDep, setFDep] = useState<string>("__todos");
   const [fTipo, setFTipo] = useState<string>("__todos");
+  const [fStatus, setFStatus] = useState<"ativos" | "desligados" | "__todos">("ativos");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Colab | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [loteOpen, setLoteOpen] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -74,6 +79,7 @@ function ColaboradoresPage() {
     setRows((data as any) ?? []);
     setProfiles((ps as any) ?? []);
     setLoading(false);
+    setSelected(new Set());
   }
 
   useEffect(() => {
@@ -88,12 +94,32 @@ function ColaboradoresPage() {
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase();
     return rows.filter((r) => {
+      if (fStatus === "ativos" && !r.ativo) return false;
+      if (fStatus === "desligados" && r.ativo) return false;
       if (fDep !== "__todos" && r.departamento !== fDep) return false;
       if (fTipo !== "__todos" && r.tipo_contratacao !== fTipo) return false;
       if (q && !r.nome.toLowerCase().includes(q) && !r.documento.includes(q)) return false;
       return true;
     });
-  }, [rows, fDep, fTipo, busca]);
+  }, [rows, fDep, fTipo, fStatus, busca]);
+
+  const allVisibleSelected = filtrados.length > 0 && filtrados.every((r) => selected.has(r.id));
+  function toggleAll(v: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (v) filtrados.forEach((r) => next.add(r.id));
+      else filtrados.forEach((r) => next.delete(r.id));
+      return next;
+    });
+  }
+  function toggleOne(id: string, v: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (v) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
 
   async function toggleAtivo(c: Colab) {
     const { error } = await supabase.from("rh_colaboradores").update({ ativo: !c.ativo }).eq("id", c.id);
@@ -113,7 +139,8 @@ function ColaboradoresPage() {
     if (busca.trim()) filtros.push(`Busca: "${busca.trim()}"`);
     if (fDep !== "__todos") filtros.push(`Departamento: ${fDep}`);
     if (fTipo !== "__todos") filtros.push(`Vínculo: ${TIPO_LABEL[fTipo as TipoContratacao] ?? fTipo}`);
-    const filtrosLabel = filtros.length ? filtros.join(" · ") : "Todos os colaboradores";
+    filtros.push(`Status: ${fStatus === "ativos" ? "Ativos" : fStatus === "desligados" ? "Desligados" : "Todos"}`);
+    const filtrosLabel = filtros.join(" · ");
     const hoje = new Date().toLocaleString("pt-BR");
     const rowsHtml = filtrados
       .map(
@@ -235,12 +262,43 @@ function ColaboradoresPage() {
             <SelectItem value="pj">PJ</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={fStatus} onValueChange={(v) => setFStatus(v as typeof fStatus)}>
+          <SelectTrigger className="w-[160px] h-9">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ativos">Ativos</SelectItem>
+            <SelectItem value="desligados">Desligados</SelectItem>
+            <SelectItem value="__todos">Todos</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
+
+      {selected.size > 0 && (
+        <div className="flex items-center justify-between gap-2 mb-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+          <span className="font-medium">{selected.size} colaborador(es) selecionado(s)</span>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => setLoteOpen(true)}>
+              <PencilLine className="h-3.5 w-3.5 mr-1" /> Editar em lote
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+              <X className="h-3.5 w-3.5 mr-1" /> Limpar
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="rounded-md border border-border overflow-auto">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[36px]">
+                <Checkbox
+                  checked={allVisibleSelected}
+                  onCheckedChange={(v) => toggleAll(Boolean(v))}
+                  aria-label="Selecionar todos"
+                />
+              </TableHead>
               <TableHead>Nome</TableHead>
               <TableHead>Departamento</TableHead>
               <TableHead>Função</TableHead>
@@ -253,19 +311,26 @@ function ColaboradoresPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-6">
+                <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-6">
                   Carregando…
                 </TableCell>
               </TableRow>
             ) : filtrados.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-6">
+                <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-6">
                   Nenhum colaborador cadastrado.
                 </TableCell>
               </TableRow>
             ) : (
               filtrados.map((c) => (
-                <TableRow key={c.id}>
+                <TableRow key={c.id} data-state={selected.has(c.id) ? "selected" : undefined}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selected.has(c.id)}
+                      onCheckedChange={(v) => toggleOne(c.id, Boolean(v))}
+                      aria-label={`Selecionar ${c.nome}`}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">{c.nome}</TableCell>
                   <TableCell>{c.departamento ?? "—"}</TableCell>
                   <TableCell>{c.funcao ?? "—"}</TableCell>
@@ -307,6 +372,14 @@ function ColaboradoresPage() {
         onOpenChange={setOpen}
         editing={editing}
         profiles={profiles}
+        onSaved={load}
+      />
+
+      <EdicaoLoteDialog
+        open={loteOpen}
+        onOpenChange={setLoteOpen}
+        ids={Array.from(selected)}
+        departamentos={departamentos}
         onSaved={load}
       />
     </>
