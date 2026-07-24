@@ -4190,6 +4190,98 @@ export type Database = {
         }
         Relationships: []
       }
+      rh_colaboradores: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          departamento: string | null
+          documento: string
+          funcao: string | null
+          id: string
+          nome: string
+          tipo_contratacao: string
+          tipo_documento: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          departamento?: string | null
+          documento: string
+          funcao?: string | null
+          id?: string
+          nome: string
+          tipo_contratacao: string
+          tipo_documento: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          departamento?: string | null
+          documento?: string
+          funcao?: string | null
+          id?: string
+          nome?: string
+          tipo_contratacao?: string
+          tipo_documento?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      rh_epi_entregas: {
+        Row: {
+          ca: string | null
+          colaborador_id: string
+          created_at: string
+          created_by: string | null
+          data: string
+          epi_descricao: string
+          id: number
+          motivo: string
+          observacoes: string | null
+          quantidade: number
+          tipo_contratacao: string
+        }
+        Insert: {
+          ca?: string | null
+          colaborador_id: string
+          created_at?: string
+          created_by?: string | null
+          data: string
+          epi_descricao: string
+          id?: never
+          motivo: string
+          observacoes?: string | null
+          quantidade?: number
+          tipo_contratacao: string
+        }
+        Update: {
+          ca?: string | null
+          colaborador_id?: string
+          created_at?: string
+          created_by?: string | null
+          data?: string
+          epi_descricao?: string
+          id?: never
+          motivo?: string
+          observacoes?: string | null
+          quantidade?: number
+          tipo_contratacao?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rh_epi_entregas_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "rh_colaboradores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rh_vagas: {
         Row: {
           candidato_email: string | null
