@@ -1,29 +1,18 @@
-# Ajuste: anexos de despesas no Estoque › A Receber
+Ajustar o estado inicial do filtro de Mês no Painel Financeiro (componente `ContaAzulDashboard`) para que, ao abrir o dashboard, o mês selecionado seja o mês corrente (ex.: Julho) em vez de "Todos".
 
-## Diagnóstico
-Na aba **Estoque › A Receber**, o card de despesa (originado de uma demanda) tenta baixar o arquivo do bucket `demanda-anexos`. A política RLS atual desse bucket em `storage.objects` só permite leitura para quem tem acesso ao módulo **financeiro**:
+### O que será alterado
+- Arquivo: `src/components/financeiro/ContaAzulDashboard.tsx`
+- No componente `PainelFinanceiro`, a linha:
+  ```tsx
+  const [mes, setMes] = useState(0);
+  ```
+  será alterada para:
+  ```tsx
+  const [mes, setMes] = useState(new Date().getMonth() + 1);
+  ```
+  (O índice 0 representa "Todos"; `getMonth() + 1` retorna 1 para Janeiro, 7 para Julho, etc.)
 
-```
-qual: bucket_id = 'demanda-anexos' AND has_module_access(auth.uid(), 'financeiro')
-```
-
-Como o usuário está operando pelo módulo **estoque**, o `download()` retorna erro de permissão, o `AnexoViewer` cai no `toast.error("Não foi possível abrir a prévia")` e o preview fica travado no spinner (mesmo comportamento visto no print). O botão **Baixar** falha pelo mesmo motivo.
-
-Para comparação, o bucket `compra-anexos` já contempla os dois módulos (`compras` OR `estoque`) e por isso funciona normalmente na mesma tela.
-
-## Correção
-Migração única atualizando as 4 políticas do bucket `demanda-anexos` (SELECT/INSERT/UPDATE/DELETE) para também autorizar quem tem acesso ao módulo `estoque`, mantendo `financeiro`:
-
-```sql
-using  ( bucket_id = 'demanda-anexos'
-         AND ( has_module_access(auth.uid(), 'financeiro')
-            OR has_module_access(auth.uid(), 'estoque') ) )
-with check ( ...mesma expressão... )
-```
-
-Nenhuma mudança de front-end é necessária — `estoque.a-receber.tsx` já usa `AnexoViewer` / `baixarAnexo` corretamente contra `demanda-anexos`.
-
-## Escopo
-- Somente políticas de storage do bucket `demanda-anexos`.
-- Sem alterações em UI, em outras tabelas ou em `compra-anexos` (já OK).
-- Usuários exclusivamente do módulo Financeiro continuam com o mesmo acesso; usuários do Estoque ganham leitura/gravação equivalente, necessária para visualizar e (quando aplicável) baixar os anexos vindos das demandas migradas para "A Receber".
+### Comportamento esperado
+- Ao abrir a aba "Painel Financeiro", o seletor de Mês virá preenchido com o mês atual.
+- Os KPIs e o DRE serão carregados automaticamente para o ano e mês correntes.
+- O usuário continua podendo trocar manualmente para "Todos" ou outro mês.

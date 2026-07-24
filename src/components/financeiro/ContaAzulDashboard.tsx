@@ -384,7 +384,7 @@ const GROUP_LABEL: Record<string, string> = {
 
 function PainelFinanceiro() {
   const [ano, setAno] = useState<number>(new Date().getFullYear());
-  const [mes, setMes] = useState(0);
+  const [mes, setMes] = useState(new Date().getMonth() + 1);
   const anoEfetivo = ano;
   const { planos, pagar, receber } = useContaAzulData(anoEfetivo, mes);
   const { isAdmin, isModuleAdmin } = useAuth();
