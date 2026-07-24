@@ -57,10 +57,11 @@ function EpisPage() {
   const [fMotivo, setFMotivo] = useState("__todos");
   const [de, setDe] = useState("");
   const [ate, setAte] = useState("");
+  const [empresas, setEmpresas] = useState<{ id: string; razao_social: string; cnpj: string }[]>([]);
   const [open, setOpen] = useState(false);
   const [fichaOpen, setFichaOpen] = useState(false);
   const [fichaColab, setFichaColab] = useState<string>("");
-  const [fichaEmpresa, setFichaEmpresa] = useState<string>(EMPRESAS[0]);
+  const [fichaEmpresaId, setFichaEmpresaId] = useState<string>("");
   const [fichaMatricula, setFichaMatricula] = useState<string>("");
 
   async function load() {
