@@ -66,13 +66,17 @@ function EpisPage() {
 
   async function load() {
     setLoading(true);
-    const [{ data: cs }, { data: es, error }] = await Promise.all([
+    const [{ data: cs }, { data: es, error }, { data: emp }] = await Promise.all([
       supabase.from("rh_colaboradores").select("*").order("nome"),
       supabase.from("rh_epi_entregas").select("*").order("data", { ascending: false }),
+      supabase.from("admin_empresas").select("id,razao_social,cnpj").eq("ativo", true).order("razao_social"),
     ]);
     if (error) toast.error(error.message);
     setColabs((cs as any) ?? []);
     setRows((es as any) ?? []);
+    const list = (emp as any) ?? [];
+    setEmpresas(list);
+    setFichaEmpresaId((prev) => prev || list[0]?.id || "");
     setLoading(false);
   }
 
