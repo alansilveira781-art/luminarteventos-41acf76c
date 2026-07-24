@@ -29,6 +29,7 @@ function AdminLayout() {
     { to: "/admin", label: "Visão geral", icon: Shield, exact: true },
     { to: "/admin/usuarios", label: "Usuários", icon: UsersIcon },
     { to: "/admin/modulos", label: "Módulos", icon: Boxes },
+    { to: "/admin/empresas", label: "Empresas", icon: Building2 },
     { to: "/admin/dados", label: "Base de dados", icon: Database },
   ];
 
