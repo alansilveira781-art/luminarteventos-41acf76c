@@ -6,6 +6,8 @@ import {
   LayoutDashboard,
   Package,
   Users,
+  Users as UsersIcon,
+  HardHat,
   Truck,
   ArrowDownToLine,
   ArrowUpFromLine,
