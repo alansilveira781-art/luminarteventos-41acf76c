@@ -114,8 +114,6 @@ function EpisPage() {
     if (!c) return toast.error("Selecione um colaborador");
     const entregas = rows.filter((r) => r.colaborador_id === c.id);
     if (entregas.length === 0) return toast.error("Este colaborador não tem entregas registradas");
-    try {
-      await gerarFichaEpiPdf({
     const emp = empresas.find((x) => x.id === fichaEmpresaId);
     if (!emp) return toast.error("Selecione a empresa");
     try {
