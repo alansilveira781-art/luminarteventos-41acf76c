@@ -116,7 +116,11 @@ function EpisPage() {
     if (entregas.length === 0) return toast.error("Este colaborador não tem entregas registradas");
     try {
       await gerarFichaEpiPdf({
-        empresa: { razao_social: fichaEmpresa },
+    const emp = empresas.find((x) => x.id === fichaEmpresaId);
+    if (!emp) return toast.error("Selecione a empresa");
+    try {
+      await gerarFichaEpiPdf({
+        empresa: { razao_social: emp.razao_social, cnpj: emp.cnpj },
         colaborador: {
           nome: c.nome,
           funcao: c.funcao,
