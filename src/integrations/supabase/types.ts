@@ -4231,6 +4231,7 @@ export type Database = {
       }
       rh_colaboradores: {
         Row: {
+          apelido: string | null
           ativo: boolean
           created_at: string
           departamento: string | null
@@ -4244,6 +4245,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          apelido?: string | null
           ativo?: boolean
           created_at?: string
           departamento?: string | null
@@ -4257,6 +4259,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          apelido?: string | null
           ativo?: boolean
           created_at?: string
           departamento?: string | null
