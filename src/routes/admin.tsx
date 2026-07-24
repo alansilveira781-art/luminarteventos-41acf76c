@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FormField, FormSection } from "@/components/FormSection";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Shield, Users as UsersIcon, Boxes, Database, Trash2 } from "lucide-react";
+import { Plus, Shield, Users as UsersIcon, Boxes, Database, Trash2, Building2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin")({
@@ -29,6 +29,7 @@ function AdminLayout() {
     { to: "/admin", label: "Visão geral", icon: Shield, exact: true },
     { to: "/admin/usuarios", label: "Usuários", icon: UsersIcon },
     { to: "/admin/modulos", label: "Módulos", icon: Boxes },
+    { to: "/admin/empresas", label: "Empresas", icon: Building2 },
     { to: "/admin/dados", label: "Base de dados", icon: Database },
   ];
 

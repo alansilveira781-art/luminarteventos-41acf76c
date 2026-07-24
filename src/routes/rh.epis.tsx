@@ -12,7 +12,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { EMPRESAS } from "@/lib/empresas";
 import { gerarFichaEpiPdf } from "@/lib/rh/ficha-pdf";
 import { toast } from "sonner";
 
@@ -58,21 +57,26 @@ function EpisPage() {
   const [fMotivo, setFMotivo] = useState("__todos");
   const [de, setDe] = useState("");
   const [ate, setAte] = useState("");
+  const [empresas, setEmpresas] = useState<{ id: string; razao_social: string; cnpj: string }[]>([]);
   const [open, setOpen] = useState(false);
   const [fichaOpen, setFichaOpen] = useState(false);
   const [fichaColab, setFichaColab] = useState<string>("");
-  const [fichaEmpresa, setFichaEmpresa] = useState<string>(EMPRESAS[0]);
+  const [fichaEmpresaId, setFichaEmpresaId] = useState<string>("");
   const [fichaMatricula, setFichaMatricula] = useState<string>("");
 
   async function load() {
     setLoading(true);
-    const [{ data: cs }, { data: es, error }] = await Promise.all([
+    const [{ data: cs }, { data: es, error }, { data: emp }] = await Promise.all([
       supabase.from("rh_colaboradores").select("*").order("nome"),
       supabase.from("rh_epi_entregas").select("*").order("data", { ascending: false }),
+      supabase.from("admin_empresas").select("id,razao_social,cnpj").eq("ativo", true).order("razao_social"),
     ]);
     if (error) toast.error(error.message);
     setColabs((cs as any) ?? []);
     setRows((es as any) ?? []);
+    const list = (emp as any) ?? [];
+    setEmpresas(list);
+    setFichaEmpresaId((prev) => prev || list[0]?.id || "");
     setLoading(false);
   }
 
@@ -110,9 +114,11 @@ function EpisPage() {
     if (!c) return toast.error("Selecione um colaborador");
     const entregas = rows.filter((r) => r.colaborador_id === c.id);
     if (entregas.length === 0) return toast.error("Este colaborador não tem entregas registradas");
+    const emp = empresas.find((x) => x.id === fichaEmpresaId);
+    if (!emp) return toast.error("Selecione a empresa");
     try {
       await gerarFichaEpiPdf({
-        empresa: { razao_social: fichaEmpresa },
+        empresa: { razao_social: emp.razao_social, cnpj: emp.cnpj },
         colaborador: {
           nome: c.nome,
           funcao: c.funcao,
@@ -260,11 +266,11 @@ function EpisPage() {
             </div>
             <div>
               <Label>Empresa (cabeçalho)</Label>
-              <Select value={fichaEmpresa} onValueChange={setFichaEmpresa}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={fichaEmpresaId} onValueChange={setFichaEmpresaId}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
-                  {EMPRESAS.map((e) => (
-                    <SelectItem key={e} value={e}>{e}</SelectItem>
+                  {empresas.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>{e.razao_social}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
