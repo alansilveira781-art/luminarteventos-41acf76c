@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Power, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Power, Search, Printer } from "lucide-react";
+import logoUrl from "@/assets/luminart-logo.png";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +48,11 @@ function maskDoc(v: string, tipo: TipoDocumento) {
     .replace(/(\d{3})(\d)/, "$1/$2")
     .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
 }
+
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+}
+
 
 function ColaboradoresPage() {
   const [rows, setRows] = useState<Colab[]>([]);
@@ -102,20 +108,96 @@ function ColaboradoresPage() {
     setRows((rs) => rs.filter((r) => r.id !== c.id));
   }
 
+  function imprimirRelatorio() {
+    const filtros: string[] = [];
+    if (busca.trim()) filtros.push(`Busca: "${busca.trim()}"`);
+    if (fDep !== "__todos") filtros.push(`Departamento: ${fDep}`);
+    if (fTipo !== "__todos") filtros.push(`Vínculo: ${TIPO_LABEL[fTipo as TipoContratacao] ?? fTipo}`);
+    const filtrosLabel = filtros.length ? filtros.join(" · ") : "Todos os colaboradores";
+    const hoje = new Date().toLocaleString("pt-BR");
+    const rowsHtml = filtrados
+      .map(
+        (c) => `
+        <tr>
+          <td>${escapeHtml(c.nome)}</td>
+          <td>${escapeHtml(c.departamento ?? "—")}</td>
+          <td>${escapeHtml(c.funcao ?? "—")}</td>
+          <td>${TIPO_LABEL[c.tipo_contratacao]}</td>
+          <td class="mono">${escapeHtml(maskDoc(c.documento, c.tipo_documento))}</td>
+          <td>${c.ativo ? '<span class="badge on">Ativo</span>' : '<span class="badge off">Inativo</span>'}</td>
+        </tr>`,
+      )
+      .join("");
+    const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"/>
+      <title>Relatório de Colaboradores — Grupo Luminart</title>
+      <style>
+        @page { size: A4; margin: 14mm; }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #0f172a; margin: 0; padding: 24px; }
+        header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #d4a574; padding-bottom: 12px; margin-bottom: 16px; }
+        header img { height: 48px; object-fit: contain; }
+        .meta { text-align: right; font-size: 11px; color: #475569; }
+        h1 { font-size: 18px; margin: 0 0 4px; letter-spacing: .3px; }
+        .subtitle { font-size: 12px; color: #475569; margin-bottom: 14px; }
+        .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+        .chip { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 999px; font-size: 10.5px; padding: 3px 10px; color: #334155; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        thead th { background: #0f172a; color: #fff; text-align: left; padding: 8px 10px; font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: .4px; }
+        tbody td { padding: 7px 10px; border-bottom: 1px solid #e2e8f0; }
+        tbody tr:nth-child(even) td { background: #f8fafc; }
+        .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 10.5px; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 600; }
+        .badge.on { background: #dcfce7; color: #166534; }
+        .badge.off { background: #e2e8f0; color: #475569; }
+        footer { margin-top: 16px; padding-top: 10px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 10px; color: #64748b; }
+        @media print { body { padding: 0; } .no-print { display: none; } }
+      </style></head><body>
+      <header>
+        <img src="${logoUrl}" alt="Luminart" />
+        <div class="meta">
+          <div><strong>Grupo Luminart</strong></div>
+          <div>Emitido em ${escapeHtml(hoje)}</div>
+        </div>
+      </header>
+      <h1>Relatório de Colaboradores</h1>
+      <div class="subtitle">Recursos Humanos · ${filtrados.length} registro(s)</div>
+      <div class="chips"><span class="chip">${escapeHtml(filtrosLabel)}</span></div>
+      <table>
+        <thead><tr><th>Nome</th><th>Departamento</th><th>Função</th><th>Vínculo</th><th>Documento</th><th>Status</th></tr></thead>
+        <tbody>${rowsHtml || '<tr><td colspan="6" style="text-align:center;padding:20px;color:#64748b">Nenhum colaborador encontrado com os filtros aplicados.</td></tr>'}</tbody>
+      </table>
+      <footer>
+        <span>Documento confidencial · uso interno RH · LGPD</span>
+        <span>Grupo Luminart</span>
+      </footer>
+      <script>window.addEventListener('load',()=>setTimeout(()=>window.print(),300));</script>
+    </body></html>`;
+    const w = window.open("", "_blank", "width=1024,height=768");
+    if (!w) return toast.error("Bloqueado pelo navegador. Permita pop-ups.");
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  }
+
   return (
     <>
       <PageHeader
         title="Colaboradores"
         description="Cadastro de pessoal (LGPD — dados sensíveis restritos ao módulo RH)"
         actions={
-          <Button
-            onClick={() => {
-              setEditing(null);
-              setOpen(true);
-            }}
-          >
-            <Plus className="h-4 w-4 mr-1" /> Novo
-          </Button>
+          <>
+            <Button variant="outline" onClick={imprimirRelatorio}>
+              <Printer className="h-4 w-4 mr-1" /> Imprimir
+            </Button>
+            <Button
+              onClick={() => {
+                setEditing(null);
+                setOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4 mr-1" /> Novo
+            </Button>
+          </>
         }
       />
 
