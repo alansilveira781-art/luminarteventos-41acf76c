@@ -266,11 +266,11 @@ function EpisPage() {
             </div>
             <div>
               <Label>Empresa (cabeçalho)</Label>
-              <Select value={fichaEmpresa} onValueChange={setFichaEmpresa}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={fichaEmpresaId} onValueChange={setFichaEmpresaId}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
-                  {EMPRESAS.map((e) => (
-                    <SelectItem key={e} value={e}>{e}</SelectItem>
+                  {empresas.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>{e.razao_social}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
