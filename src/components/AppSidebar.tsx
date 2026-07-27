@@ -102,6 +102,7 @@ const allItems: NavItem[] = [
   { title: "Recebimentos", url: "/contabil/recebimentos", icon: FileText, group: "Contábil", module: "contabil" },
   { title: "Tomadores", url: "/contabil/tomadores", icon: FileText, group: "Contábil", module: "contabil" },
   { title: "Apurações de impostos", url: "/contabil/apuracoes", icon: Search, group: "Contábil", module: "contabil" },
+  { title: "Relatórios", url: "/contabil/relatorios", icon: FileText, group: "Contábil", module: "contabil" },
   { title: "Configuração", url: "/contabil/configuracao", icon: Settings, group: "Contábil", module: "contabil" },
   { title: "Contratos", url: "/juridico", icon: Scale, group: "Jurídico", module: "juridico" },
   { title: "Modelos", url: "/juridico/modelos", icon: FileSignature, group: "Jurídico", module: "juridico" },
