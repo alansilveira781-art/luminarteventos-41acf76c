@@ -71,6 +71,7 @@ import { Route as EventosConfiguracoesRouteImport } from './routes/eventos.confi
 import { Route as EstoqueAReceberRouteImport } from './routes/estoque.a-receber'
 import { Route as EstoqueItemIdRouteImport } from './routes/estoque.$itemId'
 import { Route as ContabilTomadoresRouteImport } from './routes/contabil.tomadores'
+import { Route as ContabilRelatoriosRouteImport } from './routes/contabil.relatorios'
 import { Route as ContabilRecebimentosRouteImport } from './routes/contabil.recebimentos'
 import { Route as ContabilNotasRouteImport } from './routes/contabil.notas'
 import { Route as ContabilConfiguracaoRouteImport } from './routes/contabil.configuracao'
@@ -421,6 +422,11 @@ const ContabilTomadoresRoute = ContabilTomadoresRouteImport.update({
   path: '/tomadores',
   getParentRoute: () => ContabilRoute,
 } as any)
+const ContabilRelatoriosRoute = ContabilRelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
+  getParentRoute: () => ContabilRoute,
+} as any)
 const ContabilRecebimentosRoute = ContabilRecebimentosRouteImport.update({
   id: '/recebimentos',
   path: '/recebimentos',
@@ -673,6 +679,7 @@ export interface FileRoutesByFullPath {
   '/contabil/configuracao': typeof ContabilConfiguracaoRoute
   '/contabil/notas': typeof ContabilNotasRoute
   '/contabil/recebimentos': typeof ContabilRecebimentosRoute
+  '/contabil/relatorios': typeof ContabilRelatoriosRoute
   '/contabil/tomadores': typeof ContabilTomadoresRoute
   '/estoque/$itemId': typeof EstoqueItemIdRoute
   '/estoque/a-receber': typeof EstoqueAReceberRoute
@@ -764,6 +771,7 @@ export interface FileRoutesByTo {
   '/contabil/configuracao': typeof ContabilConfiguracaoRoute
   '/contabil/notas': typeof ContabilNotasRoute
   '/contabil/recebimentos': typeof ContabilRecebimentosRoute
+  '/contabil/relatorios': typeof ContabilRelatoriosRoute
   '/contabil/tomadores': typeof ContabilTomadoresRoute
   '/estoque/$itemId': typeof EstoqueItemIdRoute
   '/estoque/a-receber': typeof EstoqueAReceberRoute
@@ -868,6 +876,7 @@ export interface FileRoutesById {
   '/contabil/configuracao': typeof ContabilConfiguracaoRoute
   '/contabil/notas': typeof ContabilNotasRoute
   '/contabil/recebimentos': typeof ContabilRecebimentosRoute
+  '/contabil/relatorios': typeof ContabilRelatoriosRoute
   '/contabil/tomadores': typeof ContabilTomadoresRoute
   '/estoque/$itemId': typeof EstoqueItemIdRoute
   '/estoque/a-receber': typeof EstoqueAReceberRoute
@@ -973,6 +982,7 @@ export interface FileRouteTypes {
     | '/contabil/configuracao'
     | '/contabil/notas'
     | '/contabil/recebimentos'
+    | '/contabil/relatorios'
     | '/contabil/tomadores'
     | '/estoque/$itemId'
     | '/estoque/a-receber'
@@ -1064,6 +1074,7 @@ export interface FileRouteTypes {
     | '/contabil/configuracao'
     | '/contabil/notas'
     | '/contabil/recebimentos'
+    | '/contabil/relatorios'
     | '/contabil/tomadores'
     | '/estoque/$itemId'
     | '/estoque/a-receber'
@@ -1167,6 +1178,7 @@ export interface FileRouteTypes {
     | '/contabil/configuracao'
     | '/contabil/notas'
     | '/contabil/recebimentos'
+    | '/contabil/relatorios'
     | '/contabil/tomadores'
     | '/estoque/$itemId'
     | '/estoque/a-receber'
@@ -1705,6 +1717,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContabilTomadoresRouteImport
       parentRoute: typeof ContabilRoute
     }
+    '/contabil/relatorios': {
+      id: '/contabil/relatorios'
+      path: '/relatorios'
+      fullPath: '/contabil/relatorios'
+      preLoaderRoute: typeof ContabilRelatoriosRouteImport
+      parentRoute: typeof ContabilRoute
+    }
     '/contabil/recebimentos': {
       id: '/contabil/recebimentos'
       path: '/recebimentos'
@@ -2070,6 +2089,7 @@ interface ContabilRouteChildren {
   ContabilConfiguracaoRoute: typeof ContabilConfiguracaoRoute
   ContabilNotasRoute: typeof ContabilNotasRoute
   ContabilRecebimentosRoute: typeof ContabilRecebimentosRoute
+  ContabilRelatoriosRoute: typeof ContabilRelatoriosRoute
   ContabilTomadoresRoute: typeof ContabilTomadoresRoute
   ContabilIndexRoute: typeof ContabilIndexRoute
 }
@@ -2079,6 +2099,7 @@ const ContabilRouteChildren: ContabilRouteChildren = {
   ContabilConfiguracaoRoute: ContabilConfiguracaoRoute,
   ContabilNotasRoute: ContabilNotasRoute,
   ContabilRecebimentosRoute: ContabilRecebimentosRoute,
+  ContabilRelatoriosRoute: ContabilRelatoriosRoute,
   ContabilTomadoresRoute: ContabilTomadoresRoute,
   ContabilIndexRoute: ContabilIndexRoute,
 }
@@ -2263,13 +2284,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
