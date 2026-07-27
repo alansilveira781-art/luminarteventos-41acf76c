@@ -1,32 +1,37 @@
-## Ajustes em RH › Colaboradores
+## Objetivo
 
-### 1. Filtro Ativos/Desligados
-Adicionar novo `Select` no cabeçalho de filtros ao lado de Departamento/Vínculo:
-- Opções: **Todos**, **Ativos**, **Desligados**
-- Default: **Ativos**
-- Aplica sobre o campo `status` (ou equivalente) de `rh_colaboradores`
-- O filtro também é respeitado pelo botão **Imprimir** (já reflete filtros ativos)
+Criar aba **Relatórios** no módulo Contábil com a seção **Distribuição de Impostos**, que rateia os impostos apurados (de uma apuração já salva) proporcionalmente aos valores recebidos por evento no mesmo período.
 
-### 2. Seleção múltipla + Edição em lote
-- Adicionar coluna de checkbox na tabela (com checkbox master no header para selecionar/desmarcar todos os visíveis)
-- Estado `selectedIds: Set<string>` no componente
-- Quando `selectedIds.size > 0`, exibir uma **barra de ações em lote** acima da tabela mostrando:
-  - "N colaboradores selecionados"
-  - Botão **Editar em lote** → abre `EdicaoLoteDialog`
-  - Botão **Limpar seleção**
+## Como vai funcionar
 
-### 3. Dialog de Edição em Lote
-Novo componente com três campos opcionais (só atualiza os preenchidos):
-- **Vínculo** (Select: CLT, PJ, Autônomo, Estagiário, etc — mesmas opções do cadastro)
-- **Departamento** (Select com valores existentes + input livre)
-- **Função/Cargo** (input texto)
+1. Usuário abre **Contábil › Relatórios**.
+2. Seleciona uma **Apuração** salva (empresa + mês/ano) → carrega os impostos apurados dela.
+3. Seleciona qual **Imposto** quer visualizar (COFINS, PIS, ISS, IRPJ, CSLL…) ou "Todos".
+4. Sistema lista os **recebimentos** do mesmo período/empresa agrupados por evento, e para cada evento mostra:
+   - Valor recebido
+   - % do total recebido
+   - Valor do imposto rateado proporcionalmente
+5. Totalizadores no rodapé (soma dos recebimentos, soma do imposto rateado — deve bater com o apurado).
+6. Botão **Exportar** (PDF/Excel), mesmo padrão de Apurações.
 
-Cada campo tem um switch "Alterar este campo" para deixar claro o que será sobrescrito. Ao confirmar, faz `UPDATE ... WHERE id IN (...)` via supabase client, invalida o React Query e limpa seleção.
+## Fórmula do rateio
 
-### Arquivos afetados
-- `src/routes/rh.colaboradores.tsx` — filtro status, checkboxes, barra de ações, integração
-- `src/components/rh/EdicaoLoteDialog.tsx` (novo) — dialog de edição múltipla
+Para cada evento:
+```
+imposto_evento = imposto_total_apurado × (valor_recebido_evento / soma_valores_recebidos_periodo)
+```
+Ajuste de resíduo de centavos aplicado na maior fatia para garantir soma exata.
 
-### Fora de escopo
-- Sem alterações de schema (usa colunas existentes de `rh_colaboradores`)
-- Sem mudanças no PDF além de refletir o novo filtro naturalmente
+## Arquivos a criar/alterar
+
+- **Criar** `src/routes/contabil.relatorios.tsx` — nova rota com a seção Distribuição de Impostos (estrutura pensada para receber outros relatórios futuros).
+- **Editar** `src/components/AppSidebar.tsx` — adicionar item "Relatórios" no grupo Contábil.
+
+## Detalhes técnicos
+
+- Fonte dos impostos apurados: recalcular via `calcularImpostosPresumido` (mesma função da tela de Apurações) usando `contabil_configuracao_aliquotas` + faturamento do período — mantém consistência com a apuração exibida.
+- Fonte dos recebimentos: `contabil_recebimentos` filtrando por `empresa` e `data_recebimento` dentro do mês da apuração; agrupamento por `nome_evento` (recebimentos sem evento entram como "Sem evento vinculado").
+- Seletor de apuração usa os mesmos filtros de empresa/mês/ano já usados em Apurações.
+- Exportação PDF via `jspdf`/`jspdf-autotable` (import dinâmico, mesmo padrão de `financeiro-op.relatorios.tsx`) e Excel via `xlsx` (import dinâmico).
+
+Nenhuma mudança de schema é necessária.
