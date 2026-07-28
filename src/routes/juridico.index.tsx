@@ -7,6 +7,8 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, Upload, FileIcon, Download, FileText } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { CopiarLinkButton } from "@/components/CopiarLinkButton";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -130,11 +132,15 @@ function QuadroContratos() {
         title="Contratos"
         description="Arraste entre as colunas: Entrada → Criação → Validação → Assinatura → Concluído"
         actions={
-          <Button onClick={() => { setDefaultStatus("entrada"); setNovoOpen(true); }}>
-            <Plus className="h-4 w-4 mr-1" /> Novo contrato
-          </Button>
+          <div className="flex items-center gap-2">
+            <CopiarLinkButton path="/solicitar-contrato" label="Copiar link do formulário" />
+            <Button onClick={() => { setDefaultStatus("entrada"); setNovoOpen(true); }}>
+              <Plus className="h-4 w-4 mr-1" /> Novo contrato
+            </Button>
+          </div>
         }
       />
+
 
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <div className="flex gap-3 overflow-auto pb-4 max-h-[calc(100vh-180px)] items-start">
