@@ -7,8 +7,12 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { FormField, FormSection } from "@/components/FormSection";
-import { Download, FileText, Printer } from "lucide-react";
+import { Check, ChevronsUpDown, Download, FileText, Printer, X } from "lucide-react";
 import { isAjusteMovimentacao } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 
