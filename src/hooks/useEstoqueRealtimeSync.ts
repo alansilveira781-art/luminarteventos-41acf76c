@@ -88,6 +88,9 @@ export function useEstoqueRealtimeSync() {
       .on("postgres_changes", { event: "*", schema: "public", table: "movimentacao_itens" }, onMovimentacoes)
       .on("postgres_changes", { event: "*", schema: "public", table: "compras" }, onCompras)
       .on("postgres_changes", { event: "*", schema: "public", table: "compra_itens" }, onCompras)
+      .on("postgres_changes", { event: "*", schema: "public", table: "demandas" }, onDemandas)
+      .on("postgres_changes", { event: "*", schema: "public", table: "demanda_itens" }, onDemandas)
+      .on("postgres_changes", { event: "*", schema: "public", table: "demanda_anexos" }, onDemandas)
       .on("postgres_changes", { event: "*", schema: "public", table: "pat_itens" }, onPatItens)
       .on("postgres_changes", { event: "*", schema: "public", table: "pat_movimentacoes" }, onPatMovs)
       .subscribe();
