@@ -292,6 +292,7 @@ function RelatoriosPage() {
             <p className="text-xs text-muted-foreground">
               {meta.needsPeriod ? `${format(new Date(dataIni), "dd/MM/yyyy")} → ${format(new Date(dataFim), "dd/MM/yyyy")} · ` : ""}
               {body.length} registro{body.length !== 1 ? "s" : ""}
+              {itemIds.length > 0 ? ` · ${itemIds.length} item${itemIds.length !== 1 ? "ns" : ""} selecionado${itemIds.length !== 1 ? "s" : ""}` : ""}
             </p>
           </div>
         </div>
