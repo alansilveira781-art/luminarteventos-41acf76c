@@ -1200,7 +1200,7 @@ export type Database = {
       }
       comercial_vendas_sync: {
         Row: {
-          created_by: string | null
+          created_by: string
           error: string | null
           finished_at: string | null
           id: string
@@ -1212,7 +1212,7 @@ export type Database = {
           status: string
         }
         Insert: {
-          created_by?: string | null
+          created_by?: string
           error?: string | null
           finished_at?: string | null
           id?: string
@@ -1224,7 +1224,7 @@ export type Database = {
           status?: string
         }
         Update: {
-          created_by?: string | null
+          created_by?: string
           error?: string | null
           finished_at?: string | null
           id?: string
