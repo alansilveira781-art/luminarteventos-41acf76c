@@ -189,21 +189,8 @@ function useNavItems(pathname: string) {
   });
   const isExpectadorEventos = !!perfil?.is_expectador_eventos;
 
-  // Usuários liberados para o formulário de solicitação de contratos.
-  const { data: juridicoSolic } = useQuery({
-    enabled: !!user && !(isAdmin || hasModule("juridico")),
-    queryKey: ["sidebar-juridico-solicitante", user?.id],
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("juridico_solicitantes")
-        .select("ativo")
-        .eq("user_id", user!.id)
-        .maybeSingle();
-      return data as { ativo: boolean } | null;
-    },
-    staleTime: 60_000,
-  });
-  const podeSolicitarContrato = !!juridicoSolic?.ativo;
+
+
 
   // Permissões do Dashboard Comercial: esconde o item quando o usuário não
   // tem acesso a nenhuma das 4 abas.
