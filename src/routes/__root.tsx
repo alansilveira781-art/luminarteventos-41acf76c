@@ -119,7 +119,13 @@ function AppShell() {
   // Public routes (não exigem login)
   if (pathname === "/auth" || pathname === "/solicitar" || pathname === "/calendario-publico") return <Outlet />;
 
-  if (!session) return <Navigate to="/auth" />;
+  if (!session) {
+    const dest = typeof window !== "undefined"
+      ? window.location.pathname + window.location.search
+      : pathname;
+    const safe = dest.startsWith("/") && !dest.startsWith("//") && dest !== "/" ? dest : undefined;
+    return <Navigate to="/auth" search={safe ? { redirect: safe } : {}} />;
+  }
 
   return (
     <div className="flex h-dvh w-full overflow-hidden bg-background text-foreground">
