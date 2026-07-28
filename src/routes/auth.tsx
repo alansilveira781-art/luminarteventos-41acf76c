@@ -10,9 +10,8 @@ import { toast } from "sonner";
 import logo from "@/assets/luminart-logo.png";
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    redirect: typeof search.redirect === "string" ? search.redirect : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): { redirect?: string } =>
+    typeof search.redirect === "string" ? { redirect: search.redirect } : {},
   component: AuthPage,
 });
 
@@ -119,7 +118,7 @@ function SignupForm() {
   );
 }
 
-function GoogleButton() {
+function GoogleButton({ dest }: { dest: string | null }) {
   return (
     <Button
       type="button"
@@ -128,7 +127,7 @@ function GoogleButton() {
       onClick={async () => {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: "google",
-          options: { redirectTo: window.location.origin },
+          options: { redirectTo: window.location.origin + (dest ?? "") },
         });
         if (error) toast.error(error.message);
       }}
