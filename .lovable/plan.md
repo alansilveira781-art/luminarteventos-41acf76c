@@ -1,37 +1,29 @@
-## Objetivo
+## Diagnóstico (verificado no banco)
 
-Criar aba **Relatórios** no módulo Contábil com a seção **Distribuição de Impostos**, que rateia os impostos apurados (de uma apuração já salva) proporcionalmente aos valores recebidos por evento no mesmo período.
+**1. Anexos invisíveis para a equipe de Compras**
 
-## Como vai funcionar
+A regra de leitura de `compra_anexos` (e de `compra_comentarios`) hoje só libera para: administrador geral, administrador do módulo compras/estoque, ou quem criou / é responsável / é solicitante daquela compra. Hoje o módulo Compras tem 4 usuários, sendo apenas 1 administrador de módulo — ou seja, os outros 3 não enxergam anexos de cards que não sejam deles. As permissões do arquivo em si (storage) já liberam para qualquer membro de compras/estoque; o bloqueio está na tabela.
 
-1. Usuário abre **Contábil › Relatórios**.
-2. Seleciona uma **Apuração** salva (empresa + mês/ano) → carrega os impostos apurados dela.
-3. Seleciona qual **Imposto** quer visualizar (COFINS, PIS, ISS, IRPJ, CSLL…) ou "Todos".
-4. Sistema lista os **recebimentos** do mesmo período/empresa agrupados por evento, e para cada evento mostra:
-   - Valor recebido
-   - % do total recebido
-   - Valor do imposto rateado proporcionalmente
-5. Totalizadores no rodapé (soma dos recebimentos, soma do imposto rateado — deve bater com o apurado).
-6. Botão **Exportar** (PDF/Excel), mesmo padrão de Apurações.
+**2. Demora do Estoque › A Receber**
 
-## Fórmula do rateio
+- As despesas (`demandas`) não estão publicadas em tempo real e o sincronizador de tempo real do estoque não escuta essa tabela — só compras, itens e movimentações. Resultado: um card que vira "A Receber" no módulo Despesas só aparece no Estoque quando o usuário recarrega ou volta o foco na aba.
+- As consultas `compras-receber` e `demandas-receber` da tela não têm atualização periódica nem revalidação ao focar configurada explicitamente.
 
-Para cada evento:
-```
-imposto_evento = imposto_total_apurado × (valor_recebido_evento / soma_valores_recebidos_periodo)
-```
-Ajuste de resíduo de centavos aplicado na maior fatia para garantir soma exata.
+## O que será feito
 
-## Arquivos a criar/alterar
+### Banco de dados (migração)
+- Ajustar a leitura de `compra_anexos` e `compra_comentarios`: liberar para qualquer usuário com acesso ao módulo compras ou estoque (mantendo escrita/exclusão restrita ao dono, responsável e administradores, como está hoje).
+- Publicar `demandas`, `demanda_itens` e `demanda_anexos` no tempo real, para o Estoque receber as mudanças na hora.
 
-- **Criar** `src/routes/contabil.relatorios.tsx` — nova rota com a seção Distribuição de Impostos (estrutura pensada para receber outros relatórios futuros).
-- **Editar** `src/components/AppSidebar.tsx` — adicionar item "Relatórios" no grupo Contábil.
+Sem afetar as regras já endurecidas anteriormente para dados sensíveis (comissões, vendas, jurídico).
+
+### Frontend
+- `src/hooks/useEstoqueRealtimeSync.ts`: passar a escutar `demandas` e `demanda_itens`, invalidando `demandas-receber`, `demanda-a-receber-info`, `compras-receber` e afins.
+- `src/routes/estoque.a-receber.tsx`: nas consultas `compras-receber` e `demandas-receber`, ativar revalidação ao voltar o foco da janela e uma atualização periódica leve (rede de segurança caso o tempo real caia).
 
 ## Detalhes técnicos
+- Migração: `DROP POLICY` + `CREATE POLICY` de SELECT em `public.compra_anexos` e `public.compra_comentarios` usando `has_module_access(auth.uid(),'compras') OR has_module_access(auth.uid(),'estoque') OR is_admin(...)`; `ALTER PUBLICATION supabase_realtime ADD TABLE ...` para as três tabelas de demandas.
+- `refetchOnWindowFocus: true` + `refetchInterval` (~60s) nas duas queries da aba A Receber.
 
-- Fonte dos impostos apurados: recalcular via `calcularImpostosPresumido` (mesma função da tela de Apurações) usando `contabil_configuracao_aliquotas` + faturamento do período — mantém consistência com a apuração exibida.
-- Fonte dos recebimentos: `contabil_recebimentos` filtrando por `empresa` e `data_recebimento` dentro do mês da apuração; agrupamento por `nome_evento` (recebimentos sem evento entram como "Sem evento vinculado").
-- Seletor de apuração usa os mesmos filtros de empresa/mês/ano já usados em Apurações.
-- Exportação PDF via `jspdf`/`jspdf-autotable` (import dinâmico, mesmo padrão de `financeiro-op.relatorios.tsx`) e Excel via `xlsx` (import dinâmico).
-
-Nenhuma mudança de schema é necessária.
+## Fora do escopo
+Nenhuma alteração em regras de escrita, nem revisão de outros módulos — se quiser, faço depois uma varredura equivalente em Despesas, Patrimônio e Jurídico.
