@@ -89,7 +89,10 @@ function AReceberPage() {
       if (error) throw error;
       return data as CompraRow[];
     },
+    refetchOnWindowFocus: true,
+    refetchInterval: 60_000,
   });
+
 
   const { data: demandas = [] } = useQuery({
     queryKey: ["demandas-receber"],
@@ -121,7 +124,10 @@ function AReceberPage() {
       }
       return rows.map((r) => ({ ...r, total: totals[r.id] || 0 })) as DemandaRow[];
     },
+    refetchOnWindowFocus: true,
+    refetchInterval: 60_000,
   });
+
 
   return (
     <>

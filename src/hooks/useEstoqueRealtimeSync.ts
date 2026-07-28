@@ -53,7 +53,16 @@ export function useEstoqueRealtimeSync() {
       qc.invalidateQueries({ queryKey: ["compras-receber"] });
       qc.invalidateQueries({ queryKey: ["compra-receber-info"] });
       qc.invalidateQueries({ queryKey: ["compra-itens"] });
+      qc.invalidateQueries({ queryKey: ["compra-anexos"] });
     };
+    const onDemandas = () => {
+      qc.invalidateQueries({ queryKey: ["demandas"] });
+      qc.invalidateQueries({ queryKey: ["demandas-receber"] });
+      qc.invalidateQueries({ queryKey: ["demanda-a-receber-info"] });
+      qc.invalidateQueries({ queryKey: ["demanda-itens"] });
+      qc.invalidateQueries({ queryKey: ["demanda-anexos"] });
+    };
+
     const onPatItens = () => {
       qc.invalidateQueries({ queryKey: ["pat_itens_dash"] });
       qc.invalidateQueries({ queryKey: ["pat_itens"] });
