@@ -3287,6 +3287,30 @@ export type Database = {
         }
         Relationships: []
       }
+      juridico_solicitantes: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          created_by: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       modulos: {
         Row: {
           ativo: boolean
@@ -4604,6 +4628,7 @@ export type Database = {
       next_pat_requisicao_numero: { Args: never; Returns: number }
       next_proposta_numero: { Args: never; Returns: number }
       next_requisicao_numero: { Args: never; Returns: number }
+      pode_solicitar_contrato: { Args: { _user_id: string }; Returns: boolean }
       primeira_data_rotina: {
         Args: {
           p_data_inicio: string
