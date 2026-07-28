@@ -220,21 +220,31 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
           throw error;
         }
       } else {
-        const { data: codigo, error: codErr } = await sb.rpc("proximo_codigo_evento", { _data: f.data_evento });
-        if (codErr) throw codErr;
-        const { error } = await sb.from("eventos").insert({
-          ...payload,
-          codigo,
-          origem: "manual",
-          created_by: user?.id ?? null,
-        });
-        if (error) {
-          if ((error as any).code === "23505") {
+        let ultimoErro: any = null;
+        for (let tentativa = 0; tentativa < 3; tentativa++) {
+          const { data: codigo, error: codErr } = await sb.rpc("proximo_codigo_evento", { _data: f.data_evento });
+          if (codErr) throw codErr;
+          const { error } = await sb.from("eventos").insert({
+            ...payload,
+            codigo,
+            origem: "manual",
+            created_by: user?.id ?? null,
+          });
+          if (!error) return;
+          ultimoErro = error;
+          const msg = String((error as any).message ?? "");
+          const codigoDuplicado = (error as any).code === "23505" && /eventos_codigo_key/.test(msg);
+          if (codigoDuplicado) continue; // colisão de código: gera outro e tenta de novo
+          if ((error as any).code === "23505" && /ux_eventos_codigo/.test(msg)) {
             throw new Error("Já existe um evento com este nome e local nesta data final.");
           }
-          throw error;
+          throw new Error(msg || "Erro ao salvar evento");
         }
+        throw new Error(
+          `Não foi possível gerar um código único para o evento. ${String(ultimoErro?.message ?? "")}`.trim(),
+        );
       }
+
     },
     onSuccess: () => { toast.success("Evento salvo!"); onSaved(); onClose(); },
     onError: (e: any) => toast.error(e.message ?? "Erro ao salvar"),
