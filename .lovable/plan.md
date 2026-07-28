@@ -1,26 +1,21 @@
-## Problema
+## Objetivo
 
-Quem recebe o link `/juridico/solicitar` sem estar logado é redirecionado para o login, mas o endereço original é perdido: em `src/routes/__root.tsx` o app faz `<Navigate to="/auth" />` sem guardar o destino, e em `src/routes/auth.tsx` o login sempre navega para `/` (a tela inicial "Bem-vindo / selecione um módulo"). Por isso a pessoa cai na tela inicial em vez do formulário.
+Transformar o formulário de solicitação de contratos em uma página **pública**, acessível por link, sem login e sem o layout interno (sidebar/topo) — exatamente como funciona o `/solicitar` de compras hoje.
 
-## O que será feito
+## Como fica
 
-1. **Guardar o destino ao mandar para o login** (`src/routes/__root.tsx`)
-   - Ao detectar que não há sessão, redirecionar para `/auth` levando o caminho atual (rota + query) em um parâmetro `redirect`.
-
-2. **Voltar ao destino depois do login** (`src/routes/auth.tsx`)
-   - Ler o parâmetro `redirect` (validado como caminho interno, começando com `/`, para evitar redirecionamento para sites externos).
-   - Após login por e-mail/senha, ir para esse caminho; sem parâmetro, continua indo para `/`.
-   - Se o usuário já estiver logado ao abrir `/auth`, também respeitar o `redirect`.
-   - No login com Google, usar `redirectTo` na mesma origem preservando o `redirect`, para que a volta do provedor caia no formulário.
-
-3. **Mensagem de contexto na tela de login**
-   - Quando houver `redirect` apontando para `/juridico/solicitar`, exibir uma linha discreta do tipo "Entre para acessar o formulário de solicitação de contrato", para a pessoa entender por que o login apareceu.
-
-4. **Sem acesso liberado**
-   - Se a pessoa logar mas não estiver na lista de liberados (Jurídico › Configurações), continuará sendo mandada para a tela inicial. Posso, se quiser, trocar isso por uma mensagem clara "Você não tem permissão para preencher este formulário — peça liberação ao administrador" (digo já na implementação se preferir incluir).
+- Novo endereço público: **`/solicitar-contrato`**
+- Qualquer pessoa com o link preenche e envia; a solicitação cai na coluna **Entrada** do quadro do Jurídico, com os anexos.
+- Mesmos campos já definidos: Solicitação (tipo, empresa, objeto, valor, data), Dados da Empresa, Responsável Legal, anexos obrigatórios (Proposta e Cartão CNPJ) e observações.
+- Tela de sucesso mostrando o número gerado (ex.: CONTRATO-42).
+- Proteção contra abuso: limite de 5 envios por minuto por IP, limite de 10 MB por arquivo, validação de todos os campos no servidor.
+- A aba **Jurídico › Configurações** (lista de usuários liberados) deixa de existir, junto com a rota interna `/juridico/solicitar`. O link é copiável a partir de um card na tela de Contratos.
 
 ## Detalhes técnicos
 
-- `/auth` passa a declarar `validateSearch` com `redirect?: string`.
-- Sanitização: aceitar apenas valores que começam com `/` e não com `//`.
-- Nenhuma mudança de banco ou RLS.
+1. **Nova página** `src/routes/solicitar-contrato.tsx` — reaproveita o formulário atual de `juridico.solicitar.tsx`, sem `useAuth`/`useJuridicoSolicitante`, com `head()` próprio (título/descrição). Envia `multipart/form-data` (payload JSON + arquivos) via `fetch`.
+2. **`src/routes/__root.tsx`** — incluir `/solicitar-contrato` na lista de rotas que renderizam só o `<Outlet />` (sem shell autenticado).
+3. **Novo endpoint** `src/routes/api/public/solicitar-contrato.ts` — espelha `api/public/solicitar.ts`: CORS + `OPTIONS`, rate limit por IP, validação Zod (nome/documento/e-mail/telefone obrigatórios nas duas seções), insert em `juridico_contratos` com `status: 'entrada'`, `created_by: null`, e upload dos anexos no bucket `juridico-anexos` + registros em `juridico_anexos` com `tipo` `proposta`/`cartao_cnpj`, usando `supabaseAdmin` dentro do handler.
+4. **Limpeza**: remover `src/routes/juridico.solicitar.tsx`, `src/routes/juridico.configuracoes.tsx`, `src/hooks/useJuridicoSolicitante.ts`, referências em `src/routes/juridico.tsx` e no `AppSidebar`.
+5. **Banco**: migração para remover a tabela `juridico_solicitantes` e a função `pode_solicitar_contrato`, e ajustar as políticas de `juridico_contratos`/`juridico_anexos` que dependiam delas (escrita pública passa a ocorrer apenas pelo endpoint com service role — nada de política aberta para `anon`).
+6. **Link**: card com botão "Copiar link" em Jurídico › Contratos apontando para `/solicitar-contrato`.
