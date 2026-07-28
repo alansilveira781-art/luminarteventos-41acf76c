@@ -3135,6 +3135,10 @@ export type Database = {
           ordem: number
           proposta_numero: number | null
           proposta_ref: string | null
+          resp_legal_documento: string | null
+          resp_legal_email: string | null
+          resp_legal_nome: string | null
+          resp_legal_telefone: string | null
           responsavel: string | null
           status: string
           tipo: string
@@ -3162,6 +3166,10 @@ export type Database = {
           ordem?: number
           proposta_numero?: number | null
           proposta_ref?: string | null
+          resp_legal_documento?: string | null
+          resp_legal_email?: string | null
+          resp_legal_nome?: string | null
+          resp_legal_telefone?: string | null
           responsavel?: string | null
           status?: string
           tipo?: string
@@ -3189,6 +3197,10 @@ export type Database = {
           ordem?: number
           proposta_numero?: number | null
           proposta_ref?: string | null
+          resp_legal_documento?: string | null
+          resp_legal_email?: string | null
+          resp_legal_nome?: string | null
+          resp_legal_telefone?: string | null
           responsavel?: string | null
           status?: string
           tipo?: string
