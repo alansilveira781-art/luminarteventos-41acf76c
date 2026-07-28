@@ -1,31 +1,35 @@
 ## Objetivo
-Permitir selecionar vários itens no filtro "Item" da aba Estoque › Relatórios, para gerar relatórios (incluindo Posição de estoque) apenas com os itens escolhidos.
 
-## Alterações em `src/routes/relatorios.tsx`
+Reformular o formulário **Jurídico › Solicitar contrato** (`/juridico/solicitar`) com duas seções de dados obrigatórias, dois anexos obrigatórios, e transformá-lo em página de acesso apenas por link (fora da sidebar).
 
-1. **Estado do filtro**
-   - Trocar `itemId: string` por `itemIds: string[]` (vazio = todos os itens).
-   - Incluir `itemIds` na `queryKey` do relatório (ordenado/serializado para estabilidade do cache).
+## 1. Duas seções obrigatórias
 
-2. **Controle de seleção múltipla**
-   - Substituir o `Select` atual por um `Popover` + `Command` (padrão já usado em outros comboboxes do projeto) com:
-     - campo de busca por nome/código (mantendo o comportamento atual);
-     - lista com checkbox por item;
-     - opção "Todos os itens" para limpar a seleção;
-     - botão "Limpar seleção".
-   - No gatilho, mostrar: "Todos os itens", o nome do item quando houver apenas 1, ou "N itens selecionados".
-   - Abaixo do campo, exibir os itens escolhidos como badges removíveis (limitando a exibição a ~6 com "+N").
+**Dados da Empresa** e **Responsável Legal**, cada uma com os mesmos 4 campos, todos obrigatórios:
+- Nome (razão social / nome completo)
+- CNPJ / CPF
+- E-mail
+- Telefone
 
-3. **Consulta (`loadReport`)**
-   - Trocar o parâmetro `itemId` por `itemIds: string[]`.
-   - Onde hoje há `.eq("item_id", filtroItem)` → usar `.in("item_id", itemIds)` quando houver seleção.
-   - Onde hoje há `.eq("id", filtroItem)` (relatórios `estoque` e `estoque_negativo`) → usar `.in("id", itemIds)`.
-   - Sem seleção, comportamento atual (todos) é mantido.
+Validação antes do envio: nenhum campo em branco, e-mail em formato válido, documento com quantidade mínima de dígitos. Erros aparecem sob o campo, e o botão só envia quando tudo estiver preenchido.
 
-4. **Exportações**
-   - CSV e PDF continuam usando os dados já filtrados; sem mudanças de lógica.
-   - No cabeçalho do PDF e no subtítulo do card, acrescentar "N itens selecionados" quando houver filtro ativo, para o relatório impresso ficar autoexplicativo.
+Os campos atuais continuam: Tipo (Contrato/Aditivo), Empresa do grupo, Objeto/título, Valor, Data de fechamento e Observações.
 
-## Observações técnicas
-- Nenhuma mudança de banco de dados ou de regras de acesso.
-- Se a seleção ficar muito grande, o `.in()` continua funcionando; o limite de 5000 registros por consulta permanece o mesmo de hoje.
+## 2. Anexos obrigatórios
+
+Dois campos de arquivo, **ambos obrigatórios**:
+- **Proposta** (PDF/Word)
+- **Cartão CNPJ** (PDF/imagem)
+
+Ao enviar, os arquivos vão para o armazenamento de anexos do Jurídico e ficam vinculados ao card criado, identificados como "proposta" e "cartão CNPJ" — aparecendo normalmente na aba de anexos do contrato no quadro.
+
+## 3. Acesso por link
+
+O item "Solicitar contrato" sai da barra lateral. Quem estiver liberado em Jurídico › Configurações continua acessando normalmente pelo endereço direto, que você pode compartilhar. Quem não estiver liberado (ou não estiver logado) continua vendo a mensagem de sem permissão. Na tela de Configurações do Jurídico entra um botão "Copiar link do formulário" para facilitar o compartilhamento.
+
+## Detalhes técnicos
+
+- **Banco**: migração adicionando a `juridico_contratos` as colunas `resp_legal_nome`, `resp_legal_documento`, `resp_legal_email`, `resp_legal_telefone` (texto, opcionais no banco — a obrigatoriedade fica no formulário para não quebrar registros existentes).
+- **`src/routes/juridico.solicitar.tsx`**: reestruturação em dois blocos `Card` com título de seção; estado de erros por campo; upload sequencial para o bucket `juridico-anexos` (caminho `{contrato_id}/{timestamp}_{nome}`) e inserção em `juridico_anexos` com `tipo` = `proposta` / `cartao_cnpj`. Se o upload falhar, o card criado é informado com aviso.
+- **`src/components/AppSidebar.tsx`**: remoção do item `juridicoSolicitante` e da query `sidebar-juridico-solicitante` que só o alimentava.
+- **`src/routes/juridico.configuracoes.tsx`**: adicionar `CopiarLinkButton` com o caminho `/juridico/solicitar`.
+- **`src/routes/juridico.index.tsx`**: exibir os dados do responsável legal no detalhe do card (somente leitura).

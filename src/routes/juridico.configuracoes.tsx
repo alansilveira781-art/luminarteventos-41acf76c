@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
+import { CopiarLinkButton } from "@/components/CopiarLinkButton";
+
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -104,10 +106,19 @@ function JuridicoConfiguracoes() {
     <>
       <PageHeader
         title="Configurações"
-        description="Defina quais usuários podem preencher o formulário de solicitação de contratos (Jurídico › Solicitar contrato)."
+        description="Defina quais usuários podem preencher o formulário de solicitação de contratos. O formulário não aparece no menu — compartilhe o link com quem foi liberado."
       />
 
+      <Card className="p-4 mb-4 max-w-3xl flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="text-sm font-medium">Link do formulário de solicitação</div>
+          <p className="text-xs text-muted-foreground">/juridico/solicitar — visível apenas para usuários liberados abaixo.</p>
+        </div>
+        <CopiarLinkButton path="/juridico/solicitar" label="Copiar link" />
+      </Card>
+
       <Card className="p-5 space-y-4 max-w-3xl">
+
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           <div className="flex-1 space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Liberar usuário</label>

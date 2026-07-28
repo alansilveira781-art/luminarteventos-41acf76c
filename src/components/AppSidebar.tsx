@@ -106,7 +106,7 @@ const allItems: NavItem[] = [
   { title: "Configuração", url: "/contabil/configuracao", icon: Settings, group: "Contábil", module: "contabil" },
   { title: "Contratos", url: "/juridico", icon: Scale, group: "Jurídico", module: "juridico" },
   { title: "Modelos", url: "/juridico/modelos", icon: FileSignature, group: "Jurídico", module: "juridico" },
-  { title: "Solicitar contrato", url: "/juridico/solicitar", icon: FileSignature, group: "Jurídico", juridicoSolicitante: true },
+  // "Solicitar contrato" (/juridico/solicitar) é acessível apenas por link direto.
   { title: "Configurações", url: "/juridico/configuracoes", icon: Settings, group: "Jurídico", module: "juridico", moduleAdminOnly: "juridico" },
   { title: "Dashboard", url: "/patrimonio/dashboard", icon: BarChart3, group: "Patrimônio", module: "patrimonio" },
   { title: "Inventário", url: "/patrimonio", icon: Boxes, group: "Patrimônio", module: "patrimonio" },
@@ -189,21 +189,8 @@ function useNavItems(pathname: string) {
   });
   const isExpectadorEventos = !!perfil?.is_expectador_eventos;
 
-  // Usuários liberados para o formulário de solicitação de contratos.
-  const { data: juridicoSolic } = useQuery({
-    enabled: !!user && !(isAdmin || hasModule("juridico")),
-    queryKey: ["sidebar-juridico-solicitante", user?.id],
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("juridico_solicitantes")
-        .select("ativo")
-        .eq("user_id", user!.id)
-        .maybeSingle();
-      return data as { ativo: boolean } | null;
-    },
-    staleTime: 60_000,
-  });
-  const podeSolicitarContrato = !!juridicoSolic?.ativo;
+
+
 
   // Permissões do Dashboard Comercial: esconde o item quando o usuário não
   // tem acesso a nenhuma das 4 abas.
@@ -230,10 +217,8 @@ function useNavItems(pathname: string) {
 
   return allItems.filter((i) => {
     if (i.url === "/") return true;
-    if (i.juridicoSolicitante) {
-      if (isAdmin || hasModule("juridico")) return ctx === "juridico";
-      return podeSolicitarContrato;
-    }
+    if (i.juridicoSolicitante) return false; // acesso apenas por link direto
+
     if (i.expectadorEventos) {
       return isAdmin || hasModule("eventos") || isExpectadorEventos;
     }

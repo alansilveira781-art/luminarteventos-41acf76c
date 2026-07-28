@@ -45,6 +45,11 @@ type Contrato = {
   cliente_documento: string | null;
   cliente_email: string | null;
   cliente_telefone: string | null;
+  resp_legal_nome: string | null;
+  resp_legal_documento: string | null;
+  resp_legal_email: string | null;
+  resp_legal_telefone: string | null;
+
   responsavel: string | null;
   valor: number | null;
   status: Status;
@@ -572,6 +577,18 @@ function ContratoDetalhesDialog({
                 <Label>Telefone</Label>
                 <Input value={form.cliente_telefone ?? ""} onChange={(e) => setForm({ ...form, cliente_telefone: e.target.value })} />
               </div>
+              {(contrato.resp_legal_nome || contrato.resp_legal_documento || contrato.resp_legal_email || contrato.resp_legal_telefone) && (
+                <div className="col-span-2 rounded-md border p-3 space-y-1">
+                  <div className="text-xs font-semibold text-muted-foreground">Responsável Legal</div>
+                  <div className="grid grid-cols-2 gap-1 text-sm">
+                    <div>Nome: {contrato.resp_legal_nome || "—"}</div>
+                    <div>CNPJ/CPF: {contrato.resp_legal_documento || "—"}</div>
+                    <div>E-mail: {contrato.resp_legal_email || "—"}</div>
+                    <div>Telefone: {contrato.resp_legal_telefone || "—"}</div>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <Label>Responsável</Label>
                 <Input value={form.responsavel ?? ""} onChange={(e) => setForm({ ...form, responsavel: e.target.value })} />
