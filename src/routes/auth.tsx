@@ -29,11 +29,8 @@ function AuthPage() {
   if (loading) return null;
   if (session) return <Navigate to={dest ?? "/"} />;
 
-  const contexto = dest?.startsWith("/juridico/solicitar")
-    ? "Entre para acessar o formulário de solicitação de contrato."
-    : dest
-      ? "Entre para continuar."
-      : null;
+  const contexto = dest ? "Entre para continuar." : null;
+
 
   return (
     <div className="min-h-dvh flex items-center justify-center bg-background px-4">

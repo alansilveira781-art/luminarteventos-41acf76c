@@ -106,8 +106,8 @@ const allItems: NavItem[] = [
   { title: "Configuração", url: "/contabil/configuracao", icon: Settings, group: "Contábil", module: "contabil" },
   { title: "Contratos", url: "/juridico", icon: Scale, group: "Jurídico", module: "juridico" },
   { title: "Modelos", url: "/juridico/modelos", icon: FileSignature, group: "Jurídico", module: "juridico" },
-  // "Solicitar contrato" (/juridico/solicitar) é acessível apenas por link direto.
-  { title: "Configurações", url: "/juridico/configuracoes", icon: Settings, group: "Jurídico", module: "juridico", moduleAdminOnly: "juridico" },
+  // "Solicitar contrato" é um formulário público (/solicitar-contrato), fora do painel.
+
   { title: "Dashboard", url: "/patrimonio/dashboard", icon: BarChart3, group: "Patrimônio", module: "patrimonio" },
   { title: "Inventário", url: "/patrimonio", icon: Boxes, group: "Patrimônio", module: "patrimonio" },
   { title: "Entradas", url: "/patrimonio/entradas", icon: ArrowDownToLine, group: "Patrimônio", module: "patrimonio" },
@@ -217,7 +217,7 @@ function useNavItems(pathname: string) {
 
   return allItems.filter((i) => {
     if (i.url === "/") return true;
-    if (i.juridicoSolicitante) return false; // acesso apenas por link direto
+
 
     if (i.expectadorEventos) {
       return isAdmin || hasModule("eventos") || isExpectadorEventos;

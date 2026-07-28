@@ -1,10 +1,5 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-import { useJuridicoSolicitante } from "@/hooks/useJuridicoSolicitante";
-import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,23 +7,38 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EMPRESAS } from "@/lib/empresas";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/juridico/solicitar")({ component: SolicitarContrato });
-
-const sb = supabase as any;
+export const Route = createFileRoute("/solicitar-contrato")({
+  head: () => ({
+    meta: [
+      { title: "Solicitar contrato — Grupo Luminart" },
+      {
+        name: "description",
+        content: "Envie uma solicitação de contrato ou aditivo ao setor Jurídico do Grupo Luminart.",
+      },
+      { property: "og:title", content: "Solicitar contrato — Grupo Luminart" },
+      {
+        property: "og:description",
+        content: "Formulário de solicitação de contratos e aditivos do Grupo Luminart.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+      { name: "viewport", content: "width=device-width, initial-scale=1" },
+    ],
+  }),
+  component: SolicitarContratoPublico,
+});
 
 const vazio = {
   tipo: "contrato" as "contrato" | "aditivo",
   titulo: "",
   empresa: "" as string,
-  // Dados da Empresa
   cliente_nome: "",
   cliente_documento: "",
   cliente_email: "",
   cliente_telefone: "",
-  // Responsável Legal
   resp_legal_nome: "",
   resp_legal_documento: "",
   resp_legal_email: "",
@@ -77,123 +87,103 @@ function Erro({ msg }: { msg?: string }) {
   return <p className="text-[11px] text-destructive">{msg}</p>;
 }
 
-function SolicitarContrato() {
-  const { user, loading: authLoading } = useAuth();
-  const { podeSolicitar, loading } = useJuridicoSolicitante();
+function SolicitarContratoPublico() {
   const [form, setForm] = useState({ ...vazio });
   const [proposta, setProposta] = useState<File | null>(null);
   const [cartao, setCartao] = useState<File | null>(null);
   const [erros, setErros] = useState<Record<string, string>>({});
-  const [enviado, setEnviado] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [enviado, setEnviado] = useState<{ tipo: string; numero: number | null } | null>(null);
 
   const set = (k: Campo, v: string) => {
     setForm((f) => ({ ...f, [k]: v }));
     setErros((e) => (e[k] ? { ...e, [k]: "" } : e));
   };
 
-  async function anexar(contratoId: string, file: File, tipo: string) {
-    const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const path = `${contratoId}/${Date.now()}_${safe}`;
-    const { error: upErr } = await sb.storage
-      .from("juridico-anexos")
-      .upload(path, file, { contentType: file.type || undefined });
-    if (upErr) throw upErr;
-    const { error } = await sb.from("juridico_anexos").insert({
-      contrato_id: contratoId,
-      nome: file.name,
-      path,
-      mime_type: file.type || null,
-      tamanho: file.size,
-      tipo,
-      uploaded_by: user?.id ?? null,
-    });
-    if (error) throw error;
-  }
+  async function enviar() {
+    const e = validar(form, proposta, cartao);
+    setErros(e as Record<string, string>);
+    if (Object.values(e).some(Boolean)) {
+      toast.error("Revise os campos destacados");
+      return;
+    }
 
-  const enviar = useMutation({
-    mutationFn: async () => {
-      const e = validar(form, proposta, cartao);
-      setErros(e as Record<string, string>);
-      if (Object.values(e).some(Boolean)) throw new Error("Revise os campos destacados");
+    const valorNum = form.valor ? Number(form.valor.replace(/\./g, "").replace(",", ".")) : null;
+    const payload = {
+      tipo: form.tipo,
+      titulo: form.titulo.trim(),
+      empresa: form.empresa || "",
+      cliente_nome: form.cliente_nome.trim(),
+      cliente_documento: form.cliente_documento.trim(),
+      cliente_email: form.cliente_email.trim(),
+      cliente_telefone: form.cliente_telefone.trim(),
+      resp_legal_nome: form.resp_legal_nome.trim(),
+      resp_legal_documento: form.resp_legal_documento.trim(),
+      resp_legal_email: form.resp_legal_email.trim(),
+      resp_legal_telefone: form.resp_legal_telefone.trim(),
+      valor: Number.isFinite(valorNum as number) ? valorNum : null,
+      data_fechamento: form.data_fechamento || "",
+      observacoes: form.observacoes.trim(),
+    };
 
-      const valor = form.valor ? Number(form.valor.replace(/\./g, "").replace(",", ".")) : null;
-      const { data: criado, error } = await sb
-        .from("juridico_contratos")
-        .insert({
-          titulo: form.titulo.trim(),
-          tipo: form.tipo,
-          status: "entrada",
-          empresa: form.empresa || null,
-          cliente_nome: form.cliente_nome.trim(),
-          cliente_documento: form.cliente_documento.trim(),
-          cliente_email: form.cliente_email.trim(),
-          cliente_telefone: form.cliente_telefone.trim(),
-          resp_legal_nome: form.resp_legal_nome.trim(),
-          resp_legal_documento: form.resp_legal_documento.trim(),
-          resp_legal_email: form.resp_legal_email.trim(),
-          resp_legal_telefone: form.resp_legal_telefone.trim(),
-          valor: Number.isFinite(valor as number) ? valor : null,
-          data_fechamento: form.data_fechamento || null,
-          observacoes: form.observacoes.trim() || null,
-          created_by: user?.id ?? null,
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
+    const fd = new FormData();
+    fd.append("payload", JSON.stringify(payload));
+    if (proposta) fd.append("proposta", proposta);
+    if (cartao) fd.append("cartao_cnpj", cartao);
 
-      try {
-        if (proposta) await anexar(criado.id, proposta, "proposta");
-        if (cartao) await anexar(criado.id, cartao, "cartao_cnpj");
-      } catch (err: any) {
-        toast.error(`Solicitação criada, mas falhou ao anexar arquivos: ${err?.message ?? err}`);
+    setEnviando(true);
+    try {
+      const res = await fetch("/api/public/solicitar-contrato", { method: "POST", body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        toast.error(data?.error ?? "Não foi possível enviar a solicitação");
+        return;
       }
-    },
-    onSuccess: () => {
-      setEnviado(true);
+      if (data.anexos_falhados > 0) {
+        toast.warning("Solicitação enviada, mas houve falha ao anexar algum arquivo.");
+      }
+      setEnviado({ tipo: data.tipo, numero: data.numero ?? null });
       setForm({ ...vazio });
       setProposta(null);
       setCartao(null);
       setErros({});
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Erro ao enviar solicitação"),
-  });
-
-  if (authLoading || loading) return null;
-  if (!user) return <Navigate to="/auth" />;
-  if (!podeSolicitar) {
-    return (
-      <div className="p-6">
-        <Card className="p-8 text-center text-sm text-muted-foreground">
-          Você não tem permissão para preencher o formulário de solicitação de contratos.
-          Solicite a liberação ao administrador do módulo Jurídico.
-        </Card>
-      </div>
-    );
+    } catch {
+      toast.error("Falha de conexão. Tente novamente.");
+    } finally {
+      setEnviando(false);
+    }
   }
 
   if (enviado) {
     return (
-      <div className="p-6">
-        <Card className="p-10 text-center space-y-4">
+      <main className="min-h-dvh bg-muted/30 flex items-center justify-center p-6">
+        <Card className="p-10 text-center space-y-4 max-w-md">
           <CheckCircle2 className="h-10 w-10 mx-auto text-emerald-500" />
-          <div className="text-lg font-medium">Solicitação enviada!</div>
+          <h1 className="text-lg font-medium">Solicitação enviada!</h1>
           <p className="text-sm text-muted-foreground">
-            O contrato entrou na coluna "Entrada" do quadro do Jurídico, já com os anexos.
+            Protocolo:{" "}
+            <span className="font-mono font-medium text-foreground">
+              {(enviado.tipo === "aditivo" ? "ADITIVO-" : "CONTRATO-") + (enviado.numero ?? "—")}
+            </span>
+            <br />
+            O setor Jurídico já recebeu os dados e os anexos.
           </p>
-          <Button onClick={() => setEnviado(false)}>Nova solicitação</Button>
+          <Button onClick={() => setEnviado(null)}>Nova solicitação</Button>
         </Card>
-      </div>
+      </main>
     );
   }
 
   return (
-    <>
-      <PageHeader
-        title="Solicitar contrato"
-        description="Preencha os dados abaixo. A solicitação entra automaticamente no quadro do Jurídico, na coluna Entrada."
-      />
+    <main className="min-h-dvh bg-muted/30 py-8 px-4">
+      <div className="max-w-3xl mx-auto space-y-4">
+        <header className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">Solicitar contrato</h1>
+          <p className="text-sm text-muted-foreground">
+            Preencha os dados abaixo. A solicitação vai direto para o setor Jurídico do Grupo Luminart.
+          </p>
+        </header>
 
-      <div className="max-w-3xl space-y-4">
         <Card className="p-5 space-y-4">
           <div className="text-sm font-semibold">Solicitação</div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -242,7 +232,7 @@ function SolicitarContrato() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Nome *</Label>
-              <Input value={form.cliente_nome} onChange={(e) => set("cliente_nome", e.target.value)} placeholder="Razão social" />
+              <Input autoComplete="organization" value={form.cliente_nome} onChange={(e) => set("cliente_nome", e.target.value)} placeholder="Razão social" />
               <Erro msg={erros.cliente_nome} />
             </div>
             <div className="space-y-1.5">
@@ -252,12 +242,12 @@ function SolicitarContrato() {
             </div>
             <div className="space-y-1.5">
               <Label>E-mail *</Label>
-              <Input type="email" value={form.cliente_email} onChange={(e) => set("cliente_email", e.target.value)} />
+              <Input type="email" autoComplete="email" value={form.cliente_email} onChange={(e) => set("cliente_email", e.target.value)} />
               <Erro msg={erros.cliente_email} />
             </div>
             <div className="space-y-1.5">
               <Label>Telefone *</Label>
-              <Input value={form.cliente_telefone} onChange={(e) => set("cliente_telefone", e.target.value)} />
+              <Input autoComplete="tel" value={form.cliente_telefone} onChange={(e) => set("cliente_telefone", e.target.value)} />
               <Erro msg={erros.cliente_telefone} />
             </div>
           </div>
@@ -295,7 +285,7 @@ function SolicitarContrato() {
         <Card className="p-5 space-y-4">
           <div>
             <div className="text-sm font-semibold">Anexos obrigatórios</div>
-            <p className="text-xs text-muted-foreground">Os arquivos ficam anexados ao card do contrato no quadro do Jurídico.</p>
+            <p className="text-xs text-muted-foreground">Máximo de 10 MB por arquivo.</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -339,12 +329,13 @@ function SolicitarContrato() {
           </div>
 
           <div className="flex justify-end">
-            <Button onClick={() => enviar.mutate()} disabled={enviar.isPending}>
-              {enviar.isPending ? "Enviando…" : "Enviar solicitação"}
+            <Button onClick={enviar} disabled={enviando}>
+              {enviando && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {enviando ? "Enviando…" : "Enviar solicitação"}
             </Button>
           </div>
         </Card>
       </div>
-    </>
+    </main>
   );
 }

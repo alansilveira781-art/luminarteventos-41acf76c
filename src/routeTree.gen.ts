@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SolicitarContratoRouteImport } from './routes/solicitar-contrato'
 import { Route as SolicitarRouteImport } from './routes/solicitar'
 import { Route as SolicitantesRouteImport } from './routes/solicitantes'
 import { Route as SaidasRouteImport } from './routes/saidas'
@@ -56,9 +57,7 @@ import { Route as OperacaoSetoresRouteImport } from './routes/operacao.setores'
 import { Route as OperacaoRelatorioRouteImport } from './routes/operacao.relatorio'
 import { Route as OperacaoAprovacoesRouteImport } from './routes/operacao.aprovacoes'
 import { Route as OperacaoAcervoRouteImport } from './routes/operacao.acervo'
-import { Route as JuridicoSolicitarRouteImport } from './routes/juridico.solicitar'
 import { Route as JuridicoModelosRouteImport } from './routes/juridico.modelos'
-import { Route as JuridicoConfiguracoesRouteImport } from './routes/juridico.configuracoes'
 import { Route as FinanceiroRotinasRouteImport } from './routes/financeiro.rotinas'
 import { Route as FinanceiroDashboardRouteImport } from './routes/financeiro.dashboard'
 import { Route as FinanceiroContaAzulRouteImport } from './routes/financeiro.conta-azul'
@@ -101,6 +100,7 @@ import { Route as ComercialDashboardRelatoriosRouteImport } from './routes/comer
 import { Route as ComercialDashboardPropostasRouteImport } from './routes/comercial.dashboard.propostas'
 import { Route as ComercialDashboardPainelRouteImport } from './routes/comercial.dashboard.painel'
 import { Route as ComercialDashboardIndicadoresRouteImport } from './routes/comercial.dashboard.indicadores'
+import { Route as ApiPublicSolicitarContratoRouteImport } from './routes/api/public/solicitar-contrato'
 import { Route as ApiPublicSolicitarRouteImport } from './routes/api/public/solicitar'
 import { Route as ApiPublicSendPushRouteImport } from './routes/api/public/send-push'
 import { Route as ApiPublicOpcoesPagamentoRouteImport } from './routes/api/public/opcoes-pagamento'
@@ -114,6 +114,11 @@ import { Route as ApiPublicContaazulCronRouteImport } from './routes/api/public/
 import { Route as ApiContaazulOauthPrepareRouteImport } from './routes/api/contaazul/oauth.prepare'
 import { Route as ApiContaazulOauthCallbackRouteImport } from './routes/api/contaazul/oauth.callback'
 
+const SolicitarContratoRoute = SolicitarContratoRouteImport.update({
+  id: '/solicitar-contrato',
+  path: '/solicitar-contrato',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SolicitarRoute = SolicitarRouteImport.update({
   id: '/solicitar',
   path: '/solicitar',
@@ -349,19 +354,9 @@ const OperacaoAcervoRoute = OperacaoAcervoRouteImport.update({
   path: '/acervo',
   getParentRoute: () => OperacaoRoute,
 } as any)
-const JuridicoSolicitarRoute = JuridicoSolicitarRouteImport.update({
-  id: '/solicitar',
-  path: '/solicitar',
-  getParentRoute: () => JuridicoRoute,
-} as any)
 const JuridicoModelosRoute = JuridicoModelosRouteImport.update({
   id: '/modelos',
   path: '/modelos',
-  getParentRoute: () => JuridicoRoute,
-} as any)
-const JuridicoConfiguracoesRoute = JuridicoConfiguracoesRouteImport.update({
-  id: '/configuracoes',
-  path: '/configuracoes',
   getParentRoute: () => JuridicoRoute,
 } as any)
 const FinanceiroRotinasRoute = FinanceiroRotinasRouteImport.update({
@@ -581,6 +576,12 @@ const ComercialDashboardIndicadoresRoute =
     path: '/indicadores',
     getParentRoute: () => ComercialDashboardRoute,
   } as any)
+const ApiPublicSolicitarContratoRoute =
+  ApiPublicSolicitarContratoRouteImport.update({
+    id: '/api/public/solicitar-contrato',
+    path: '/api/public/solicitar-contrato',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicSolicitarRoute = ApiPublicSolicitarRouteImport.update({
   id: '/api/public/solicitar',
   path: '/api/public/solicitar',
@@ -672,6 +673,7 @@ export interface FileRoutesByFullPath {
   '/saidas': typeof SaidasRoute
   '/solicitantes': typeof SolicitantesRoute
   '/solicitar': typeof SolicitarRoute
+  '/solicitar-contrato': typeof SolicitarContratoRoute
   '/admin/dados': typeof AdminDadosRoute
   '/admin/empresas': typeof AdminEmpresasRoute
   '/admin/modulos': typeof AdminModulosRoute
@@ -706,9 +708,7 @@ export interface FileRoutesByFullPath {
   '/financeiro/conta-azul': typeof FinanceiroContaAzulRoute
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
-  '/juridico/configuracoes': typeof JuridicoConfiguracoesRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
-  '/juridico/solicitar': typeof JuridicoSolicitarRoute
   '/operacao/acervo': typeof OperacaoAcervoRoute
   '/operacao/aprovacoes': typeof OperacaoAprovacoesRoute
   '/operacao/relatorio': typeof OperacaoRelatorioRoute
@@ -741,6 +741,7 @@ export interface FileRoutesByFullPath {
   '/api/public/opcoes-pagamento': typeof ApiPublicOpcoesPagamentoRoute
   '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
+  '/api/public/solicitar-contrato': typeof ApiPublicSolicitarContratoRoute
   '/comercial/dashboard/indicadores': typeof ComercialDashboardIndicadoresRoute
   '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
   '/comercial/dashboard/propostas': typeof ComercialDashboardPropostasRoute
@@ -767,6 +768,7 @@ export interface FileRoutesByTo {
   '/saidas': typeof SaidasRoute
   '/solicitantes': typeof SolicitantesRoute
   '/solicitar': typeof SolicitarRoute
+  '/solicitar-contrato': typeof SolicitarContratoRoute
   '/admin/dados': typeof AdminDadosRoute
   '/admin/empresas': typeof AdminEmpresasRoute
   '/admin/modulos': typeof AdminModulosRoute
@@ -800,9 +802,7 @@ export interface FileRoutesByTo {
   '/financeiro/conta-azul': typeof FinanceiroContaAzulRoute
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
-  '/juridico/configuracoes': typeof JuridicoConfiguracoesRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
-  '/juridico/solicitar': typeof JuridicoSolicitarRoute
   '/operacao/acervo': typeof OperacaoAcervoRoute
   '/operacao/aprovacoes': typeof OperacaoAprovacoesRoute
   '/operacao/relatorio': typeof OperacaoRelatorioRoute
@@ -835,6 +835,7 @@ export interface FileRoutesByTo {
   '/api/public/opcoes-pagamento': typeof ApiPublicOpcoesPagamentoRoute
   '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
+  '/api/public/solicitar-contrato': typeof ApiPublicSolicitarContratoRoute
   '/comercial/dashboard/indicadores': typeof ComercialDashboardIndicadoresRoute
   '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
   '/comercial/dashboard/propostas': typeof ComercialDashboardPropostasRoute
@@ -873,6 +874,7 @@ export interface FileRoutesById {
   '/saidas': typeof SaidasRoute
   '/solicitantes': typeof SolicitantesRoute
   '/solicitar': typeof SolicitarRoute
+  '/solicitar-contrato': typeof SolicitarContratoRoute
   '/admin/dados': typeof AdminDadosRoute
   '/admin/empresas': typeof AdminEmpresasRoute
   '/admin/modulos': typeof AdminModulosRoute
@@ -907,9 +909,7 @@ export interface FileRoutesById {
   '/financeiro/conta-azul': typeof FinanceiroContaAzulRoute
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
-  '/juridico/configuracoes': typeof JuridicoConfiguracoesRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
-  '/juridico/solicitar': typeof JuridicoSolicitarRoute
   '/operacao/acervo': typeof OperacaoAcervoRoute
   '/operacao/aprovacoes': typeof OperacaoAprovacoesRoute
   '/operacao/relatorio': typeof OperacaoRelatorioRoute
@@ -942,6 +942,7 @@ export interface FileRoutesById {
   '/api/public/opcoes-pagamento': typeof ApiPublicOpcoesPagamentoRoute
   '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
+  '/api/public/solicitar-contrato': typeof ApiPublicSolicitarContratoRoute
   '/comercial/dashboard/indicadores': typeof ComercialDashboardIndicadoresRoute
   '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
   '/comercial/dashboard/propostas': typeof ComercialDashboardPropostasRoute
@@ -981,6 +982,7 @@ export interface FileRouteTypes {
     | '/saidas'
     | '/solicitantes'
     | '/solicitar'
+    | '/solicitar-contrato'
     | '/admin/dados'
     | '/admin/empresas'
     | '/admin/modulos'
@@ -1015,9 +1017,7 @@ export interface FileRouteTypes {
     | '/financeiro/conta-azul'
     | '/financeiro/dashboard'
     | '/financeiro/rotinas'
-    | '/juridico/configuracoes'
     | '/juridico/modelos'
-    | '/juridico/solicitar'
     | '/operacao/acervo'
     | '/operacao/aprovacoes'
     | '/operacao/relatorio'
@@ -1050,6 +1050,7 @@ export interface FileRouteTypes {
     | '/api/public/opcoes-pagamento'
     | '/api/public/send-push'
     | '/api/public/solicitar'
+    | '/api/public/solicitar-contrato'
     | '/comercial/dashboard/indicadores'
     | '/comercial/dashboard/painel'
     | '/comercial/dashboard/propostas'
@@ -1076,6 +1077,7 @@ export interface FileRouteTypes {
     | '/saidas'
     | '/solicitantes'
     | '/solicitar'
+    | '/solicitar-contrato'
     | '/admin/dados'
     | '/admin/empresas'
     | '/admin/modulos'
@@ -1109,9 +1111,7 @@ export interface FileRouteTypes {
     | '/financeiro/conta-azul'
     | '/financeiro/dashboard'
     | '/financeiro/rotinas'
-    | '/juridico/configuracoes'
     | '/juridico/modelos'
-    | '/juridico/solicitar'
     | '/operacao/acervo'
     | '/operacao/aprovacoes'
     | '/operacao/relatorio'
@@ -1144,6 +1144,7 @@ export interface FileRouteTypes {
     | '/api/public/opcoes-pagamento'
     | '/api/public/send-push'
     | '/api/public/solicitar'
+    | '/api/public/solicitar-contrato'
     | '/comercial/dashboard/indicadores'
     | '/comercial/dashboard/painel'
     | '/comercial/dashboard/propostas'
@@ -1181,6 +1182,7 @@ export interface FileRouteTypes {
     | '/saidas'
     | '/solicitantes'
     | '/solicitar'
+    | '/solicitar-contrato'
     | '/admin/dados'
     | '/admin/empresas'
     | '/admin/modulos'
@@ -1215,9 +1217,7 @@ export interface FileRouteTypes {
     | '/financeiro/conta-azul'
     | '/financeiro/dashboard'
     | '/financeiro/rotinas'
-    | '/juridico/configuracoes'
     | '/juridico/modelos'
-    | '/juridico/solicitar'
     | '/operacao/acervo'
     | '/operacao/aprovacoes'
     | '/operacao/relatorio'
@@ -1250,6 +1250,7 @@ export interface FileRouteTypes {
     | '/api/public/opcoes-pagamento'
     | '/api/public/send-push'
     | '/api/public/solicitar'
+    | '/api/public/solicitar-contrato'
     | '/comercial/dashboard/indicadores'
     | '/comercial/dashboard/painel'
     | '/comercial/dashboard/propostas'
@@ -1288,6 +1289,7 @@ export interface RootRouteChildren {
   SaidasRoute: typeof SaidasRoute
   SolicitantesRoute: typeof SolicitantesRoute
   SolicitarRoute: typeof SolicitarRoute
+  SolicitarContratoRoute: typeof SolicitarContratoRoute
   EstoqueItemIdRoute: typeof EstoqueItemIdRoute
   EstoqueAReceberRoute: typeof EstoqueAReceberRoute
   EstoqueIndexRoute: typeof EstoqueIndexRoute
@@ -1300,6 +1302,7 @@ export interface RootRouteChildren {
   ApiPublicOpcoesPagamentoRoute: typeof ApiPublicOpcoesPagamentoRoute
   ApiPublicSendPushRoute: typeof ApiPublicSendPushRoute
   ApiPublicSolicitarRoute: typeof ApiPublicSolicitarRoute
+  ApiPublicSolicitarContratoRoute: typeof ApiPublicSolicitarContratoRoute
   ApiContaazulOauthCallbackRoute: typeof ApiContaazulOauthCallbackRoute
   ApiContaazulOauthPrepareRoute: typeof ApiContaazulOauthPrepareRoute
   ApiPublicContaazulCronRoute: typeof ApiPublicContaazulCronRoute
@@ -1307,6 +1310,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/solicitar-contrato': {
+      id: '/solicitar-contrato'
+      path: '/solicitar-contrato'
+      fullPath: '/solicitar-contrato'
+      preLoaderRoute: typeof SolicitarContratoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/solicitar': {
       id: '/solicitar'
       path: '/solicitar'
@@ -1636,25 +1646,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperacaoAcervoRouteImport
       parentRoute: typeof OperacaoRoute
     }
-    '/juridico/solicitar': {
-      id: '/juridico/solicitar'
-      path: '/solicitar'
-      fullPath: '/juridico/solicitar'
-      preLoaderRoute: typeof JuridicoSolicitarRouteImport
-      parentRoute: typeof JuridicoRoute
-    }
     '/juridico/modelos': {
       id: '/juridico/modelos'
       path: '/modelos'
       fullPath: '/juridico/modelos'
       preLoaderRoute: typeof JuridicoModelosRouteImport
-      parentRoute: typeof JuridicoRoute
-    }
-    '/juridico/configuracoes': {
-      id: '/juridico/configuracoes'
-      path: '/configuracoes'
-      fullPath: '/juridico/configuracoes'
-      preLoaderRoute: typeof JuridicoConfiguracoesRouteImport
       parentRoute: typeof JuridicoRoute
     }
     '/financeiro/rotinas': {
@@ -1951,6 +1947,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ComercialDashboardIndicadoresRouteImport
       parentRoute: typeof ComercialDashboardRoute
     }
+    '/api/public/solicitar-contrato': {
+      id: '/api/public/solicitar-contrato'
+      path: '/api/public/solicitar-contrato'
+      fullPath: '/api/public/solicitar-contrato'
+      preLoaderRoute: typeof ApiPublicSolicitarContratoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/solicitar': {
       id: '/api/public/solicitar'
       path: '/api/public/solicitar'
@@ -2209,16 +2212,12 @@ const FinanceiroOpRouteWithChildren = FinanceiroOpRoute._addFileChildren(
 )
 
 interface JuridicoRouteChildren {
-  JuridicoConfiguracoesRoute: typeof JuridicoConfiguracoesRoute
   JuridicoModelosRoute: typeof JuridicoModelosRoute
-  JuridicoSolicitarRoute: typeof JuridicoSolicitarRoute
   JuridicoIndexRoute: typeof JuridicoIndexRoute
 }
 
 const JuridicoRouteChildren: JuridicoRouteChildren = {
-  JuridicoConfiguracoesRoute: JuridicoConfiguracoesRoute,
   JuridicoModelosRoute: JuridicoModelosRoute,
-  JuridicoSolicitarRoute: JuridicoSolicitarRoute,
   JuridicoIndexRoute: JuridicoIndexRoute,
 }
 
@@ -2307,6 +2306,7 @@ const rootRouteChildren: RootRouteChildren = {
   SaidasRoute: SaidasRoute,
   SolicitantesRoute: SolicitantesRoute,
   SolicitarRoute: SolicitarRoute,
+  SolicitarContratoRoute: SolicitarContratoRoute,
   EstoqueItemIdRoute: EstoqueItemIdRoute,
   EstoqueAReceberRoute: EstoqueAReceberRoute,
   EstoqueIndexRoute: EstoqueIndexRoute,
@@ -2319,6 +2319,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicOpcoesPagamentoRoute: ApiPublicOpcoesPagamentoRoute,
   ApiPublicSendPushRoute: ApiPublicSendPushRoute,
   ApiPublicSolicitarRoute: ApiPublicSolicitarRoute,
+  ApiPublicSolicitarContratoRoute: ApiPublicSolicitarContratoRoute,
   ApiContaazulOauthCallbackRoute: ApiContaazulOauthCallbackRoute,
   ApiContaazulOauthPrepareRoute: ApiContaazulOauthPrepareRoute,
   ApiPublicContaazulCronRoute: ApiPublicContaazulCronRoute,
