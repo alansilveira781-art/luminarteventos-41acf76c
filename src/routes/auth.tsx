@@ -10,15 +10,31 @@ import { toast } from "sonner";
 import logo from "@/assets/luminart-logo.png";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (search: Record<string, unknown>): { redirect?: string } =>
+    typeof search.redirect === "string" ? { redirect: search.redirect } : {},
   component: AuthPage,
 });
+
+function safePath(v?: string) {
+  if (!v || !v.startsWith("/") || v.startsWith("//")) return null;
+  return v;
+}
 
 function AuthPage() {
   const { session, loading } = useAuth();
   const nav = useNavigate();
+  const { redirect } = Route.useSearch();
+  const dest = safePath(redirect);
 
   if (loading) return null;
-  if (session) return <Navigate to="/" />;
+  if (session) return <Navigate to={dest ?? "/"} />;
+
+  const contexto = dest?.startsWith("/juridico/solicitar")
+    ? "Entre para acessar o formulário de solicitação de contrato."
+    : dest
+      ? "Entre para continuar."
+      : null;
+
   return (
     <div className="min-h-dvh flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md p-8">
@@ -26,13 +42,14 @@ function AuthPage() {
           <img src={logo} alt="Luminart" className="h-16 w-16 object-contain" />
           <h1 className="mt-3 text-xl font-semibold">Luminart</h1>
           <p className="text-xs text-muted-foreground uppercase tracking-widest">Painel interno</p>
+          {contexto && <p className="mt-2 text-xs text-muted-foreground text-center">{contexto}</p>}
         </div>
         <Tabs defaultValue="login">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Entrar</TabsTrigger>
             <TabsTrigger value="signup">Criar conta</TabsTrigger>
           </TabsList>
-          <TabsContent value="login"><LoginForm onDone={() => nav({ to: "/" })} /></TabsContent>
+          <TabsContent value="login"><LoginForm onDone={() => nav({ to: dest ?? "/" })} /></TabsContent>
           <TabsContent value="signup"><SignupForm /></TabsContent>
         </Tabs>
         <div className="my-4 flex items-center gap-2">
@@ -40,7 +57,7 @@ function AuthPage() {
           <span className="text-[10px] uppercase tracking-wider text-muted-foreground">ou</span>
           <div className="flex-1 h-px bg-border" />
         </div>
-        <GoogleButton />
+        <GoogleButton dest={dest} />
       </Card>
     </div>
   );
@@ -101,7 +118,7 @@ function SignupForm() {
   );
 }
 
-function GoogleButton() {
+function GoogleButton({ dest }: { dest: string | null }) {
   return (
     <Button
       type="button"
@@ -110,7 +127,7 @@ function GoogleButton() {
       onClick={async () => {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: "google",
-          options: { redirectTo: window.location.origin },
+          options: { redirectTo: window.location.origin + (dest ?? "") },
         });
         if (error) toast.error(error.message);
       }}

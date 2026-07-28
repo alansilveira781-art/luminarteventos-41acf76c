@@ -1,35 +1,26 @@
-## Objetivo
+## Problema
 
-Reformular o formulário **Jurídico › Solicitar contrato** (`/juridico/solicitar`) com duas seções de dados obrigatórias, dois anexos obrigatórios, e transformá-lo em página de acesso apenas por link (fora da sidebar).
+Quem recebe o link `/juridico/solicitar` sem estar logado é redirecionado para o login, mas o endereço original é perdido: em `src/routes/__root.tsx` o app faz `<Navigate to="/auth" />` sem guardar o destino, e em `src/routes/auth.tsx` o login sempre navega para `/` (a tela inicial "Bem-vindo / selecione um módulo"). Por isso a pessoa cai na tela inicial em vez do formulário.
 
-## 1. Duas seções obrigatórias
+## O que será feito
 
-**Dados da Empresa** e **Responsável Legal**, cada uma com os mesmos 4 campos, todos obrigatórios:
-- Nome (razão social / nome completo)
-- CNPJ / CPF
-- E-mail
-- Telefone
+1. **Guardar o destino ao mandar para o login** (`src/routes/__root.tsx`)
+   - Ao detectar que não há sessão, redirecionar para `/auth` levando o caminho atual (rota + query) em um parâmetro `redirect`.
 
-Validação antes do envio: nenhum campo em branco, e-mail em formato válido, documento com quantidade mínima de dígitos. Erros aparecem sob o campo, e o botão só envia quando tudo estiver preenchido.
+2. **Voltar ao destino depois do login** (`src/routes/auth.tsx`)
+   - Ler o parâmetro `redirect` (validado como caminho interno, começando com `/`, para evitar redirecionamento para sites externos).
+   - Após login por e-mail/senha, ir para esse caminho; sem parâmetro, continua indo para `/`.
+   - Se o usuário já estiver logado ao abrir `/auth`, também respeitar o `redirect`.
+   - No login com Google, usar `redirectTo` na mesma origem preservando o `redirect`, para que a volta do provedor caia no formulário.
 
-Os campos atuais continuam: Tipo (Contrato/Aditivo), Empresa do grupo, Objeto/título, Valor, Data de fechamento e Observações.
+3. **Mensagem de contexto na tela de login**
+   - Quando houver `redirect` apontando para `/juridico/solicitar`, exibir uma linha discreta do tipo "Entre para acessar o formulário de solicitação de contrato", para a pessoa entender por que o login apareceu.
 
-## 2. Anexos obrigatórios
-
-Dois campos de arquivo, **ambos obrigatórios**:
-- **Proposta** (PDF/Word)
-- **Cartão CNPJ** (PDF/imagem)
-
-Ao enviar, os arquivos vão para o armazenamento de anexos do Jurídico e ficam vinculados ao card criado, identificados como "proposta" e "cartão CNPJ" — aparecendo normalmente na aba de anexos do contrato no quadro.
-
-## 3. Acesso por link
-
-O item "Solicitar contrato" sai da barra lateral. Quem estiver liberado em Jurídico › Configurações continua acessando normalmente pelo endereço direto, que você pode compartilhar. Quem não estiver liberado (ou não estiver logado) continua vendo a mensagem de sem permissão. Na tela de Configurações do Jurídico entra um botão "Copiar link do formulário" para facilitar o compartilhamento.
+4. **Sem acesso liberado**
+   - Se a pessoa logar mas não estiver na lista de liberados (Jurídico › Configurações), continuará sendo mandada para a tela inicial. Posso, se quiser, trocar isso por uma mensagem clara "Você não tem permissão para preencher este formulário — peça liberação ao administrador" (digo já na implementação se preferir incluir).
 
 ## Detalhes técnicos
 
-- **Banco**: migração adicionando a `juridico_contratos` as colunas `resp_legal_nome`, `resp_legal_documento`, `resp_legal_email`, `resp_legal_telefone` (texto, opcionais no banco — a obrigatoriedade fica no formulário para não quebrar registros existentes).
-- **`src/routes/juridico.solicitar.tsx`**: reestruturação em dois blocos `Card` com título de seção; estado de erros por campo; upload sequencial para o bucket `juridico-anexos` (caminho `{contrato_id}/{timestamp}_{nome}`) e inserção em `juridico_anexos` com `tipo` = `proposta` / `cartao_cnpj`. Se o upload falhar, o card criado é informado com aviso.
-- **`src/components/AppSidebar.tsx`**: remoção do item `juridicoSolicitante` e da query `sidebar-juridico-solicitante` que só o alimentava.
-- **`src/routes/juridico.configuracoes.tsx`**: adicionar `CopiarLinkButton` com o caminho `/juridico/solicitar`.
-- **`src/routes/juridico.index.tsx`**: exibir os dados do responsável legal no detalhe do card (somente leitura).
+- `/auth` passa a declarar `validateSearch` com `redirect?: string`.
+- Sanitização: aceitar apenas valores que começam com `/` e não com `//`.
+- Nenhuma mudança de banco ou RLS.
