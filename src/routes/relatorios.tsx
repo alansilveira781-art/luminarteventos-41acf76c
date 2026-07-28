@@ -139,6 +139,15 @@ function RelatoriosPage() {
       ? `${format(new Date(dataIni), "dd/MM/yyyy")} a ${format(new Date(dataFim), "dd/MM/yyyy")}`
       : `Emitido em ${format(new Date(), "dd/MM/yyyy HH:mm")}`;
     doc.text(periodo, pageWidth - 40, 46, { align: "right" });
+    if (itemIds.length > 0) {
+      doc.setFontSize(8);
+      doc.text(
+        itemIds.length === 1 ? `Item: ${labelItens}` : `${itemIds.length} itens selecionados`,
+        pageWidth / 2,
+        46,
+        { align: "center" },
+      );
+    }
 
     autoTable(doc, {
       startY: 80,
