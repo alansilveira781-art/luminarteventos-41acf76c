@@ -56,6 +56,7 @@ import { Route as OperacaoSetoresRouteImport } from './routes/operacao.setores'
 import { Route as OperacaoRelatorioRouteImport } from './routes/operacao.relatorio'
 import { Route as OperacaoAprovacoesRouteImport } from './routes/operacao.aprovacoes'
 import { Route as OperacaoAcervoRouteImport } from './routes/operacao.acervo'
+import { Route as JuridicoSolicitarRouteImport } from './routes/juridico.solicitar'
 import { Route as JuridicoModelosRouteImport } from './routes/juridico.modelos'
 import { Route as FinanceiroRotinasRouteImport } from './routes/financeiro.rotinas'
 import { Route as FinanceiroDashboardRouteImport } from './routes/financeiro.dashboard'
@@ -346,6 +347,11 @@ const OperacaoAcervoRoute = OperacaoAcervoRouteImport.update({
   id: '/acervo',
   path: '/acervo',
   getParentRoute: () => OperacaoRoute,
+} as any)
+const JuridicoSolicitarRoute = JuridicoSolicitarRouteImport.update({
+  id: '/solicitar',
+  path: '/solicitar',
+  getParentRoute: () => JuridicoRoute,
 } as any)
 const JuridicoModelosRoute = JuridicoModelosRouteImport.update({
   id: '/modelos',
@@ -695,6 +701,7 @@ export interface FileRoutesByFullPath {
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
+  '/juridico/solicitar': typeof JuridicoSolicitarRoute
   '/operacao/acervo': typeof OperacaoAcervoRoute
   '/operacao/aprovacoes': typeof OperacaoAprovacoesRoute
   '/operacao/relatorio': typeof OperacaoRelatorioRoute
@@ -787,6 +794,7 @@ export interface FileRoutesByTo {
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
+  '/juridico/solicitar': typeof JuridicoSolicitarRoute
   '/operacao/acervo': typeof OperacaoAcervoRoute
   '/operacao/aprovacoes': typeof OperacaoAprovacoesRoute
   '/operacao/relatorio': typeof OperacaoRelatorioRoute
@@ -892,6 +900,7 @@ export interface FileRoutesById {
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
+  '/juridico/solicitar': typeof JuridicoSolicitarRoute
   '/operacao/acervo': typeof OperacaoAcervoRoute
   '/operacao/aprovacoes': typeof OperacaoAprovacoesRoute
   '/operacao/relatorio': typeof OperacaoRelatorioRoute
@@ -998,6 +1007,7 @@ export interface FileRouteTypes {
     | '/financeiro/dashboard'
     | '/financeiro/rotinas'
     | '/juridico/modelos'
+    | '/juridico/solicitar'
     | '/operacao/acervo'
     | '/operacao/aprovacoes'
     | '/operacao/relatorio'
@@ -1090,6 +1100,7 @@ export interface FileRouteTypes {
     | '/financeiro/dashboard'
     | '/financeiro/rotinas'
     | '/juridico/modelos'
+    | '/juridico/solicitar'
     | '/operacao/acervo'
     | '/operacao/aprovacoes'
     | '/operacao/relatorio'
@@ -1194,6 +1205,7 @@ export interface FileRouteTypes {
     | '/financeiro/dashboard'
     | '/financeiro/rotinas'
     | '/juridico/modelos'
+    | '/juridico/solicitar'
     | '/operacao/acervo'
     | '/operacao/aprovacoes'
     | '/operacao/relatorio'
@@ -1611,6 +1623,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/operacao/acervo'
       preLoaderRoute: typeof OperacaoAcervoRouteImport
       parentRoute: typeof OperacaoRoute
+    }
+    '/juridico/solicitar': {
+      id: '/juridico/solicitar'
+      path: '/solicitar'
+      fullPath: '/juridico/solicitar'
+      preLoaderRoute: typeof JuridicoSolicitarRouteImport
+      parentRoute: typeof JuridicoRoute
     }
     '/juridico/modelos': {
       id: '/juridico/modelos'
@@ -2172,11 +2191,13 @@ const FinanceiroOpRouteWithChildren = FinanceiroOpRoute._addFileChildren(
 
 interface JuridicoRouteChildren {
   JuridicoModelosRoute: typeof JuridicoModelosRoute
+  JuridicoSolicitarRoute: typeof JuridicoSolicitarRoute
   JuridicoIndexRoute: typeof JuridicoIndexRoute
 }
 
 const JuridicoRouteChildren: JuridicoRouteChildren = {
   JuridicoModelosRoute: JuridicoModelosRoute,
+  JuridicoSolicitarRoute: JuridicoSolicitarRoute,
   JuridicoIndexRoute: JuridicoIndexRoute,
 }
 
