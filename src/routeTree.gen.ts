@@ -57,9 +57,7 @@ import { Route as OperacaoSetoresRouteImport } from './routes/operacao.setores'
 import { Route as OperacaoRelatorioRouteImport } from './routes/operacao.relatorio'
 import { Route as OperacaoAprovacoesRouteImport } from './routes/operacao.aprovacoes'
 import { Route as OperacaoAcervoRouteImport } from './routes/operacao.acervo'
-import { Route as JuridicoSolicitarRouteImport } from './routes/juridico.solicitar'
 import { Route as JuridicoModelosRouteImport } from './routes/juridico.modelos'
-import { Route as JuridicoConfiguracoesRouteImport } from './routes/juridico.configuracoes'
 import { Route as FinanceiroRotinasRouteImport } from './routes/financeiro.rotinas'
 import { Route as FinanceiroDashboardRouteImport } from './routes/financeiro.dashboard'
 import { Route as FinanceiroContaAzulRouteImport } from './routes/financeiro.conta-azul'
@@ -356,19 +354,9 @@ const OperacaoAcervoRoute = OperacaoAcervoRouteImport.update({
   path: '/acervo',
   getParentRoute: () => OperacaoRoute,
 } as any)
-const JuridicoSolicitarRoute = JuridicoSolicitarRouteImport.update({
-  id: '/solicitar',
-  path: '/solicitar',
-  getParentRoute: () => JuridicoRoute,
-} as any)
 const JuridicoModelosRoute = JuridicoModelosRouteImport.update({
   id: '/modelos',
   path: '/modelos',
-  getParentRoute: () => JuridicoRoute,
-} as any)
-const JuridicoConfiguracoesRoute = JuridicoConfiguracoesRouteImport.update({
-  id: '/configuracoes',
-  path: '/configuracoes',
   getParentRoute: () => JuridicoRoute,
 } as any)
 const FinanceiroRotinasRoute = FinanceiroRotinasRouteImport.update({
@@ -720,9 +708,7 @@ export interface FileRoutesByFullPath {
   '/financeiro/conta-azul': typeof FinanceiroContaAzulRoute
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
-  '/juridico/configuracoes': typeof JuridicoConfiguracoesRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
-  '/juridico/solicitar': typeof JuridicoSolicitarRoute
   '/operacao/acervo': typeof OperacaoAcervoRoute
   '/operacao/aprovacoes': typeof OperacaoAprovacoesRoute
   '/operacao/relatorio': typeof OperacaoRelatorioRoute
@@ -816,9 +802,7 @@ export interface FileRoutesByTo {
   '/financeiro/conta-azul': typeof FinanceiroContaAzulRoute
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
-  '/juridico/configuracoes': typeof JuridicoConfiguracoesRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
-  '/juridico/solicitar': typeof JuridicoSolicitarRoute
   '/operacao/acervo': typeof OperacaoAcervoRoute
   '/operacao/aprovacoes': typeof OperacaoAprovacoesRoute
   '/operacao/relatorio': typeof OperacaoRelatorioRoute
@@ -925,9 +909,7 @@ export interface FileRoutesById {
   '/financeiro/conta-azul': typeof FinanceiroContaAzulRoute
   '/financeiro/dashboard': typeof FinanceiroDashboardRoute
   '/financeiro/rotinas': typeof FinanceiroRotinasRoute
-  '/juridico/configuracoes': typeof JuridicoConfiguracoesRoute
   '/juridico/modelos': typeof JuridicoModelosRoute
-  '/juridico/solicitar': typeof JuridicoSolicitarRoute
   '/operacao/acervo': typeof OperacaoAcervoRoute
   '/operacao/aprovacoes': typeof OperacaoAprovacoesRoute
   '/operacao/relatorio': typeof OperacaoRelatorioRoute
@@ -1035,9 +1017,7 @@ export interface FileRouteTypes {
     | '/financeiro/conta-azul'
     | '/financeiro/dashboard'
     | '/financeiro/rotinas'
-    | '/juridico/configuracoes'
     | '/juridico/modelos'
-    | '/juridico/solicitar'
     | '/operacao/acervo'
     | '/operacao/aprovacoes'
     | '/operacao/relatorio'
@@ -1131,9 +1111,7 @@ export interface FileRouteTypes {
     | '/financeiro/conta-azul'
     | '/financeiro/dashboard'
     | '/financeiro/rotinas'
-    | '/juridico/configuracoes'
     | '/juridico/modelos'
-    | '/juridico/solicitar'
     | '/operacao/acervo'
     | '/operacao/aprovacoes'
     | '/operacao/relatorio'
@@ -1239,9 +1217,7 @@ export interface FileRouteTypes {
     | '/financeiro/conta-azul'
     | '/financeiro/dashboard'
     | '/financeiro/rotinas'
-    | '/juridico/configuracoes'
     | '/juridico/modelos'
-    | '/juridico/solicitar'
     | '/operacao/acervo'
     | '/operacao/aprovacoes'
     | '/operacao/relatorio'
@@ -1670,25 +1646,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperacaoAcervoRouteImport
       parentRoute: typeof OperacaoRoute
     }
-    '/juridico/solicitar': {
-      id: '/juridico/solicitar'
-      path: '/solicitar'
-      fullPath: '/juridico/solicitar'
-      preLoaderRoute: typeof JuridicoSolicitarRouteImport
-      parentRoute: typeof JuridicoRoute
-    }
     '/juridico/modelos': {
       id: '/juridico/modelos'
       path: '/modelos'
       fullPath: '/juridico/modelos'
       preLoaderRoute: typeof JuridicoModelosRouteImport
-      parentRoute: typeof JuridicoRoute
-    }
-    '/juridico/configuracoes': {
-      id: '/juridico/configuracoes'
-      path: '/configuracoes'
-      fullPath: '/juridico/configuracoes'
-      preLoaderRoute: typeof JuridicoConfiguracoesRouteImport
       parentRoute: typeof JuridicoRoute
     }
     '/financeiro/rotinas': {
@@ -2250,16 +2212,12 @@ const FinanceiroOpRouteWithChildren = FinanceiroOpRoute._addFileChildren(
 )
 
 interface JuridicoRouteChildren {
-  JuridicoConfiguracoesRoute: typeof JuridicoConfiguracoesRoute
   JuridicoModelosRoute: typeof JuridicoModelosRoute
-  JuridicoSolicitarRoute: typeof JuridicoSolicitarRoute
   JuridicoIndexRoute: typeof JuridicoIndexRoute
 }
 
 const JuridicoRouteChildren: JuridicoRouteChildren = {
-  JuridicoConfiguracoesRoute: JuridicoConfiguracoesRoute,
   JuridicoModelosRoute: JuridicoModelosRoute,
-  JuridicoSolicitarRoute: JuridicoSolicitarRoute,
   JuridicoIndexRoute: JuridicoIndexRoute,
 }
 

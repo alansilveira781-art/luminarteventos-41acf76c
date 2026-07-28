@@ -217,7 +217,7 @@ function useNavItems(pathname: string) {
 
   return allItems.filter((i) => {
     if (i.url === "/") return true;
-    if (i.juridicoSolicitante) return false; // acesso apenas por link direto
+
 
     if (i.expectadorEventos) {
       return isAdmin || hasModule("eventos") || isExpectadorEventos;

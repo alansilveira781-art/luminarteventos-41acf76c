@@ -117,7 +117,7 @@ function AppShell() {
   }
 
   // Public routes (não exigem login)
-  if (pathname === "/auth" || pathname === "/solicitar" || pathname === "/calendario-publico") return <Outlet />;
+  if (pathname === "/auth" || pathname === "/solicitar" || pathname === "/solicitar-contrato" || pathname === "/calendario-publico") return <Outlet />;
 
   if (!session) {
     const dest = typeof window !== "undefined"
