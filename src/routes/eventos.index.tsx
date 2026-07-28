@@ -214,11 +214,13 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
 
         const { error } = await sb.from("eventos").update(payload).eq("id", evento.id);
         if (error) {
-          if ((error as any).code === "23505") {
+          const msg = String((error as any).message ?? "");
+          if ((error as any).code === "23505" && /ux_eventos_codigo/.test(msg)) {
             throw new Error("Já existe um evento com este nome e local nesta data final.");
           }
-          throw error;
+          throw new Error(msg || "Erro ao salvar evento");
         }
+
       } else {
         let ultimoErro: any = null;
         for (let tentativa = 0; tentativa < 3; tentativa++) {
