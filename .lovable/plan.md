@@ -1,29 +1,23 @@
-## Diagnóstico (verificado no banco)
+## Diagnóstico (confirmado no banco)
 
-**1. Anexos invisíveis para a equipe de Compras**
+Ao criar um evento novo, a tela chama a função `proximo_codigo_evento`, que gera o código contando quantos eventos já existem naquele mês: `AAAAMM` + (contagem + 1).
 
-A regra de leitura de `compra_anexos` (e de `compra_comentarios`) hoje só libera para: administrador geral, administrador do módulo compras/estoque, ou quem criou / é responsável / é solicitante daquela compra. Hoje o módulo Compras tem 4 usuários, sendo apenas 1 administrador de módulo — ou seja, os outros 3 não enxergam anexos de cards que não sejam deles. As permissões do arquivo em si (storage) já liberam para qualquer membro de compras/estoque; o bloqueio está na tabela.
+Para julho/2026 já existem 9 eventos e os códigos vão de `20260701` até `20260710` (há buracos: falta o `...09`? não — existem 10 códigos para 9 eventos porque um evento de outro mês usou a numeração). Resultado: a função devolve `20260710`, que **já está em uso**, e o banco recusa o registro por código duplicado (o campo `codigo` é único).
 
-**2. Demora do Estoque › A Receber**
+O aplicativo captura esse erro e mostra a mensagem enganosa "Já existe um evento com este nome e local nesta data final" — por isso parece que o evento é duplicado quando na verdade é só o código que colidiu. O mesmo acontece em agosto (`20260810` já existe com 9 eventos no mês).
 
-- As despesas (`demandas`) não estão publicadas em tempo real e o sincronizador de tempo real do estoque não escuta essa tabela — só compras, itens e movimentações. Resultado: um card que vira "A Receber" no módulo Despesas só aparece no Estoque quando o usuário recarrega ou volta o foco na aba.
-- As consultas `compras-receber` e `demandas-receber` da tela não têm atualização periódica nem revalidação ao focar configurada explicitamente.
+Segundo ponto: o insert não preenche o campo `codigo_evento` (o texto "31.07.2026 - ATIVAÇÃO RIOMAR - RIOMAR FORTALEZA" usado nas listas de outros módulos). Hoje nenhum gatilho do banco o preenche, então eventos novos ficariam sem esse identificador e não apareceriam nos seletores de evento dos demais módulos.
 
-## O que será feito
+## O que fazer
 
-### Banco de dados (migração)
-- Ajustar a leitura de `compra_anexos` e `compra_comentarios`: liberar para qualquer usuário com acesso ao módulo compras ou estoque (mantendo escrita/exclusão restrita ao dono, responsável e administradores, como está hoje).
-- Publicar `demandas`, `demanda_itens` e `demanda_anexos` no tempo real, para o Estoque receber as mudanças na hora.
+1. **Gerar o código de forma segura (banco)**
+   - Reescrever `proximo_codigo_evento` para pegar o maior sufixo já existente no mês (em vez de contar registros) e, se ainda assim houver conflito, avançar até achar um código livre.
+2. **Preencher `codigo_evento` automaticamente (banco)**
+   - Recriar o gatilho que monta `codigo_evento` a partir da data final + nome + local, em inserção e atualização, garantindo que todo evento novo apareça nas listas dos outros módulos.
+3. **Mensagem de erro correta (frontend, `src/routes/eventos.index.tsx`)**
+   - Diferenciar o conflito de código do conflito de nome/local e, no caso de código duplicado, tentar novamente uma vez antes de exibir erro.
+   - Mostrar a mensagem real do banco quando não for um caso conhecido, para facilitar diagnósticos futuros.
 
-Sem afetar as regras já endurecidas anteriormente para dados sensíveis (comissões, vendas, jurídico).
+## Resultado esperado
 
-### Frontend
-- `src/hooks/useEstoqueRealtimeSync.ts`: passar a escutar `demandas` e `demanda_itens`, invalidando `demandas-receber`, `demanda-a-receber-info`, `compras-receber` e afins.
-- `src/routes/estoque.a-receber.tsx`: nas consultas `compras-receber` e `demandas-receber`, ativar revalidação ao voltar o foco da janela e uma atualização periódica leve (rede de segurança caso o tempo real caia).
-
-## Detalhes técnicos
-- Migração: `DROP POLICY` + `CREATE POLICY` de SELECT em `public.compra_anexos` e `public.compra_comentarios` usando `has_module_access(auth.uid(),'compras') OR has_module_access(auth.uid(),'estoque') OR is_admin(...)`; `ALTER PUBLICATION supabase_realtime ADD TABLE ...` para as três tabelas de demandas.
-- `refetchOnWindowFocus: true` + `refetchInterval` (~60s) nas duas queries da aba A Receber.
-
-## Fora do escopo
-Nenhuma alteração em regras de escrita, nem revisão de outros módulos — se quiser, faço depois uma varredura equivalente em Despesas, Patrimônio e Jurídico.
+O evento "31.07 a 23.08.2026 — ATIVAÇÃO RIOMAR DIA DOS PAIS — RIOMAR FORTALEZA" passa a salvar normalmente, com código único e identificador visível nos seletores de evento de todos os módulos.
