@@ -7,8 +7,12 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { FormField, FormSection } from "@/components/FormSection";
-import { Download, FileText, Printer } from "lucide-react";
+import { Check, ChevronsUpDown, Download, FileText, Printer, X } from "lucide-react";
 import { isAjusteMovimentacao } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 
@@ -49,8 +53,9 @@ function RelatoriosPage() {
   const [reportId, setReportId] = useState<ReportId>("saidas");
   const [dataIni, setDataIni] = useState(format(startOfMonth(subMonths(hoje, 2)), "yyyy-MM-dd"));
   const [dataFim, setDataFim] = useState(format(endOfMonth(hoje), "yyyy-MM-dd"));
-  const [itemId, setItemId] = useState("todos");
+  const [itemIds, setItemIds] = useState<string[]>([]);
   const [buscaItem, setBuscaItem] = useState("");
+  const [itemPopoverOpen, setItemPopoverOpen] = useState(false);
 
   const { data: itensLista = [] } = useQuery({
     queryKey: ["relatorios-itens-select"],
@@ -68,11 +73,30 @@ function RelatoriosPage() {
     );
   }, [itensLista, buscaItem]);
 
+  const itensSelecionados = useMemo(
+    () => itensLista.filter((i) => itemIds.includes(i.id)),
+    [itensLista, itemIds],
+  );
+
+  const toggleItem = (id: string) =>
+    setItemIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const labelItens =
+    itemIds.length === 0
+      ? "Todos os itens"
+      : itemIds.length === 1
+        ? (itensSelecionados[0]
+            ? `${itensSelecionados[0].codigo ? `${itensSelecionados[0].codigo} — ` : ""}${itensSelecionados[0].nome}`
+            : "1 item selecionado")
+        : `${itemIds.length} itens selecionados`;
+
   const meta = REPORTS.find((r) => r.id === reportId)!;
 
+  const itemIdsKey = useMemo(() => [...itemIds].sort().join(","), [itemIds]);
+
   const { data: rows, isLoading } = useQuery({
-    queryKey: ["report", reportId, dataIni, dataFim, itemId],
-    queryFn: async () => loadReport(reportId, dataIni, dataFim, itemId),
+    queryKey: ["report", reportId, dataIni, dataFim, itemIdsKey],
+    queryFn: async () => loadReport(reportId, dataIni, dataFim, itemIds),
   });
 
   const { headers, body, totals } = useMemo(() => formatReport(reportId, rows ?? []), [reportId, rows]);
@@ -115,6 +139,15 @@ function RelatoriosPage() {
       ? `${format(new Date(dataIni), "dd/MM/yyyy")} a ${format(new Date(dataFim), "dd/MM/yyyy")}`
       : `Emitido em ${format(new Date(), "dd/MM/yyyy HH:mm")}`;
     doc.text(periodo, pageWidth - 40, 46, { align: "right" });
+    if (itemIds.length > 0) {
+      doc.setFontSize(8);
+      doc.text(
+        itemIds.length === 1 ? `Item: ${labelItens}` : `${itemIds.length} itens selecionados`,
+        pageWidth / 2,
+        46,
+        { align: "center" },
+      );
+    }
 
     autoTable(doc, {
       startY: 80,
@@ -179,27 +212,73 @@ function RelatoriosPage() {
             <Input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} disabled={!meta.needsPeriod} />
           </FormField>
           <FormField label="Item" wide>
-            <Select value={itemId} onValueChange={setItemId}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <div className="p-2 sticky top-0 bg-popover z-10 border-b">
+            <Popover open={itemPopoverOpen} onOpenChange={setItemPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button type="button" variant="outline" className="w-full justify-between font-normal">
+                  <span className="truncate">{labelItens}</span>
+                  <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <div className="p-2 border-b">
                   <Input
                     placeholder="Buscar por nome ou código…"
                     value={buscaItem}
                     onChange={(e) => setBuscaItem(e.target.value)}
-                    onKeyDown={(e) => e.stopPropagation()}
                     className="h-8"
                   />
                 </div>
-                <SelectItem value="todos">Todos os itens</SelectItem>
-                {itensFiltrados.map((i) => (
-                  <SelectItem key={i.id} value={i.id}>
-                    {i.codigo ? `${i.codigo} — ` : ""}{i.nome}
-                  </SelectItem>
+                <button
+                  type="button"
+                  onClick={() => setItemIds([])}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted/50 border-b"
+                >
+                  {itemIds.length === 0 ? <Check className="h-4 w-4" /> : <span className="w-4" />}
+                  Todos os itens
+                </button>
+                <ScrollArea className="h-64">
+                  {itensFiltrados.length === 0 ? (
+                    <p className="px-3 py-4 text-sm text-muted-foreground">Nenhum item encontrado.</p>
+                  ) : (
+                    itensFiltrados.map((i) => (
+                      <button
+                        key={i.id}
+                        type="button"
+                        onClick={() => toggleItem(i.id)}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-left hover:bg-muted/50"
+                      >
+                        <Checkbox checked={itemIds.includes(i.id)} className="pointer-events-none" />
+                        <span className="truncate">{i.codigo ? `${i.codigo} — ` : ""}{i.nome}</span>
+                      </button>
+                    ))
+                  )}
+                </ScrollArea>
+                {itemIds.length > 0 && (
+                  <div className="p-2 border-t">
+                    <Button type="button" variant="ghost" size="sm" className="w-full" onClick={() => setItemIds([])}>
+                      Limpar seleção
+                    </Button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
+            {itemIds.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {itensSelecionados.slice(0, 6).map((i) => (
+                  <Badge key={i.id} variant="secondary" className="gap-1">
+                    <span className="truncate max-w-[160px]">{i.codigo ? `${i.codigo} — ` : ""}{i.nome}</span>
+                    <button type="button" onClick={() => toggleItem(i.id)} aria-label={`Remover ${i.nome}`}>
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
                 ))}
-              </SelectContent>
-            </Select>
+                {itensSelecionados.length > 6 && (
+                  <Badge variant="outline">+{itensSelecionados.length - 6}</Badge>
+                )}
+              </div>
+            )}
           </FormField>
+
         </FormSection>
         <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
           <FileText className="h-3 w-3" /> {meta.description}
@@ -213,6 +292,7 @@ function RelatoriosPage() {
             <p className="text-xs text-muted-foreground">
               {meta.needsPeriod ? `${format(new Date(dataIni), "dd/MM/yyyy")} → ${format(new Date(dataFim), "dd/MM/yyyy")} · ` : ""}
               {body.length} registro{body.length !== 1 ? "s" : ""}
+              {itemIds.length > 0 ? ` · ${itemIds.length} item${itemIds.length !== 1 ? "ns" : ""} selecionado${itemIds.length !== 1 ? "s" : ""}` : ""}
             </p>
           </div>
         </div>
@@ -255,10 +335,10 @@ function RelatoriosPage() {
   );
 }
 
-async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemId: string = "todos"): Promise<any[]> {
+async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemIds: string[] = []): Promise<any[]> {
   const ini = new Date(dataIni).toISOString();
   const fim = new Date(`${dataFim}T23:59:59`).toISOString();
-  const filtroItem = itemId && itemId !== "todos" ? itemId : null;
+  const filtroItem = itemIds.length > 0 ? itemIds : null;
 
   if (id === "saidas") {
     let q = supabase
@@ -266,7 +346,7 @@ async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemId
       .select("data_movimento,quantidade,valor_unitario,evento_projeto,saida_status,saida_tipo,observacoes,finalidade,tipo, item:itens(nome,codigo,unidade,valor_unitario), solicitante:solicitantes(nome)")
       .eq("tipo", "saida")
       .gte("data_movimento", ini).lte("data_movimento", fim);
-    if (filtroItem) q = q.eq("item_id", filtroItem);
+    if (filtroItem) q = q.in("item_id", filtroItem);
     const { data } = await q.order("data_movimento", { ascending: false }).limit(5000);
     return (data ?? []).filter((m: any) => !isAjusteMovimentacao(m));
   }
@@ -276,7 +356,7 @@ async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemId
       .select("data_movimento,quantidade,valor_unitario,nota_fiscal,entrada_tipo,observacoes,finalidade,tipo, item:itens(nome,codigo,unidade), fornecedor:fornecedores(nome)")
       .eq("tipo", "entrada")
       .gte("data_movimento", ini).lte("data_movimento", fim);
-    if (filtroItem) q = q.eq("item_id", filtroItem);
+    if (filtroItem) q = q.in("item_id", filtroItem);
     const { data } = await q.order("data_movimento", { ascending: false }).limit(5000);
     return (data ?? []).filter((m: any) => !isAjusteMovimentacao(m));
   }
@@ -286,7 +366,7 @@ async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemId
       .select("data_movimento,quantidade,responsavel_recebimento, item:itens(nome,codigo,unidade), solicitante:solicitantes(nome)")
       .eq("tipo", "devolucao")
       .gte("data_movimento", ini).lte("data_movimento", fim);
-    if (filtroItem) q = q.eq("item_id", filtroItem);
+    if (filtroItem) q = q.in("item_id", filtroItem);
     const { data } = await q.order("data_movimento", { ascending: false }).limit(5000);
     return data ?? [];
   }
@@ -296,19 +376,19 @@ async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemId
       .select("data_movimento,tipo,quantidade,valor_unitario,observacoes,finalidade,entrada_tipo,saida_tipo, item:itens(nome,codigo,unidade)")
       .in("tipo", ["entrada", "saida"])
       .gte("data_movimento", ini).lte("data_movimento", fim);
-    if (filtroItem) q = q.eq("item_id", filtroItem);
+    if (filtroItem) q = q.in("item_id", filtroItem);
     const { data } = await q.order("data_movimento", { ascending: false }).limit(5000);
     return (data ?? []).filter((m: any) => isAjusteMovimentacao(m));
   }
   if (id === "estoque") {
     let q = supabase.from("itens").select("*").order("nome");
-    if (filtroItem) q = q.eq("id", filtroItem);
+    if (filtroItem) q = q.in("id", filtroItem);
     const { data } = await q.limit(5000);
     return data ?? [];
   }
   if (id === "estoque_negativo") {
     let q = supabase.from("itens").select("*").lt("quantidade_atual", 0).order("quantidade_atual", { ascending: true });
-    if (filtroItem) q = q.eq("id", filtroItem);
+    if (filtroItem) q = q.in("id", filtroItem);
     const { data } = await q.limit(5000);
     return data ?? [];
   }
@@ -328,7 +408,7 @@ async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemId
       .select("data_movimento,quantidade,valor_unitario,evento_projeto,entrada_tipo,saida_tipo,observacoes,finalidade,tipo, item:itens(nome,categoria,valor_unitario)")
       .eq("tipo", tipo)
       .gte("data_movimento", ini).lte("data_movimento", fim);
-    if (filtroItem) q = q.eq("item_id", filtroItem);
+    if (filtroItem) q = q.in("item_id", filtroItem);
     const { data } = await q.limit(10000);
     return (data ?? []).filter((m: any) => !isAjusteMovimentacao(m));
   }
