@@ -325,10 +325,10 @@ function RelatoriosPage() {
   );
 }
 
-async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemId: string = "todos"): Promise<any[]> {
+async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemIds: string[] = []): Promise<any[]> {
   const ini = new Date(dataIni).toISOString();
   const fim = new Date(`${dataFim}T23:59:59`).toISOString();
-  const filtroItem = itemId && itemId !== "todos" ? itemId : null;
+  const filtroItem = itemIds.length > 0 ? itemIds : null;
 
   if (id === "saidas") {
     let q = supabase
@@ -336,7 +336,7 @@ async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemId
       .select("data_movimento,quantidade,valor_unitario,evento_projeto,saida_status,saida_tipo,observacoes,finalidade,tipo, item:itens(nome,codigo,unidade,valor_unitario), solicitante:solicitantes(nome)")
       .eq("tipo", "saida")
       .gte("data_movimento", ini).lte("data_movimento", fim);
-    if (filtroItem) q = q.eq("item_id", filtroItem);
+    if (filtroItem) q = q.in("item_id", filtroItem);
     const { data } = await q.order("data_movimento", { ascending: false }).limit(5000);
     return (data ?? []).filter((m: any) => !isAjusteMovimentacao(m));
   }
@@ -346,7 +346,7 @@ async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemId
       .select("data_movimento,quantidade,valor_unitario,nota_fiscal,entrada_tipo,observacoes,finalidade,tipo, item:itens(nome,codigo,unidade), fornecedor:fornecedores(nome)")
       .eq("tipo", "entrada")
       .gte("data_movimento", ini).lte("data_movimento", fim);
-    if (filtroItem) q = q.eq("item_id", filtroItem);
+    if (filtroItem) q = q.in("item_id", filtroItem);
     const { data } = await q.order("data_movimento", { ascending: false }).limit(5000);
     return (data ?? []).filter((m: any) => !isAjusteMovimentacao(m));
   }
@@ -356,7 +356,7 @@ async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemId
       .select("data_movimento,quantidade,responsavel_recebimento, item:itens(nome,codigo,unidade), solicitante:solicitantes(nome)")
       .eq("tipo", "devolucao")
       .gte("data_movimento", ini).lte("data_movimento", fim);
-    if (filtroItem) q = q.eq("item_id", filtroItem);
+    if (filtroItem) q = q.in("item_id", filtroItem);
     const { data } = await q.order("data_movimento", { ascending: false }).limit(5000);
     return data ?? [];
   }
@@ -366,19 +366,19 @@ async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemId
       .select("data_movimento,tipo,quantidade,valor_unitario,observacoes,finalidade,entrada_tipo,saida_tipo, item:itens(nome,codigo,unidade)")
       .in("tipo", ["entrada", "saida"])
       .gte("data_movimento", ini).lte("data_movimento", fim);
-    if (filtroItem) q = q.eq("item_id", filtroItem);
+    if (filtroItem) q = q.in("item_id", filtroItem);
     const { data } = await q.order("data_movimento", { ascending: false }).limit(5000);
     return (data ?? []).filter((m: any) => isAjusteMovimentacao(m));
   }
   if (id === "estoque") {
     let q = supabase.from("itens").select("*").order("nome");
-    if (filtroItem) q = q.eq("id", filtroItem);
+    if (filtroItem) q = q.in("id", filtroItem);
     const { data } = await q.limit(5000);
     return data ?? [];
   }
   if (id === "estoque_negativo") {
     let q = supabase.from("itens").select("*").lt("quantidade_atual", 0).order("quantidade_atual", { ascending: true });
-    if (filtroItem) q = q.eq("id", filtroItem);
+    if (filtroItem) q = q.in("id", filtroItem);
     const { data } = await q.limit(5000);
     return data ?? [];
   }
@@ -398,7 +398,7 @@ async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemId
       .select("data_movimento,quantidade,valor_unitario,evento_projeto,entrada_tipo,saida_tipo,observacoes,finalidade,tipo, item:itens(nome,categoria,valor_unitario)")
       .eq("tipo", tipo)
       .gte("data_movimento", ini).lte("data_movimento", fim);
-    if (filtroItem) q = q.eq("item_id", filtroItem);
+    if (filtroItem) q = q.in("item_id", filtroItem);
     const { data } = await q.limit(10000);
     return (data ?? []).filter((m: any) => !isAjusteMovimentacao(m));
   }
