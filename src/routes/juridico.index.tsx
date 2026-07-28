@@ -45,6 +45,11 @@ type Contrato = {
   cliente_documento: string | null;
   cliente_email: string | null;
   cliente_telefone: string | null;
+  resp_legal_nome: string | null;
+  resp_legal_documento: string | null;
+  resp_legal_email: string | null;
+  resp_legal_telefone: string | null;
+
   responsavel: string | null;
   valor: number | null;
   status: Status;
