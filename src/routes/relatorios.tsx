@@ -53,8 +53,9 @@ function RelatoriosPage() {
   const [reportId, setReportId] = useState<ReportId>("saidas");
   const [dataIni, setDataIni] = useState(format(startOfMonth(subMonths(hoje, 2)), "yyyy-MM-dd"));
   const [dataFim, setDataFim] = useState(format(endOfMonth(hoje), "yyyy-MM-dd"));
-  const [itemId, setItemId] = useState("todos");
+  const [itemIds, setItemIds] = useState<string[]>([]);
   const [buscaItem, setBuscaItem] = useState("");
+  const [itemPopoverOpen, setItemPopoverOpen] = useState(false);
 
   const { data: itensLista = [] } = useQuery({
     queryKey: ["relatorios-itens-select"],
@@ -72,11 +73,30 @@ function RelatoriosPage() {
     );
   }, [itensLista, buscaItem]);
 
+  const itensSelecionados = useMemo(
+    () => itensLista.filter((i) => itemIds.includes(i.id)),
+    [itensLista, itemIds],
+  );
+
+  const toggleItem = (id: string) =>
+    setItemIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const labelItens =
+    itemIds.length === 0
+      ? "Todos os itens"
+      : itemIds.length === 1
+        ? (itensSelecionados[0]
+            ? `${itensSelecionados[0].codigo ? `${itensSelecionados[0].codigo} — ` : ""}${itensSelecionados[0].nome}`
+            : "1 item selecionado")
+        : `${itemIds.length} itens selecionados`;
+
   const meta = REPORTS.find((r) => r.id === reportId)!;
 
+  const itemIdsKey = useMemo(() => [...itemIds].sort().join(","), [itemIds]);
+
   const { data: rows, isLoading } = useQuery({
-    queryKey: ["report", reportId, dataIni, dataFim, itemId],
-    queryFn: async () => loadReport(reportId, dataIni, dataFim, itemId),
+    queryKey: ["report", reportId, dataIni, dataFim, itemIdsKey],
+    queryFn: async () => loadReport(reportId, dataIni, dataFim, itemIds),
   });
 
   const { headers, body, totals } = useMemo(() => formatReport(reportId, rows ?? []), [reportId, rows]);
