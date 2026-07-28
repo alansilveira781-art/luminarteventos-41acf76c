@@ -124,7 +124,7 @@ function AppShell() {
       ? window.location.pathname + window.location.search
       : pathname;
     const safe = dest.startsWith("/") && !dest.startsWith("//") && dest !== "/" ? dest : undefined;
-    return <Navigate to="/auth" search={safe ? { redirect: safe } : {}} />;
+    return safe ? <Navigate to="/auth" search={{ redirect: safe }} /> : <Navigate to="/auth" />;
   }
 
   return (
