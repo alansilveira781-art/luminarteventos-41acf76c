@@ -890,6 +890,8 @@ function ReceberDemandaDialog({ demandaId, demandaNumero, onClose }: { demandaId
   });
 
   const [previewAnexo, setPreviewAnexo] = useState<any | null>(null);
+  const [devolverOpen, setDevolverOpen] = useState(false);
+  const [motivoDevolucao, setMotivoDevolucao] = useState("");
 
   function fmtSizeD(n?: number | null) {
     if (!n) return "—";
