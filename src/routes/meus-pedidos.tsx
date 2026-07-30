@@ -49,6 +49,7 @@ type Pedido = {
   status: CompraStatus;
   titulo: string | null;
   solicitante: string | null;
+  solicitante_email: string | null;
   fornecedor: string | null;
   valor_total: number | null;
   data_solicitacao: string | null;
@@ -93,7 +94,7 @@ function MeusPedidos() {
 
   const email = (user?.email ?? "").trim().toLowerCase();
   const uid = user?.id ?? "";
-  const emailLocal = email.includes("@") ? email.split("@")[0] : "";
+  
 
   const { data: perfil } = useQuery({
     enabled: !!user,
@@ -114,15 +115,13 @@ function MeusPedidos() {
     orParts.push(`solicitante_id.eq.${uid}`, `created_by.eq.${uid}`);
   }
   if (email) {
-    orParts.push(`solicitante.ilike.%${email}%`, `observacoes.ilike.%${email}%`);
+    orParts.push(`solicitante_email.ilike.${email}`, `solicitante.ilike.${email}`);
   }
-  if (emailLocal && emailLocal !== email) {
-    orParts.push(`solicitante.ilike.%${emailLocal}%`);
-  }
-  if (displayName) {
-    orParts.push(`solicitante.ilike.%${displayName}%`);
+  if (displayName && !displayName.includes(",")) {
+    orParts.push(`solicitante.ilike.${displayName}`);
   }
   const orFilter = orParts.join(",");
+
 
   const { data: compras = [] } = useQuery({
     enabled: !!user && !!orFilter,
@@ -131,7 +130,7 @@ function MeusPedidos() {
       const { data, error } = await sb
         .from("compras")
         .select(
-          "id,numero,status,titulo,solicitante,fornecedor,valor_total,data_solicitacao,updated_at,tipo_compra,observacoes,motivo_negacao",
+          "id,numero,status,titulo,solicitante,solicitante_email,fornecedor,valor_total,data_solicitacao,updated_at,tipo_compra,observacoes,motivo_negacao",
         )
         .or(orFilter)
         .order("data_solicitacao", { ascending: false });
@@ -144,6 +143,7 @@ function MeusPedidos() {
           status: r.status,
           titulo: r.titulo,
           solicitante: r.solicitante,
+          solicitante_email: r.solicitante_email ?? null,
           fornecedor: r.fornecedor,
           valor_total: r.valor_total,
           data_solicitacao: r.data_solicitacao,
@@ -163,7 +163,7 @@ function MeusPedidos() {
       const { data, error } = await sb
         .from("demandas")
         .select(
-          "id,numero,status,titulo,solicitante,fornecedor,valor_total,data_solicitacao,updated_at,tipo_demanda,observacoes,motivo_negacao,descritivo",
+          "id,numero,status,titulo,solicitante,solicitante_email,fornecedor,valor_total,data_solicitacao,updated_at,tipo_demanda,observacoes,motivo_negacao,descritivo",
         )
         .or(orFilter)
         .order("data_solicitacao", { ascending: false });
@@ -176,6 +176,7 @@ function MeusPedidos() {
           status: r.status,
           titulo: r.titulo,
           solicitante: r.solicitante,
+          solicitante_email: r.solicitante_email ?? null,
           fornecedor: r.fornecedor,
           valor_total: r.valor_total,
           data_solicitacao: r.data_solicitacao,
@@ -414,6 +415,7 @@ function PedidoDetalheDialog({
             <Info label="Categoria" value={pedido.categoria ?? "—"} />
             <Info label="Fornecedor" value={pedido.fornecedor ?? "—"} />
             <Info label="Solicitante" value={pedido.solicitante ?? "—"} />
+            <Info label="E-mail do solicitante" value={pedido.solicitante_email ?? "—"} />
             <Info label="Valor total" value={fmtBRL(pedido.valor_total)} />
             <Info label="Status" value={labelFor(pedido.tipo, pedido.status)} />
             <Info label="Solicitado em" value={fmtDate(pedido.data_solicitacao)} />

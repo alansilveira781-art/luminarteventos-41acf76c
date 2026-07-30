@@ -1489,6 +1489,7 @@ export type Database = {
           responsavel_id: string | null
           responsavel_nome: string | null
           solicitante: string | null
+          solicitante_email: string | null
           solicitante_id: string | null
           status: Database["public"]["Enums"]["compra_status"]
           status_financeiro: string | null
@@ -1528,6 +1529,7 @@ export type Database = {
           responsavel_id?: string | null
           responsavel_nome?: string | null
           solicitante?: string | null
+          solicitante_email?: string | null
           solicitante_id?: string | null
           status?: Database["public"]["Enums"]["compra_status"]
           status_financeiro?: string | null
@@ -1567,6 +1569,7 @@ export type Database = {
           responsavel_id?: string | null
           responsavel_nome?: string | null
           solicitante?: string | null
+          solicitante_email?: string | null
           solicitante_id?: string | null
           status?: Database["public"]["Enums"]["compra_status"]
           status_financeiro?: string | null
@@ -2285,6 +2288,7 @@ export type Database = {
           responsavel_id: string | null
           responsavel_nome: string | null
           solicitante: string | null
+          solicitante_email: string | null
           solicitante_id: string | null
           status: Database["public"]["Enums"]["compra_status"]
           status_financeiro: string | null
@@ -2326,6 +2330,7 @@ export type Database = {
           responsavel_id?: string | null
           responsavel_nome?: string | null
           solicitante?: string | null
+          solicitante_email?: string | null
           solicitante_id?: string | null
           status?: Database["public"]["Enums"]["compra_status"]
           status_financeiro?: string | null
@@ -2367,6 +2372,7 @@ export type Database = {
           responsavel_id?: string | null
           responsavel_nome?: string | null
           solicitante?: string | null
+          solicitante_email?: string | null
           solicitante_id?: string | null
           status?: Database["public"]["Enums"]["compra_status"]
           status_financeiro?: string | null

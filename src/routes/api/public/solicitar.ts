@@ -212,6 +212,18 @@ export const Route = createFileRoute("/api/public/solicitar")({
         const hoje = new Date().toISOString().slice(0, 10);
         const dataSolicitacao = d.data_solicitacao || hoje;
 
+        // Vincula a solicitação ao usuário quando o e-mail informado existe em profiles
+        const solicitanteEmail = (d.solicitante_email || "").trim().toLowerCase() || null;
+        let solicitanteId: string | null = null;
+        if (solicitanteEmail) {
+          const { data: perfil } = await (supabaseAdmin as any)
+            .from("profiles")
+            .select("id")
+            .ilike("email", solicitanteEmail)
+            .maybeSingle();
+          solicitanteId = (perfil as any)?.id ?? null;
+        }
+
         if (d.tipo === "compra") {
           const somaItens = d.itens!.reduce(
             (acc, it) => acc + (it.valor_unitario ?? 0) * it.quantidade,
@@ -230,6 +242,8 @@ export const Route = createFileRoute("/api/public/solicitar")({
               valor_total: valorTotal,
               data_solicitacao: dataSolicitacao,
               tipo_compra: d.subtipo || null,
+              solicitante_email: solicitanteEmail,
+              solicitante_id: solicitanteId,
             })
             .select("id, numero")
             .single();
@@ -285,6 +299,8 @@ export const Route = createFileRoute("/api/public/solicitar")({
           valor_total: d.valor_total ?? null,
           data_solicitacao: dataSolicitacao,
           tipo_demanda: d.is_reembolso ? "reembolso" : (d.subtipo || null),
+          solicitante_email: solicitanteEmail,
+          solicitante_id: solicitanteId,
         };
         if (!d.is_reembolso && d.pago === true) {
           demandaInsert.parcelamento = d.parcelamento || null;
