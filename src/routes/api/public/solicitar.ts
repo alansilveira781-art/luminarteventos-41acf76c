@@ -212,6 +212,18 @@ export const Route = createFileRoute("/api/public/solicitar")({
         const hoje = new Date().toISOString().slice(0, 10);
         const dataSolicitacao = d.data_solicitacao || hoje;
 
+        // Vincula a solicitação ao usuário quando o e-mail informado existe em profiles
+        const solicitanteEmail = (d.solicitante_email || "").trim().toLowerCase() || null;
+        let solicitanteId: string | null = null;
+        if (solicitanteEmail) {
+          const { data: perfil } = await (supabaseAdmin as any)
+            .from("profiles")
+            .select("id")
+            .ilike("email", solicitanteEmail)
+            .maybeSingle();
+          solicitanteId = (perfil as any)?.id ?? null;
+        }
+
         if (d.tipo === "compra") {
           const somaItens = d.itens!.reduce(
             (acc, it) => acc + (it.valor_unitario ?? 0) * it.quantidade,
