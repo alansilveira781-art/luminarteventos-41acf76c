@@ -1,34 +1,39 @@
-## Objetivo
+## Diagnóstico (verificado)
 
-Dentro de Financeiro › Dashboard › aba **Uber**, criar subseções (como no Financeiro/Conta Azul): **Painel** (o dashboard atual) e **Análises** (novo relatório imprimível).
+Consultei o banco e a página. Duas causas, ambas confirmadas:
 
-## Subseção Análises
+1. **As solicitações não ficam vinculadas ao usuário.** Nas 161 compras existentes, 30 vieram do formulário público `/solicitar`. Nelas, o endpoint público grava apenas `solicitante` com o **nome** digitado (ex.: "Luciene Albuquerque") e joga o e-mail dentro do texto de `observacoes`. Os campos de vínculo (`created_by`, `solicitante_id`) ficam vazios, porque o formulário é anônimo.
 
-Filtros no topo: período (de/até, com atalhos mês atual / últimos 3 meses / ano), solicitante e projeto — reaproveitando os filtros já existentes no componente Uber.
+2. **A regra de leitura do banco (RLS) não enxerga essas linhas.** A política de leitura para quem não tem o módulo Compras/Financeiro só libera a linha quando `created_by = usuário`, `solicitante_id = usuário` ou `solicitante` é **exatamente igual** ao e-mail do usuário. Como `solicitante` guarda o nome, nenhuma dessas condições bate — o banco simplesmente não devolve o pedido, por mais que a tela filtre por nome/e-mail. O mesmo vale para `demandas`.
 
-**Granularidade automática pelo tamanho do período:**
+Ou seja: o filtro da tela até tenta casar por nome e e-mail, mas o banco já removeu as linhas antes.
 
-```text
-até  14 dias   -> por dia
-até  ~10 semanas (70 dias) -> por semana (seg–dom, rótulo "Sem 01/06–07/06")
-até  ~3 anos   -> por mês  ("Maio/2026")
-acima          -> por ano
-```
-Ex.: 01/05/2026 a 30/07/2026 (91 dias) cai em **mensal**. Um seletor manual "Automático / Dia / Semana / Mês" fica disponível para sobrepor.
+## O que fazer
 
-**Cards de totais do período:** valor total, nº de corridas, ticket médio, solicitantes únicos, projetos distintos, média por período (mês/semana), maior período e menor período (com valor e rótulo), variação % do último período vs. anterior.
+### 1. Guardar o e-mail do solicitante em coluna própria
+- Migração: adicionar `solicitante_email text` em `compras` e `demandas` (com índice em `lower(solicitante_email)`).
+- Endpoint público `/api/public/solicitar`: gravar `solicitante_email` com o e-mail informado no formulário e, quando esse e-mail existir em `profiles`, preencher também `solicitante_id` — assim o pedido já nasce vinculado ao usuário.
+- Fazer o mesmo no formulário público de contrato somente se o usuário quiser (fora do escopo aqui).
 
-**Gráficos e tabelas:**
-- Evolução no tempo: barras de valor + linha de quantidade de corridas (eixo duplo), por bucket.
-- Rank por pessoa: barras horizontais top 10 por valor, mais tabela completa com corridas, total, ticket médio e % do total.
-- Rank de projetos solicitados: barras horizontais top 10 + tabela com corridas, total e %.
-- Índices de solicitação: quem/qual projeto mais solicita e quem/qual menos solicita (maior e menor por quantidade e por valor).
-- Complementares: distribuição por serviço (pizza), top cidades, top destinos, distribuição por faixa de horário (madrugada/manhã/tarde/noite) e por dia da semana.
+### 2. Backfill dos pedidos antigos
+- Migração de dados: extrair o e-mail que está escrito em `observacoes` (padrão `email: xxx@yyy`) e preencher `solicitante_email`; onde o e-mail existir em `profiles`, preencher `solicitante_id`.
+- Para pedidos criados internamente sem e-mail, preencher `solicitante_email` a partir do `profiles` do `created_by`/`solicitante_id` quando existir.
 
-**Impressão:** botão "Imprimir" chamando `window.print()`, com cabeçalho de impressão (título, período, filtros aplicados, data de emissão), `@media print` em A4 retrato, filtros/tabs ocultos (`print:hidden`), quebras de página controladas entre blocos e tabelas legíveis em preto/branco — mesmo padrão já usado na Análise Detalhada do Conta Azul.
+### 3. Ajustar as políticas de leitura
+- Recriar `compras_select_owner` e `demandas_select_owner` para também liberar quando `lower(solicitante_email) = lower(e-mail do usuário logado)`, mantendo as condições atuais.
+- Nenhuma ampliação além disso: continua sendo "o próprio solicitante vê o próprio pedido".
+
+### 4. Simplificar a tela `src/routes/meus-pedidos.tsx`
+- Trocar o filtro atual (vários `ilike` em `solicitante`/`observacoes`, que pode gerar falsos positivos e quebra com nomes contendo vírgula) por: `solicitante_id`, `created_by`, `solicitante_email` (igualdade por e-mail) e, como rede de segurança, `solicitante` igual ao nome de exibição.
+- Exibir o e-mail do solicitante no detalhe do pedido.
 
 ## Detalhes técnicos
 
-- Novo arquivo `src/components/financeiro/UberAnalises.tsx` com toda a lógica de bucketização e agregações; helpers de bucket em `src/lib/uber/analises.ts` (puro, testável).
-- `src/components/financeiro/UberDashboard.tsx` passa a renderizar `<Tabs>` com "Painel" e "Análises"; o conteúdo atual vai para a primeira aba sem alteração de comportamento. Os dados de `uber_corridas` continuam vindo do mesmo `useQuery` (`fetchAllRows`), compartilhados entre as subseções.
-- Recharts já é usado no arquivo; nenhuma dependência nova. Nenhuma mudança de banco de dados.
+- Tabelas afetadas: `compras`, `demandas` (nova coluna + índice + políticas SELECT recriadas).
+- Arquivos: `src/routes/api/public/solicitar.ts`, `src/routes/meus-pedidos.tsx`.
+- O `GRANT` das tabelas já existe; a migração só recria políticas.
+- Sem mudança nos Kanbans de Compras/Despesas — quem tem o módulo continua vendo tudo como hoje.
+
+## Verificação
+
+Depois de aplicar, conferir por consulta que os 30 pedidos públicos passam a ter `solicitante_email` preenchido e que um usuário comum (sem módulo Compras) consegue listar os próprios pedidos em Meus Pedidos.
