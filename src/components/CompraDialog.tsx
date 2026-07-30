@@ -197,6 +197,7 @@ export function CompraDialog({
     if (!compraId) {
       setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10), tem_nf: true, numeros_nf: [] });
       setItens([]);
+      setPagamentos([]);
       setStatusInicial(defaultStatus);
       return;
     }
@@ -211,7 +212,28 @@ export function CompraDialog({
       }
       const { data: is } = await sb.from("compra_itens").select("*").eq("compra_id", compraId);
       setItens((is ?? []) as any);
+      const { data: pgs } = await sb
+        .from("compra_pagamentos")
+        .select("id,forma,parcelamento,valor,ordem")
+        .eq("compra_id", compraId)
+        .order("ordem");
+      const rows = ((pgs ?? []) as any[]).map((p) => ({
+        id: p.id as string,
+        forma: p.forma as string | null,
+        parcelamento: p.parcelamento as string | null,
+        valor: Number(p.valor ?? 0),
+      }));
+      if (rows.length === 0 && c && ((c as any).condicao_pagamento || (c as any).parcelamento)) {
+        rows.push({
+          id: undefined as any,
+          forma: (c as any).condicao_pagamento ?? null,
+          parcelamento: (c as any).parcelamento ?? null,
+          valor: Number((c as any).valor_total ?? 0),
+        });
+      }
+      setPagamentos(rows);
     })();
+
   }, [open, compraId, defaultStatus]);
 
   // Soma automática do valor total
