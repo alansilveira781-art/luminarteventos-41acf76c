@@ -14,6 +14,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { FormField, FormSection } from "@/components/FormSection";
 import { Check, ChevronsUpDown, Download, FileText, Printer, X } from "lucide-react";
 import { isAjusteMovimentacao } from "@/lib/utils";
+import { fetchAllRows } from "@/lib/fetch-all";
+
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 
 export const Route = createFileRoute("/relatorios")({
