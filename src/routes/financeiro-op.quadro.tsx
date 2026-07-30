@@ -443,7 +443,20 @@ function CardDetalheDialog({ card, onClose }: { card: Card | null; onClose: () =
   push("Data de solicitação", fmtDate(full?.data_solicitacao));
   push("Data da compra", fmtDate(full?.data_compra));
   push("Data do serviço", fmtDate(full?.data_servico));
-  push("Forma de pagamento", full?.parcelamento ?? full?.condicao_pagamento);
+  if (pagamentos.length > 0) {
+    pagamentos.forEach((p: any, i: number) => {
+      const partes = [p.forma || "Sem forma"];
+      if (p.parcelamento) partes.push(p.parcelamento);
+      partes.push(fmtBRL(Number(p.valor ?? 0)));
+      push(
+        pagamentos.length > 1 ? `Forma de pagamento ${i + 1}` : "Forma de pagamento",
+        partes.join(" · "),
+      );
+    });
+  } else {
+    push("Forma de pagamento", full?.parcelamento ?? full?.condicao_pagamento);
+  }
+
   push("Documento", full?.documento);
   push("Notas fiscais", nfStr);
   if (card.origem === "compra") {
