@@ -415,6 +415,7 @@ function PedidoDetalheDialog({
             <Info label="Categoria" value={pedido.categoria ?? "—"} />
             <Info label="Fornecedor" value={pedido.fornecedor ?? "—"} />
             <Info label="Solicitante" value={pedido.solicitante ?? "—"} />
+            <Info label="E-mail do solicitante" value={pedido.solicitante_email ?? "—"} />
             <Info label="Valor total" value={fmtBRL(pedido.valor_total)} />
             <Info label="Status" value={labelFor(pedido.tipo, pedido.status)} />
             <Info label="Solicitado em" value={fmtDate(pedido.data_solicitacao)} />
