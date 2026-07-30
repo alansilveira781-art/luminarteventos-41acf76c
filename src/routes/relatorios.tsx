@@ -59,11 +59,14 @@ function RelatoriosPage() {
 
   const { data: itensLista = [] } = useQuery({
     queryKey: ["relatorios-itens-select"],
-    queryFn: async () => {
-      const { data } = await supabase.from("itens").select("id,nome,codigo").order("nome").limit(5000);
-      return (data ?? []) as { id: string; nome: string; codigo: string | null }[];
-    },
+    queryFn: async () =>
+      (await fetchAllRows<{ id: string; nome: string; codigo: string | null }>(
+        "itens",
+        "id,nome,codigo",
+        { orderBy: { column: "nome" } },
+      )),
   });
+
 
   const itensFiltrados = useMemo(() => {
     const b = buscaItem.trim().toLowerCase();
