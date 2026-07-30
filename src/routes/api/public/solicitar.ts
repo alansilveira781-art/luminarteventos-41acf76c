@@ -242,6 +242,8 @@ export const Route = createFileRoute("/api/public/solicitar")({
               valor_total: valorTotal,
               data_solicitacao: dataSolicitacao,
               tipo_compra: d.subtipo || null,
+              solicitante_email: solicitanteEmail,
+              solicitante_id: solicitanteId,
             })
             .select("id, numero")
             .single();
@@ -297,6 +299,8 @@ export const Route = createFileRoute("/api/public/solicitar")({
           valor_total: d.valor_total ?? null,
           data_solicitacao: dataSolicitacao,
           tipo_demanda: d.is_reembolso ? "reembolso" : (d.subtipo || null),
+          solicitante_email: solicitanteEmail,
+          solicitante_id: solicitanteId,
         };
         if (!d.is_reembolso && d.pago === true) {
           demandaInsert.parcelamento = d.parcelamento || null;
