@@ -421,3 +421,205 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
     </Dialog>
   );
 }
+
+/** Locais adicionais (registros filhos vinculados ao mesmo evento pai) */
+function LocaisAdicionais({ evento, onChanged }: { evento: any; onChanged: () => void }) {
+  const qc = useQueryClient();
+  const [novo, setNovo] = useState<any | null>(null);
+
+  const { data: filhos = [], refetch } = useQuery({
+    queryKey: ["evento-locais", evento?.id],
+    enabled: !!evento?.id,
+    queryFn: async () => {
+      const { data, error } = await sb
+        .from("eventos")
+        .select("*")
+        .eq("evento_pai_id", evento.id)
+        .order("data_evento");
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  const vazio = {
+    local: "",
+    data_evento: evento?.data_evento ?? "",
+    data_evento_fim: evento?.data_evento_fim ?? evento?.data_evento ?? "",
+    data_montagem: "",
+    data_montagem_fim: "",
+    data_desmontagem: "",
+    data_desmontagem_fim: "",
+    hora_montagem: "",
+    hora_desmontagem: "",
+    observacoes: "",
+  };
+
+  const salvarFilho = useMutation({
+    mutationFn: async (row: any) => {
+      if (!row.local?.trim()) throw new Error("Informe o local");
+      if (!row.data_evento || !row.data_evento_fim) throw new Error("Informe as datas do local");
+
+      const payload: any = {
+        nome: evento.nome,
+        tipo: evento.tipo ?? null,
+        situacao: evento.situacao ?? null,
+        cidade: evento.cidade ?? null,
+        uf: evento.uf ?? null,
+        produtor: evento.produtor ?? null,
+        produtor_id: evento.produtor_id ?? null,
+        local: row.local.trim(),
+        data_evento: row.data_evento,
+        data_evento_fim: row.data_evento_fim,
+        data_montagem: row.data_montagem || null,
+        data_montagem_fim: row.data_montagem_fim || null,
+        data_desmontagem: row.data_desmontagem || null,
+        data_desmontagem_fim: row.data_desmontagem_fim || null,
+        hora_montagem: row.hora_montagem || null,
+        hora_desmontagem: row.hora_desmontagem || null,
+        observacoes: row.observacoes || null,
+        evento_pai_id: evento.id,
+      };
+
+      if (row.id) {
+        const { error } = await sb.from("eventos").update(payload).eq("id", row.id);
+        if (error) throw new Error(error.message);
+        return;
+      }
+
+      let ultimoErro: any = null;
+      for (let i = 0; i < 3; i++) {
+        const { data: codigo, error: codErr } = await sb.rpc("proximo_codigo_evento", { _data: row.data_evento });
+        if (codErr) throw codErr;
+        const { error } = await sb.from("eventos").insert({ ...payload, codigo, origem: "manual" });
+        if (!error) return;
+        ultimoErro = error;
+        if ((error as any).code === "23505") continue;
+        throw new Error((error as any).message ?? "Erro ao salvar local");
+      }
+      throw new Error(String(ultimoErro?.message ?? "Não foi possível salvar o local"));
+    },
+    onSuccess: () => {
+      toast.success("Local salvo!");
+      setNovo(null);
+      refetch();
+      qc.invalidateQueries({ queryKey: ["eventos"] });
+      onChanged();
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao salvar local"),
+  });
+
+  const excluirFilho = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await sb.from("eventos").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Local removido");
+      refetch();
+      qc.invalidateQueries({ queryKey: ["eventos"] });
+      onChanged();
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao remover"),
+  });
+
+  return (
+    <div className="mt-2 rounded-md border p-4 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <div className="text-sm font-semibold">Locais adicionais</div>
+          <p className="text-xs text-muted-foreground">
+            Cada local vira uma linha própria no calendário, vinculada a este mesmo evento.
+          </p>
+        </div>
+        {!novo && (
+          <Button type="button" variant="outline" size="sm" onClick={() => setNovo({ ...vazio })}>
+            <Plus className="h-4 w-4 mr-1" /> Adicionar local
+          </Button>
+        )}
+      </div>
+
+      {filhos.length > 0 && (
+        <div className="space-y-2">
+          {filhos.map((c) => (
+            <div key={c.id} className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
+              <div className="min-w-0">
+                <div className="truncate font-medium">{c.local || "—"}</div>
+                <div className="text-xs text-muted-foreground">
+                  {c.data_evento} → {c.data_evento_fim ?? c.data_evento}
+                </div>
+              </div>
+              <div className="flex gap-1 shrink-0">
+                <Button type="button" variant="ghost" size="sm" onClick={() => setNovo({ ...c })}>
+                  Editar
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive"
+                  onClick={() => excluirFilho.mutate(c.id)}
+                  disabled={excluirFilho.isPending}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {novo && (
+        <div className="rounded-md border bg-muted/30 p-3 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2">
+              <Label>Local *</Label>
+              <Input value={novo.local ?? ""} onChange={(e) => setNovo({ ...novo, local: e.target.value })} />
+            </div>
+            <div>
+              <Label>Data inicial *</Label>
+              <Input type="date" value={novo.data_evento ?? ""} onChange={(e) => setNovo({ ...novo, data_evento: e.target.value })} />
+            </div>
+            <div>
+              <Label>Data final *</Label>
+              <Input type="date" value={novo.data_evento_fim ?? ""} onChange={(e) => setNovo({ ...novo, data_evento_fim: e.target.value })} />
+            </div>
+            <div>
+              <Label>Montagem — início</Label>
+              <Input type="date" value={novo.data_montagem ?? ""} onChange={(e) => setNovo({ ...novo, data_montagem: e.target.value })} />
+            </div>
+            <div>
+              <Label>Montagem — fim</Label>
+              <Input type="date" value={novo.data_montagem_fim ?? ""} onChange={(e) => setNovo({ ...novo, data_montagem_fim: e.target.value })} />
+            </div>
+            <div>
+              <Label>Desmontagem — início</Label>
+              <Input type="date" value={novo.data_desmontagem ?? ""} onChange={(e) => setNovo({ ...novo, data_desmontagem: e.target.value })} />
+            </div>
+            <div>
+              <Label>Desmontagem — fim</Label>
+              <Input type="date" value={novo.data_desmontagem_fim ?? ""} onChange={(e) => setNovo({ ...novo, data_desmontagem_fim: e.target.value })} />
+            </div>
+            <div>
+              <Label>Hora montagem</Label>
+              <Input value={novo.hora_montagem ?? ""} onChange={(e) => setNovo({ ...novo, hora_montagem: e.target.value })} placeholder="08:00" />
+            </div>
+            <div>
+              <Label>Hora desmontagem</Label>
+              <Input value={novo.hora_desmontagem ?? ""} onChange={(e) => setNovo({ ...novo, hora_desmontagem: e.target.value })} placeholder="23:00" />
+            </div>
+            <div className="sm:col-span-2">
+              <Label>Observações</Label>
+              <Textarea rows={2} value={novo.observacoes ?? ""} onChange={(e) => setNovo({ ...novo, observacoes: e.target.value })} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => setNovo(null)}>Cancelar</Button>
+            <Button type="button" size="sm" onClick={() => salvarFilho.mutate(novo)} disabled={salvarFilho.isPending}>
+              {salvarFilho.isPending ? "Salvando…" : "Salvar local"}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
