@@ -44,6 +44,7 @@ export function EventoSheetCombobox({
         .from("eventos")
         .select("codigo_evento, nome, local, cidade, produtor, data_evento, data_evento_fim")
         .not("codigo_evento", "is", null)
+        .is("evento_pai_id", null)
         .order("data_evento_fim", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Array<{

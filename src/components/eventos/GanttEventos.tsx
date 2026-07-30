@@ -262,12 +262,12 @@ export function GanttEventos({
           </div>
 
           {/* Linhas */}
-          {eventosOrdenados.length === 0 ? (
+          {linhas.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground text-sm">
               Nenhum evento no período selecionado.
             </div>
           ) : (
-            eventosOrdenados.map((ev) => (
+            linhas.map((ev) => (
               <div
                 key={ev.id}
                 className="flex border-b hover:bg-muted/30 cursor-pointer"
@@ -279,8 +279,11 @@ export function GanttEventos({
                   className="shrink-0 border-r px-3 py-1.5 flex flex-col justify-center gap-0.5 bg-background"
                   style={{ width: LEFT_COL }}
                 >
-                  <div className="text-xs font-semibold whitespace-normal leading-tight line-clamp-2" title={ev.nome}>
-                    {ev.codigo_evento ?? ev.nome}
+                  <div
+                    className={`text-xs font-semibold whitespace-normal leading-tight line-clamp-2 ${ev.evento_pai_id ? "pl-3 text-muted-foreground" : ""}`}
+                    title={ev.nome}
+                  >
+                    {ev.evento_pai_id ? `↳ ${ev.local ?? ev.nome}` : (ev.codigo_evento ?? ev.nome)}
                   </div>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {ev.situacao && (
