@@ -48,6 +48,14 @@ function ComprasDashboard() {
     },
   });
 
+  const { data: pagamentos = [] } = useQuery({
+    queryKey: ["compra-pagamentos-dash"],
+    queryFn: async () => {
+      const { data } = await sb.from("compra_pagamentos").select("compra_id,forma,valor");
+      return (data ?? []) as any[];
+    },
+  });
+
   const { data: itens = [] } = useQuery({
     queryKey: ["compra-itens-dash"],
     queryFn: async () => {
