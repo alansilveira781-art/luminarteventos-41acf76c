@@ -49,6 +49,7 @@ type Pedido = {
   status: CompraStatus;
   titulo: string | null;
   solicitante: string | null;
+  solicitante_email: string | null;
   fornecedor: string | null;
   valor_total: number | null;
   data_solicitacao: string | null;
@@ -93,7 +94,7 @@ function MeusPedidos() {
 
   const email = (user?.email ?? "").trim().toLowerCase();
   const uid = user?.id ?? "";
-  const emailLocal = email.includes("@") ? email.split("@")[0] : "";
+  
 
   const { data: perfil } = useQuery({
     enabled: !!user,
