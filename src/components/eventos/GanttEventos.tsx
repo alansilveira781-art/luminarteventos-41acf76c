@@ -203,7 +203,7 @@ export function GanttEventos({
   }, [inicio, fim, totalMs]);
 
   const LEFT_COL = 280;
-  const rowHeight = 64;
+  const rowHeight = 72;
 
   return (
     <div className="space-y-3">
