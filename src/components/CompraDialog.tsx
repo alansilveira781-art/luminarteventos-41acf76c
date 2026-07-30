@@ -315,6 +315,19 @@ export function CompraDialog({
           throw new Error("Itens da compra não foram totalmente confirmados pelo banco.");
         }
       }
+      await sb.from("compra_pagamentos").delete().eq("compra_id", id);
+      if (pagamentosLimpos.length) {
+        const pagRows = pagamentosLimpos.map((p, i) => ({
+          compra_id: id,
+          forma: p.forma?.trim() || null,
+          parcelamento: p.parcelamento?.trim() || null,
+          valor: Number(p.valor || 0),
+          ordem: i,
+        }));
+        const { error: pagErr } = await sb.from("compra_pagamentos").insert(pagRows);
+        if (pagErr) throw pagErr;
+      }
+
       // Upload de anexos pendentes (anexados antes de salvar)
       if (id && pendingFiles.length > 0) {
         for (const file of pendingFiles) {
