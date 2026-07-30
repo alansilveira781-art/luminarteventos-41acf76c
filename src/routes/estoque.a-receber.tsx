@@ -1274,11 +1274,21 @@ function ReceberDemandaDialog({ demandaId, demandaNumero, onClose }: { demandaId
         )}
 
         <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-between sm:items-center">
-          <div className="text-sm">
-            <span className="text-muted-foreground">Total do recebimento: </span>
-            <span className="font-semibold tabular-nums">
-              {totalRecebimento.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-            </span>
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button
+              variant="outline"
+              className="border-warning/60 text-warning hover:bg-warning/10"
+              onClick={() => setDevolverOpen(true)}
+              disabled={!!statusBlocked || finalizar.isPending}
+            >
+              <Undo2 className="h-4 w-4 mr-1" /> Devolver para Despesas
+            </Button>
+            <div className="text-sm">
+              <span className="text-muted-foreground">Total do recebimento: </span>
+              <span className="font-semibold tabular-nums">
+                {totalRecebimento.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              </span>
+            </div>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>Cancelar</Button>
@@ -1291,6 +1301,45 @@ function ReceberDemandaDialog({ demandaId, demandaNumero, onClose }: { demandaId
             </Button>
           </div>
         </DialogFooter>
+
+        {devolverOpen && (
+          <Dialog open onOpenChange={(v) => { if (!v) setDevolverOpen(false); }}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Devolver para Despesa Em Andamento</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3 py-2">
+                <p className="text-sm text-muted-foreground">
+                  O card voltará para a coluna <strong>Despesa Em Andamento</strong> no Quadro de Despesas. O motivo ficará registrado nos comentários da despesa.
+                </p>
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">
+                    Motivo / Causa*
+                  </label>
+                  <Textarea
+                    rows={3}
+                    value={motivoDevolucao}
+                    onChange={(e) => setMotivoDevolucao(e.target.value)}
+                    placeholder="Ex: Item com avaria, quantidade divergente, produto errado…"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDevolverOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => devolver.mutate()}
+                  disabled={devolver.isPending || !motivoDevolucao.trim()}
+                >
+                  {devolver.isPending ? "Devolvendo…" : "Confirmar devolução"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+
 
         {previewAnexo && (
           <AnexoViewer
