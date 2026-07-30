@@ -150,6 +150,14 @@ export function GanttEventos({
     return out;
   }, [eventosOrdenados]);
 
+  // Mapa de eventos-pai (para exibir o nome do evento nos locais adicionais)
+  const paiPorId = useMemo(() => {
+    const m = new Map<string, EventoCal>();
+    for (const e of eventos) m.set(e.id, e);
+    return m;
+  }, [eventos]);
+
+
 
   const navPrev = () => {
     if (modo === "semanal") setRef(subDays(ref, 7));
