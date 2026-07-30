@@ -248,6 +248,15 @@ export function DemandaDialog({
     [itens],
   );
 
+  // Quando o tipo usa grade de itens, o valor total é sempre calculado pelos itens
+  useEffect(() => {
+    if (!open || !tipoRequerItens) return;
+    const calc = Number(totalItens.toFixed(2));
+    setForm((f) => (Number(f.valor_total ?? 0) === calc ? f : { ...f, valor_total: calc }));
+  }, [open, tipoRequerItens, totalItens]);
+
+
+
 
   return (
     <>
