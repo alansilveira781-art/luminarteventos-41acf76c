@@ -28,6 +28,7 @@ export type EventoCal = {
   situacao?: string | null;
   hora_montagem?: string | null;
   hora_desmontagem?: string | null;
+  evento_pai_id?: string | null;
 };
 
 type Modo = "semanal" | "mensal" | "anual";
