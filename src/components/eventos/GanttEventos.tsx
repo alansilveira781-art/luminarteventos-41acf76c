@@ -150,6 +150,14 @@ export function GanttEventos({
     return out;
   }, [eventosOrdenados]);
 
+  // Mapa de eventos-pai (para exibir o nome do evento nos locais adicionais)
+  const paiPorId = useMemo(() => {
+    const m = new Map<string, EventoCal>();
+    for (const e of eventos) m.set(e.id, e);
+    return m;
+  }, [eventos]);
+
+
 
   const navPrev = () => {
     if (modo === "semanal") setRef(subDays(ref, 7));
@@ -195,7 +203,7 @@ export function GanttEventos({
   }, [inicio, fim, totalMs]);
 
   const LEFT_COL = 280;
-  const rowHeight = 64;
+  const rowHeight = 72;
 
   return (
     <div className="space-y-3">
@@ -267,7 +275,14 @@ export function GanttEventos({
               Nenhum evento no período selecionado.
             </div>
           ) : (
-            linhas.map((ev) => (
+            linhas.map((ev) => {
+              const pai = ev.evento_pai_id ? paiPorId.get(ev.evento_pai_id) : null;
+              const isFilho = !!ev.evento_pai_id;
+              const tituloLinha = isFilho ? (ev.local ?? ev.nome) : (ev.codigo_evento ?? ev.nome);
+              const subtitulo = isFilho
+                ? [pai?.nome, pai?.codigo_evento].filter(Boolean).join(" · ")
+                : ev.nome;
+              return (
               <div
                 key={ev.id}
                 className="flex border-b hover:bg-muted/30 cursor-pointer"
@@ -279,13 +294,20 @@ export function GanttEventos({
                   className="shrink-0 border-r px-3 py-1.5 flex flex-col justify-center gap-0.5 bg-background"
                   style={{ width: LEFT_COL }}
                 >
-                  <div
-                    className={`text-xs font-semibold whitespace-normal leading-tight line-clamp-2 ${ev.evento_pai_id ? "pl-3 text-muted-foreground" : ""}`}
-                    title={ev.nome}
-                  >
-                    {ev.evento_pai_id ? `↳ ${ev.local ?? ev.nome}` : (ev.codigo_evento ?? ev.nome)}
+                  <div className={isFilho ? "border-l-2 border-primary/40 pl-2 ml-1 flex flex-col gap-0.5" : "flex flex-col gap-0.5"}>
+                    <div
+                      className="text-xs font-semibold whitespace-normal leading-tight line-clamp-2"
+                      title={[subtitulo, tituloLinha].filter(Boolean).join(" — ")}
+                    >
+                      {isFilho ? `↳ ${tituloLinha}` : tituloLinha}
+                    </div>
+                    {subtitulo && (
+                      <div className="text-[10px] text-muted-foreground leading-tight truncate" title={subtitulo}>
+                        {subtitulo}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-1.5 flex-wrap">
+                  <div className={`flex items-center gap-1.5 flex-wrap ${isFilho ? "pl-3" : ""}`}>
                     {ev.situacao && (
                       <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${situacaoStyle(ev.situacao)}`}>
                         {ev.situacao}
@@ -298,6 +320,7 @@ export function GanttEventos({
                     )}
                   </div>
                 </div>
+
 
                 {/* Track */}
                 <div className="relative flex-1">
@@ -355,7 +378,8 @@ export function GanttEventos({
                   />
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
