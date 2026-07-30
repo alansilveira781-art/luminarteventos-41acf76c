@@ -398,6 +398,12 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
           </div>
         )}
 
+        {!isNew && !evento?.evento_pai_id && (
+          <LocaisAdicionais evento={evento} onChanged={onSaved} />
+        )}
+
+
+
         <DialogFooter className="sm:justify-between">
           {evento?.id ? (
             <Button variant="destructive" onClick={() => excluir.mutate()} disabled={excluir.isPending}>
