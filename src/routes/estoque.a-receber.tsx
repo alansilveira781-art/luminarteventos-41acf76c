@@ -1033,6 +1033,44 @@ function ReceberDemandaDialog({ demandaId, demandaNumero, onClose }: { demandaId
     onError: (e: any) => toast.error(e.message ?? "Erro ao finalizar"),
   });
 
+  const devolver = useMutation({
+    mutationFn: async () => {
+      if (!motivoDevolucao.trim()) throw new Error("Informe o motivo da devolução");
+
+      const { data: statusRow, error: statusErr } = await sb
+        .from("demandas").select("status").eq("id", demandaId).maybeSingle();
+      if (statusErr) throw statusErr;
+      if (!statusRow) throw new Error("Despesa não encontrada");
+      if (statusRow.status !== "a_receber") {
+        throw new Error(`Esta despesa não está mais em 'A Receber' (status: ${statusRow.status}).`);
+      }
+
+      const { error: updErr } = await sb
+        .from("demandas")
+        .update({ status: "em_andamento" })
+        .eq("id", demandaId);
+      if (updErr) throw updErr;
+
+      const { data: { user } } = await supabase.auth.getUser();
+      await sb.from("demanda_comentarios").insert({
+        demanda_id: demandaId,
+        user_id: user?.id ?? null,
+        user_nome: user?.user_metadata?.full_name ?? user?.email ?? "Estoque",
+        texto: `🔄 Devolvido para Despesa Em Andamento\nMotivo: ${motivoDevolucao.trim()}`,
+      });
+    },
+    onSuccess: () => {
+      toast.success("Despesa devolvida para 'Em Andamento' no Quadro de Despesas");
+      qc.invalidateQueries({ queryKey: ["demandas"] });
+      qc.invalidateQueries({ queryKey: ["demandas-receber"] });
+      setDevolverOpen(false);
+      onClose();
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao devolver"),
+  });
+
+
+
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
