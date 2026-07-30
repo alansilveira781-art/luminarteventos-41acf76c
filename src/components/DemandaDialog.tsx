@@ -142,6 +142,7 @@ export function DemandaDialog({
     if (!demandaId) {
       setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10), tem_nf: true, numeros_nf: [] });
       setItens([]);
+      setPagamentos([]);
       return;
     }
     (async () => {
@@ -158,6 +159,25 @@ export function DemandaDialog({
         .eq("demanda_id", demandaId)
         .order("created_at", { ascending: true });
       setItens((dItens ?? []) as any);
+      const { data: pgs } = await sb
+        .from("demanda_pagamentos")
+        .select("id,forma,parcelamento,valor,ordem")
+        .eq("demanda_id", demandaId)
+        .order("ordem");
+      const rows: PagamentoLinha[] = ((pgs ?? []) as any[]).map((p) => ({
+        id: p.id as string,
+        forma: p.forma as string | null,
+        parcelamento: p.parcelamento as string | null,
+        valor: Number(p.valor ?? 0),
+      }));
+      if (rows.length === 0 && c && ((c as any).condicao_pagamento || (c as any).parcelamento)) {
+        rows.push({
+          forma: (c as any).condicao_pagamento ?? null,
+          parcelamento: (c as any).parcelamento ?? null,
+          valor: Number((c as any).valor_total ?? 0),
+        });
+      }
+      setPagamentos(rows);
     })();
   }, [open, demandaId, defaultStatus]);
 
@@ -165,11 +185,26 @@ export function DemandaDialog({
     mutationFn: async () => {
       await ensureValidSession();
       const nfList = (form.numeros_nf ?? []).map((n) => (n ?? "").trim()).filter(Boolean);
+      const pagamentosLimpos = pagamentos.filter(
+        (p) => (p.forma ?? "").trim() || (p.parcelamento ?? "").trim() || Number(p.valor || 0) !== 0,
+      );
+      if (
+        pagamentosLimpos.length > 0
+        && !pagamentosBatem(pagamentosLimpos, Number(form.valor_total ?? 0))
+      ) {
+        throw new Error(
+          "A soma das formas de pagamento precisa ser igual ao valor total da despesa.",
+        );
+      }
+      const resumo = resumoPagamentos(pagamentosLimpos);
       const payload: any = {
         ...form,
+        condicao_pagamento: resumo.condicao_pagamento,
+        parcelamento: resumo.parcelamento,
         numeros_nf: form.tem_nf === false ? [] : nfList,
         numero_nf: form.tem_nf === false ? null : (nfList[0] ?? null),
       };
+
       let id = demandaId;
       if (id) {
         const { data: upd, error } = await sb.from("demandas").update(payload).eq("id", id).select("id");
