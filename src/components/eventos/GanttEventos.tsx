@@ -130,6 +130,27 @@ export function GanttEventos({
       .sort((a, b) => (a.data_evento || "").localeCompare(b.data_evento || ""));
   }, [eventos, inicio, fim]);
 
+  // Agrupa locais adicionais logo abaixo do evento pai
+  const linhas = useMemo(() => {
+    const visiveis = new Set(eventosOrdenados.map((e) => e.id));
+    const filhosPor = new Map<string, EventoCal[]>();
+    for (const e of eventosOrdenados) {
+      if (e.evento_pai_id && visiveis.has(e.evento_pai_id)) {
+        const arr = filhosPor.get(e.evento_pai_id) ?? [];
+        arr.push(e);
+        filhosPor.set(e.evento_pai_id, arr);
+      }
+    }
+    const out: EventoCal[] = [];
+    for (const e of eventosOrdenados) {
+      if (e.evento_pai_id && visiveis.has(e.evento_pai_id)) continue;
+      out.push(e);
+      for (const f of filhosPor.get(e.id) ?? []) out.push(f);
+    }
+    return out;
+  }, [eventosOrdenados]);
+
+
   const navPrev = () => {
     if (modo === "semanal") setRef(subDays(ref, 7));
     else if (modo === "mensal") setRef(subMonths(ref, 1));
