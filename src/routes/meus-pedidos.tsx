@@ -130,7 +130,7 @@ function MeusPedidos() {
       const { data, error } = await sb
         .from("compras")
         .select(
-          "id,numero,status,titulo,solicitante,fornecedor,valor_total,data_solicitacao,updated_at,tipo_compra,observacoes,motivo_negacao",
+          "id,numero,status,titulo,solicitante,solicitante_email,fornecedor,valor_total,data_solicitacao,updated_at,tipo_compra,observacoes,motivo_negacao",
         )
         .or(orFilter)
         .order("data_solicitacao", { ascending: false });
@@ -143,6 +143,7 @@ function MeusPedidos() {
           status: r.status,
           titulo: r.titulo,
           solicitante: r.solicitante,
+          solicitante_email: r.solicitante_email ?? null,
           fornecedor: r.fornecedor,
           valor_total: r.valor_total,
           data_solicitacao: r.data_solicitacao,
@@ -162,7 +163,7 @@ function MeusPedidos() {
       const { data, error } = await sb
         .from("demandas")
         .select(
-          "id,numero,status,titulo,solicitante,fornecedor,valor_total,data_solicitacao,updated_at,tipo_demanda,observacoes,motivo_negacao,descritivo",
+          "id,numero,status,titulo,solicitante,solicitante_email,fornecedor,valor_total,data_solicitacao,updated_at,tipo_demanda,observacoes,motivo_negacao,descritivo",
         )
         .or(orFilter)
         .order("data_solicitacao", { ascending: false });
@@ -175,6 +176,7 @@ function MeusPedidos() {
           status: r.status,
           titulo: r.titulo,
           solicitante: r.solicitante,
+          solicitante_email: r.solicitante_email ?? null,
           fornecedor: r.fornecedor,
           valor_total: r.valor_total,
           data_solicitacao: r.data_solicitacao,
