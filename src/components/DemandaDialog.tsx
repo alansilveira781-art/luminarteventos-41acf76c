@@ -96,6 +96,8 @@ export function DemandaDialog({
   const [form, setForm] = useState<Demanda>({ status: defaultStatus });
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [itens, setItens] = useState<DemandaItem[]>([]);
+  const [pagamentos, setPagamentos] = useState<PagamentoLinha[]>([]);
+
 
   const tipoRequerItens = useMemo(
     () => TIPOS_COM_ITENS.includes(form.tipo_demanda ?? ""),
