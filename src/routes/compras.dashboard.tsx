@@ -106,15 +106,30 @@ function ComprasDashboard() {
       .slice(0, 8);
   }, [compras]);
 
-  // Por condição
+  // Por condição (usa as formas de pagamento múltiplas quando existirem)
   const porCondicao = useMemo(() => {
     const map = new Map<string, number>();
+    const porCompra = new Map<string, any[]>();
+    pagamentos.forEach((p) => {
+      const arr = porCompra.get(p.compra_id) ?? [];
+      arr.push(p);
+      porCompra.set(p.compra_id, arr);
+    });
     compras.forEach((c) => {
+      const linhas = porCompra.get(c.id);
+      if (linhas && linhas.length > 0) {
+        linhas.forEach((p) => {
+          const k = p.forma || "Não informado";
+          map.set(k, (map.get(k) ?? 0) + Number(p.valor || 0));
+        });
+        return;
+      }
       const k = c.condicao_pagamento || "Não informado";
       map.set(k, (map.get(k) ?? 0) + Number(c.valor_total || 0));
     });
     return Array.from(map.entries()).map(([nome, valor]) => ({ nome, valor: Math.round(valor * 100) / 100 }));
-  }, [compras]);
+  }, [compras, pagamentos]);
+
 
   // Por categoria (via itens vinculados)
   const porCategoria = useMemo(() => {
