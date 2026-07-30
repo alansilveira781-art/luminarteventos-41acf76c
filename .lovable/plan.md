@@ -1,21 +1,27 @@
-## Objetivo
+## 1. Eventos — vários locais no mesmo evento (mesmo ID)
 
-Transformar o formulário de solicitação de contratos em uma página **pública**, acessível por link, sem login e sem o layout interno (sidebar/topo) — exatamente como funciona o `/solicitar` de compras hoje.
+Hoje cada linha da tabela de eventos é um evento independente e o identificador `codigo_evento` (o texto `AAAAMMDD - NOME - LOCAL` que abastece o dropdown de eventos em todos os módulos) é montado por gatilho a partir do nome + local da própria linha. Por isso dois locais gerariam dois IDs diferentes.
 
-## Como fica
+Solução: registros "filhos" vinculados a um evento principal.
 
-- Novo endereço público: **`/solicitar-contrato`**
-- Qualquer pessoa com o link preenche e envia; a solicitação cai na coluna **Entrada** do quadro do Jurídico, com os anexos.
-- Mesmos campos já definidos: Solicitação (tipo, empresa, objeto, valor, data), Dados da Empresa, Responsável Legal, anexos obrigatórios (Proposta e Cartão CNPJ) e observações.
-- Tela de sucesso mostrando o número gerado (ex.: CONTRATO-42).
-- Proteção contra abuso: limite de 5 envios por minuto por IP, limite de 10 MB por arquivo, validação de todos os campos no servidor.
-- A aba **Jurídico › Configurações** (lista de usuários liberados) deixa de existir, junto com a rota interna `/juridico/solicitar`. O link é copiável a partir de um card na tela de Contratos.
+- Banco: adicionar em `eventos` a coluna `evento_pai_id` (referência ao evento principal). O gatilho que gera `codigo_evento` passa a copiar o código do pai quando a linha for um local adicional, de modo que todos compartilhem exatamente o mesmo ID. O `codigo` interno (sequencial, único) continua distinto por linha, com sufixo de local.
+- Tela de evento: nova seção "Locais adicionais" (só depois do evento salvo) onde se adiciona quantos locais quiser, cada um com local, cidade/UF, datas de evento, montagem/desmontagem com horas e produtor próprios. Excluir o evento principal remove os locais vinculados.
+- Gantt: cada local aparece como uma linha própria, identada/marcada como "Local 2, Local 3…" sob o mesmo código, para a produção ver o dia a dia. Filtros e navegação continuam iguais.
+- Dropdown de eventos (`EventoSheetCombobox`, usado em Compras, Despesas, Estoque, Financeiro etc.): como todos os locais têm o mesmo `codigo_evento`, ele já elimina duplicados e mostra uma única opção — sem mudança de comportamento para quem seleciona.
+- Calendário público: mostra o evento com todos os locais listados.
+
+## 2. Despesas — Reposição de Estoque com itens e total calculado
+
+- Incluir `reposicao_estoque` na lista de tipos que exibem a grade de itens (hoje só fardamento, material de limpeza, material de escritório e imobilizado). Assim ele passa a ter o mesmo comportamento: grade de itens com associação ao estoque, gravação em `demanda_itens` e validação no A Receber (que já reconhece esse tipo).
+- Valor total: quando o tipo usa grade de itens, o campo "Valor total (R$)" deixa de ser editável e passa a exibir a soma calculada dos itens (quantidade × valor unitário − desconto + frete + IPI + outros custos), atualizada em tempo real e salva nesse valor. Para os demais tipos, o campo continua editável como hoje.
+
+## 3. Estoque › A Receber — botão "Devolver" nas despesas
+
+A tela já tem o botão de devolução para cards de Compra; os cards de Despesa não têm.
+
+- Adicionar no diálogo "Validar recebimento" da despesa o botão **Devolver para Despesas**, com o mesmo fluxo do de compras: confirmação com motivo obrigatório, revalidação do status atual, retorno do card para a coluna **Despesa Em Andamento** no Quadro de Despesas e registro do motivo nos comentários da despesa (`demanda_comentarios`), com atualização automática das listas.
 
 ## Detalhes técnicos
 
-1. **Nova página** `src/routes/solicitar-contrato.tsx` — reaproveita o formulário atual de `juridico.solicitar.tsx`, sem `useAuth`/`useJuridicoSolicitante`, com `head()` próprio (título/descrição). Envia `multipart/form-data` (payload JSON + arquivos) via `fetch`.
-2. **`src/routes/__root.tsx`** — incluir `/solicitar-contrato` na lista de rotas que renderizam só o `<Outlet />` (sem shell autenticado).
-3. **Novo endpoint** `src/routes/api/public/solicitar-contrato.ts` — espelha `api/public/solicitar.ts`: CORS + `OPTIONS`, rate limit por IP, validação Zod (nome/documento/e-mail/telefone obrigatórios nas duas seções), insert em `juridico_contratos` com `status: 'entrada'`, `created_by: null`, e upload dos anexos no bucket `juridico-anexos` + registros em `juridico_anexos` com `tipo` `proposta`/`cartao_cnpj`, usando `supabaseAdmin` dentro do handler.
-4. **Limpeza**: remover `src/routes/juridico.solicitar.tsx`, `src/routes/juridico.configuracoes.tsx`, `src/hooks/useJuridicoSolicitante.ts`, referências em `src/routes/juridico.tsx` e no `AppSidebar`.
-5. **Banco**: migração para remover a tabela `juridico_solicitantes` e a função `pode_solicitar_contrato`, e ajustar as políticas de `juridico_contratos`/`juridico_anexos` que dependiam delas (escrita pública passa a ocorrer apenas pelo endpoint com service role — nada de política aberta para `anon`).
-6. **Link**: card com botão "Copiar link" em Jurídico › Contratos apontando para `/solicitar-contrato`.
+- Migração: `ALTER TABLE public.eventos ADD COLUMN evento_pai_id uuid REFERENCES public.eventos(id) ON DELETE CASCADE` + índice; ajuste de `eventos_set_codigo_evento()` para herdar `codigo_evento` do pai; `proximo_codigo_evento` reutilizado para o `codigo` do filho.
+- Arquivos: `src/routes/eventos.index.tsx`, `src/components/eventos/GanttEventos.tsx`, `src/routes/calendario-publico.tsx`, `src/lib/demandas.ts` (`TIPOS_COM_ITENS`), `src/components/DemandaDialog.tsx`, `src/routes/estoque.a-receber.tsx`.

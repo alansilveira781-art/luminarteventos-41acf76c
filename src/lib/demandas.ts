@@ -21,6 +21,7 @@ export const TIPOS_COM_ITENS: string[] = [
   "material_limpeza",
   "material_escritorio",
   "imobilizado",
+  "reposicao_estoque",
 ];
 
 // Tipos que geram entrada em ESTOQUE (validação em /estoque/a-receber)

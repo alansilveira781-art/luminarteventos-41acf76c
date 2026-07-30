@@ -2505,6 +2505,7 @@ export type Database = {
           data_evento_fim: string | null
           data_montagem: string | null
           data_montagem_fim: string | null
+          evento_pai_id: string | null
           hora_desmontagem: string | null
           hora_fim: string | null
           hora_inicio: string | null
@@ -2536,6 +2537,7 @@ export type Database = {
           data_evento_fim?: string | null
           data_montagem?: string | null
           data_montagem_fim?: string | null
+          evento_pai_id?: string | null
           hora_desmontagem?: string | null
           hora_fim?: string | null
           hora_inicio?: string | null
@@ -2567,6 +2569,7 @@ export type Database = {
           data_evento_fim?: string | null
           data_montagem?: string | null
           data_montagem_fim?: string | null
+          evento_pai_id?: string | null
           hora_desmontagem?: string | null
           hora_fim?: string | null
           hora_inicio?: string | null
@@ -2586,6 +2589,13 @@ export type Database = {
           venda_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "eventos_evento_pai_id_fkey"
+            columns: ["evento_pai_id"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "eventos_produtor_id_fkey"
             columns: ["produtor_id"]
