@@ -408,14 +408,14 @@ export function DemandaDialog({
               <FormField label="Data da compra/serviço">
                 <Input type="date" value={form.data_compra ?? ""} onChange={(e) => setForm({ ...form, data_compra: e.target.value })} />
               </FormField>
-              <FormField label="Parcelamento">
-                <SelectCreatable table="parcelamentos" value={form.parcelamento}
-                  onChange={(v) => setForm({ ...form, parcelamento: v })} />
-              </FormField>
-              <FormField label="Condição de pagamento">
-                <SelectCreatable table="condicoes_pagamento" value={form.condicao_pagamento}
-                  onChange={(v) => setForm({ ...form, condicao_pagamento: v })} />
-              </FormField>
+              <div className="md:col-span-2">
+                <PagamentosGrid
+                  pagamentos={pagamentos}
+                  onChange={setPagamentos}
+                  total={Number(form.valor_total ?? 0)}
+                />
+              </div>
+
               <FormField label="Tem Nota Fiscal (NF)?">
                 <label className="flex items-center gap-2 h-10 text-sm">
                   <input
