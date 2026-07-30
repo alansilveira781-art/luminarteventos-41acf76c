@@ -263,12 +263,24 @@ export function CompraDialog({
           throw new Error("Informe a empresa faturada antes de mover para Compras a Receber.");
         }
       }
+      const pagamentosLimpos = pagamentos.filter(
+        (p) => (p.forma ?? "").trim() || (p.parcelamento ?? "").trim() || Number(p.valor || 0) !== 0,
+      );
+      if (pagamentosLimpos.length > 0 && !pagamentosBatem(pagamentosLimpos, totalCalc)) {
+        throw new Error(
+          "A soma das formas de pagamento precisa ser igual ao valor total da compra.",
+        );
+      }
+      const resumo = resumoPagamentos(pagamentosLimpos);
       const payload: any = {
         ...form,
         valor_total: totalCalc,
+        condicao_pagamento: resumo.condicao_pagamento,
+        parcelamento: resumo.parcelamento,
         numeros_nf: form.tem_nf === false ? [] : nfList,
         numero_nf: form.tem_nf === false ? null : (nfList[0] ?? null),
       };
+
 
       let id = compraId;
       if (id) {
