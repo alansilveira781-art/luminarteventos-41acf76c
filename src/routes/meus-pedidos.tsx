@@ -114,15 +114,13 @@ function MeusPedidos() {
     orParts.push(`solicitante_id.eq.${uid}`, `created_by.eq.${uid}`);
   }
   if (email) {
-    orParts.push(`solicitante.ilike.%${email}%`, `observacoes.ilike.%${email}%`);
+    orParts.push(`solicitante_email.ilike.${email}`, `solicitante.ilike.${email}`);
   }
-  if (emailLocal && emailLocal !== email) {
-    orParts.push(`solicitante.ilike.%${emailLocal}%`);
-  }
-  if (displayName) {
-    orParts.push(`solicitante.ilike.%${displayName}%`);
+  if (displayName && !displayName.includes(",")) {
+    orParts.push(`solicitante.ilike.${displayName}`);
   }
   const orFilter = orParts.join(",");
+
 
   const { data: compras = [] } = useQuery({
     enabled: !!user && !!orFilter,
