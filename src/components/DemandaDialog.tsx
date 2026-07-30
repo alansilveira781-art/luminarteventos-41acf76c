@@ -423,10 +423,21 @@ export function DemandaDialog({
                 </FormField>
               )}
               <FormField label="Valor total (R$)">
-                <MoneyInput
-                  value={form.valor_total ?? 0}
-                  onChange={(n) => setForm({ ...form, valor_total: n || null })}
-                />
+                {tipoRequerItens ? (
+                  <div className="flex h-10 items-center justify-between rounded-md border border-input bg-muted/50 px-3 text-sm">
+                    <span className="font-semibold tabular-nums">
+                      {(form.valor_total ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    </span>
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      calculado pelos itens
+                    </span>
+                  </div>
+                ) : (
+                  <MoneyInput
+                    value={form.valor_total ?? 0}
+                    onChange={(n) => setForm({ ...form, valor_total: n || null })}
+                  />
+                )}
               </FormField>
               <FormField label="Observações" wide>
                 <Textarea rows={3} value={form.observacoes ?? ""} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
