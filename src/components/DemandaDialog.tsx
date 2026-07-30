@@ -216,7 +216,22 @@ export function DemandaDialog({
         if (!data?.id) throw new Error("Demanda não foi confirmada pelo banco.");
         id = data.id;
       }
+      if (id) {
+        await sb.from("demanda_pagamentos").delete().eq("demanda_id", id);
+        if (pagamentosLimpos.length) {
+          const pagRows = pagamentosLimpos.map((p, i) => ({
+            demanda_id: id,
+            forma: p.forma?.trim() || null,
+            parcelamento: p.parcelamento?.trim() || null,
+            valor: Number(p.valor || 0),
+            ordem: i,
+          }));
+          const { error: pagErr } = await sb.from("demanda_pagamentos").insert(pagRows);
+          if (pagErr) throw pagErr;
+        }
+      }
       // Persistir itens quando o tipo exigir (fardamento/material_limpeza/material_escritorio)
+
       if (id && tipoRequerItens) {
         await sb.from("demanda_itens").delete().eq("demanda_id", id).eq("recebido", false);
         const rows = itens
