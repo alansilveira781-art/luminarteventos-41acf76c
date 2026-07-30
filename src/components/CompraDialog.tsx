@@ -23,6 +23,9 @@ import { notifyResponsiblesForStatus, notifyMentions } from "@/lib/notify";
 import { CopiarLinkButton } from "@/components/CopiarLinkButton";
 import { listEventos } from "@/lib/sheets.functions";
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
+import { PagamentosGrid } from "@/components/PagamentosGrid";
+import { pagamentosBatem, resumoPagamentos, type PagamentoLinha } from "@/lib/pagamentos";
+
 
 const sb = supabase as any;
 
