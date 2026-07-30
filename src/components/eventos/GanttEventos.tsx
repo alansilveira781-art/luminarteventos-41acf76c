@@ -378,7 +378,8 @@ export function GanttEventos({
                   />
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
