@@ -102,30 +102,65 @@ function CartoesReport() {
       const fromYmd = periodo.from ? format(periodo.from, "yyyy-MM-dd") : null;
       const toYmd = periodo.to ? format(periodo.to, "yyyy-MM-dd") : null;
 
-      const buildFilter = (q: any, dateCol: string) => {
-        let x = q
-          .eq("condicao_pagamento", cartao)
-          .in("status", STATUS_INCLUIDOS as unknown as string[]);
+      // Formas de pagamento deste cartão (uma compra pode ser dividida em
+      // vários cartões: cada linha entra pelo seu próprio valor).
+      const [pagC, pagD] = await Promise.all([
+        sb.from("compra_pagamentos").select("compra_id, valor, parcelamento").eq("forma", cartao),
+        sb.from("demanda_pagamentos").select("demanda_id, valor, parcelamento").eq("forma", cartao),
+      ]);
+      if ((pagC as any).error) throw (pagC as any).error;
+      if ((pagD as any).error) throw (pagD as any).error;
+
+      const pagPorCompra = new Map<string, { valor: number; parcelamento: string | null }>();
+      for (const p of ((pagC as any).data ?? []) as any[]) {
+        const cur = pagPorCompra.get(p.compra_id);
+        pagPorCompra.set(p.compra_id, {
+          valor: Number(cur?.valor ?? 0) + Number(p.valor ?? 0),
+          parcelamento: cur?.parcelamento ?? p.parcelamento ?? null,
+        });
+      }
+      const pagPorDemanda = new Map<string, { valor: number; parcelamento: string | null }>();
+      for (const p of ((pagD as any).data ?? []) as any[]) {
+        const cur = pagPorDemanda.get(p.demanda_id);
+        pagPorDemanda.set(p.demanda_id, {
+          valor: Number(cur?.valor ?? 0) + Number(p.valor ?? 0),
+          parcelamento: cur?.parcelamento ?? p.parcelamento ?? null,
+        });
+      }
+
+      const idsCompras = [...pagPorCompra.keys()];
+      const idsDemandas = [...pagPorDemanda.keys()];
+
+      const buildFilter = (q: any, dateCol: string, ids: string[], idCol: string) => {
+        let x = q.in(idCol, ids).in("status", STATUS_INCLUIDOS as unknown as string[]);
         if (fromYmd) x = x.gte(dateCol, fromYmd);
         if (toYmd) x = x.lte(dateCol, toYmd);
         return x;
       };
 
       const [comprasRes, demandasRes] = await Promise.all([
-        buildFilter(
-          sb.from("compras").select("id, numero, titulo, solicitante, comprador, observacoes, valor_total, data_compra, parcelamento"),
-          "data_compra",
-        ),
-        buildFilter(
-          sb.from("demandas").select("id, numero, titulo, solicitante, comprador, descritivo, observacoes, valor_total, data_compra, parcelamento"),
-          "data_compra",
-        ),
+        idsCompras.length
+          ? buildFilter(
+              sb.from("compras").select("id, numero, titulo, solicitante, comprador, observacoes, valor_total, data_compra, parcelamento"),
+              "data_compra",
+              idsCompras,
+              "id",
+            )
+          : Promise.resolve({ data: [], error: null }),
+        idsDemandas.length
+          ? buildFilter(
+              sb.from("demandas").select("id, numero, titulo, solicitante, comprador, descritivo, observacoes, valor_total, data_compra, parcelamento"),
+              "data_compra",
+              idsDemandas,
+              "id",
+            )
+          : Promise.resolve({ data: [], error: null }),
       ]);
-      if (comprasRes.error) throw comprasRes.error;
-      if (demandasRes.error) throw demandasRes.error;
+      if ((comprasRes as any).error) throw (comprasRes as any).error;
+      if ((demandasRes as any).error) throw (demandasRes as any).error;
 
-      const compras = (comprasRes.data ?? []) as any[];
-      const demandas = (demandasRes.data ?? []) as any[];
+      const compras = ((comprasRes as any).data ?? []) as any[];
+      const demandas = ((demandasRes as any).data ?? []) as any[];
 
       const compraIds = compras.map((c) => c.id);
       const demandaIds = demandas.map((d) => d.id);
@@ -162,8 +197,8 @@ function CartoesReport() {
         solicitante: c.solicitante,
         comprador: c.comprador,
         descritivo_fallback: c.observacoes ?? c.titulo ?? null,
-        valor_total: c.valor_total,
-        parcelamento: c.parcelamento ?? null,
+        valor_total: pagPorCompra.get(c.id)?.valor ?? c.valor_total,
+        parcelamento: pagPorCompra.get(c.id)?.parcelamento ?? c.parcelamento ?? null,
         itens: groupC.get(c.id) ?? [],
       }));
       const dRows: Row[] = demandas.map((d) => ({
@@ -174,10 +209,11 @@ function CartoesReport() {
         solicitante: d.solicitante,
         comprador: d.comprador,
         descritivo_fallback: d.descritivo ?? d.observacoes ?? d.titulo ?? null,
-        valor_total: d.valor_total,
-        parcelamento: d.parcelamento ?? null,
+        valor_total: pagPorDemanda.get(d.id)?.valor ?? d.valor_total,
+        parcelamento: pagPorDemanda.get(d.id)?.parcelamento ?? d.parcelamento ?? null,
         itens: groupD.get(d.id) ?? [],
       }));
+
 
       return [...cRows, ...dRows].sort((a, b) => {
         if (a.tipo !== b.tipo) return a.tipo < b.tipo ? -1 : 1;

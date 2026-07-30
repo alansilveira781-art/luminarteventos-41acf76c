@@ -23,6 +23,9 @@ import { notifyResponsiblesForStatus, notifyMentions } from "@/lib/notify";
 import { CopiarLinkButton } from "@/components/CopiarLinkButton";
 import { listEventos } from "@/lib/sheets.functions";
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
+import { PagamentosGrid } from "@/components/PagamentosGrid";
+import { pagamentosBatem, resumoPagamentos, type PagamentoLinha } from "@/lib/pagamentos";
+
 
 const sb = supabase as any;
 
@@ -89,6 +92,8 @@ export function CompraDialog({
   const { user, isAdmin: isGlobalAdmin, modulos } = useAuth();
   const [form, setForm] = useState<Compra>({ status: defaultStatus });
   const [itens, setItens] = useState<CompraItem[]>([]);
+  const [pagamentos, setPagamentos] = useState<PagamentoLinha[]>([]);
+
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [statusInicial, setStatusInicial] = useState<CompraStatus>(defaultStatus);
   const isAdmin = isGlobalAdmin || modulos.some((m) => m.slug === "compras" && m.is_admin);
@@ -192,6 +197,7 @@ export function CompraDialog({
     if (!compraId) {
       setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10), tem_nf: true, numeros_nf: [] });
       setItens([]);
+      setPagamentos([]);
       setStatusInicial(defaultStatus);
       return;
     }
@@ -206,7 +212,28 @@ export function CompraDialog({
       }
       const { data: is } = await sb.from("compra_itens").select("*").eq("compra_id", compraId);
       setItens((is ?? []) as any);
+      const { data: pgs } = await sb
+        .from("compra_pagamentos")
+        .select("id,forma,parcelamento,valor,ordem")
+        .eq("compra_id", compraId)
+        .order("ordem");
+      const rows = ((pgs ?? []) as any[]).map((p) => ({
+        id: p.id as string,
+        forma: p.forma as string | null,
+        parcelamento: p.parcelamento as string | null,
+        valor: Number(p.valor ?? 0),
+      }));
+      if (rows.length === 0 && c && ((c as any).condicao_pagamento || (c as any).parcelamento)) {
+        rows.push({
+          id: undefined as any,
+          forma: (c as any).condicao_pagamento ?? null,
+          parcelamento: (c as any).parcelamento ?? null,
+          valor: Number((c as any).valor_total ?? 0),
+        });
+      }
+      setPagamentos(rows);
     })();
+
   }, [open, compraId, defaultStatus]);
 
   // Soma automática do valor total
@@ -236,12 +263,24 @@ export function CompraDialog({
           throw new Error("Informe a empresa faturada antes de mover para Compras a Receber.");
         }
       }
+      const pagamentosLimpos = pagamentos.filter(
+        (p) => (p.forma ?? "").trim() || (p.parcelamento ?? "").trim() || Number(p.valor || 0) !== 0,
+      );
+      if (pagamentosLimpos.length > 0 && !pagamentosBatem(pagamentosLimpos, totalCalc)) {
+        throw new Error(
+          "A soma das formas de pagamento precisa ser igual ao valor total da compra.",
+        );
+      }
+      const resumo = resumoPagamentos(pagamentosLimpos);
       const payload: any = {
         ...form,
         valor_total: totalCalc,
+        condicao_pagamento: resumo.condicao_pagamento,
+        parcelamento: resumo.parcelamento,
         numeros_nf: form.tem_nf === false ? [] : nfList,
         numero_nf: form.tem_nf === false ? null : (nfList[0] ?? null),
       };
+
 
       let id = compraId;
       if (id) {
@@ -276,6 +315,19 @@ export function CompraDialog({
           throw new Error("Itens da compra não foram totalmente confirmados pelo banco.");
         }
       }
+      await sb.from("compra_pagamentos").delete().eq("compra_id", id);
+      if (pagamentosLimpos.length) {
+        const pagRows = pagamentosLimpos.map((p, i) => ({
+          compra_id: id,
+          forma: p.forma?.trim() || null,
+          parcelamento: p.parcelamento?.trim() || null,
+          valor: Number(p.valor || 0),
+          ordem: i,
+        }));
+        const { error: pagErr } = await sb.from("compra_pagamentos").insert(pagRows);
+        if (pagErr) throw pagErr;
+      }
+
       // Upload de anexos pendentes (anexados antes de salvar)
       if (id && pendingFiles.length > 0) {
         for (const file of pendingFiles) {
@@ -496,14 +548,15 @@ export function CompraDialog({
                   <Input type="date" value={form.data_compra ?? ""} onChange={(e) => setForm({ ...form, data_compra: e.target.value })} />
                 </FormField>
               )}
-              <FormField label="Parcelamento">
-                <SelectCreatable table="parcelamentos" value={form.parcelamento}
-                  onChange={(v) => setForm({ ...form, parcelamento: v })} />
-              </FormField>
-              <FormField label="Condição de pagamento">
-                <SelectCreatable table="condicoes_pagamento" value={form.condicao_pagamento}
-                  onChange={(v) => setForm({ ...form, condicao_pagamento: v })} />
-              </FormField>
+              <div className="md:col-span-2">
+                <PagamentosGrid
+                  pagamentos={pagamentos}
+                  onChange={setPagamentos}
+                  total={totalCalc}
+                  disabled={!canEdit}
+                />
+              </div>
+
               <FormField label="Valor total (calculado)">
                 <div className="h-9 flex items-center text-sm font-medium tabular-nums">
                   {totalCalc.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}

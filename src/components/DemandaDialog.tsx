@@ -26,6 +26,9 @@ import { ensureValidSession, describeSupabaseError } from "@/lib/supabase-guard"
 import { DEMANDA_STATUSES, TIPO_DEMANDA_OPTIONS, TIPOS_QUE_VAO_PARA_ESTOQUE, TIPOS_COM_ITENS, TIPOS_QUE_VAO_PARA_RECEBIMENTO, proximoStatusDemanda, type DemandaStatus } from "@/lib/demandas";
 import { useAuth } from "@/contexts/AuthContext";
 import { CopiarLinkButton } from "@/components/CopiarLinkButton";
+import { PagamentosGrid } from "@/components/PagamentosGrid";
+import { pagamentosBatem, resumoPagamentos, type PagamentoLinha } from "@/lib/pagamentos";
+
 
 const sb = supabase as any;
 
@@ -93,6 +96,8 @@ export function DemandaDialog({
   const [form, setForm] = useState<Demanda>({ status: defaultStatus });
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [itens, setItens] = useState<DemandaItem[]>([]);
+  const [pagamentos, setPagamentos] = useState<PagamentoLinha[]>([]);
+
 
   const tipoRequerItens = useMemo(
     () => TIPOS_COM_ITENS.includes(form.tipo_demanda ?? ""),
@@ -137,6 +142,7 @@ export function DemandaDialog({
     if (!demandaId) {
       setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10), tem_nf: true, numeros_nf: [] });
       setItens([]);
+      setPagamentos([]);
       return;
     }
     (async () => {
@@ -153,6 +159,25 @@ export function DemandaDialog({
         .eq("demanda_id", demandaId)
         .order("created_at", { ascending: true });
       setItens((dItens ?? []) as any);
+      const { data: pgs } = await sb
+        .from("demanda_pagamentos")
+        .select("id,forma,parcelamento,valor,ordem")
+        .eq("demanda_id", demandaId)
+        .order("ordem");
+      const rows: PagamentoLinha[] = ((pgs ?? []) as any[]).map((p) => ({
+        id: p.id as string,
+        forma: p.forma as string | null,
+        parcelamento: p.parcelamento as string | null,
+        valor: Number(p.valor ?? 0),
+      }));
+      if (rows.length === 0 && c && ((c as any).condicao_pagamento || (c as any).parcelamento)) {
+        rows.push({
+          forma: (c as any).condicao_pagamento ?? null,
+          parcelamento: (c as any).parcelamento ?? null,
+          valor: Number((c as any).valor_total ?? 0),
+        });
+      }
+      setPagamentos(rows);
     })();
   }, [open, demandaId, defaultStatus]);
 
@@ -160,11 +185,26 @@ export function DemandaDialog({
     mutationFn: async () => {
       await ensureValidSession();
       const nfList = (form.numeros_nf ?? []).map((n) => (n ?? "").trim()).filter(Boolean);
+      const pagamentosLimpos = pagamentos.filter(
+        (p) => (p.forma ?? "").trim() || (p.parcelamento ?? "").trim() || Number(p.valor || 0) !== 0,
+      );
+      if (
+        pagamentosLimpos.length > 0
+        && !pagamentosBatem(pagamentosLimpos, Number(form.valor_total ?? 0))
+      ) {
+        throw new Error(
+          "A soma das formas de pagamento precisa ser igual ao valor total da despesa.",
+        );
+      }
+      const resumo = resumoPagamentos(pagamentosLimpos);
       const payload: any = {
         ...form,
+        condicao_pagamento: resumo.condicao_pagamento,
+        parcelamento: resumo.parcelamento,
         numeros_nf: form.tem_nf === false ? [] : nfList,
         numero_nf: form.tem_nf === false ? null : (nfList[0] ?? null),
       };
+
       let id = demandaId;
       if (id) {
         const { data: upd, error } = await sb.from("demandas").update(payload).eq("id", id).select("id");
@@ -176,7 +216,22 @@ export function DemandaDialog({
         if (!data?.id) throw new Error("Demanda não foi confirmada pelo banco.");
         id = data.id;
       }
+      if (id) {
+        await sb.from("demanda_pagamentos").delete().eq("demanda_id", id);
+        if (pagamentosLimpos.length) {
+          const pagRows = pagamentosLimpos.map((p, i) => ({
+            demanda_id: id,
+            forma: p.forma?.trim() || null,
+            parcelamento: p.parcelamento?.trim() || null,
+            valor: Number(p.valor || 0),
+            ordem: i,
+          }));
+          const { error: pagErr } = await sb.from("demanda_pagamentos").insert(pagRows);
+          if (pagErr) throw pagErr;
+        }
+      }
       // Persistir itens quando o tipo exigir (fardamento/material_limpeza/material_escritorio)
+
       if (id && tipoRequerItens) {
         await sb.from("demanda_itens").delete().eq("demanda_id", id).eq("recebido", false);
         const rows = itens
@@ -353,14 +408,14 @@ export function DemandaDialog({
               <FormField label="Data da compra/serviço">
                 <Input type="date" value={form.data_compra ?? ""} onChange={(e) => setForm({ ...form, data_compra: e.target.value })} />
               </FormField>
-              <FormField label="Parcelamento">
-                <SelectCreatable table="parcelamentos" value={form.parcelamento}
-                  onChange={(v) => setForm({ ...form, parcelamento: v })} />
-              </FormField>
-              <FormField label="Condição de pagamento">
-                <SelectCreatable table="condicoes_pagamento" value={form.condicao_pagamento}
-                  onChange={(v) => setForm({ ...form, condicao_pagamento: v })} />
-              </FormField>
+              <div className="md:col-span-2">
+                <PagamentosGrid
+                  pagamentos={pagamentos}
+                  onChange={setPagamentos}
+                  total={Number(form.valor_total ?? 0)}
+                />
+              </div>
+
               <FormField label="Tem Nota Fiscal (NF)?">
                 <label className="flex items-center gap-2 h-10 text-sm">
                   <input

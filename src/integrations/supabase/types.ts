@@ -1440,6 +1440,50 @@ export type Database = {
           },
         ]
       }
+      compra_pagamentos: {
+        Row: {
+          compra_id: string
+          created_at: string
+          forma: string | null
+          id: string
+          observacao: string | null
+          ordem: number
+          parcelamento: string | null
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          compra_id: string
+          created_at?: string
+          forma?: string | null
+          id?: string
+          observacao?: string | null
+          ordem?: number
+          parcelamento?: string | null
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          compra_id?: string
+          created_at?: string
+          forma?: string | null
+          id?: string
+          observacao?: string | null
+          ordem?: number
+          parcelamento?: string | null
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compra_pagamentos_compra_id_fkey"
+            columns: ["compra_id"]
+            isOneToOne: false
+            referencedRelation: "compras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       compradores: {
         Row: {
           created_at: string
@@ -2209,6 +2253,50 @@ export type Database = {
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "itens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      demanda_pagamentos: {
+        Row: {
+          created_at: string
+          demanda_id: string
+          forma: string | null
+          id: string
+          observacao: string | null
+          ordem: number
+          parcelamento: string | null
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          created_at?: string
+          demanda_id: string
+          forma?: string | null
+          id?: string
+          observacao?: string | null
+          ordem?: number
+          parcelamento?: string | null
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          created_at?: string
+          demanda_id?: string
+          forma?: string | null
+          id?: string
+          observacao?: string | null
+          ordem?: number
+          parcelamento?: string | null
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demanda_pagamentos_demanda_id_fkey"
+            columns: ["demanda_id"]
+            isOneToOne: false
+            referencedRelation: "demandas"
             referencedColumns: ["id"]
           },
         ]

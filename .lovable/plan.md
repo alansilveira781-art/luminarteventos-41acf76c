@@ -1,39 +1,45 @@
-## Diagnóstico (verificado)
+## Situação atual (verificada)
 
-Consultei o banco e a página. Duas causas, ambas confirmadas:
+Hoje cada compra/despesa tem **um único** par de campos texto:
+- `condicao_pagamento` — usado na prática como "cartão / forma" (é o filtro do Relatório de Cartão em Financeiro Op.)
+- `parcelamento` — ex.: "3x"
 
-1. **As solicitações não ficam vinculadas ao usuário.** Nas 161 compras existentes, 30 vieram do formulário público `/solicitar`. Nelas, o endpoint público grava apenas `solicitante` com o **nome** digitado (ex.: "Luciene Albuquerque") e joga o e-mail dentro do texto de `observacoes`. Os campos de vínculo (`created_by`, `solicitante_id`) ficam vazios, porque o formulário é anônimo.
+Isso existe em `compras` e `demandas`, é preenchido em `CompraDialog`, `DemandaDialog`, no formulário público `/solicitar` e é lido pelo Quadro Financeiro, Dashboard de Compras, Dashboard Financeiro e Relatório de Cartão.
 
-2. **A regra de leitura do banco (RLS) não enxerga essas linhas.** A política de leitura para quem não tem o módulo Compras/Financeiro só libera a linha quando `created_by = usuário`, `solicitante_id = usuário` ou `solicitante` é **exatamente igual** ao e-mail do usuário. Como `solicitante` guarda o nome, nenhuma dessas condições bate — o banco simplesmente não devolve o pedido, por mais que a tela filtre por nome/e-mail. O mesmo vale para `demandas`.
+## O que será feito
 
-Ou seja: o filtro da tela até tenta casar por nome e e-mail, mas o banco já removeu as linhas antes.
+### 1. Banco: novas tabelas de rateio de pagamento
+Seguindo o mesmo padrão de `compra_itens` / `demanda_itens`:
 
-## O que fazer
+- `compra_pagamentos` e `demanda_pagamentos`, cada uma com: vínculo ao card, **forma de pagamento** (cartão/condição), **parcelamento**, **valor**, ordem e observação.
+- GRANTs, RLS espelhando as políticas das tabelas pai (quem vê/edita a compra vê/edita seus pagamentos), timestamps + trigger de `updated_at`.
+- Os campos antigos `condicao_pagamento` e `parcelamento` **permanecem** na tabela e passam a guardar um resumo (a forma de maior valor, ou "Múltiplas" quando houver mais de uma) — assim nada que já lê esses campos quebra.
+- Migração de dados: para cada compra/despesa que já tem `condicao_pagamento` ou `parcelamento` preenchido, criar automaticamente **uma linha** de pagamento com o valor total do card. Assim o histórico fica consistente no novo formato.
 
-### 1. Guardar o e-mail do solicitante em coluna própria
-- Migração: adicionar `solicitante_email text` em `compras` e `demandas` (com índice em `lower(solicitante_email)`).
-- Endpoint público `/api/public/solicitar`: gravar `solicitante_email` com o e-mail informado no formulário e, quando esse e-mail existir em `profiles`, preencher também `solicitante_id` — assim o pedido já nasce vinculado ao usuário.
-- Fazer o mesmo no formulário público de contrato somente se o usuário quiser (fora do escopo aqui).
+### 2. Interface (Compras e Despesas)
+Nos diálogos de compra e de despesa, a seção de pagamento vira uma **grade** (igual à grade de itens):
+- Linhas com: Forma de pagamento (lista criável, mesma de hoje) · Parcelamento · Valor · botão remover.
+- Botão "Adicionar forma de pagamento".
+- Rodapé mostrando **soma das formas × valor total do card**, com aviso em vermelho quando divergir (tolerância de R$ 0,01) e bloqueio do salvamento enquanto não bater.
+- Botão "Usar valor restante" para preencher a última linha rapidamente.
+- Quando houver só uma forma, a tela fica visualmente igual ao que é hoje (uma linha).
 
-### 2. Backfill dos pedidos antigos
-- Migração de dados: extrair o e-mail que está escrito em `observacoes` (padrão `email: xxx@yyy`) e preencher `solicitante_email`; onde o e-mail existir em `profiles`, preencher `solicitante_id`.
-- Para pedidos criados internamente sem e-mail, preencher `solicitante_email` a partir do `profiles` do `created_by`/`solicitante_id` quando existir.
+### 3. Leituras afetadas (todas atualizadas)
+- **Relatório de Cartão** (`financeiro-op.relatorios.tsx`): passa a filtrar pelas linhas de pagamento, então uma compra dividida em 2 cartões aparece em cada relatório **pelo valor daquele cartão** (hoje apareceria pelo total, duplicado).
+- **Detalhe do card no Quadro Financeiro**: lista todas as formas com valor e parcelamento.
+- **Dashboard de Compras** e **Dashboard Financeiro** (agrupamento por condição de pagamento): passam a somar por linha de pagamento, ficando corretos com pagamentos divididos.
+- Visualizações somente leitura (Meus Pedidos, detalhes) exibem a lista.
 
-### 3. Ajustar as políticas de leitura
-- Recriar `compras_select_owner` e `demandas_select_owner` para também liberar quando `lower(solicitante_email) = lower(e-mail do usuário logado)`, mantendo as condições atuais.
-- Nenhuma ampliação além disso: continua sendo "o próprio solicitante vê o próprio pedido".
-
-### 4. Simplificar a tela `src/routes/meus-pedidos.tsx`
-- Trocar o filtro atual (vários `ilike` em `solicitante`/`observacoes`, que pode gerar falsos positivos e quebra com nomes contendo vírgula) por: `solicitante_id`, `created_by`, `solicitante_email` (igualdade por e-mail) e, como rede de segurança, `solicitante` igual ao nome de exibição.
-- Exibir o e-mail do solicitante no detalhe do pedido.
+### 4. Formulário público `/solicitar`
+Mantém uma única forma de pagamento (o solicitante normalmente não sabe da divisão); ela é gravada como a primeira linha de pagamento. A divisão em vários cartões é feita internamente por quem executa a compra.
 
 ## Detalhes técnicos
 
-- Tabelas afetadas: `compras`, `demandas` (nova coluna + índice + políticas SELECT recriadas).
-- Arquivos: `src/routes/api/public/solicitar.ts`, `src/routes/meus-pedidos.tsx`.
-- O `GRANT` das tabelas já existe; a migração só recria políticas.
-- Sem mudança nos Kanbans de Compras/Despesas — quem tem o módulo continua vendo tudo como hoje.
+- Tabelas novas: `public.compra_pagamentos`, `public.demanda_pagamentos` (FK com `on delete cascade`).
+- Arquivos: `src/components/CompraDialog.tsx`, `src/components/DemandaDialog.tsx`, novo `src/components/PagamentosGrid.tsx` (compartilhado), `src/routes/compras.index.tsx`, `src/routes/financeiro.index.tsx`, `src/routes/financeiro-op.quadro.tsx`, `src/routes/financeiro-op.relatorios.tsx`, `src/routes/compras.dashboard.tsx`, `src/routes/financeiro.dashboard.tsx`, `src/routes/meus-pedidos.tsx`.
+- Sem alteração no fluxo de status, estoque ou patrimônio.
 
-## Verificação
+## Premissas (avise se preferir diferente)
 
-Depois de aplicar, conferir por consulta que os 30 pedidos públicos passam a ter `solicitante_email` preenchido e que um usuário comum (sem módulo Compras) consegue listar os próprios pedidos em Meus Pedidos.
+1. A soma das formas de pagamento deve ser **igual** ao valor total do card (bloqueio ao salvar).
+2. Nas telas de relatório, uma compra dividida aparece **uma vez por cartão**, com o valor daquele cartão.
