@@ -92,6 +92,8 @@ export function CompraDialog({
   const { user, isAdmin: isGlobalAdmin, modulos } = useAuth();
   const [form, setForm] = useState<Compra>({ status: defaultStatus });
   const [itens, setItens] = useState<CompraItem[]>([]);
+  const [pagamentos, setPagamentos] = useState<PagamentoLinha[]>([]);
+
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [statusInicial, setStatusInicial] = useState<CompraStatus>(defaultStatus);
   const isAdmin = isGlobalAdmin || modulos.some((m) => m.slug === "compras" && m.is_admin);
