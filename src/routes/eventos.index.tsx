@@ -482,7 +482,13 @@ function LocaisAdicionais({ evento, onChanged }: { evento: any; onChanged: () =>
 
       if (row.id) {
         const { error } = await sb.from("eventos").update(payload).eq("id", row.id);
-        if (error) throw new Error(error.message);
+        if (error) {
+          const msg = String(error.message ?? "");
+          if (/ux_eventos_codigo/.test(msg)) {
+            throw new Error("Já existe um local com esse mesmo nome e data final neste evento.");
+          }
+          throw new Error(msg || "Erro ao salvar local");
+        }
         return;
       }
 
@@ -493,8 +499,9 @@ function LocaisAdicionais({ evento, onChanged }: { evento: any; onChanged: () =>
         const { error } = await sb.from("eventos").insert({ ...payload, codigo, origem: "manual" });
         if (!error) return;
         ultimoErro = error;
+        const msg = String((error as any).message ?? "");
         if ((error as any).code === "23505") continue;
-        throw new Error((error as any).message ?? "Erro ao salvar local");
+        throw new Error(msg || "Erro ao salvar local");
       }
       throw new Error(String(ultimoErro?.message ?? "Não foi possível salvar o local"));
     },
