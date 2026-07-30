@@ -1,30 +1,34 @@
 ## Objetivo
 
-Hoje, no Gantt (coluna "Evento"), um local adicional aparece apenas como `↳ RIOMAR RECIFE`, sem indicar a qual evento pertence. A linha deve ficar autoexplicativa.
+Dentro de Financeiro › Dashboard › aba **Uber**, criar subseções (como no Financeiro/Conta Azul): **Painel** (o dashboard atual) e **Análises** (novo relatório imprimível).
 
-## O que muda
+## Subseção Análises
 
-Em `src/components/eventos/GanttEventos.tsx`, na coluna fixa da esquerda:
+Filtros no topo: período (de/até, com atalhos mês atual / últimos 3 meses / ano), solicitante e projeto — reaproveitando os filtros já existentes no componente Uber.
 
-**Evento principal (pai)** — mantém o formato atual, mas com hierarquia visual mais clara:
-- Linha 1: código do evento (ex. `20260920`) + nome do evento em destaque
-- Linha 2: situação (badge) + produtor
+**Granularidade automática pelo tamanho do período:**
 
-**Local adicional (filho)** — passa a mostrar:
-- Linha 1: `↳ RIOMAR RECIFE` (o local), recuado, em destaque
-- Linha 2 (nova): nome do evento pai em texto pequeno/esmaecido, ex. `STAND KAIAK · 20260920`
-- Linha 3: badge de situação (como hoje)
-- Marcador visual de filiação: uma barra/guia vertical à esquerda ligando o filho ao pai, além do recuo
-- `title` (tooltip) completo com evento + local + período
+```text
+até  14 dias   -> por dia
+até  ~10 semanas (70 dias) -> por semana (seg–dom, rótulo "Sem 01/06–07/06")
+até  ~3 anos   -> por mês  ("Maio/2026")
+acima          -> por ano
+```
+Ex.: 01/05/2026 a 30/07/2026 (91 dias) cai em **mensal**. Um seletor manual "Automático / Dia / Semana / Mês" fica disponível para sobrepor.
 
-Para isso, o componente passa a resolver o registro pai a partir do agrupamento que já existe (`filhosPor` / lista de eventos), sem novas consultas ao banco.
+**Cards de totais do período:** valor total, nº de corridas, ticket médio, solicitantes únicos, projetos distintos, média por período (mês/semana), maior período e menor período (com valor e rótulo), variação % do último período vs. anterior.
 
-## Ajustes de layout
+**Gráficos e tabelas:**
+- Evolução no tempo: barras de valor + linha de quantidade de corridas (eixo duplo), por bucket.
+- Rank por pessoa: barras horizontais top 10 por valor, mais tabela completa com corridas, total, ticket médio e % do total.
+- Rank de projetos solicitados: barras horizontais top 10 + tabela com corridas, total e %.
+- Índices de solicitação: quem/qual projeto mais solicita e quem/qual menos solicita (maior e menor por quantidade e por valor).
+- Complementares: distribuição por serviço (pizza), top cidades, top destinos, distribuição por faixa de horário (madrugada/manhã/tarde/noite) e por dia da semana.
 
-- Altura da linha aumenta um pouco (de 64px para ~72px) para caber a linha extra sem cortar texto; ou, alternativamente, mantém 64px e o nome do pai fica em uma única linha truncada — vou usar 72px para não cortar.
-- Coluna esquerda continua com 280px.
-- Legenda e barras do gráfico permanecem inalteradas.
+**Impressão:** botão "Imprimir" chamando `window.print()`, com cabeçalho de impressão (título, período, filtros aplicados, data de emissão), `@media print` em A4 retrato, filtros/tabs ocultos (`print:hidden`), quebras de página controladas entre blocos e tabelas legíveis em preto/branco — mesmo padrão já usado na Análise Detalhada do Conta Azul.
 
-## Fora do escopo
+## Detalhes técnicos
 
-Sem mudanças no banco, no dropdown de eventos (continua listando só os principais) ou nas regras de código de evento.
+- Novo arquivo `src/components/financeiro/UberAnalises.tsx` com toda a lógica de bucketização e agregações; helpers de bucket em `src/lib/uber/analises.ts` (puro, testável).
+- `src/components/financeiro/UberDashboard.tsx` passa a renderizar `<Tabs>` com "Painel" e "Análises"; o conteúdo atual vai para a primeira aba sem alteração de comportamento. Os dados de `uber_corridas` continuam vindo do mesmo `useQuery` (`fetchAllRows`), compartilhados entre as subseções.
+- Recharts já é usado no arquivo; nenhuma dependência nova. Nenhuma mudança de banco de dados.

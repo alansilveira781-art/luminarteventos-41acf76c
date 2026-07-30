@@ -10,6 +10,25 @@ import {
   PieChart, Pie, Cell, Legend, CartesianGrid,
 } from "recharts";
 import { fetchAllRows } from "@/lib/fetch-all";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { UberAnalises } from "@/components/financeiro/UberAnalises";
+
+export function UberDashboard() {
+  return (
+    <Tabs defaultValue="painel" className="w-full">
+      <TabsList className="mb-4 print:hidden">
+        <TabsTrigger value="painel">Painel Uber</TabsTrigger>
+        <TabsTrigger value="analises">Análises</TabsTrigger>
+      </TabsList>
+      <TabsContent value="painel" className="mt-0">
+        <UberPainel />
+      </TabsContent>
+      <TabsContent value="analises" className="mt-0">
+        <UberAnalises />
+      </TabsContent>
+    </Tabs>
+  );
+}
 
 type Corrida = {
   id: string;
@@ -57,7 +76,7 @@ function firstOfYearIso(): string {
   return `${d.getFullYear()}-01-01`;
 }
 
-export function UberDashboard() {
+function UberPainel() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["uber-corridas-all"],
     queryFn: async () => {
