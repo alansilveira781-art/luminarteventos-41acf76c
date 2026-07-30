@@ -340,6 +340,22 @@ function CardDetalheDialog({ card, onClose }: { card: Card | null; onClose: () =
     },
   });
 
+  const { data: pagamentos = [] } = useQuery({
+    enabled: !!card,
+    queryKey: ["fin-quadro-pagamentos", card?.origem, card?.id],
+    queryFn: async () => {
+      if (!card) return [];
+      const table = card.origem === "compra" ? "compra_pagamentos" : "demanda_pagamentos";
+      const fk = card.origem === "compra" ? "compra_id" : "demanda_id";
+      const { data } = await sb
+        .from(table)
+        .select("id,forma,parcelamento,valor,ordem")
+        .eq(fk, card.id)
+        .order("ordem");
+      return (data ?? []) as any[];
+    },
+  });
+
   const { data: itens = [] } = useQuery({
     enabled: !!card,
     queryKey: ["fin-quadro-itens", card?.origem, card?.id],
