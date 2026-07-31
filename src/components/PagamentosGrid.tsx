@@ -32,7 +32,18 @@ export function PagamentosGrid({
   const ok = pagamentosBatem(pagamentos, total);
 
   const update = (idx: number, patch: Partial<PagamentoLinha>) =>
-    onChange(pagamentos.map((p, i) => (i === idx ? { ...p, ...patch } : p)));
+    onChange(
+      pagamentos.map((p, i) => {
+        if (i !== idx) return p;
+        const next = { ...p, ...patch };
+        // Situação só existe para PIX parcelado; nas demais formas é limpa.
+        if (!exigeControleParcelas(next)) {
+          next.pago = false;
+          next.pago_em = null;
+        }
+        return next;
+      }),
+    );
 
   const add = () =>
     onChange([
