@@ -557,14 +557,23 @@ export function CompraDialog({
                   <Input type="date" value={form.data_compra ?? ""} onChange={(e) => setForm({ ...form, data_compra: e.target.value })} />
                 </FormField>
               )}
-              <div className="md:col-span-2">
-                <PagamentosGrid
-                  pagamentos={pagamentos}
-                  onChange={setPagamentos}
-                  total={totalCalc}
-                  disabled={!canEdit}
-                />
-              </div>
+              <FormField label="Observações" wide>
+                <Textarea rows={3} value={form.observacoes ?? ""} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
+              </FormField>
+              {form.status === "negada" && (
+                <FormField label="Motivo da negação" wide>
+                  <Textarea rows={2} value={form.motivo_negacao ?? ""} onChange={(e) => setForm({ ...form, motivo_negacao: e.target.value })} />
+                </FormField>
+              )}
+            </FormSection>
+
+            <div className="mt-6 space-y-4">
+              <PagamentosGrid
+                pagamentos={pagamentos}
+                onChange={setPagamentos}
+                total={totalCalc}
+                disabled={!canEdit}
+              />
 
               <FormField label="Valor total (R$)" wide>
                 <div className="flex h-10 items-center justify-between rounded-md border border-input bg-muted/50 px-3 text-sm">
@@ -576,15 +585,7 @@ export function CompraDialog({
                   </span>
                 </div>
               </FormField>
-              <FormField label="Observações" wide>
-                <Textarea rows={3} value={form.observacoes ?? ""} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
-              </FormField>
-              {form.status === "negada" && (
-                <FormField label="Motivo da negação" wide>
-                  <Textarea rows={2} value={form.motivo_negacao ?? ""} onChange={(e) => setForm({ ...form, motivo_negacao: e.target.value })} />
-                </FormField>
-              )}
-            </FormSection>
+            </div>
 
             <div className="mt-2 border-t border-border pt-4">
               <Tabs defaultValue="comentarios">

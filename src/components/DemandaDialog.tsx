@@ -408,30 +408,6 @@ export function DemandaDialog({
               <FormField label="Data da compra/serviço">
                 <Input type="date" value={form.data_compra ?? ""} onChange={(e) => setForm({ ...form, data_compra: e.target.value })} />
               </FormField>
-              <div className="md:col-span-2">
-                <PagamentosGrid
-                  pagamentos={pagamentos}
-                  onChange={setPagamentos}
-                  total={Number(form.valor_total ?? 0)}
-                />
-              </div>
-              <FormField label="Valor total (R$)" wide>
-                {tipoRequerItens ? (
-                  <div className="flex h-10 items-center justify-between rounded-md border border-input bg-muted/50 px-3 text-sm">
-                    <span className="font-semibold tabular-nums">
-                      {(form.valor_total ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                    </span>
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                      calculado pelos itens
-                    </span>
-                  </div>
-                ) : (
-                  <MoneyInput
-                    value={form.valor_total ?? 0}
-                    onChange={(n) => setForm({ ...form, valor_total: n || null })}
-                  />
-                )}
-              </FormField>
 
               <FormField label="Tem Nota Fiscal (NF)?">
                 <label className="flex items-center gap-2 h-10 text-sm">
@@ -503,6 +479,32 @@ export function DemandaDialog({
                 </FormField>
               )}
             </FormSection>
+
+            <div className="mt-6 space-y-4">
+              <PagamentosGrid
+                pagamentos={pagamentos}
+                onChange={setPagamentos}
+                total={Number(form.valor_total ?? 0)}
+              />
+
+              <FormField label="Valor total (R$)" wide>
+                {tipoRequerItens ? (
+                  <div className="flex h-10 items-center justify-between rounded-md border border-input bg-muted/50 px-3 text-sm">
+                    <span className="font-semibold tabular-nums">
+                      {(form.valor_total ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    </span>
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      calculado pelos itens
+                    </span>
+                  </div>
+                ) : (
+                  <MoneyInput
+                    value={form.valor_total ?? 0}
+                    onChange={(n) => setForm({ ...form, valor_total: n || null })}
+                  />
+                )}
+              </FormField>
+            </div>
 
             <div className="mt-2 border-t border-border pt-4">
               <Tabs defaultValue="comentarios">
