@@ -8,8 +8,11 @@ import {
   formatBRL,
   hojeISO,
   pagamentosBatem,
+  sincronizarParcelas,
   somaPagamentos,
+  somaParcelas,
   type PagamentoLinha,
+  type ParcelaLinha,
 } from "@/lib/pagamentos";
 
 /**
@@ -35,14 +38,19 @@ export function PagamentosGrid({
     onChange(
       pagamentos.map((p, i) => {
         if (i !== idx) return p;
-        const next = { ...p, ...patch };
-        // Data prevista e situação só existem para PIX parcelado; nas demais
-        // formas são limpas.
-        if (!exigeControleParcelas(next)) {
-          next.pago = false;
-          next.pago_em = null;
-          next.data_pagamento = null;
-        }
+        return sincronizarParcelas({ ...p, ...patch });
+      }),
+    );
+
+  const updateParcela = (idx: number, pIdx: number, patch: Partial<ParcelaLinha>) =>
+    onChange(
+      pagamentos.map((p, i) => {
+        if (i !== idx) return p;
+        const parcelas = (p.parcelas ?? []).map((x, j) =>
+          j === pIdx ? { ...x, ...patch } : x,
+        );
+        const next = { ...p, parcelas };
+        next.valor = somaParcelas(next);
         return next;
       }),
     );
@@ -54,6 +62,7 @@ export function PagamentosGrid({
     ]);
 
   const remove = (idx: number) => onChange(pagamentos.filter((_, i) => i !== idx));
+
 
   return (
     <div className="space-y-2">
@@ -142,72 +151,107 @@ export function PagamentosGrid({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Valor</label>
+                  <label className="text-xs text-muted-foreground">
+                    {exigeParcelas ? "Valor (soma das parcelas)" : "Valor"}
+                  </label>
                   <MoneyInput
                     value={p.valor}
                     onChange={(v) => update(idx, { valor: v })}
-                    disabled={disabled}
+                    disabled={disabled || exigeParcelas}
                   />
                 </div>
-
-                {exigeParcelas && (
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Data prevista *</label>
-                    <Input
-                      type="date"
-                      className={
-                        !(p.data_pagamento ?? "").trim() ? "border-destructive" : undefined
-                      }
-                      value={p.data_pagamento ?? ""}
-                      readOnly={disabled}
-                      onChange={(e) =>
-                        update(idx, { data_pagamento: e.target.value || null })
-                      }
-                    />
-                  </div>
-                )}
-
-                {exigeParcelas && (
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Situação *</label>
-                    <div
-                      className={`flex gap-2 ${
-                        p.pago === undefined || p.pago === null
-                          ? "rounded-md border border-destructive p-1"
-                          : ""
-                      }`}
-                    >
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={p.pago === true ? "default" : "outline"}
-                        disabled={disabled}
-                        onClick={() =>
-                          update(idx, { pago: true, pago_em: p.pago_em ?? hojeISO() })
-                        }
-                      >
-                        Pago
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={p.pago === false ? "default" : "outline"}
-                        disabled={disabled}
-                        onClick={() => update(idx, { pago: false, pago_em: null })}
-                      >
-                        Em aberto
-                      </Button>
-                      {p.pago && p.pago_em && (
-                        <span className="self-center text-xs text-muted-foreground tabular-nums">
-                          em {p.pago_em.slice(8, 10)}/{p.pago_em.slice(5, 7)}/
-                          {p.pago_em.slice(0, 4)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-
               </div>
+
+              {exigeParcelas && (
+                <div className="space-y-2 rounded-md border border-dashed border-border bg-muted/30 p-2">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Parcelas ({(p.parcelas ?? []).length})
+                  </div>
+                  {(p.parcelas ?? []).map((parc, pIdx) => (
+                    <div
+                      key={pIdx}
+                      className="rounded-md border border-border bg-card p-2 space-y-2"
+                    >
+                      <div className="text-xs font-medium text-foreground">
+                        Parcela {pIdx + 1}
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <div className="space-y-1">
+                          <label className="text-xs text-muted-foreground">
+                            Data prevista *
+                          </label>
+                          <Input
+                            type="date"
+                            className={
+                              !(parc.data_pagamento ?? "").trim()
+                                ? "border-destructive"
+                                : undefined
+                            }
+                            value={parc.data_pagamento ?? ""}
+                            readOnly={disabled}
+                            onChange={(e) =>
+                              updateParcela(idx, pIdx, {
+                                data_pagamento: e.target.value || null,
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-muted-foreground">Valor *</label>
+                          <MoneyInput
+                            value={parc.valor}
+                            onChange={(v) => updateParcela(idx, pIdx, { valor: v })}
+                            disabled={disabled}
+                          />
+                        </div>
+                        <div className="space-y-1 sm:col-span-2">
+                          <label className="text-xs text-muted-foreground">Situação *</label>
+                          <div
+                            className={`flex gap-2 ${
+                              parc.pago === undefined || parc.pago === null
+                                ? "rounded-md border border-destructive p-1"
+                                : ""
+                            }`}
+                          >
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={parc.pago === true ? "default" : "outline"}
+                              disabled={disabled}
+                              onClick={() =>
+                                updateParcela(idx, pIdx, {
+                                  pago: true,
+                                  pago_em: parc.pago_em ?? hojeISO(),
+                                })
+                              }
+                            >
+                              Pago
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={parc.pago === false ? "default" : "outline"}
+                              disabled={disabled}
+                              onClick={() =>
+                                updateParcela(idx, pIdx, { pago: false, pago_em: null })
+                              }
+                            >
+                              Em aberto
+                            </Button>
+                            {parc.pago && parc.pago_em && (
+                              <span className="self-center text-xs text-muted-foreground tabular-nums">
+                                em {parc.pago_em.slice(8, 10)}/{parc.pago_em.slice(5, 7)}/
+                                {parc.pago_em.slice(0, 4)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
             </div>
             );
           })}

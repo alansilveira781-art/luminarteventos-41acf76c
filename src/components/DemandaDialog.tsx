@@ -27,7 +27,7 @@ import { DEMANDA_STATUSES, TIPO_DEMANDA_OPTIONS, TIPOS_QUE_VAO_PARA_ESTOQUE, TIP
 import { useAuth } from "@/contexts/AuthContext";
 import { CopiarLinkButton } from "@/components/CopiarLinkButton";
 import { PagamentosGrid } from "@/components/PagamentosGrid";
-import { pagamentosBatem, resumoPagamentos, validarPagamentos, type PagamentoLinha } from "@/lib/pagamentos";
+import { agruparPagamentos, expandirPagamentos, pagamentosBatem, resumoPagamentos, validarPagamentos, type PagamentoLinha } from "@/lib/pagamentos";
 
 
 const sb = supabase as any;
@@ -164,15 +164,8 @@ export function DemandaDialog({
         .select("id,forma,parcelamento,valor,ordem,data_pagamento,pago,pago_em")
         .eq("demanda_id", demandaId)
         .order("ordem");
-      const rows: PagamentoLinha[] = ((pgs ?? []) as any[]).map((p) => ({
-        id: p.id as string,
-        forma: p.forma as string | null,
-        parcelamento: p.parcelamento as string | null,
-        valor: Number(p.valor ?? 0),
-        data_pagamento: (p.data_pagamento as string | null) ?? null,
-        pago: !!p.pago,
-        pago_em: (p.pago_em as string | null) ?? null,
-      }));
+      const rows: PagamentoLinha[] = agruparPagamentos((pgs ?? []) as any[]);
+
       if (rows.length === 0 && c && ((c as any).condicao_pagamento || (c as any).parcelamento)) {
         rows.push({
           forma: (c as any).condicao_pagamento ?? null,
@@ -232,16 +225,11 @@ export function DemandaDialog({
       if (id) {
         await sb.from("demanda_pagamentos").delete().eq("demanda_id", id);
         if (pagamentosLimpos.length) {
-          const pagRows = pagamentosLimpos.map((p, i) => ({
+          const pagRows = expandirPagamentos(pagamentosLimpos).map((p) => ({
             demanda_id: id,
-            forma: p.forma?.trim() || null,
-            parcelamento: p.parcelamento?.trim() || null,
-            valor: Number(p.valor || 0),
-            ordem: i,
-            data_pagamento: p.data_pagamento || null,
-            pago: !!p.pago,
-            pago_em: p.pago ? (p.pago_em || null) : null,
+            ...p,
           }));
+
           const { error: pagErr } = await sb.from("demanda_pagamentos").insert(pagRows);
           if (pagErr) throw pagErr;
         }

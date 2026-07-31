@@ -1,35 +1,31 @@
-## Diagnóstico (verificado no banco agora)
+## Problema
 
-Comparei as duas tabelas de pagamento no banco:
+Hoje, ao escolher PIX **2x**, o formulário mostra **uma única** data prevista, **um** valor e **uma** situação para a forma inteira. Por isso:
+- não dá para informar as duas datas/valores reais (entrada + restante);
+- o card não fica amarelo, porque o destaque depende de existirem **duas datas de pagamento diferentes** no banco — com uma linha só, nunca há duas.
 
-- `compra_pagamentos` (148 linhas) **já tem** as colunas `data_pagamento`, `pago` e `pago_em`. O módulo Compras lê e grava esses campos corretamente.
-- `demanda_pagamentos` (128 linhas) **não tem** essas três colunas. Só existem: `demanda_id`, `forma`, `parcelamento`, `valor`, `ordem`, `observacao`, `created_at`, `updated_at`.
+## O que será feito
 
-Consequências, hoje:
+### 1. Parcelas dentro de cada forma de pagamento (Compras e Despesas)
+No bloco de formas de pagamento (`PagamentosGrid`), quando a forma for **PIX** e o parcelamento for maior que 1x:
+- o cartão passa a listar **N parcelas** (2x → Parcela 1 e Parcela 2), cada uma com: **Data prevista**, **Valor** e **Situação (Pago / Em aberto)**;
+- ao trocar 2x → 3x, as parcelas são recriadas mantendo o que já foi preenchido; ao voltar para "à vista"/cartão, as parcelas somem e sobra só Forma + Parcelamento + Valor, como hoje;
+- o **Valor** da forma passa a ser a soma das parcelas (dividido igualmente por padrão, editável, com ajuste de centavos na última);
+- validação ao salvar: toda parcela precisa de data e situação, e a soma das parcelas precisa bater com o valor da forma; a soma das formas continua tendo que bater com o valor total.
 
-1. A tela do Quadro de Despesas que acabei de montar consulta `data_pagamento, pago, pago_em` em `demanda_pagamentos` — essa consulta **vai falhar** (coluna inexistente), então nenhum card de despesa mostrará as marcações âmbar/badges.
-2. O diálogo de Despesa exige preencher data prevista e situação para PIX parcelado, mas **não grava** esses dados: ao salvar, ele apaga e reinsere as linhas só com forma/parcelamento/valor/ordem. A informação se perde ao reabrir o card.
-3. Em Compras, as colunas existem e funcionam, porém hoje ainda há **0 registros** com data prevista ou marcados como pagos — ou seja, o recurso ainda não foi usado na prática, não é um bug de gravação.
+### 2. Gravação no banco
+Cada parcela vira **uma linha** em `compra_pagamentos` / `demanda_pagamentos` (mesma forma e mesmo parcelamento, com número da parcela, data, valor e situação). Nenhuma mudança de schema é necessária — as colunas `data_pagamento`, `pago` e `pago_em` já existem nas duas tabelas. Registros antigos (uma linha só) continuam abrindo normalmente e são convertidos para o novo formato quando editados.
 
-As permissões (RLS) das duas tabelas já estão equivalentes: acesso pelo módulo (financeiro/estoque para despesas, compras/estoque para compras) e leitura pelo próprio solicitante. Nada precisa mudar aí.
+### 3. Destaque âmbar do card
+Nos quadros de Compras e de Despesas, o card fica amarelo quando houver **parcelamento com parcelas em aberto** — passando a considerar também o parcelamento declarado (ex.: PIX 2x), não apenas datas distintas. Badges continuam mostrando "Parcelado · N em aberto", valor pago x total, próxima data e parcelas vencidas.
 
-## O que fazer
+### 4. Novo tipo de despesa
+Adicionar **"Material Copa"** à lista de tipos de despesa do módulo Despesas.
 
-### 1. Migração no banco (única alteração estrutural)
-Adicionar em `demanda_pagamentos`, espelhando `compra_pagamentos`:
-- `data_pagamento` (data, opcional)
-- `pago` (sim/não, padrão "não")
-- `pago_em` (data, opcional)
+## Detalhes técnicos
 
-Impacto: as 128 linhas existentes ficam com data vazia e situação "em aberto" — nenhum dado é perdido nem alterado. Não há mudança de permissões, índices pesados ou triggers. Compras não é afetada.
-
-### 2. Ajustar o diálogo de Despesa (`src/components/DemandaDialog.tsx`)
-- Ler as três novas colunas ao abrir o card.
-- Gravar as três novas colunas ao salvar (mesma lógica de Compras: `pago_em` só quando `pago = true`; campos nulos quando a forma não é PIX parcelado).
-
-### 3. Confirmar o Quadro de Despesas (`src/routes/financeiro.index.tsx`)
-Após a migração, a consulta de pagamentos passa a funcionar e os cards mostram borda âmbar, badge "Parcelado", "Quitado", valor pago/total, próxima data e parcelas vencidas — igual ao Quadro de Compras.
-
-### 4. Verificação final
-- Criar/editar uma despesa com PIX parcelado, salvar, reabrir e conferir que data e situação persistem.
-- Conferir no banco que as linhas gravaram os novos campos.
+- `src/lib/pagamentos.ts`: estrutura de parcelas por linha (ou linhas irmãs agrupadas por forma), helpers `distribuirParcelas`, `validarPagamentos` atualizado e `statusPagamentos` considerando `parcelasDe(parcelamento) > 1`.
+- `src/components/PagamentosGrid.tsx`: render das N parcelas dentro do cartão da forma; valor da forma vira somatório somente-leitura quando parcelado.
+- `src/components/CompraDialog.tsx` e `src/components/DemandaDialog.tsx`: leitura/gravação de múltiplas linhas por forma (delete + insert já usado hoje), preservando `resumoPagamentos` nos campos legados.
+- `src/routes/compras.index.tsx` e `src/routes/financeiro.index.tsx`: incluir `parcelamento` na query de pagamentos do quadro para o cálculo do destaque.
+- `src/lib/demandas.ts`: novo item `material_copa` → "Material Copa" em `TIPO_DEMANDA_OPTIONS` (despesa comum, sem grid de itens/estoque, salvo indicação em contrário).
