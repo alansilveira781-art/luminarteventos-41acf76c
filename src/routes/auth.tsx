@@ -46,8 +46,9 @@ function AuthPage() {
             <TabsTrigger value="login">Entrar</TabsTrigger>
             <TabsTrigger value="signup">Criar conta</TabsTrigger>
           </TabsList>
-          <TabsContent value="login"><LoginForm onDone={() => nav({ to: dest ?? "/" })} /></TabsContent>
-          <TabsContent value="signup"><SignupForm /></TabsContent>
+          <TabsContent value="login"><LoginForm onDone={() => { if (dest?.includes("?")) window.location.href = dest; else nav({ to: dest ?? "/" }); }} /></TabsContent>
+          <TabsContent value="signup"><SignupForm dest={dest} /></TabsContent>
+
         </Tabs>
         <div className="my-4 flex items-center gap-2">
           <div className="flex-1 h-px bg-border" />
@@ -83,7 +84,7 @@ function LoginForm({ onDone }: { onDone: () => void }) {
   );
 }
 
-function SignupForm() {
+function SignupForm({ dest }: { dest: string | null }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [pwd, setPwd] = useState("");
@@ -98,7 +99,8 @@ function SignupForm() {
           email,
           password: pwd,
           options: {
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: window.location.origin + (dest ?? ""),
+
             data: { full_name: name },
           },
         });

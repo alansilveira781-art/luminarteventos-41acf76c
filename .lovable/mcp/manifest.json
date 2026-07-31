@@ -1,0 +1,241 @@
+{
+  "version": 1,
+  "sdk_version": "0.26.1",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://skyxrutoxxdazphsbhwm.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "grupo-luminart",
+      "version": "0.1.0",
+      "title": "Grupo Luminart"
+    },
+    "tools": [
+      {
+        "name": "listar_eventos",
+        "title": "Listar eventos",
+        "description": "Lista eventos do Grupo Luminart por período (data do evento), com nome, código, local, cidade/UF, produtor e datas de montagem/desmontagem. Inclui locais adicionais vinculados ao evento principal.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "data_inicio": {
+              "type": "string",
+              "description": "Data inicial no formato AAAA-MM-DD."
+            },
+            "data_fim": {
+              "type": "string",
+              "description": "Data final no formato AAAA-MM-DD."
+            },
+            "busca": {
+              "type": "string",
+              "description": "Texto para filtrar por nome, código ou local."
+            },
+            "limite": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Máximo de registros (padrão 50)."
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "listar_compras",
+        "title": "Listar compras",
+        "description": "Lista compras do módulo Compras com status, solicitante, fornecedor, valor total, condição de pagamento e datas. Permite filtrar por status, período de solicitação e texto livre.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "description": "Status do card (ex.: em_andamento, finalizado)."
+            },
+            "data_inicio": {
+              "type": "string",
+              "description": "Data inicial de solicitação (AAAA-MM-DD)."
+            },
+            "data_fim": {
+              "type": "string",
+              "description": "Data final de solicitação (AAAA-MM-DD)."
+            },
+            "busca": {
+              "type": "string",
+              "description": "Texto para filtrar por título, fornecedor ou solicitante."
+            },
+            "limite": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Máximo de registros (padrão 50)."
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "listar_despesas",
+        "title": "Listar despesas",
+        "description": "Lista as despesas/demandas do módulo Despesas com tipo de despesa, status, evento/projeto, fornecedor, valor e datas.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "description": "Status do card (ex.: em_andamento, finalizado)."
+            },
+            "tipo_demanda": {
+              "type": "string",
+              "description": "Tipo de despesa (ex.: reposicao_estoque, pro_labore)."
+            },
+            "data_inicio": {
+              "type": "string",
+              "description": "Data inicial de solicitação (AAAA-MM-DD)."
+            },
+            "data_fim": {
+              "type": "string",
+              "description": "Data final de solicitação (AAAA-MM-DD)."
+            },
+            "busca": {
+              "type": "string",
+              "description": "Texto para filtrar por título, fornecedor ou evento/projeto."
+            },
+            "limite": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Máximo de registros (padrão 50)."
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "consultar_estoque",
+        "title": "Consultar estoque",
+        "description": "Consulta itens do estoque por nome, código, categoria ou subcategoria, retornando saldo atual, quantidade mínima, unidade, localização e valor unitário.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "busca": {
+              "type": "string",
+              "description": "Texto para filtrar por nome ou código do item."
+            },
+            "categoria": {
+              "type": "string",
+              "description": "Categoria exata do item."
+            },
+            "subcategoria": {
+              "type": "string",
+              "description": "Subcategoria exata do item."
+            },
+            "somente_abaixo_minimo": {
+              "type": "boolean",
+              "description": "Se verdadeiro, retorna apenas itens com saldo abaixo da quantidade mínima."
+            },
+            "limite": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Máximo de registros (padrão 50)."
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "listar_meus_pedidos",
+        "title": "Listar meus pedidos",
+        "description": "Lista as solicitações feitas pelo próprio usuário conectado (compras e despesas), com status atual e datas — equivalente à tela 'Meus Pedidos'.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "ocultar_finalizados": {
+              "type": "boolean",
+              "description": "Se verdadeiro, oculta pedidos já finalizados."
+            },
+            "limite": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Máximo de registros por tipo (padrão 50)."
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "resumo_financeiro",
+        "title": "Resumo financeiro do período",
+        "description": "Consolida os gastos de Compras e Despesas em um período, com totais gerais e quebra por status. Útil para perguntas como 'quanto gastamos em julho?'.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "data_inicio": {
+              "type": "string",
+              "description": "Data inicial (AAAA-MM-DD)."
+            },
+            "data_fim": {
+              "type": "string",
+              "description": "Data final (AAAA-MM-DD)."
+            },
+            "base_data": {
+              "type": "string",
+              "enum": [
+                "solicitacao",
+                "compra"
+              ],
+              "description": "Data usada no filtro: 'solicitacao' (padrão) ou 'compra'."
+            }
+          },
+          "required": [
+            "data_inicio",
+            "data_fim"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
