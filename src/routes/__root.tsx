@@ -119,6 +119,10 @@ function AppShell() {
   // Public routes (não exigem login)
   if (pathname === "/auth" || pathname === "/solicitar" || pathname === "/solicitar-contrato" || pathname === "/calendario-publico") return <Outlet />;
 
+  // Tela de consentimento OAuth: layout próprio (exige login, mas sem sidebar)
+  if (pathname === "/.lovable/oauth/consent") return <Outlet />;
+
+
   if (!session) {
     const dest = typeof window !== "undefined"
       ? window.location.pathname + window.location.search

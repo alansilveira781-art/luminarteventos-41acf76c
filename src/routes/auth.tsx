@@ -47,7 +47,8 @@ function AuthPage() {
             <TabsTrigger value="signup">Criar conta</TabsTrigger>
           </TabsList>
           <TabsContent value="login"><LoginForm onDone={() => nav({ to: dest ?? "/" })} /></TabsContent>
-          <TabsContent value="signup"><SignupForm /></TabsContent>
+          <TabsContent value="signup"><SignupForm dest={dest} /></TabsContent>
+
         </Tabs>
         <div className="my-4 flex items-center gap-2">
           <div className="flex-1 h-px bg-border" />
