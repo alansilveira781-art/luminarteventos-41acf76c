@@ -164,15 +164,8 @@ export function DemandaDialog({
         .select("id,forma,parcelamento,valor,ordem,data_pagamento,pago,pago_em")
         .eq("demanda_id", demandaId)
         .order("ordem");
-      const rows: PagamentoLinha[] = ((pgs ?? []) as any[]).map((p) => ({
-        id: p.id as string,
-        forma: p.forma as string | null,
-        parcelamento: p.parcelamento as string | null,
-        valor: Number(p.valor ?? 0),
-        data_pagamento: (p.data_pagamento as string | null) ?? null,
-        pago: !!p.pago,
-        pago_em: (p.pago_em as string | null) ?? null,
-      }));
+      const rows: PagamentoLinha[] = agruparPagamentos((pgs ?? []) as any[]);
+
       if (rows.length === 0 && c && ((c as any).condicao_pagamento || (c as any).parcelamento)) {
         rows.push({
           forma: (c as any).condicao_pagamento ?? null,
