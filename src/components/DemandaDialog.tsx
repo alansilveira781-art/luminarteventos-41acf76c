@@ -496,6 +496,15 @@ export function DemandaDialog({
                   />
                 )}
               </FormField>
+
+              <FormField label="Observações" wide>
+                <Textarea rows={3} value={form.observacoes ?? ""} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
+              </FormField>
+              {form.status === "negada" && (
+                <FormField label="Motivo da negação" wide>
+                  <Textarea rows={2} value={form.motivo_negacao ?? ""} onChange={(e) => setForm({ ...form, motivo_negacao: e.target.value })} />
+                </FormField>
+              )}
             </div>
 
             <div className="mt-2 border-t border-border pt-4">
