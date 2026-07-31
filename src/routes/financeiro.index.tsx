@@ -98,7 +98,7 @@ function DemandasKanban() {
     queryFn: async () => {
       const { data } = await sb
         .from("demanda_pagamentos")
-        .select("demanda_id,valor,data_pagamento,pago,pago_em");
+        .select("demanda_id,valor,parcelamento,data_pagamento,pago,pago_em");
       return (data ?? []) as any[];
     },
     staleTime: 30 * 1000,
