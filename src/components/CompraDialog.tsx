@@ -322,16 +322,11 @@ export function CompraDialog({
       }
       await sb.from("compra_pagamentos").delete().eq("compra_id", id);
       if (pagamentosLimpos.length) {
-        const pagRows = pagamentosLimpos.map((p, i) => ({
+        const pagRows = expandirPagamentos(pagamentosLimpos).map((p) => ({
           compra_id: id,
-          forma: p.forma?.trim() || null,
-          parcelamento: p.parcelamento?.trim() || null,
-          valor: Number(p.valor || 0),
-          data_pagamento: p.data_pagamento || null,
-          pago: !!p.pago,
-          pago_em: p.pago ? (p.pago_em || null) : null,
-          ordem: i,
+          ...p,
         }));
+
         const { error: pagErr } = await sb.from("compra_pagamentos").insert(pagRows);
         if (pagErr) throw pagErr;
       }
