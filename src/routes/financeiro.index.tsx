@@ -338,7 +338,7 @@ function DemandasKanban() {
 
       <DemandaDialog
         open={open}
-        onOpenChange={(v) => { setOpen(v); if (!v) { setEditId(null); limparUrlCard(); } }}
+        onOpenChange={(v) => { setOpen(v); if (!v) { setEditId(null); limparUrlCard(); qc.invalidateQueries({ queryKey: ["demandas", "pagamentos-quadro"] }); } }}
         demandaId={editId}
         defaultStatus={defaultStatus}
         onAdvance={async (demandaData, opts) => {
