@@ -2269,33 +2269,42 @@ export type Database = {
       demanda_pagamentos: {
         Row: {
           created_at: string
+          data_pagamento: string | null
           demanda_id: string
           forma: string | null
           id: string
           observacao: string | null
           ordem: number
+          pago: boolean
+          pago_em: string | null
           parcelamento: string | null
           updated_at: string
           valor: number
         }
         Insert: {
           created_at?: string
+          data_pagamento?: string | null
           demanda_id: string
           forma?: string | null
           id?: string
           observacao?: string | null
           ordem?: number
+          pago?: boolean
+          pago_em?: string | null
           parcelamento?: string | null
           updated_at?: string
           valor?: number
         }
         Update: {
           created_at?: string
+          data_pagamento?: string | null
           demanda_id?: string
           forma?: string | null
           id?: string
           observacao?: string | null
           ordem?: number
+          pago?: boolean
+          pago_em?: string | null
           parcelamento?: string | null
           updated_at?: string
           valor?: number
