@@ -406,20 +406,23 @@ function Column({
 }
 
 function Card({
-  demanda, onOpen, onAdvance, nextStatusLabel,
+  demanda, onOpen, onAdvance, nextStatusLabel, pagto = null,
 }: {
   demanda: Demanda;
   onOpen: () => void;
   onAdvance?: () => void;
   nextStatusLabel?: string | null;
+  pagto?: StatusPagamentos | null;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: demanda.id });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
+  // Despesa parcelada (datas de pagamento diferentes) e ainda em aberto → âmbar
+  const parceladoPendente = !!pagto?.parcelado && !pagto?.quitado;
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`rounded-md border border-border bg-card p-2.5 text-xs shadow-sm ${isDragging ? "opacity-50" : ""}`}
+      className={`rounded-md border p-2.5 text-xs shadow-sm ${parceladoPendente ? "border-amber-300 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/10" : "border-border bg-card"} ${isDragging ? "opacity-50" : ""}`}
     >
       <div className="flex items-start gap-2">
         <button
@@ -440,6 +443,30 @@ function Card({
               </span>
             )}
           </div>
+          {pagto && (pagto.parcelado || pagto.quitado) && (
+            <div className="flex flex-wrap items-center gap-1 mt-1">
+              {pagto.parcelado && (
+                <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-200/70 text-amber-900 dark:bg-amber-500/20 dark:text-amber-200">
+                  Parcelado{pagto.parcelasAbertas > 0 ? ` · ${pagto.parcelasAbertas} em aberto` : ""}
+                </span>
+              )}
+              {pagto.quitado ? (
+                <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+                  Quitado
+                </span>
+              ) : (
+                <span className="text-[10px] text-muted-foreground">
+                  Pago {formatBRL(pagto.totalPago)} de {formatBRL(pagto.total)}
+                  {pagto.proximaData ? ` · próx. ${formatDate(pagto.proximaData)}` : ""}
+                </span>
+              )}
+              {pagto.vencidas > 0 && (
+                <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-destructive/15 text-destructive">
+                  {pagto.vencidas} vencida{pagto.vencidas > 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+          )}
           {demanda.fornecedor && demanda.titulo && (
             <div className="text-[11px] text-muted-foreground truncate">{demanda.fornecedor}</div>
           )}
