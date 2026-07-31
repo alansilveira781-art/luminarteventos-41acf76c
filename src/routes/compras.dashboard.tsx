@@ -418,6 +418,40 @@ function ComprasDashboard() {
   );
 }
 
+function SavingList({
+  title, linhas, fmt, vazio = "Sem dados no período.",
+}: {
+  title: string;
+  linhas: { id: string; titulo: string; fornecedor: string; cotado: number; final: number; saving: number; pct: number }[];
+  fmt: (n: number) => string;
+  vazio?: string;
+}) {
+  return (
+    <Card className="p-4">
+      <div className="text-sm font-semibold mb-3">{title}</div>
+      {linhas.length === 0 ? (
+        <div className="text-sm text-muted-foreground py-4 text-center">{vazio}</div>
+      ) : (
+        <div className="space-y-1">
+          {linhas.map((l) => (
+            <div key={l.id} className="flex items-center justify-between gap-3 py-1.5 border-b border-border/50 last:border-0">
+              <div className="min-w-0">
+                <div className="text-sm truncate">{l.titulo}</div>
+                <div className="text-[11px] text-muted-foreground truncate">
+                  {l.fornecedor} · cotado {fmt(l.cotado)} → final {fmt(l.final)}
+                </div>
+              </div>
+              <div className={`text-sm font-semibold tabular-nums shrink-0 ${l.saving >= 0 ? "text-emerald-600" : "text-destructive"}`}>
+                {fmt(l.saving)} <span className="text-[11px] font-normal">({l.pct.toFixed(1)}%)</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 // ---- Cruzamento Fornecedor × Itens comprados ----
 function FornecedorItensSection() {
   const [q, setQ] = useState("");
