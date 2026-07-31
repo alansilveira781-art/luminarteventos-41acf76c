@@ -24,7 +24,7 @@ import { CopiarLinkButton } from "@/components/CopiarLinkButton";
 import { listEventos } from "@/lib/sheets.functions";
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { PagamentosGrid } from "@/components/PagamentosGrid";
-import { pagamentosBatem, resumoPagamentos, type PagamentoLinha } from "@/lib/pagamentos";
+import { pagamentosBatem, resumoPagamentos, validarPagamentos, type PagamentoLinha } from "@/lib/pagamentos";
 
 
 const sb = supabase as any;
@@ -275,6 +275,13 @@ export function CompraDialog({
       if (pagamentosLimpos.length > 0 && !pagamentosBatem(pagamentosLimpos, totalCalc)) {
         throw new Error(
           "A soma das formas de pagamento precisa ser igual ao valor total da compra.",
+        );
+      }
+      const pendencias = validarPagamentos(pagamentosLimpos);
+      if (pendencias.length > 0) {
+        throw new Error(
+          "Informe a data prevista e a situação de cada parcela do PIX parcelado.\n"
+            + pendencias.join("\n"),
         );
       }
       const resumo = resumoPagamentos(pagamentosLimpos);
@@ -557,14 +564,6 @@ export function CompraDialog({
                   <Input type="date" value={form.data_compra ?? ""} onChange={(e) => setForm({ ...form, data_compra: e.target.value })} />
                 </FormField>
               )}
-              <FormField label="Observações" wide>
-                <Textarea rows={3} value={form.observacoes ?? ""} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
-              </FormField>
-              {form.status === "negada" && (
-                <FormField label="Motivo da negação" wide>
-                  <Textarea rows={2} value={form.motivo_negacao ?? ""} onChange={(e) => setForm({ ...form, motivo_negacao: e.target.value })} />
-                </FormField>
-              )}
             </FormSection>
 
             <div className="mt-6 space-y-4">
@@ -585,7 +584,17 @@ export function CompraDialog({
                   </span>
                 </div>
               </FormField>
+
+              <FormField label="Observações" wide>
+                <Textarea rows={3} value={form.observacoes ?? ""} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
+              </FormField>
+              {form.status === "negada" && (
+                <FormField label="Motivo da negação" wide>
+                  <Textarea rows={2} value={form.motivo_negacao ?? ""} onChange={(e) => setForm({ ...form, motivo_negacao: e.target.value })} />
+                </FormField>
+              )}
             </div>
+
 
             <div className="mt-2 border-t border-border pt-4">
               <Tabs defaultValue="comentarios">

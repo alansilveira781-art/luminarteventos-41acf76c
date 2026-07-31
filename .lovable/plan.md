@@ -1,20 +1,38 @@
 ## Objetivo
-Reposicionar a seção "Formas de pagamento" no diálogo de compras para que fique imediatamente abaixo do campo "Data da compra", como bloco próprio e largura total, melhorando a leitura do fluxo de preenchimento.
 
-## Escopo
-- `src/components/CompraDialog.tsx`
-- Opcionalmente `src/components/DemandaDialog.tsx` se o mesmo padrão de layout existir e o usuário quiser consistência (a confirmar).
+1. Campo **Observações** passa a ficar entre a seção "Formas de pagamento" (+ Valor total) e a linha divisória de Comentários/Histórico.
+2. O campo **Situação (Pago)** só aparece quando a forma de pagamento for **PIX** e o parcelamento for **maior que 1**.
+3. Nesse caso (PIX parcelado), **Data prevista** e **Situação** passam a ser obrigatórias para salvar.
 
-## Alterações previstas
-1. No `CompraDialog.tsx`, retirar o `<PagamentosGrid>` de dentro do grid de campos do `FormSection` (onde ele ocupa `md:col-span-2` entre outros campos).
-2. Inserir o `<PagamentosGrid>` como bloco separado logo após o fechamento do `FormSection` que contém "Data da compra", mantendo largura total e o campo "Valor total (R$)" logo abaixo do grid, conforme já ajustado anteriormente.
-3. Garantir que o estado `canEdit`, `totalCalc` e demais props continuem funcionando.
-4. Verificar TypeScript e visual no preview.
+## Como fica
 
-## Não inclui
-- Mudanças em regras de negócio, cálculos ou persistência de pagamentos.
-- Alterações no `PagamentosGrid` interno (layout dos cartões já foi refatorado).
+```text
+[ Data da compra ]
+──────────────────────────────
+Formas de pagamento
+  Forma 1  | Parcelamento | Data prevista | Valor  [ | Situação se PIX parcelado ]
+  ...
+Soma das formas / Valor total
+──────────────────────────────
+Observações  (largura total)
+Motivo da negação (quando negada)
+──────────────────────────────
+Comentários | Histórico
+```
 
-## Validação
-- `bunx tsc --noEmit` ou build sem erros.
-- Screenshot do diálogo de compra mostrando "Formas de pagamento" abaixo de "Data da compra".
+## Detalhes técnicos
+
+**`src/lib/pagamentos.ts`**
+- Nova helper `parcelasDe(parcelamento)`: extrai o número de parcelas de textos como "1x", "3x", "3 vezes", "À vista" (à vista/vazio = 1).
+- Nova helper `ehPix(forma)`: comparação sem acento/caixa, aceita "pix", "pix parcelado" etc.
+- Nova helper `exigeControleParcelas(linha)` = `ehPix(forma) && parcelasDe(parcelamento) > 1`.
+- Nova helper `validarPagamentos(linhas)` que retorna a lista de pendências (linha sem data prevista ou sem situação definida quando exige controle).
+
+**`src/components/PagamentosGrid.tsx`**
+- Renderiza o bloco "Situação" apenas quando `exigeControleParcelas(p)`; quando a forma deixa de ser PIX parcelado, o `pago`/`pago_em` da linha é limpo.
+- Nessas linhas, "Data prevista" ganha marcação de obrigatória (asterisco) e destaque em vermelho quando vazia; a Situação vira um par de opções explícitas **Pago / Em aberto** (em vez de checkbox sem estado inicial), para que "preenchido" seja verificável.
+- Nas demais linhas (à vista, cartão etc.) nada muda além da ausência da Situação.
+
+**`src/components/CompraDialog.tsx` e `src/components/DemandaDialog.tsx`**
+- Mover o `FormField` de "Observações" (e o de "Motivo da negação") para fora do `FormSection`, logo depois do bloco de pagamentos/valor total e antes da `div` com `border-t` das abas.
+- No `handleSalvar`, além da checagem já existente de soma × total, bloquear o salvamento com toast quando `validarPagamentos` apontar pendências (mensagem: "Informe a data prevista e a situação de cada parcela do PIX parcelado").

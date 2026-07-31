@@ -4,6 +4,7 @@ import { MoneyInput } from "@/components/MoneyInput";
 import { SelectCreatable } from "@/components/SelectCreatable";
 import { Plus, Trash2 } from "lucide-react";
 import {
+  exigeControleParcelas,
   formatBRL,
   hojeISO,
   pagamentosBatem,
@@ -31,7 +32,18 @@ export function PagamentosGrid({
   const ok = pagamentosBatem(pagamentos, total);
 
   const update = (idx: number, patch: Partial<PagamentoLinha>) =>
-    onChange(pagamentos.map((p, i) => (i === idx ? { ...p, ...patch } : p)));
+    onChange(
+      pagamentos.map((p, i) => {
+        if (i !== idx) return p;
+        const next = { ...p, ...patch };
+        // Situação só existe para PIX parcelado; nas demais formas é limpa.
+        if (!exigeControleParcelas(next)) {
+          next.pago = false;
+          next.pago_em = null;
+        }
+        return next;
+      }),
+    );
 
   const add = () =>
     onChange([
@@ -58,7 +70,9 @@ export function PagamentosGrid({
         </p>
       ) : (
         <div className="space-y-3">
-          {pagamentos.map((p, idx) => (
+          {pagamentos.map((p, idx) => {
+            const exigeParcelas = exigeControleParcelas(p);
+            return (
             <div
               key={p.id ?? idx}
               className="rounded-lg border border-border bg-card p-3 space-y-3"
@@ -126,9 +140,16 @@ export function PagamentosGrid({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Data prevista</label>
+                  <label className="text-xs text-muted-foreground">
+                    Data prevista{exigeParcelas ? " *" : ""}
+                  </label>
                   <Input
                     type="date"
+                    className={
+                      exigeParcelas && !(p.data_pagamento ?? "").trim()
+                        ? "border-destructive"
+                        : undefined
+                    }
                     value={p.data_pagamento ?? ""}
                     readOnly={disabled}
                     onChange={(e) =>
@@ -146,33 +167,50 @@ export function PagamentosGrid({
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Situação</label>
-                  <label className="flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 accent-primary"
-                      checked={!!p.pago}
-                      disabled={disabled}
-                      onChange={(e) =>
-                        update(idx, {
-                          pago: e.target.checked,
-                          pago_em: e.target.checked ? (p.pago_em ?? hojeISO()) : null,
-                        })
-                      }
-                    />
-                    <span>Pago</span>
-                    {p.pago && p.pago_em && (
-                      <span className="text-xs text-muted-foreground tabular-nums">
-                        em {p.pago_em.slice(8, 10)}/{p.pago_em.slice(5, 7)}/
-                        {p.pago_em.slice(0, 4)}
-                      </span>
-                    )}
-                  </label>
-                </div>
+                {exigeParcelas && (
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Situação *</label>
+                    <div
+                      className={`flex gap-2 ${
+                        p.pago === undefined || p.pago === null
+                          ? "rounded-md border border-destructive p-1"
+                          : ""
+                      }`}
+                    >
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={p.pago === true ? "default" : "outline"}
+                        disabled={disabled}
+                        onClick={() =>
+                          update(idx, { pago: true, pago_em: p.pago_em ?? hojeISO() })
+                        }
+                      >
+                        Pago
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={p.pago === false ? "default" : "outline"}
+                        disabled={disabled}
+                        onClick={() => update(idx, { pago: false, pago_em: null })}
+                      >
+                        Em aberto
+                      </Button>
+                      {p.pago && p.pago_em && (
+                        <span className="self-center text-xs text-muted-foreground tabular-nums">
+                          em {p.pago_em.slice(8, 10)}/{p.pago_em.slice(5, 7)}/
+                          {p.pago_em.slice(0, 4)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
