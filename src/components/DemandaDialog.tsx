@@ -238,6 +238,9 @@ export function DemandaDialog({
             parcelamento: p.parcelamento?.trim() || null,
             valor: Number(p.valor || 0),
             ordem: i,
+            data_pagamento: p.data_pagamento || null,
+            pago: !!p.pago,
+            pago_em: p.pago ? (p.pago_em || null) : null,
           }));
           const { error: pagErr } = await sb.from("demanda_pagamentos").insert(pagRows);
           if (pagErr) throw pagErr;
