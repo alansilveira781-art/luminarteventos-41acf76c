@@ -557,25 +557,6 @@ export function CompraDialog({
                   <Input type="date" value={form.data_compra ?? ""} onChange={(e) => setForm({ ...form, data_compra: e.target.value })} />
                 </FormField>
               )}
-              <div className="md:col-span-2">
-                <PagamentosGrid
-                  pagamentos={pagamentos}
-                  onChange={setPagamentos}
-                  total={totalCalc}
-                  disabled={!canEdit}
-                />
-              </div>
-
-              <FormField label="Valor total (R$)" wide>
-                <div className="flex h-10 items-center justify-between rounded-md border border-input bg-muted/50 px-3 text-sm">
-                  <span className="font-semibold tabular-nums">
-                    {totalCalc.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                  </span>
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    calculado pelos itens
-                  </span>
-                </div>
-              </FormField>
               <FormField label="Observações" wide>
                 <Textarea rows={3} value={form.observacoes ?? ""} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
               </FormField>
