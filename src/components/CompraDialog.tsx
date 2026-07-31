@@ -328,6 +328,9 @@ export function CompraDialog({
           forma: p.forma?.trim() || null,
           parcelamento: p.parcelamento?.trim() || null,
           valor: Number(p.valor || 0),
+          data_pagamento: p.data_pagamento || null,
+          pago: !!p.pago,
+          pago_em: p.pago ? (p.pago_em || null) : null,
           ordem: i,
         }));
         const { error: pagErr } = await sb.from("compra_pagamentos").insert(pagRows);
