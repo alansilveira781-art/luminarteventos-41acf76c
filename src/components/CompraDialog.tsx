@@ -232,6 +232,9 @@ export function CompraDialog({
           forma: (c as any).condicao_pagamento ?? null,
           parcelamento: (c as any).parcelamento ?? null,
           valor: Number((c as any).valor_total ?? 0),
+          data_pagamento: null,
+          pago: false,
+          pago_em: null,
         });
       }
       setPagamentos(rows);
