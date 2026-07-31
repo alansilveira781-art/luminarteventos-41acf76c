@@ -557,14 +557,6 @@ export function CompraDialog({
                   <Input type="date" value={form.data_compra ?? ""} onChange={(e) => setForm({ ...form, data_compra: e.target.value })} />
                 </FormField>
               )}
-              <FormField label="Observações" wide>
-                <Textarea rows={3} value={form.observacoes ?? ""} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
-              </FormField>
-              {form.status === "negada" && (
-                <FormField label="Motivo da negação" wide>
-                  <Textarea rows={2} value={form.motivo_negacao ?? ""} onChange={(e) => setForm({ ...form, motivo_negacao: e.target.value })} />
-                </FormField>
-              )}
             </FormSection>
 
             <div className="mt-6 space-y-4">
@@ -585,7 +577,17 @@ export function CompraDialog({
                   </span>
                 </div>
               </FormField>
+
+              <FormField label="Observações" wide>
+                <Textarea rows={3} value={form.observacoes ?? ""} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
+              </FormField>
+              {form.status === "negada" && (
+                <FormField label="Motivo da negação" wide>
+                  <Textarea rows={2} value={form.motivo_negacao ?? ""} onChange={(e) => setForm({ ...form, motivo_negacao: e.target.value })} />
+                </FormField>
+              )}
             </div>
+
 
             <div className="mt-2 border-t border-border pt-4">
               <Tabs defaultValue="comentarios">
