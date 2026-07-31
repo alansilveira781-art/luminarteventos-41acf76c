@@ -1,3 +1,15 @@
+export type ParcelaLinha = {
+  id?: string;
+  /** 1-based */
+  numero: number;
+  valor: number;
+  /** Data prevista do pagamento (YYYY-MM-DD) */
+  data_pagamento?: string | null;
+  pago?: boolean | null;
+  /** Data em que a baixa foi registrada (YYYY-MM-DD) */
+  pago_em?: string | null;
+};
+
 export type PagamentoLinha = {
   id?: string;
   forma?: string | null;
@@ -9,7 +21,10 @@ export type PagamentoLinha = {
   pago?: boolean;
   /** Data em que a baixa foi registrada (YYYY-MM-DD) */
   pago_em?: string | null;
+  /** Parcelas individuais (PIX parcelado) */
+  parcelas?: ParcelaLinha[];
 };
+
 
 export type StatusPagamentos = {
   /** true quando há 2+ datas de pagamento distintas informadas */
