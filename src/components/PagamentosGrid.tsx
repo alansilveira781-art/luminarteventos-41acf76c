@@ -142,25 +142,6 @@ export function PagamentosGrid({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">
-                    Data prevista{exigeParcelas ? " *" : ""}
-                  </label>
-                  <Input
-                    type="date"
-                    className={
-                      exigeParcelas && !(p.data_pagamento ?? "").trim()
-                        ? "border-destructive"
-                        : undefined
-                    }
-                    value={p.data_pagamento ?? ""}
-                    readOnly={disabled}
-                    onChange={(e) =>
-                      update(idx, { data_pagamento: e.target.value || null })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-1">
                   <label className="text-xs text-muted-foreground">Valor</label>
                   <MoneyInput
                     value={p.valor}
@@ -168,6 +149,23 @@ export function PagamentosGrid({
                     disabled={disabled}
                   />
                 </div>
+
+                {exigeParcelas && (
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Data prevista *</label>
+                    <Input
+                      type="date"
+                      className={
+                        !(p.data_pagamento ?? "").trim() ? "border-destructive" : undefined
+                      }
+                      value={p.data_pagamento ?? ""}
+                      readOnly={disabled}
+                      onChange={(e) =>
+                        update(idx, { data_pagamento: e.target.value || null })
+                      }
+                    />
+                  </div>
+                )}
 
                 {exigeParcelas && (
                   <div className="space-y-1">
