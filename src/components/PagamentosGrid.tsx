@@ -197,7 +197,8 @@ export function PagamentosGrid({
 
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
