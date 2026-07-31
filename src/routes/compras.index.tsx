@@ -12,6 +12,7 @@ import { Plus, Search, ChevronRight, ArrowRightLeft } from "lucide-react";
 import { CompraDialog } from "@/components/CompraDialog";
 import { COMPRA_STATUSES, canEditCompra, canMoveCompra, moveBlockedMessage, nextCompraStatus, PEDRO_EMAIL, PEDRO_MOVE_BLOCKED_MSG, type CompraStatus } from "@/lib/compras";
 import { TIPO_DEMANDA_OPTIONS, TIPOS_COM_ITENS } from "@/lib/demandas";
+import { statusPagamentos, formatBRL, type PagamentoLinha, type StatusPagamentos } from "@/lib/pagamentos";
 import { KanbanFilters, applyKanbanFilters, type FieldDef, type Filters } from "@/components/KanbanFilters";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -103,6 +104,34 @@ function ComprasKanban() {
       return data as Compra[];
     },
   });
+
+  const { data: pagamentosRows = [] } = useQuery({
+    queryKey: ["compras", "pagamentos-quadro"],
+    queryFn: async () => {
+      const { data } = await sb
+        .from("compra_pagamentos")
+        .select("compra_id,valor,data_pagamento,pago,pago_em");
+      return (data ?? []) as any[];
+    },
+    staleTime: 30 * 1000,
+  });
+
+  const pagamentosPorCompra = useMemo(() => {
+    const m = new Map<string, StatusPagamentos>();
+    const grouped = new Map<string, PagamentoLinha[]>();
+    for (const p of pagamentosRows) {
+      const arr = grouped.get(p.compra_id) ?? [];
+      arr.push({
+        valor: Number(p.valor ?? 0),
+        data_pagamento: p.data_pagamento ?? null,
+        pago: !!p.pago,
+        pago_em: p.pago_em ?? null,
+      });
+      grouped.set(p.compra_id, arr);
+    }
+    grouped.forEach((linhas, id) => m.set(id, statusPagamentos(linhas)));
+    return m;
+  }, [pagamentosRows]);
 
   const { data: statusDefaults = [] } = useQuery({
     queryKey: ["compras_status_defaults"],
@@ -393,6 +422,7 @@ function ComprasKanban() {
                     canMove={canMove}
                     blockedMsg={canMove ? null : statusMoveBlockedMessage(next)}
                     onMigrar={canMigrate ? () => setMigrarCompra(c) : undefined}
+                    pagto={pagamentosPorCompra.get(c.id) ?? null}
                   />
                 );
               })}
@@ -490,7 +520,7 @@ function Column({
 }
 
 function Card({
-  compra, onOpen, onAdvance, nextStatusLabel, canMove = true, blockedMsg = null, onMigrar,
+  compra, onOpen, onAdvance, nextStatusLabel, canMove = true, blockedMsg = null, onMigrar, pagto = null,
 }: {
   compra: Compra;
   onOpen: () => void;
@@ -499,10 +529,13 @@ function Card({
   canMove?: boolean;
   blockedMsg?: string | null;
   onMigrar?: () => void;
+  pagto?: StatusPagamentos | null;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: compra.id, disabled: !canMove });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
   const advanceDisabled = !canMove;
+  // Compra parcelada (datas de pagamento diferentes) e ainda em aberto → destaque âmbar
+  const parceladoPendente = !!pagto?.parcelado && !pagto?.quitado;
   return (
     <div
       ref={setNodeRef}
@@ -510,7 +543,7 @@ function Card({
       {...(canMove ? { ...listeners, ...attributes } : {})}
       onClick={onOpen}
       title={canMove ? undefined : blockedMsg ?? undefined}
-      className={`rounded-md border border-border bg-card p-2.5 text-xs shadow-sm ${isDragging ? "opacity-50" : ""} ${canMove ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
+      className={`rounded-md border p-2.5 text-xs shadow-sm ${parceladoPendente ? "border-amber-300 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/10" : "border-border bg-card"} ${isDragging ? "opacity-50" : ""} ${canMove ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
     >
       <div className="flex items-start gap-2">
         <span
@@ -528,6 +561,30 @@ function Card({
               </span>
             )}
           </div>
+          {pagto && (pagto.parcelado || pagto.quitado) && (
+            <div className="flex flex-wrap items-center gap-1 mt-1">
+              {pagto.parcelado && (
+                <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-200/70 text-amber-900 dark:bg-amber-500/20 dark:text-amber-200">
+                  Parcelado{pagto.parcelasAbertas > 0 ? ` · ${pagto.parcelasAbertas} em aberto` : ""}
+                </span>
+              )}
+              {pagto.quitado ? (
+                <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+                  Quitado
+                </span>
+              ) : (
+                <span className="text-[10px] text-muted-foreground">
+                  Pago {formatBRL(pagto.totalPago)} de {formatBRL(pagto.total)}
+                  {pagto.proximaData ? ` · próx. ${formatDate(pagto.proximaData)}` : ""}
+                </span>
+              )}
+              {pagto.vencidas > 0 && (
+                <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-destructive/15 text-destructive">
+                  {pagto.vencidas} vencida{pagto.vencidas > 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+          )}
           {compra.fornecedor && compra.titulo && (
             <div className="text-[11px] text-muted-foreground truncate">{compra.fornecedor}</div>
           )}

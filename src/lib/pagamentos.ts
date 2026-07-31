@@ -4,7 +4,59 @@ export type PagamentoLinha = {
   parcelamento?: string | null;
   valor: number;
   observacao?: string | null;
+  /** Data prevista do pagamento (YYYY-MM-DD) */
+  data_pagamento?: string | null;
+  pago?: boolean;
+  /** Data em que a baixa foi registrada (YYYY-MM-DD) */
+  pago_em?: string | null;
 };
+
+export type StatusPagamentos = {
+  /** true quando há 2+ datas de pagamento distintas informadas */
+  parcelado: boolean;
+  total: number;
+  totalPago: number;
+  restante: number;
+  quitado: boolean;
+  /** Próxima parcela em aberto (data mais antiga não paga) */
+  proximaData: string | null;
+  /** Parcelas em aberto com data anterior a hoje */
+  vencidas: number;
+  parcelasAbertas: number;
+};
+
+export function hojeISO(): string {
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
+/**
+ * Consolida as linhas de pagamento de uma compra para exibição no card do
+ * quadro: identifica parcelamento por datas distintas, total pago e pendências.
+ */
+export function statusPagamentos(linhas: PagamentoLinha[]): StatusPagamentos {
+  const total = somaPagamentos(linhas);
+  const totalPago = linhas.reduce((s, p) => s + (p.pago ? Number(p.valor || 0) : 0), 0);
+  const datas = new Set(
+    linhas.map((p) => (p.data_pagamento ?? "").slice(0, 10)).filter(Boolean),
+  );
+  const abertas = linhas.filter((p) => !p.pago);
+  const datasAbertas = abertas
+    .map((p) => (p.data_pagamento ?? "").slice(0, 10))
+    .filter(Boolean)
+    .sort();
+  const hoje = hojeISO();
+  return {
+    parcelado: datas.size >= 2,
+    total,
+    totalPago,
+    restante: total - totalPago,
+    quitado: linhas.length > 0 && abertas.length === 0,
+    proximaData: datasAbertas[0] ?? null,
+    vencidas: datasAbertas.filter((d) => d < hoje).length,
+    parcelasAbertas: abertas.length,
+  };
+}
 
 export const PAGAMENTO_TOLERANCIA = 0.01;
 

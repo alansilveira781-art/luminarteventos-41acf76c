@@ -1444,10 +1444,13 @@ export type Database = {
         Row: {
           compra_id: string
           created_at: string
+          data_pagamento: string | null
           forma: string | null
           id: string
           observacao: string | null
           ordem: number
+          pago: boolean
+          pago_em: string | null
           parcelamento: string | null
           updated_at: string
           valor: number
@@ -1455,10 +1458,13 @@ export type Database = {
         Insert: {
           compra_id: string
           created_at?: string
+          data_pagamento?: string | null
           forma?: string | null
           id?: string
           observacao?: string | null
           ordem?: number
+          pago?: boolean
+          pago_em?: string | null
           parcelamento?: string | null
           updated_at?: string
           valor?: number
@@ -1466,10 +1472,13 @@ export type Database = {
         Update: {
           compra_id?: string
           created_at?: string
+          data_pagamento?: string | null
           forma?: string | null
           id?: string
           observacao?: string | null
           ordem?: number
+          pago?: boolean
+          pago_em?: string | null
           parcelamento?: string | null
           updated_at?: string
           valor?: number

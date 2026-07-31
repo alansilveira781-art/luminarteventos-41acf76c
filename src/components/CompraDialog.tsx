@@ -214,7 +214,7 @@ export function CompraDialog({
       setItens((is ?? []) as any);
       const { data: pgs } = await sb
         .from("compra_pagamentos")
-        .select("id,forma,parcelamento,valor,ordem")
+        .select("id,forma,parcelamento,valor,ordem,data_pagamento,pago,pago_em")
         .eq("compra_id", compraId)
         .order("ordem");
       const rows = ((pgs ?? []) as any[]).map((p) => ({
@@ -222,6 +222,9 @@ export function CompraDialog({
         forma: p.forma as string | null,
         parcelamento: p.parcelamento as string | null,
         valor: Number(p.valor ?? 0),
+        data_pagamento: (p.data_pagamento as string | null) ?? null,
+        pago: !!p.pago,
+        pago_em: (p.pago_em as string | null) ?? null,
       }));
       if (rows.length === 0 && c && ((c as any).condicao_pagamento || (c as any).parcelamento)) {
         rows.push({
@@ -229,6 +232,9 @@ export function CompraDialog({
           forma: (c as any).condicao_pagamento ?? null,
           parcelamento: (c as any).parcelamento ?? null,
           valor: Number((c as any).valor_total ?? 0),
+          data_pagamento: null,
+          pago: false,
+          pago_em: null,
         });
       }
       setPagamentos(rows);
@@ -322,6 +328,9 @@ export function CompraDialog({
           forma: p.forma?.trim() || null,
           parcelamento: p.parcelamento?.trim() || null,
           valor: Number(p.valor || 0),
+          data_pagamento: p.data_pagamento || null,
+          pago: !!p.pago,
+          pago_em: p.pago ? (p.pago_em || null) : null,
           ordem: i,
         }));
         const { error: pagErr } = await sb.from("compra_pagamentos").insert(pagRows);

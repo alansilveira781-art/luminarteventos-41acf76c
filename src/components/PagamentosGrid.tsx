@@ -5,6 +5,7 @@ import { SelectCreatable } from "@/components/SelectCreatable";
 import { Plus, Trash2 } from "lucide-react";
 import {
   formatBRL,
+  hojeISO,
   pagamentosBatem,
   somaPagamentos,
   type PagamentoLinha,
@@ -57,16 +58,18 @@ export function PagamentosGrid({
         </p>
       ) : (
         <div className="space-y-2">
-          <div className="hidden md:grid grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,1.2fr)_auto] gap-2 text-xs text-muted-foreground px-1">
+          <div className="hidden md:grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto] gap-2 text-xs text-muted-foreground px-1">
             <span>Forma de pagamento / cartão</span>
             <span>Parcelamento</span>
+            <span>Data prevista</span>
             <span>Valor</span>
+            <span>Pago</span>
             <span />
           </div>
           {pagamentos.map((p, idx) => (
             <div
               key={p.id ?? idx}
-              className="grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,1.2fr)_auto] gap-2 items-center"
+              className="grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto] gap-2 items-center"
             >
               {disabled ? (
                 <Input value={p.forma ?? ""} readOnly />
@@ -88,11 +91,37 @@ export function PagamentosGrid({
                   placeholder="Parcelas…"
                 />
               )}
+              <Input
+                type="date"
+                value={p.data_pagamento ?? ""}
+                readOnly={disabled}
+                onChange={(e) => update(idx, { data_pagamento: e.target.value || null })}
+              />
               <MoneyInput
                 value={p.valor}
                 onChange={(v) => update(idx, { valor: v })}
                 disabled={disabled}
               />
+              <label className="flex items-center gap-1.5 text-xs whitespace-nowrap">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-primary"
+                  checked={!!p.pago}
+                  disabled={disabled}
+                  onChange={(e) =>
+                    update(idx, {
+                      pago: e.target.checked,
+                      pago_em: e.target.checked ? (p.pago_em ?? hojeISO()) : null,
+                    })
+                  }
+                />
+                <span className="md:hidden">Pago</span>
+                {p.pago && p.pago_em && (
+                  <span className="text-muted-foreground">
+                    {p.pago_em.slice(8, 10)}/{p.pago_em.slice(5, 7)}
+                  </span>
+                )}
+              </label>
               {disabled ? (
                 <span />
               ) : (

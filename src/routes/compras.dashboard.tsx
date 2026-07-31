@@ -25,6 +25,18 @@ export const Route = createFileRoute("/compras/dashboard")({
 function startOfMonth(d = new Date()) { return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10); }
 function today() { return new Date().toISOString().slice(0, 10); }
 
+/** A cotação é texto livre no banco: extrai o valor numérico (formato BR ou US). */
+function parseCotacao(v: unknown): number | null {
+  if (v == null) return null;
+  if (typeof v === "number") return Number.isFinite(v) && v > 0 ? v : null;
+  const raw = String(v).replace(/[^\d.,-]/g, "").trim();
+  if (!raw) return null;
+  const temVirgula = raw.includes(",");
+  const normal = temVirgula ? raw.replace(/\./g, "").replace(",", ".") : raw;
+  const n = Number(normal);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 function ComprasDashboard() {
   const [from, setFrom] = useState(() => {
     const d = new Date(); d.setMonth(d.getMonth() - 5);
@@ -59,7 +71,9 @@ function ComprasDashboard() {
   const { data: itens = [] } = useQuery({
     queryKey: ["compra-itens-dash"],
     queryFn: async () => {
-      const { data } = await sb.from("compra_itens").select("compra_id,item_id,quantidade,valor_unitario,descricao");
+      const { data } = await sb
+        .from("compra_itens")
+        .select("compra_id,item_id,quantidade,valor_unitario,descricao,cotacao");
       return (data ?? []) as any[];
     },
   });
@@ -78,6 +92,84 @@ function ComprasDashboard() {
     const emAndamento = compras.filter((c) => !["finalizado", "negada"].includes(c.status)).length;
     return { total, count: compras.length, finalizadas, emAndamento };
   }, [compras]);
+
+  // ===== Saving de compras: cotação (referência) x valor final negociado =====
+  const saving = useMemo(() => {
+    const comprasMap = new Map(compras.map((c: any) => [c.id, c]));
+    type Ag = { cotado: number; final: number; itens: number };
+    const porCompra = new Map<string, Ag>();
+    for (const it of itens) {
+      const c = comprasMap.get(it.compra_id);
+      if (!c) continue;
+      const cot = parseCotacao(it.cotacao);
+      if (cot == null) continue;
+      const qtd = Number(it.quantidade || 0) || 0;
+      const final = Number(it.valor_unitario || 0) * qtd;
+      if (!qtd || !final) continue;
+      const ag = porCompra.get(it.compra_id) ?? { cotado: 0, final: 0, itens: 0 };
+      ag.cotado += cot * qtd;
+      ag.final += final;
+      ag.itens += 1;
+      porCompra.set(it.compra_id, ag);
+    }
+    let cotado = 0, final = 0, itensComCotacao = 0;
+    const porMesMap = new Map<string, { cotado: number; final: number }>();
+    const porFornMap = new Map<string, { cotado: number; final: number }>();
+    const ranking: { id: string; fornecedor: string; titulo: string; cotado: number; final: number; saving: number; pct: number }[] = [];
+    porCompra.forEach((ag, id) => {
+      const c: any = comprasMap.get(id);
+      cotado += ag.cotado; final += ag.final; itensComCotacao += ag.itens;
+      const ref = (c.data_compra || c.data_solicitacao || c.created_at) as string;
+      if (ref) {
+        const k = ref.slice(0, 7);
+        const m = porMesMap.get(k) ?? { cotado: 0, final: 0 };
+        m.cotado += ag.cotado; m.final += ag.final;
+        porMesMap.set(k, m);
+      }
+      const fk = c.fornecedor || "Sem fornecedor";
+      const f = porFornMap.get(fk) ?? { cotado: 0, final: 0 };
+      f.cotado += ag.cotado; f.final += ag.final;
+      porFornMap.set(fk, f);
+      ranking.push({
+        id,
+        fornecedor: fk,
+        titulo: c.titulo || fk,
+        cotado: ag.cotado,
+        final: ag.final,
+        saving: ag.cotado - ag.final,
+        pct: ag.cotado > 0 ? ((ag.cotado - ag.final) / ag.cotado) * 100 : 0,
+      });
+    });
+    const evolucao = Array.from(porMesMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([mes, v]) => ({
+        mes,
+        cotado: Math.round(v.cotado * 100) / 100,
+        final: Math.round(v.final * 100) / 100,
+        saving: Math.round((v.cotado - v.final) * 100) / 100,
+      }));
+    const fornecedores = Array.from(porFornMap.entries())
+      .map(([nome, v]) => ({
+        nome,
+        saving: Math.round((v.cotado - v.final) * 100) / 100,
+        pct: v.cotado > 0 ? ((v.cotado - v.final) / v.cotado) * 100 : 0,
+      }))
+      .sort((a, b) => b.saving - a.saving)
+      .slice(0, 8);
+    return {
+      cotado,
+      final,
+      total: cotado - final,
+      pct: cotado > 0 ? ((cotado - final) / cotado) * 100 : 0,
+      comprasAvaliadas: porCompra.size,
+      itensComCotacao,
+      evolucao,
+      fornecedores,
+      melhores: [...ranking].sort((a, b) => b.saving - a.saving).slice(0, 5),
+      piores: ranking.filter((r) => r.saving < 0).sort((a, b) => a.saving - b.saving).slice(0, 5),
+    };
+  }, [compras, itens]);
+
 
   // Por mês
   const porMes = useMemo(() => {
@@ -253,8 +345,110 @@ function ComprasDashboard() {
         </ChartCard>
       </div>
 
+      <Card className="p-4 mt-4">
+        <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
+          <div>
+            <div className="text-sm font-semibold">Saving de Compras</div>
+            <div className="text-xs text-muted-foreground">
+              Comparação entre o valor de cotação dos itens e o valor final negociado
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {saving.comprasAvaliadas} compra(s) · {saving.itensComCotacao} item(ns) com cotação
+          </div>
+        </div>
+
+        {saving.comprasAvaliadas === 0 ? (
+          <div className="text-sm text-muted-foreground py-6 text-center">
+            Nenhuma compra do período possui cotação preenchida nos itens.
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-4">
+              <Stat label="Valor cotado" value={fmt(saving.cotado)} />
+              <Stat label="Valor final" value={fmt(saving.final)} />
+              <Stat label="Saving (R$)" value={fmt(saving.total)} />
+              <Stat label="Saving (%)" value={`${saving.pct.toFixed(1)}%`} />
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <ChartCard title="Evolução: cotado x final (R$)">
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={saving.evolucao}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                    <XAxis dataKey="mes" fontSize={11} />
+                    <YAxis fontSize={11} />
+                    <Tooltip formatter={(v: any) => fmt(Number(v))} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Bar dataKey="cotado" name="Cotado" fill="#94a3b8" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="final" name="Final" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="saving" name="Saving" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartCard>
+
+              <ChartCard title="Saving por fornecedor (R$)">
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={saving.fornecedores} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                    <XAxis type="number" fontSize={11} />
+                    <YAxis type="category" dataKey="nome" width={120} fontSize={11} />
+                    <Tooltip formatter={(v: any) => fmt(Number(v))} />
+                    <Bar dataKey="saving" fill="#10b981" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2 mt-4">
+              <SavingList title="Maiores economias" linhas={saving.melhores} fmt={fmt} />
+              <SavingList
+                title="Compras acima da cotação"
+                linhas={saving.piores}
+                fmt={fmt}
+                vazio="Nenhuma compra ficou acima do valor cotado."
+              />
+            </div>
+          </>
+        )}
+      </Card>
+
       <FornecedorItensSection />
     </>
+  );
+}
+
+function SavingList({
+  title, linhas, fmt, vazio = "Sem dados no período.",
+}: {
+  title: string;
+  linhas: { id: string; titulo: string; fornecedor: string; cotado: number; final: number; saving: number; pct: number }[];
+  fmt: (n: number) => string;
+  vazio?: string;
+}) {
+  return (
+    <Card className="p-4">
+      <div className="text-sm font-semibold mb-3">{title}</div>
+      {linhas.length === 0 ? (
+        <div className="text-sm text-muted-foreground py-4 text-center">{vazio}</div>
+      ) : (
+        <div className="space-y-1">
+          {linhas.map((l) => (
+            <div key={l.id} className="flex items-center justify-between gap-3 py-1.5 border-b border-border/50 last:border-0">
+              <div className="min-w-0">
+                <div className="text-sm truncate">{l.titulo}</div>
+                <div className="text-[11px] text-muted-foreground truncate">
+                  {l.fornecedor} · cotado {fmt(l.cotado)} → final {fmt(l.final)}
+                </div>
+              </div>
+              <div className={`text-sm font-semibold tabular-nums shrink-0 ${l.saving >= 0 ? "text-emerald-600" : "text-destructive"}`}>
+                {fmt(l.saving)} <span className="text-[11px] font-normal">({l.pct.toFixed(1)}%)</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
   );
 }
 
