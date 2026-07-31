@@ -152,11 +152,20 @@ export function PagamentosGrid({
       )}
 
       {pagamentos.length > 0 && (
-        <div
-          className={`text-sm tabular-nums ${ok ? "text-muted-foreground" : "text-destructive font-medium"}`}
-        >
-          Soma das formas: {formatBRL(soma)} · Valor total: {formatBRL(total)}
-          {!ok && ` · Diferença: ${formatBRL(restante)}`}
+        <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-muted-foreground">
+              Soma das formas: <span className="font-medium tabular-nums text-foreground">{formatBRL(soma)}</span>
+            </div>
+            <div className="text-base font-semibold tabular-nums">
+              Valor total: {formatBRL(total)}
+            </div>
+          </div>
+          {!ok && (
+            <div className="mt-1 text-sm font-medium text-destructive tabular-nums">
+              Diferença: {formatBRL(restante)}
+            </div>
+          )}
         </div>
       )}
     </div>

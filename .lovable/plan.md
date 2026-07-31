@@ -1,41 +1,31 @@
-## 1. Pagamentos com datas diferentes (Quadro de Compras)
+## Objetivo
+Melhorar a visualização do grid de formas de pagamento nos diálogos de Compra e Despesa, deixando o valor total calculado como a última informação apresentada, evitando o layout confuso atual onde o total fica ao lado ou misturado aos campos do grid.
 
-Hoje cada forma de pagamento da compra guarda apenas forma, parcelamento e valor — não há data nem controle de baixa.
+## Escopo
+- `src/components/PagamentosGrid.tsx`
+- `src/components/CompraDialog.tsx`
+- `src/components/DemandaDialog.tsx`
 
-**Banco de dados** — adicionar em `compra_pagamentos`:
-- `data_pagamento` (data prevista da parcela/pix)
-- `pago` (sim/não) e `pago_em` (data da baixa)
+## Passos
 
-**Formulário da compra (CompraDialog › Formas de pagamento)**
-- Cada linha ganha o campo "Data prevista" e uma caixinha "Pago" (com data da baixa preenchida automaticamente ao marcar).
-- A validação de soma dos valores continua igual.
+### 1. Reorganizar o rodapé do `PagamentosGrid`
+- Manter o cabeçalho do grid (Forma / Parcelamento / Data prevista / Valor / Pago / Ações) e as linhas de pagamento na parte superior.
+- Remover a linha de resumo atual que fica imediatamente abaixo das linhas de pagamento e é apenas texto corrido.
+- Adicionar, no final do componente, uma linha de totais em destaque com:
+  - "Soma das formas" à esquerda;
+  - "Valor total" centralizado ou à direita, em destaque (fonte maior/negrito);
+  - "Diferença" somente quando houver divergência, em cor de alerta.
+- Usar um container com fundo sutil (`bg-muted/40` ou `border-t`) para separar visualmente o total das linhas de pagamento.
 
-**Card no quadro**
-- Quando a compra tiver duas ou mais datas de pagamento distintas, o card fica amarelado (fundo/borda em tom âmbar, via tokens de tema, funcionando também no modo escuro).
-- O card exibe um selo "Parcelado" e uma linha de resumo: `Pago R$ X de R$ Y · próxima em DD/MM`.
-- Quando todas as parcelas estiverem pagas, o selo vira "Quitado" e o card volta ao visual normal (sem amarelo).
-- Parcela vencida e não paga: a data aparece em vermelho.
+### 2. Reposicionar o campo "Valor total (R$)" no `CompraDialog`
+- O campo "Valor total (R$)" (com label "CALCULADO PELOS ITENS") deve ser renderizado **depois** do `PagamentosGrid`, ocupando a largura total da seção (`md:col-span-2 lg:col-span-3`) para não ficar ao lado do grid.
+- Garantir que a ordem visual seja: grid de pagamentos → resumo do grid → campo de valor total calculado pelos itens.
 
-## 2. Análise de Saving (Compras › Dashboard)
+### 3. Alinhar layout no `DemandaDialog`
+- Verificar se o `PagamentosGrid` e o campo de valor total (se existir) seguem a mesma ordem proposta.
+- Se houver campo de valor total na despesa, aplicar a mesma largura total e posicionamento abaixo do grid.
+- Se não houver campo equivalente, apenas garantir que o grid ocupe a largura total e o resumo fique no final.
 
-Fonte: campo **Cotação** já existente em cada item da compra.
-
-- Valor cotado = soma de `cotação × quantidade` dos itens (itens sem cotação preenchida ficam de fora do cálculo e são contados à parte).
-- Valor final = soma de `valor unitário × quantidade` dos mesmos itens.
-- Saving = cotado − final; % saving = saving ÷ cotado.
-
-Nova seção "Saving de Compras" no dashboard, respeitando os filtros de período e empresa já existentes:
-- Cards: Valor cotado, Valor final, Saving (R$), Saving (%), e nº de compras sem cotação (cobertura da análise).
-- Gráfico de barras: saving por mês (cotado vs. final).
-- Ranking: top fornecedores por saving gerado.
-- Tabela: top 10 compras por saving, com número da compra, fornecedor, cotado, final, saving e %.
-- Savings negativos (compra acima da cotação) aparecem destacados em vermelho.
-
-## Detalhes técnicos
-
-- Migração em `compra_pagamentos`: `data_pagamento date`, `pago boolean not null default false`, `pago_em date`; políticas RLS atuais permanecem.
-- `src/lib/pagamentos.ts`: estender `PagamentoLinha` e adicionar helpers `resumoPagamentos()` (total pago, restante, próxima data, vencidas) e `temDatasDistintas()`.
-- `src/components/PagamentosGrid.tsx`: colunas adicionais de data e baixa.
-- `src/components/CompraDialog.tsx`: persistir os novos campos no upsert de pagamentos.
-- `src/routes/compras.index.tsx`: carregar `compra_pagamentos` (uma query agregada) e passar o resumo ao componente `Card` para cor e rótulos.
-- `src/routes/compras.dashboard.tsx`: a query de `compra_itens` já traz `valor_unitario`; incluir `cotacao` e `desconto_percentual`, com parse numérico tolerante (o campo é texto e pode vir como "1.234,56").
+## Resultado esperado
+- O usuário vê primeiro as formas de pagamento cadastradas, depois o resumo consolidado e, por fim, o valor total calculado, sem informações cortadas ou deslocadas para o lado.
+- Layout mais próximo do padrão de formulário vertical, facilitando a leitura e conferência.

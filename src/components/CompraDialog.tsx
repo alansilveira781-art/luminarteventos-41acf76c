@@ -566,7 +566,7 @@ export function CompraDialog({
                 />
               </div>
 
-              <FormField label="Valor total (R$)">
+              <FormField label="Valor total (R$)" wide>
                 <div className="flex h-10 items-center justify-between rounded-md border border-input bg-muted/50 px-3 text-sm">
                   <span className="font-semibold tabular-nums">
                     {totalCalc.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
