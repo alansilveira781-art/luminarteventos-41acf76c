@@ -12,6 +12,7 @@ import { notifyResponsavel } from "@/lib/notify";
 import { DEMANDA_STATUSES, TIPOS_QUE_VAO_PARA_RECEBIMENTO, proximoStatusDemanda, type DemandaStatus } from "@/lib/demandas";
 import { KanbanFilters, applyKanbanFilters, type FieldDef, type Filters } from "@/components/KanbanFilters";
 import { usePersistedState } from "@/hooks/usePersistedState";
+import { statusPagamentos, formatBRL, type PagamentoLinha, type StatusPagamentos } from "@/lib/pagamentos";
 import {
   DndContext,
   PointerSensor,
