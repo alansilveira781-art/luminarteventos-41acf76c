@@ -422,6 +422,7 @@ function ComprasKanban() {
                     canMove={canMove}
                     blockedMsg={canMove ? null : statusMoveBlockedMessage(next)}
                     onMigrar={canMigrate ? () => setMigrarCompra(c) : undefined}
+                    pagto={pagamentosPorCompra.get(c.id) ?? null}
                   />
                 );
               })}
