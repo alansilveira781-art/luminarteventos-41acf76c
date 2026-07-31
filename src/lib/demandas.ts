@@ -79,6 +79,7 @@ export const TIPO_DEMANDA_OPTIONS = [
   { value: "reformas_construcoes", label: "Reformas & Construções" },
   { value: "imobilizado", label: "Imobilizado" },
   { value: "material_limpeza", label: "Material de Limpeza" },
+  { value: "material_copa", label: "Material Copa" },
   { value: "material_escritorio", label: "Material de Escritório" },
   { value: "reposicao_estoque", label: "Reposição de Estoque" },
   { value: "departamento_pessoal", label: "Departamento Pessoal" },
