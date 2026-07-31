@@ -81,6 +81,84 @@ function ComprasDashboard() {
     return { total, count: compras.length, finalizadas, emAndamento };
   }, [compras]);
 
+  // ===== Saving de compras: cotação (referência) x valor final negociado =====
+  const saving = useMemo(() => {
+    const comprasMap = new Map(compras.map((c: any) => [c.id, c]));
+    type Ag = { cotado: number; final: number; itens: number };
+    const porCompra = new Map<string, Ag>();
+    for (const it of itens) {
+      const c = comprasMap.get(it.compra_id);
+      if (!c) continue;
+      const cot = parseCotacao(it.cotacao);
+      if (cot == null) continue;
+      const qtd = Number(it.quantidade || 0) || 0;
+      const final = Number(it.valor_unitario || 0) * qtd;
+      if (!qtd || !final) continue;
+      const ag = porCompra.get(it.compra_id) ?? { cotado: 0, final: 0, itens: 0 };
+      ag.cotado += cot * qtd;
+      ag.final += final;
+      ag.itens += 1;
+      porCompra.set(it.compra_id, ag);
+    }
+    let cotado = 0, final = 0, itensComCotacao = 0;
+    const porMesMap = new Map<string, { cotado: number; final: number }>();
+    const porFornMap = new Map<string, { cotado: number; final: number }>();
+    const ranking: { id: string; fornecedor: string; titulo: string; cotado: number; final: number; saving: number; pct: number }[] = [];
+    porCompra.forEach((ag, id) => {
+      const c: any = comprasMap.get(id);
+      cotado += ag.cotado; final += ag.final; itensComCotacao += ag.itens;
+      const ref = (c.data_compra || c.data_solicitacao || c.created_at) as string;
+      if (ref) {
+        const k = ref.slice(0, 7);
+        const m = porMesMap.get(k) ?? { cotado: 0, final: 0 };
+        m.cotado += ag.cotado; m.final += ag.final;
+        porMesMap.set(k, m);
+      }
+      const fk = c.fornecedor || "Sem fornecedor";
+      const f = porFornMap.get(fk) ?? { cotado: 0, final: 0 };
+      f.cotado += ag.cotado; f.final += ag.final;
+      porFornMap.set(fk, f);
+      ranking.push({
+        id,
+        fornecedor: fk,
+        titulo: c.titulo || fk,
+        cotado: ag.cotado,
+        final: ag.final,
+        saving: ag.cotado - ag.final,
+        pct: ag.cotado > 0 ? ((ag.cotado - ag.final) / ag.cotado) * 100 : 0,
+      });
+    });
+    const evolucao = Array.from(porMesMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([mes, v]) => ({
+        mes,
+        cotado: Math.round(v.cotado * 100) / 100,
+        final: Math.round(v.final * 100) / 100,
+        saving: Math.round((v.cotado - v.final) * 100) / 100,
+      }));
+    const fornecedores = Array.from(porFornMap.entries())
+      .map(([nome, v]) => ({
+        nome,
+        saving: Math.round((v.cotado - v.final) * 100) / 100,
+        pct: v.cotado > 0 ? ((v.cotado - v.final) / v.cotado) * 100 : 0,
+      }))
+      .sort((a, b) => b.saving - a.saving)
+      .slice(0, 8);
+    return {
+      cotado,
+      final,
+      total: cotado - final,
+      pct: cotado > 0 ? ((cotado - final) / cotado) * 100 : 0,
+      comprasAvaliadas: porCompra.size,
+      itensComCotacao,
+      evolucao,
+      fornecedores,
+      melhores: [...ranking].sort((a, b) => b.saving - a.saving).slice(0, 5),
+      piores: ranking.filter((r) => r.saving < 0).sort((a, b) => a.saving - b.saving).slice(0, 5),
+    };
+  }, [compras, itens]);
+
+
   // Por mês
   const porMes = useMemo(() => {
     const map = new Map<string, number>();
