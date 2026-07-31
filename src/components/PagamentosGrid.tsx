@@ -57,99 +57,125 @@ export function PagamentosGrid({
           Nenhuma forma de pagamento informada.
         </p>
       ) : (
-        <div className="space-y-2">
-          <div className="hidden md:grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto] gap-2 text-xs text-muted-foreground px-1">
-            <span>Forma de pagamento / cartão</span>
-            <span>Parcelamento</span>
-            <span>Data prevista</span>
-            <span>Valor</span>
-            <span>Pago</span>
-            <span />
-          </div>
+        <div className="space-y-3">
           {pagamentos.map((p, idx) => (
             <div
               key={p.id ?? idx}
-              className="grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto] gap-2 items-center"
+              className="rounded-lg border border-border bg-card p-3 space-y-3"
             >
-              {disabled ? (
-                <Input value={p.forma ?? ""} readOnly />
-              ) : (
-                <SelectCreatable
-                  table="condicoes_pagamento"
-                  value={p.forma}
-                  onChange={(v) => update(idx, { forma: v })}
-                  placeholder="Cartão / forma…"
-                />
-              )}
-              {disabled ? (
-                <Input value={p.parcelamento ?? ""} readOnly />
-              ) : (
-                <SelectCreatable
-                  table="parcelamentos"
-                  value={p.parcelamento}
-                  onChange={(v) => update(idx, { parcelamento: v })}
-                  placeholder="Parcelas…"
-                />
-              )}
-              <Input
-                type="date"
-                value={p.data_pagamento ?? ""}
-                readOnly={disabled}
-                onChange={(e) => update(idx, { data_pagamento: e.target.value || null })}
-              />
-              <MoneyInput
-                value={p.valor}
-                onChange={(v) => update(idx, { valor: v })}
-                disabled={disabled}
-              />
-              <label className="flex items-center gap-1.5 text-xs whitespace-nowrap">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 accent-primary"
-                  checked={!!p.pago}
-                  disabled={disabled}
-                  onChange={(e) =>
-                    update(idx, {
-                      pago: e.target.checked,
-                      pago_em: e.target.checked ? (p.pago_em ?? hojeISO()) : null,
-                    })
-                  }
-                />
-                <span className="md:hidden">Pago</span>
-                {p.pago && p.pago_em && (
-                  <span className="text-muted-foreground">
-                    {p.pago_em.slice(8, 10)}/{p.pago_em.slice(5, 7)}
-                  </span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Forma {idx + 1}
+                </span>
+                {!disabled && (
+                  <div className="flex items-center gap-1">
+                    {Math.abs(restante) > 0.005 && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          update(idx, { valor: Number(p.valor || 0) + restante })
+                        }
+                      >
+                        Usar restante ({formatBRL(restante)})
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => remove(idx)}
+                      title="Remover"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 )}
-              </label>
-              {disabled ? (
-                <span />
-              ) : (
-                <div className="flex gap-1">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    title="Usar valor restante"
-                    onClick={() => update(idx, { valor: Number(p.valor || 0) + restante })}
-                  >
-                    ={formatBRL(Math.max(restante, 0)).replace("R$", "").trim()}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => remove(idx)}
-                    title="Remover"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs text-muted-foreground">
+                    Forma de pagamento / cartão
+                  </label>
+                  {disabled ? (
+                    <Input value={p.forma ?? ""} readOnly />
+                  ) : (
+                    <SelectCreatable
+                      table="condicoes_pagamento"
+                      value={p.forma}
+                      onChange={(v) => update(idx, { forma: v })}
+                      placeholder="Cartão / forma…"
+                    />
+                  )}
                 </div>
-              )}
+
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Parcelamento</label>
+                  {disabled ? (
+                    <Input value={p.parcelamento ?? ""} readOnly />
+                  ) : (
+                    <SelectCreatable
+                      table="parcelamentos"
+                      value={p.parcelamento}
+                      onChange={(v) => update(idx, { parcelamento: v })}
+                      placeholder="Parcelas…"
+                    />
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Data prevista</label>
+                  <Input
+                    type="date"
+                    value={p.data_pagamento ?? ""}
+                    readOnly={disabled}
+                    onChange={(e) =>
+                      update(idx, { data_pagamento: e.target.value || null })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Valor</label>
+                  <MoneyInput
+                    value={p.valor}
+                    onChange={(v) => update(idx, { valor: v })}
+                    disabled={disabled}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Situação</label>
+                  <label className="flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-primary"
+                      checked={!!p.pago}
+                      disabled={disabled}
+                      onChange={(e) =>
+                        update(idx, {
+                          pago: e.target.checked,
+                          pago_em: e.target.checked ? (p.pago_em ?? hojeISO()) : null,
+                        })
+                      }
+                    />
+                    <span>Pago</span>
+                    {p.pago && p.pago_em && (
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        em {p.pago_em.slice(8, 10)}/{p.pago_em.slice(5, 7)}/
+                        {p.pago_em.slice(0, 4)}
+                      </span>
+                    )}
+                  </label>
+                </div>
+              </div>
             </div>
           ))}
         </div>
       )}
+
 
       {pagamentos.length > 0 && (
         <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
