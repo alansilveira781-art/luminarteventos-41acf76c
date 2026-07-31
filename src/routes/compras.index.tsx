@@ -561,6 +561,30 @@ function Card({
               </span>
             )}
           </div>
+          {pagto && (pagto.parcelado || pagto.quitado) && (
+            <div className="flex flex-wrap items-center gap-1 mt-1">
+              {pagto.parcelado && (
+                <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-200/70 text-amber-900 dark:bg-amber-500/20 dark:text-amber-200">
+                  Parcelado{pagto.parcelasAbertas > 0 ? ` · ${pagto.parcelasAbertas} em aberto` : ""}
+                </span>
+              )}
+              {pagto.quitado ? (
+                <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+                  Quitado
+                </span>
+              ) : (
+                <span className="text-[10px] text-muted-foreground">
+                  Pago {formatBRL(pagto.totalPago)} de {formatBRL(pagto.total)}
+                  {pagto.proximaData ? ` · próx. ${formatDate(pagto.proximaData)}` : ""}
+                </span>
+              )}
+              {pagto.vencidas > 0 && (
+                <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-destructive/15 text-destructive">
+                  {pagto.vencidas} vencida{pagto.vencidas > 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+          )}
           {compra.fornecedor && compra.titulo && (
             <div className="text-[11px] text-muted-foreground truncate">{compra.fornecedor}</div>
           )}
