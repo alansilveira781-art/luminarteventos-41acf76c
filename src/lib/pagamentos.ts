@@ -171,23 +171,21 @@ export function sincronizarParcelas(p: PagamentoLinha): PagamentoLinha {
   const atuais = p.parcelas ?? [];
   if (atuais.length === n) return p;
 
-  const totalRef = atuais.length > 0 ? somaParcelas(p) || Number(p.valor || 0) : Number(p.valor || 0);
+  // Muda a quantidade de parcelas: redistribui o total igualmente e preserva
+  // datas/situação já preenchidas nas parcelas existentes.
+  const totalRef = Number(p.valor || 0) || somaParcelas(p);
   const valores = distribuirValor(totalRef, n);
   const parcelas: ParcelaLinha[] = Array.from({ length: n }, (_, i) => {
     const antiga = atuais[i];
     return {
       numero: i + 1,
-      valor: antiga ? Number(antiga.valor || 0) : valores[i],
+      valor: valores[i],
       data_pagamento: antiga?.data_pagamento ?? (i === 0 ? p.data_pagamento ?? null : null),
       pago: antiga ? antiga.pago ?? null : i === 0 ? p.pago ?? null : null,
       pago_em: antiga?.pago_em ?? (i === 0 ? p.pago_em ?? null : null),
     };
   });
-  // Ao aumentar o número de parcelas, redistribui igualmente quando o usuário
-  // ainda não editou valores individuais.
-  if (atuais.length === 0) {
-    parcelas.forEach((x, i) => (x.valor = valores[i]));
-  }
+
   const linha: PagamentoLinha = { ...p, parcelas };
   linha.valor = somaParcelas(linha);
   return linha;
