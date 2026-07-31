@@ -480,6 +480,32 @@ export function DemandaDialog({
               )}
             </FormSection>
 
+            <div className="mt-6 space-y-4">
+              <PagamentosGrid
+                pagamentos={pagamentos}
+                onChange={setPagamentos}
+                total={Number(form.valor_total ?? 0)}
+              />
+
+              <FormField label="Valor total (R$)" wide>
+                {tipoRequerItens ? (
+                  <div className="flex h-10 items-center justify-between rounded-md border border-input bg-muted/50 px-3 text-sm">
+                    <span className="font-semibold tabular-nums">
+                      {(form.valor_total ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    </span>
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      calculado pelos itens
+                    </span>
+                  </div>
+                ) : (
+                  <MoneyInput
+                    value={form.valor_total ?? 0}
+                    onChange={(n) => setForm({ ...form, valor_total: n || null })}
+                  />
+                )}
+              </FormField>
+            </div>
+
             <div className="mt-2 border-t border-border pt-4">
               <Tabs defaultValue="comentarios">
                 <TabsList>
