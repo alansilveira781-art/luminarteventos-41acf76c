@@ -80,7 +80,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
-    "@lovable.dev/vite-tanstack-config": "2.8.2",
+    "@lovable.dev/vite-tanstack-config": "2.8.3",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
@@ -98,10 +98,14 @@
   },
   "overrides": {
     "undici": "^7.16.0",
-    "ws": "^8.18.3"
+    "ws": "^8.18.3",
+    "seroval": "^1.6.0",
+    "seroval-plugins": "^1.6.0"
   },
   "resolutions": {
     "undici": "^7.16.0",
-    "ws": "^8.18.3"
+    "ws": "^8.18.3",
+    "seroval": "^1.6.0",
+    "seroval-plugins": "^1.6.0"
   }
 }
