@@ -27,7 +27,7 @@ import { DEMANDA_STATUSES, TIPO_DEMANDA_OPTIONS, TIPOS_QUE_VAO_PARA_ESTOQUE, TIP
 import { useAuth } from "@/contexts/AuthContext";
 import { CopiarLinkButton } from "@/components/CopiarLinkButton";
 import { PagamentosGrid } from "@/components/PagamentosGrid";
-import { pagamentosBatem, resumoPagamentos, validarPagamentos, type PagamentoLinha } from "@/lib/pagamentos";
+import { agruparPagamentos, expandirPagamentos, pagamentosBatem, resumoPagamentos, validarPagamentos, type PagamentoLinha } from "@/lib/pagamentos";
 
 
 const sb = supabase as any;
