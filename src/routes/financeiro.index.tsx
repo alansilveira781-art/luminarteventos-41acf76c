@@ -92,6 +92,34 @@ function DemandasKanban() {
     },
   });
 
+  const { data: pagamentosRows = [] } = useQuery({
+    queryKey: ["demandas", "pagamentos-quadro"],
+    queryFn: async () => {
+      const { data } = await sb
+        .from("demanda_pagamentos")
+        .select("demanda_id,valor,data_pagamento,pago,pago_em");
+      return (data ?? []) as any[];
+    },
+    staleTime: 30 * 1000,
+  });
+
+  const pagamentosPorDemanda = useMemo(() => {
+    const m = new Map<string, StatusPagamentos>();
+    const grouped = new Map<string, PagamentoLinha[]>();
+    for (const p of pagamentosRows) {
+      const arr = grouped.get(p.demanda_id) ?? [];
+      arr.push({
+        valor: Number(p.valor ?? 0),
+        data_pagamento: p.data_pagamento ?? null,
+        pago: !!p.pago,
+        pago_em: p.pago_em ?? null,
+      });
+      grouped.set(p.demanda_id, arr);
+    }
+    grouped.forEach((linhas, id) => m.set(id, statusPagamentos(linhas)));
+    return m;
+  }, [pagamentosRows]);
+
   const { data: statusDefaults = [] } = useQuery({
     queryKey: ["financeiro_status_defaults"],
     queryFn: async () => {
