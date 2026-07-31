@@ -4733,6 +4733,7 @@ export type Database = {
       refresh_item_status: { Args: { p_item_id: string }; Returns: undefined }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      storage_folder_uuid: { Args: { _name: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "user"
