@@ -59,7 +59,9 @@ function ComprasDashboard() {
   const { data: itens = [] } = useQuery({
     queryKey: ["compra-itens-dash"],
     queryFn: async () => {
-      const { data } = await sb.from("compra_itens").select("compra_id,item_id,quantidade,valor_unitario,descricao");
+      const { data } = await sb
+        .from("compra_itens")
+        .select("compra_id,item_id,quantidade,valor_unitario,descricao,cotacao");
       return (data ?? []) as any[];
     },
   });
