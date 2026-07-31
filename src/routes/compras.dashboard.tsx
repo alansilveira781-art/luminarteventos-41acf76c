@@ -25,6 +25,18 @@ export const Route = createFileRoute("/compras/dashboard")({
 function startOfMonth(d = new Date()) { return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10); }
 function today() { return new Date().toISOString().slice(0, 10); }
 
+/** A cotação é texto livre no banco: extrai o valor numérico (formato BR ou US). */
+function parseCotacao(v: unknown): number | null {
+  if (v == null) return null;
+  if (typeof v === "number") return Number.isFinite(v) && v > 0 ? v : null;
+  const raw = String(v).replace(/[^\d.,-]/g, "").trim();
+  if (!raw) return null;
+  const temVirgula = raw.includes(",");
+  const normal = temVirgula ? raw.replace(/\./g, "").replace(",", ".") : raw;
+  const n = Number(normal);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 function ComprasDashboard() {
   const [from, setFrom] = useState(() => {
     const d = new Date(); d.setMonth(d.getMonth() - 5);
