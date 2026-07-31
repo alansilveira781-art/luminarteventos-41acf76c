@@ -103,3 +103,40 @@ export function descreverPagamento(p: PagamentoLinha): string {
   partes.push(formatBRL(p.valor));
   return partes.join(" · ");
 }
+
+/** Número de parcelas a partir de textos como "1x", "3x", "3 vezes", "À vista". */
+export function parcelasDe(parcelamento?: string | null): number {
+  const txt = (parcelamento ?? "").trim();
+  if (!txt) return 1;
+  const norm = txt.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  if (norm.includes("vista")) return 1;
+  const m = norm.match(/(\d+)/);
+  const n = m ? parseInt(m[1], 10) : 1;
+  return Number.isFinite(n) && n > 0 ? n : 1;
+}
+
+/** true quando a forma de pagamento é PIX (ignora acentos/caixa). */
+export function ehPix(forma?: string | null): boolean {
+  const norm = (forma ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return norm.includes("pix");
+}
+
+/** PIX com mais de uma parcela exige controle de datas e situação. */
+export function exigeControleParcelas(p: PagamentoLinha): boolean {
+  return ehPix(p.forma) && parcelasDe(p.parcelamento) > 1;
+}
+
+/** Pendências de preenchimento das linhas de PIX parcelado. */
+export function validarPagamentos(linhas: PagamentoLinha[]): string[] {
+  const erros: string[] = [];
+  linhas.forEach((p, i) => {
+    if (!exigeControleParcelas(p)) return;
+    if (!(p.data_pagamento ?? "").trim()) {
+      erros.push(`Forma ${i + 1}: informe a data prevista do PIX parcelado.`);
+    }
+    if (p.pago === undefined || p.pago === null) {
+      erros.push(`Forma ${i + 1}: informe a situação (Pago ou Em aberto).`);
+    }
+  });
+  return erros;
+}
