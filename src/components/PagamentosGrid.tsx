@@ -238,13 +238,24 @@ export function PagamentosGrid({
                             >
                               Em aberto
                             </Button>
-                            {parc.pago && parc.pago_em && (
-                              <span className="self-center text-xs text-muted-foreground tabular-nums">
-                                em {parc.pago_em.slice(8, 10)}/{parc.pago_em.slice(5, 7)}/
-                                {parc.pago_em.slice(0, 4)}
-                              </span>
+                            {parc.pago && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">em</span>
+                                <Input
+                                  type="date"
+                                  className="h-9 w-[150px]"
+                                  disabled={disabled}
+                                  value={parc.pago_em ?? ""}
+                                  onChange={(e) =>
+                                    updateParcela(idx, pIdx, {
+                                      pago_em: e.target.value || null,
+                                    })
+                                  }
+                                />
+                              </div>
                             )}
                           </div>
+
                         </div>
                       </div>
                     </div>
