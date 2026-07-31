@@ -520,7 +520,7 @@ function Column({
 }
 
 function Card({
-  compra, onOpen, onAdvance, nextStatusLabel, canMove = true, blockedMsg = null, onMigrar,
+  compra, onOpen, onAdvance, nextStatusLabel, canMove = true, blockedMsg = null, onMigrar, pagto = null,
 }: {
   compra: Compra;
   onOpen: () => void;
@@ -529,10 +529,13 @@ function Card({
   canMove?: boolean;
   blockedMsg?: string | null;
   onMigrar?: () => void;
+  pagto?: StatusPagamentos | null;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: compra.id, disabled: !canMove });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
   const advanceDisabled = !canMove;
+  // Compra parcelada (datas de pagamento diferentes) e ainda em aberto → destaque âmbar
+  const parceladoPendente = !!pagto?.parcelado && !pagto?.quitado;
   return (
     <div
       ref={setNodeRef}
@@ -540,7 +543,7 @@ function Card({
       {...(canMove ? { ...listeners, ...attributes } : {})}
       onClick={onOpen}
       title={canMove ? undefined : blockedMsg ?? undefined}
-      className={`rounded-md border border-border bg-card p-2.5 text-xs shadow-sm ${isDragging ? "opacity-50" : ""} ${canMove ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
+      className={`rounded-md border p-2.5 text-xs shadow-sm ${parceladoPendente ? "border-amber-300 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/10" : "border-border bg-card"} ${isDragging ? "opacity-50" : ""} ${canMove ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
     >
       <div className="flex items-start gap-2">
         <span
