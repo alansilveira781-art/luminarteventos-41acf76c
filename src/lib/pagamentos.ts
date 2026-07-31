@@ -62,7 +62,11 @@ export function statusPagamentos(linhas: PagamentoLinha[]): StatusPagamentos {
     .sort();
   const hoje = hojeISO();
   return {
-    parcelado: datas.size >= 2,
+    parcelado:
+      datas.size >= 2
+      || linhas.some((p) => parcelasDe(p.parcelamento) > 1)
+      || linhas.length >= 2,
+
     total,
     totalPago,
     restante: total - totalPago,
