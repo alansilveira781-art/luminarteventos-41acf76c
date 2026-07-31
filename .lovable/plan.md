@@ -1,14 +1,21 @@
-## Problema
+## Diagnóstico (confirmado)
 
-No card `COMPRA-252` (forma **CASA BLANCA**, sem PIX) aparece o destaque amarelo e o badge "Parcelado · 1 em aberto". Isso acontece porque `statusPagamentos` em `src/lib/pagamentos.ts` marca `parcelado: true` em três situações: duas datas distintas, parcelamento maior que 1x **ou** simplesmente mais de uma forma de pagamento — sem checar se a forma é PIX.
+No banco, a COMPRA-243 está correta: duas linhas PIX, parcelamento 2x, uma paga (31/08) e uma em aberto (03/08).
+
+O card não fica amarelo porque as consultas dos quadros **não trazem o campo `forma`**:
+
+- `src/routes/compras.index.tsx` (linha 113): `select("compra_id,valor,parcelamento,data_pagamento,pago,pago_em")`
+- `src/routes/financeiro.index.tsx` (linha 101): idem para `demanda_pagamentos`
+
+Sem `forma`, o teste "é PIX?" sempre dá falso, então `parcelado` fica falso e o card nunca recebe o destaque nem os badges.
 
 ## O que será feito
 
-O card só fica amarelo e só mostra os badges de parcelamento quando existir pelo menos uma forma **PIX com parcelamento maior que 1x**. Qualquer outra forma (cartão, boleto, dinheiro), mesmo parcelada ou com várias formas, volta a ser um card normal, sem cor e sem badges.
+1. Incluir `forma` no `select` das duas consultas.
+2. Passar `forma` para os objetos de pagamento montados no agrupamento (`pagamentosPorCompra` e equivalente em despesas), para que a regra "PIX + parcelamento maior que 1x" seja avaliada corretamente.
 
-Isso vale igualmente para o Quadro de Compras e o Quadro de Despesas.
+Nenhuma mudança de regra de negócio: continua valendo exatamente o combinado — amarelo só para PIX parcelado com parcela em aberto.
 
-## Detalhe técnico
+## Verificação
 
-- `src/lib/pagamentos.ts`: em `statusPagamentos`, trocar a condição de `parcelado` por `linhas.some(exigeControleParcelas)` (PIX + parcelas > 1). Os demais campos (total pago, próxima data, vencidas) continuam calculados igual, mas passam a considerar apenas as linhas PIX parceladas para "parcelas em aberto"/"vencidas" exibidas no card.
-- `src/routes/compras.index.tsx` e `src/routes/financeiro.index.tsx` não mudam de lógica: já derivam `parceladoPendente` de `pagto.parcelado`, que passa a ser correto.
+Após o ajuste, conferir no Quadro de Compras que a COMPRA-243 aparece amarela com badge de parcela em aberto, e que cards não-PIX permanecem normais.
