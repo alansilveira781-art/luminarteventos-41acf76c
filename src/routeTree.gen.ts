@@ -19,6 +19,7 @@ import { Route as PatrimonioRouteImport } from './routes/patrimonio'
 import { Route as OperacaoRouteImport } from './routes/operacao'
 import { Route as NotificacoesRouteImport } from './routes/notificacoes'
 import { Route as MeusPedidosRouteImport } from './routes/meus-pedidos'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as JuridicoRouteImport } from './routes/juridico'
 import { Route as FornecedoresRouteImport } from './routes/fornecedores'
 import { Route as FinanceiroOpRouteImport } from './routes/financeiro-op'
@@ -92,6 +93,8 @@ import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 import { Route as AdminModulosRouteImport } from './routes/admin.modulos'
 import { Route as AdminEmpresasRouteImport } from './routes/admin.empresas'
 import { Route as AdminDadosRouteImport } from './routes/admin.dados'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as FinanceiroOpDiaristasIndexRouteImport } from './routes/financeiro-op.diaristas.index'
 import { Route as ComercialDashboardIndexRouteImport } from './routes/comercial.dashboard.index'
 import { Route as FinanceiroOpDiaristasConfiguracoesRouteImport } from './routes/financeiro-op.diaristas.configuracoes'
@@ -110,6 +113,8 @@ import { Route as ApiContaazulScheduleRouteImport } from './routes/api/contaazul
 import { Route as ApiContaazulReprocessarRateiosRouteImport } from './routes/api/contaazul/reprocessar-rateios'
 import { Route as ApiContaazulReprocessarFalhasRouteImport } from './routes/api/contaazul/reprocessar-falhas'
 import { Route as ApiContaazulHistoricoRouteImport } from './routes/api/contaazul/historico'
+import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiPublicContaazulCronRouteImport } from './routes/api/public/contaazul/cron'
 import { Route as ApiContaazulOauthPrepareRouteImport } from './routes/api/contaazul/oauth.prepare'
 import { Route as ApiContaazulOauthCallbackRouteImport } from './routes/api/contaazul/oauth.callback'
@@ -162,6 +167,11 @@ const NotificacoesRoute = NotificacoesRouteImport.update({
 const MeusPedidosRoute = MeusPedidosRouteImport.update({
   id: '/meus-pedidos',
   path: '/meus-pedidos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JuridicoRoute = JuridicoRouteImport.update({
@@ -529,6 +539,18 @@ const AdminDadosRoute = AdminDadosRouteImport.update({
   path: '/dados',
   getParentRoute: () => AdminRoute,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const FinanceiroOpDiaristasIndexRoute =
   FinanceiroOpDiaristasIndexRouteImport.update({
     id: '/diaristas/',
@@ -630,6 +652,17 @@ const ApiContaazulHistoricoRoute = ApiContaazulHistoricoRouteImport.update({
   path: '/api/contaazul/historico',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char91DotmcpChar93InvokeToolToolRoute =
+  Char91DotmcpChar93InvokeToolToolRouteImport.update({
+    id: '/.mcp/invoke-tool/$tool',
+    path: '/.mcp/invoke-tool/$tool',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicContaazulCronRoute = ApiPublicContaazulCronRouteImport.update({
   id: '/api/public/contaazul/cron',
   path: '/api/public/contaazul/cron',
@@ -664,6 +697,7 @@ export interface FileRoutesByFullPath {
   '/financeiro-op': typeof FinanceiroOpRouteWithChildren
   '/fornecedores': typeof FornecedoresRoute
   '/juridico': typeof JuridicoRouteWithChildren
+  '/mcp': typeof McpRoute
   '/meus-pedidos': typeof MeusPedidosRoute
   '/notificacoes': typeof NotificacoesRoute
   '/operacao': typeof OperacaoRouteWithChildren
@@ -674,6 +708,8 @@ export interface FileRoutesByFullPath {
   '/solicitantes': typeof SolicitantesRoute
   '/solicitar': typeof SolicitarRoute
   '/solicitar-contrato': typeof SolicitarContratoRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/dados': typeof AdminDadosRoute
   '/admin/empresas': typeof AdminEmpresasRoute
   '/admin/modulos': typeof AdminModulosRoute
@@ -732,6 +768,8 @@ export interface FileRoutesByFullPath {
   '/operacao/': typeof OperacaoIndexRoute
   '/patrimonio/': typeof PatrimonioIndexRoute
   '/rh/': typeof RhIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/contaazul/historico': typeof ApiContaazulHistoricoRoute
   '/api/contaazul/reprocessar-falhas': typeof ApiContaazulReprocessarFalhasRoute
   '/api/contaazul/reprocessar-rateios': typeof ApiContaazulReprocessarRateiosRoute
@@ -762,6 +800,7 @@ export interface FileRoutesByTo {
   '/devolucoes': typeof DevolucoesRoute
   '/entradas': typeof EntradasRoute
   '/fornecedores': typeof FornecedoresRoute
+  '/mcp': typeof McpRoute
   '/meus-pedidos': typeof MeusPedidosRoute
   '/notificacoes': typeof NotificacoesRoute
   '/relatorios': typeof RelatoriosRoute
@@ -769,6 +808,8 @@ export interface FileRoutesByTo {
   '/solicitantes': typeof SolicitantesRoute
   '/solicitar': typeof SolicitarRoute
   '/solicitar-contrato': typeof SolicitarContratoRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/dados': typeof AdminDadosRoute
   '/admin/empresas': typeof AdminEmpresasRoute
   '/admin/modulos': typeof AdminModulosRoute
@@ -826,6 +867,8 @@ export interface FileRoutesByTo {
   '/operacao': typeof OperacaoIndexRoute
   '/patrimonio': typeof PatrimonioIndexRoute
   '/rh': typeof RhIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/contaazul/historico': typeof ApiContaazulHistoricoRoute
   '/api/contaazul/reprocessar-falhas': typeof ApiContaazulReprocessarFalhasRoute
   '/api/contaazul/reprocessar-rateios': typeof ApiContaazulReprocessarRateiosRoute
@@ -865,6 +908,7 @@ export interface FileRoutesById {
   '/financeiro-op': typeof FinanceiroOpRouteWithChildren
   '/fornecedores': typeof FornecedoresRoute
   '/juridico': typeof JuridicoRouteWithChildren
+  '/mcp': typeof McpRoute
   '/meus-pedidos': typeof MeusPedidosRoute
   '/notificacoes': typeof NotificacoesRoute
   '/operacao': typeof OperacaoRouteWithChildren
@@ -875,6 +919,8 @@ export interface FileRoutesById {
   '/solicitantes': typeof SolicitantesRoute
   '/solicitar': typeof SolicitarRoute
   '/solicitar-contrato': typeof SolicitarContratoRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/dados': typeof AdminDadosRoute
   '/admin/empresas': typeof AdminEmpresasRoute
   '/admin/modulos': typeof AdminModulosRoute
@@ -933,6 +979,8 @@ export interface FileRoutesById {
   '/operacao/': typeof OperacaoIndexRoute
   '/patrimonio/': typeof PatrimonioIndexRoute
   '/rh/': typeof RhIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/contaazul/historico': typeof ApiContaazulHistoricoRoute
   '/api/contaazul/reprocessar-falhas': typeof ApiContaazulReprocessarFalhasRoute
   '/api/contaazul/reprocessar-rateios': typeof ApiContaazulReprocessarRateiosRoute
@@ -973,6 +1021,7 @@ export interface FileRouteTypes {
     | '/financeiro-op'
     | '/fornecedores'
     | '/juridico'
+    | '/mcp'
     | '/meus-pedidos'
     | '/notificacoes'
     | '/operacao'
@@ -983,6 +1032,8 @@ export interface FileRouteTypes {
     | '/solicitantes'
     | '/solicitar'
     | '/solicitar-contrato'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/admin/dados'
     | '/admin/empresas'
     | '/admin/modulos'
@@ -1041,6 +1092,8 @@ export interface FileRouteTypes {
     | '/operacao/'
     | '/patrimonio/'
     | '/rh/'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
     | '/api/contaazul/historico'
     | '/api/contaazul/reprocessar-falhas'
     | '/api/contaazul/reprocessar-rateios'
@@ -1071,6 +1124,7 @@ export interface FileRouteTypes {
     | '/devolucoes'
     | '/entradas'
     | '/fornecedores'
+    | '/mcp'
     | '/meus-pedidos'
     | '/notificacoes'
     | '/relatorios'
@@ -1078,6 +1132,8 @@ export interface FileRouteTypes {
     | '/solicitantes'
     | '/solicitar'
     | '/solicitar-contrato'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/admin/dados'
     | '/admin/empresas'
     | '/admin/modulos'
@@ -1135,6 +1191,8 @@ export interface FileRouteTypes {
     | '/operacao'
     | '/patrimonio'
     | '/rh'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
     | '/api/contaazul/historico'
     | '/api/contaazul/reprocessar-falhas'
     | '/api/contaazul/reprocessar-rateios'
@@ -1173,6 +1231,7 @@ export interface FileRouteTypes {
     | '/financeiro-op'
     | '/fornecedores'
     | '/juridico'
+    | '/mcp'
     | '/meus-pedidos'
     | '/notificacoes'
     | '/operacao'
@@ -1183,6 +1242,8 @@ export interface FileRouteTypes {
     | '/solicitantes'
     | '/solicitar'
     | '/solicitar-contrato'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/admin/dados'
     | '/admin/empresas'
     | '/admin/modulos'
@@ -1241,6 +1302,8 @@ export interface FileRouteTypes {
     | '/operacao/'
     | '/patrimonio/'
     | '/rh/'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
     | '/api/contaazul/historico'
     | '/api/contaazul/reprocessar-falhas'
     | '/api/contaazul/reprocessar-rateios'
@@ -1280,6 +1343,7 @@ export interface RootRouteChildren {
   FinanceiroOpRoute: typeof FinanceiroOpRouteWithChildren
   FornecedoresRoute: typeof FornecedoresRoute
   JuridicoRoute: typeof JuridicoRouteWithChildren
+  McpRoute: typeof McpRoute
   MeusPedidosRoute: typeof MeusPedidosRoute
   NotificacoesRoute: typeof NotificacoesRoute
   OperacaoRoute: typeof OperacaoRouteWithChildren
@@ -1290,9 +1354,13 @@ export interface RootRouteChildren {
   SolicitantesRoute: typeof SolicitantesRoute
   SolicitarRoute: typeof SolicitarRoute
   SolicitarContratoRoute: typeof SolicitarContratoRoute
+  Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   EstoqueItemIdRoute: typeof EstoqueItemIdRoute
   EstoqueAReceberRoute: typeof EstoqueAReceberRoute
   EstoqueIndexRoute: typeof EstoqueIndexRoute
+  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
+  Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiContaazulHistoricoRoute: typeof ApiContaazulHistoricoRoute
   ApiContaazulReprocessarFalhasRoute: typeof ApiContaazulReprocessarFalhasRoute
   ApiContaazulReprocessarRateiosRoute: typeof ApiContaazulReprocessarRateiosRoute
@@ -1378,6 +1446,13 @@ declare module '@tanstack/react-router' {
       path: '/meus-pedidos'
       fullPath: '/meus-pedidos'
       preLoaderRoute: typeof MeusPedidosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/juridico': {
@@ -1891,6 +1966,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDadosRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/list-tools': {
+      id: '/.mcp/list-tools'
+      path: '/.mcp/list-tools'
+      fullPath: '/.mcp/list-tools'
+      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/financeiro-op/diaristas/': {
       id: '/financeiro-op/diaristas/'
       path: '/diaristas'
@@ -2015,6 +2104,20 @@ declare module '@tanstack/react-router' {
       path: '/api/contaazul/historico'
       fullPath: '/api/contaazul/historico'
       preLoaderRoute: typeof ApiContaazulHistoricoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/invoke-tool/$tool': {
+      id: '/.mcp/invoke-tool/$tool'
+      path: '/.mcp/invoke-tool/$tool'
+      fullPath: '/.mcp/invoke-tool/$tool'
+      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/contaazul/cron': {
@@ -2297,6 +2400,7 @@ const rootRouteChildren: RootRouteChildren = {
   FinanceiroOpRoute: FinanceiroOpRouteWithChildren,
   FornecedoresRoute: FornecedoresRoute,
   JuridicoRoute: JuridicoRouteWithChildren,
+  McpRoute: McpRoute,
   MeusPedidosRoute: MeusPedidosRoute,
   NotificacoesRoute: NotificacoesRoute,
   OperacaoRoute: OperacaoRouteWithChildren,
@@ -2307,9 +2411,14 @@ const rootRouteChildren: RootRouteChildren = {
   SolicitantesRoute: SolicitantesRoute,
   SolicitarRoute: SolicitarRoute,
   SolicitarContratoRoute: SolicitarContratoRoute,
+  Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
   EstoqueItemIdRoute: EstoqueItemIdRoute,
   EstoqueAReceberRoute: EstoqueAReceberRoute,
   EstoqueIndexRoute: EstoqueIndexRoute,
+  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
+  Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiContaazulHistoricoRoute: ApiContaazulHistoricoRoute,
   ApiContaazulReprocessarFalhasRoute: ApiContaazulReprocessarFalhasRoute,
   ApiContaazulReprocessarRateiosRoute: ApiContaazulReprocessarRateiosRoute,
