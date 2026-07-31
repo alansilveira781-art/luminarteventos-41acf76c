@@ -98,7 +98,7 @@ function DemandasKanban() {
     queryFn: async () => {
       const { data } = await sb
         .from("demanda_pagamentos")
-        .select("demanda_id,valor,parcelamento,data_pagamento,pago,pago_em");
+        .select("demanda_id,forma,valor,parcelamento,data_pagamento,pago,pago_em");
       return (data ?? []) as any[];
     },
     staleTime: 30 * 1000,
@@ -110,6 +110,7 @@ function DemandasKanban() {
     for (const p of pagamentosRows) {
       const arr = grouped.get(p.demanda_id) ?? [];
       arr.push({
+        forma: p.forma ?? null,
         valor: Number(p.valor ?? 0),
         parcelamento: p.parcelamento ?? null,
         data_pagamento: p.data_pagamento ?? null,
