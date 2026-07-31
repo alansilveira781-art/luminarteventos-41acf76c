@@ -110,7 +110,7 @@ function ComprasKanban() {
     queryFn: async () => {
       const { data } = await sb
         .from("compra_pagamentos")
-        .select("compra_id,valor,data_pagamento,pago,pago_em");
+        .select("compra_id,valor,parcelamento,data_pagamento,pago,pago_em");
       return (data ?? []) as any[];
     },
     staleTime: 30 * 1000,
