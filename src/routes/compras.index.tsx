@@ -104,6 +104,34 @@ function ComprasKanban() {
     },
   });
 
+  const { data: pagamentosRows = [] } = useQuery({
+    queryKey: ["compras", "pagamentos-quadro"],
+    queryFn: async () => {
+      const { data } = await sb
+        .from("compra_pagamentos")
+        .select("compra_id,valor,data_pagamento,pago,pago_em");
+      return (data ?? []) as any[];
+    },
+    staleTime: 30 * 1000,
+  });
+
+  const pagamentosPorCompra = useMemo(() => {
+    const m = new Map<string, StatusPagamentos>();
+    const grouped = new Map<string, PagamentoLinha[]>();
+    for (const p of pagamentosRows) {
+      const arr = grouped.get(p.compra_id) ?? [];
+      arr.push({
+        valor: Number(p.valor ?? 0),
+        data_pagamento: p.data_pagamento ?? null,
+        pago: !!p.pago,
+        pago_em: p.pago_em ?? null,
+      });
+      grouped.set(p.compra_id, arr);
+    }
+    grouped.forEach((linhas, id) => m.set(id, statusPagamentos(linhas)));
+    return m;
+  }, [pagamentosRows]);
+
   const { data: statusDefaults = [] } = useQuery({
     queryKey: ["compras_status_defaults"],
     queryFn: async () => {
