@@ -8,8 +8,11 @@ import {
   formatBRL,
   hojeISO,
   pagamentosBatem,
+  sincronizarParcelas,
   somaPagamentos,
+  somaParcelas,
   type PagamentoLinha,
+  type ParcelaLinha,
 } from "@/lib/pagamentos";
 
 /**
@@ -35,14 +38,19 @@ export function PagamentosGrid({
     onChange(
       pagamentos.map((p, i) => {
         if (i !== idx) return p;
-        const next = { ...p, ...patch };
-        // Data prevista e situação só existem para PIX parcelado; nas demais
-        // formas são limpas.
-        if (!exigeControleParcelas(next)) {
-          next.pago = false;
-          next.pago_em = null;
-          next.data_pagamento = null;
-        }
+        return sincronizarParcelas({ ...p, ...patch });
+      }),
+    );
+
+  const updateParcela = (idx: number, pIdx: number, patch: Partial<ParcelaLinha>) =>
+    onChange(
+      pagamentos.map((p, i) => {
+        if (i !== idx) return p;
+        const parcelas = (p.parcelas ?? []).map((x, j) =>
+          j === pIdx ? { ...x, ...patch } : x,
+        );
+        const next = { ...p, parcelas };
+        next.valor = somaParcelas(next);
         return next;
       }),
     );
@@ -54,6 +62,7 @@ export function PagamentosGrid({
     ]);
 
   const remove = (idx: number) => onChange(pagamentos.filter((_, i) => i !== idx));
+
 
   return (
     <div className="space-y-2">
