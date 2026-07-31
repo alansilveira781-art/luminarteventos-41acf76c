@@ -36,10 +36,12 @@ export function PagamentosGrid({
       pagamentos.map((p, i) => {
         if (i !== idx) return p;
         const next = { ...p, ...patch };
-        // Situação só existe para PIX parcelado; nas demais formas é limpa.
+        // Data prevista e situação só existem para PIX parcelado; nas demais
+        // formas são limpas.
         if (!exigeControleParcelas(next)) {
           next.pago = false;
           next.pago_em = null;
+          next.data_pagamento = null;
         }
         return next;
       }),
