@@ -4,6 +4,7 @@ import { MoneyInput } from "@/components/MoneyInput";
 import { SelectCreatable } from "@/components/SelectCreatable";
 import { Plus, Trash2 } from "lucide-react";
 import {
+  exigeControleParcelas,
   formatBRL,
   hojeISO,
   pagamentosBatem,
