@@ -47,35 +47,32 @@ export function hojeISO(): string {
 
 /**
  * Consolida as linhas de pagamento de uma compra para exibição no card do
- * quadro: identifica parcelamento por datas distintas, total pago e pendências.
+ * quadro. O destaque de parcelamento só vale para PIX com mais de 1 parcela.
  */
 export function statusPagamentos(linhas: PagamentoLinha[]): StatusPagamentos {
   const total = somaPagamentos(linhas);
   const totalPago = linhas.reduce((s, p) => s + (p.pago ? Number(p.valor || 0) : 0), 0);
-  const datas = new Set(
-    linhas.map((p) => (p.data_pagamento ?? "").slice(0, 10)).filter(Boolean),
-  );
-  const abertas = linhas.filter((p) => !p.pago);
+  // Somente PIX parcelado (2x ou mais) entra no controle de parcelas do card.
+  const pix = linhas.filter((p) => exigeControleParcelas(p));
+  const parcelado = pix.length > 0;
+  const abertas = pix.filter((p) => !p.pago);
   const datasAbertas = abertas
     .map((p) => (p.data_pagamento ?? "").slice(0, 10))
     .filter(Boolean)
     .sort();
   const hoje = hojeISO();
   return {
-    parcelado:
-      datas.size >= 2
-      || linhas.some((p) => parcelasDe(p.parcelamento) > 1)
-      || linhas.length >= 2,
-
+    parcelado,
     total,
     totalPago,
     restante: total - totalPago,
-    quitado: linhas.length > 0 && abertas.length === 0,
+    quitado: parcelado && abertas.length === 0,
     proximaData: datasAbertas[0] ?? null,
     vencidas: datasAbertas.filter((d) => d < hoje).length,
     parcelasAbertas: abertas.length,
   };
 }
+
 
 export const PAGAMENTO_TOLERANCIA = 0.01;
 
