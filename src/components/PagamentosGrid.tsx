@@ -126,9 +126,16 @@ export function PagamentosGrid({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Data prevista</label>
+                  <label className="text-xs text-muted-foreground">
+                    Data prevista{exigeParcelas ? " *" : ""}
+                  </label>
                   <Input
                     type="date"
+                    className={
+                      exigeParcelas && !(p.data_pagamento ?? "").trim()
+                        ? "border-destructive"
+                        : undefined
+                    }
                     value={p.data_pagamento ?? ""}
                     readOnly={disabled}
                     onChange={(e) =>
@@ -146,30 +153,46 @@ export function PagamentosGrid({
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Situação</label>
-                  <label className="flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 accent-primary"
-                      checked={!!p.pago}
-                      disabled={disabled}
-                      onChange={(e) =>
-                        update(idx, {
-                          pago: e.target.checked,
-                          pago_em: e.target.checked ? (p.pago_em ?? hojeISO()) : null,
-                        })
-                      }
-                    />
-                    <span>Pago</span>
-                    {p.pago && p.pago_em && (
-                      <span className="text-xs text-muted-foreground tabular-nums">
-                        em {p.pago_em.slice(8, 10)}/{p.pago_em.slice(5, 7)}/
-                        {p.pago_em.slice(0, 4)}
-                      </span>
-                    )}
-                  </label>
-                </div>
+                {exigeParcelas && (
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Situação *</label>
+                    <div
+                      className={`flex gap-2 ${
+                        p.pago === undefined || p.pago === null
+                          ? "rounded-md border border-destructive p-1"
+                          : ""
+                      }`}
+                    >
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={p.pago === true ? "default" : "outline"}
+                        disabled={disabled}
+                        onClick={() =>
+                          update(idx, { pago: true, pago_em: p.pago_em ?? hojeISO() })
+                        }
+                      >
+                        Pago
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={p.pago === false ? "default" : "outline"}
+                        disabled={disabled}
+                        onClick={() => update(idx, { pago: false, pago_em: null })}
+                      >
+                        Em aberto
+                      </Button>
+                      {p.pago && p.pago_em && (
+                        <span className="self-center text-xs text-muted-foreground tabular-nums">
+                          em {p.pago_em.slice(8, 10)}/{p.pago_em.slice(5, 7)}/
+                          {p.pago_em.slice(0, 4)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
               </div>
             </div>
           ))}
