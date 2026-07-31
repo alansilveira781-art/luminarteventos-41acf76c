@@ -58,7 +58,9 @@ export function PagamentosGrid({
         </p>
       ) : (
         <div className="space-y-3">
-          {pagamentos.map((p, idx) => (
+          {pagamentos.map((p, idx) => {
+            const exigeParcelas = exigeControleParcelas(p);
+            return (
             <div
               key={p.id ?? idx}
               className="rounded-lg border border-border bg-card p-3 space-y-3"
