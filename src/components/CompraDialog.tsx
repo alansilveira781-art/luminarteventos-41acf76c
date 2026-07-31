@@ -567,6 +567,26 @@ export function CompraDialog({
               )}
             </FormSection>
 
+            <div className="mt-6 space-y-4">
+              <PagamentosGrid
+                pagamentos={pagamentos}
+                onChange={setPagamentos}
+                total={totalCalc}
+                disabled={!canEdit}
+              />
+
+              <FormField label="Valor total (R$)" wide>
+                <div className="flex h-10 items-center justify-between rounded-md border border-input bg-muted/50 px-3 text-sm">
+                  <span className="font-semibold tabular-nums">
+                    {totalCalc.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  </span>
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    calculado pelos itens
+                  </span>
+                </div>
+              </FormField>
+            </div>
+
             <div className="mt-2 border-t border-border pt-4">
               <Tabs defaultValue="comentarios">
                 <TabsList>
