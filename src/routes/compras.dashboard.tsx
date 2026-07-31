@@ -345,6 +345,74 @@ function ComprasDashboard() {
         </ChartCard>
       </div>
 
+      <Card className="p-4 mt-4">
+        <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
+          <div>
+            <div className="text-sm font-semibold">Saving de Compras</div>
+            <div className="text-xs text-muted-foreground">
+              Comparação entre o valor de cotação dos itens e o valor final negociado
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {saving.comprasAvaliadas} compra(s) · {saving.itensComCotacao} item(ns) com cotação
+          </div>
+        </div>
+
+        {saving.comprasAvaliadas === 0 ? (
+          <div className="text-sm text-muted-foreground py-6 text-center">
+            Nenhuma compra do período possui cotação preenchida nos itens.
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-4">
+              <Stat label="Valor cotado" value={fmt(saving.cotado)} />
+              <Stat label="Valor final" value={fmt(saving.final)} />
+              <Stat label="Saving (R$)" value={fmt(saving.total)} />
+              <Stat label="Saving (%)" value={`${saving.pct.toFixed(1)}%`} />
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <ChartCard title="Evolução: cotado x final (R$)">
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={saving.evolucao}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                    <XAxis dataKey="mes" fontSize={11} />
+                    <YAxis fontSize={11} />
+                    <Tooltip formatter={(v: any) => fmt(Number(v))} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Bar dataKey="cotado" name="Cotado" fill="#94a3b8" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="final" name="Final" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="saving" name="Saving" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartCard>
+
+              <ChartCard title="Saving por fornecedor (R$)">
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={saving.fornecedores} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                    <XAxis type="number" fontSize={11} />
+                    <YAxis type="category" dataKey="nome" width={120} fontSize={11} />
+                    <Tooltip formatter={(v: any) => fmt(Number(v))} />
+                    <Bar dataKey="saving" fill="#10b981" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2 mt-4">
+              <SavingList title="Maiores economias" linhas={saving.melhores} fmt={fmt} />
+              <SavingList
+                title="Compras acima da cotação"
+                linhas={saving.piores}
+                fmt={fmt}
+                vazio="Nenhuma compra ficou acima do valor cotado."
+              />
+            </div>
+          </>
+        )}
+      </Card>
+
       <FornecedorItensSection />
     </>
   );
