@@ -316,6 +316,7 @@ function DemandasKanban() {
                   <Card
                     key={c.id}
                     demanda={c}
+                    pagto={pagamentosPorDemanda.get(c.id) ?? null}
                     onOpen={() => abrirCard(c.id)}
                     nextStatusLabel={next ? (DEMANDA_STATUSES.find((x) => x.key === next)?.label ?? null) : null}
                     onAdvance={next ? () => advanceToStatus(c, next) : undefined}
