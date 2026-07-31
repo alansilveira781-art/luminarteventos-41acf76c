@@ -123,6 +123,7 @@ function ComprasKanban() {
       const arr = grouped.get(p.compra_id) ?? [];
       arr.push({
         valor: Number(p.valor ?? 0),
+        parcelamento: p.parcelamento ?? null,
         data_pagamento: p.data_pagamento ?? null,
         pago: !!p.pago,
         pago_em: p.pago_em ?? null,
