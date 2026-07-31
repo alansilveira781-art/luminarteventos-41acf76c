@@ -1,36 +1,41 @@
-## Objetivo
+## 1. Pagamentos com datas diferentes (Quadro de Compras)
 
-Expor o sistema Luminart como um **servidor MCP**, para que o Claude (Desktop, claude.ai ou Claude Code) se conecte ao app e consulte/atualize dados em nome do usuário logado.
+Hoje cada forma de pagamento da compra guarda apenas forma, parcelamento e valor — não há data nem controle de baixa.
 
-## Segurança: login obrigatório (OAuth)
+**Banco de dados** — adicionar em `compra_pagamentos`:
+- `data_pagamento` (data prevista da parcela/pix)
+- `pago` (sim/não) e `pago_em` (data da baixa)
 
-O sistema tem contas de usuário e dados sensíveis (financeiro, compras, RH, jurídico) protegidos por RLS. Portanto o servidor MCP **não** será público: cada pessoa que conectar o Claude fará login na conta dela e as ferramentas rodarão com exatamente as mesmas permissões que ela já tem no painel. Nada de acesso anônimo.
+**Formulário da compra (CompraDialog › Formas de pagamento)**
+- Cada linha ganha o campo "Data prevista" e uma caixinha "Pago" (com data da baixa preenchida automaticamente ao marcar).
+- A validação de soma dos valores continua igual.
 
-Fluxo: Claude → tela de consentimento do Luminart → login → Claude passa a operar como aquele usuário.
+**Card no quadro**
+- Quando a compra tiver duas ou mais datas de pagamento distintas, o card fica amarelado (fundo/borda em tom âmbar, via tokens de tema, funcionando também no modo escuro).
+- O card exibe um selo "Parcelado" e uma linha de resumo: `Pago R$ X de R$ Y · próxima em DD/MM`.
+- Quando todas as parcelas estiverem pagas, o selo vira "Quitado" e o card volta ao visual normal (sem amarelo).
+- Parcela vencida e não paga: a data aparece em vermelho.
 
-## Ferramentas propostas (primeira leva, foco em leitura)
+## 2. Análise de Saving (Compras › Dashboard)
 
-| Ferramenta | O que faz |
-| --- | --- |
-| `listar_eventos` | Eventos por período/status, com locais adicionais |
-| `listar_compras` | Compras por status/período/centro de custo |
-| `listar_despesas` | Demandas/despesas por status e tipo |
-| `consultar_estoque` | Busca de itens por nome/código/categoria e saldo |
-| `listar_meus_pedidos` | Solicitações do próprio usuário e situação |
-| `resumo_financeiro` | Totais consolidados por período (receitas/despesas) |
+Fonte: campo **Cotação** já existente em cada item da compra.
 
-Todas somente leitura nesta primeira etapa. Ferramentas de escrita (criar solicitação, comentar em card) podem entrar depois, com confirmação — prefiro validar o acesso antes de liberar alteração de dados por chat.
+- Valor cotado = soma de `cotação × quantidade` dos itens (itens sem cotação preenchida ficam de fora do cálculo e são contados à parte).
+- Valor final = soma de `valor unitário × quantidade` dos mesmos itens.
+- Saving = cotado − final; % saving = saving ÷ cotado.
 
-## Implementação
+Nova seção "Saving de Compras" no dashboard, respeitando os filtros de período e empresa já existentes:
+- Cards: Valor cotado, Valor final, Saving (R$), Saving (%), e nº de compras sem cotação (cobertura da análise).
+- Gráfico de barras: saving por mês (cotado vs. final).
+- Ranking: top fornecedores por saving gerado.
+- Tabela: top 10 compras por saving, com número da compra, fornecedor, cotado, final, saving e %.
+- Savings negativos (compra acima da cotação) aparecem destacados em vermelho.
 
-1. Instalar `@lovable.dev/mcp-js` (com a exceção necessária no `bunfig.toml`).
-2. Ativar o servidor OAuth do backend e criar a rota de consentimento `src/routes/[.]lovable.oauth.consent.tsx`, reaproveitando o `/auth` existente (inclusive preservando o retorno após login por senha e por Google).
-3. Criar `src/lib/mcp/index.ts` (definição do servidor: nome `grupo-luminart`, auth OAuth) e `src/lib/mcp/supabase.ts` (client que repassa o token do usuário, RLS aplicada).
-4. Um arquivo por ferramenta em `src/lib/mcp/tools/`, consultando as tabelas existentes.
-5. Registrar o plugin MCP no `vite.config.ts` (endpoint em `/mcp`) e validar o manifesto.
+## Detalhes técnicos
 
-Nenhuma alteração de schema, RLS ou telas atuais do sistema.
-
-## Ao final
-
-Você recebe a URL do servidor MCP para colar no Claude (Settings → Connectors), e cada usuário autoriza a própria conta.
+- Migração em `compra_pagamentos`: `data_pagamento date`, `pago boolean not null default false`, `pago_em date`; políticas RLS atuais permanecem.
+- `src/lib/pagamentos.ts`: estender `PagamentoLinha` e adicionar helpers `resumoPagamentos()` (total pago, restante, próxima data, vencidas) e `temDatasDistintas()`.
+- `src/components/PagamentosGrid.tsx`: colunas adicionais de data e baixa.
+- `src/components/CompraDialog.tsx`: persistir os novos campos no upsert de pagamentos.
+- `src/routes/compras.index.tsx`: carregar `compra_pagamentos` (uma query agregada) e passar o resumo ao componente `Card` para cor e rótulos.
+- `src/routes/compras.dashboard.tsx`: a query de `compra_itens` já traz `valor_unitario`; incluir `cotacao` e `desconto_percentual`, com parse numérico tolerante (o campo é texto e pode vir como "1.234,56").
