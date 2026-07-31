@@ -24,7 +24,7 @@ import { CopiarLinkButton } from "@/components/CopiarLinkButton";
 import { listEventos } from "@/lib/sheets.functions";
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { PagamentosGrid } from "@/components/PagamentosGrid";
-import { pagamentosBatem, resumoPagamentos, type PagamentoLinha } from "@/lib/pagamentos";
+import { pagamentosBatem, resumoPagamentos, validarPagamentos, type PagamentoLinha } from "@/lib/pagamentos";
 
 
 const sb = supabase as any;
@@ -275,6 +275,13 @@ export function CompraDialog({
       if (pagamentosLimpos.length > 0 && !pagamentosBatem(pagamentosLimpos, totalCalc)) {
         throw new Error(
           "A soma das formas de pagamento precisa ser igual ao valor total da compra.",
+        );
+      }
+      const pendencias = validarPagamentos(pagamentosLimpos);
+      if (pendencias.length > 0) {
+        throw new Error(
+          "Informe a data prevista e a situação de cada parcela do PIX parcelado.\n"
+            + pendencias.join("\n"),
         );
       }
       const resumo = resumoPagamentos(pagamentosLimpos);
