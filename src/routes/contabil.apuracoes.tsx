@@ -219,12 +219,32 @@ function ApuracoesPage() {
     ws1["!cols"] = [{ wch: 12 }, { wch: 12 }, { wch: 40 }, { wch: 14 }, { wch: 16 }];
     XLSX.utils.book_append_sheet(wb, ws1, "Lançamentos");
 
-    const impostos: any[][] = [["Imposto", "Valor"]];
-    for (const i of (apuracao.itens ?? [])) impostos.push([i.imposto, Number(i.valor || 0)]);
-    impostos.push(["Total", Number(apuracao.totalImpostos || 0)]);
+    const impostos: any[][] = [["Imposto", "Base", "Alíquota (%)", "Valor", "Adicional", "Total"]];
+    for (const i of (apuracao.itens ?? [])) {
+      impostos.push([
+        i.imposto,
+        Number(i.base || 0),
+        Number(i.aliquota || 0),
+        Number(i.valor || 0),
+        Number(i.adicional || 0),
+        Number(i.total ?? i.valor ?? 0),
+      ]);
+    }
+    impostos.push(["Total a pagar", "", "", "", "", Number(apuracao.totalImpostos || 0)]);
+    impostos.push([]);
+    impostos.push(["Base presumida (32%)", Number(apuracao.basePresumida || 0)]);
+    impostos.push(["IRPJ apurado", Number(apuracao.irpjDetalhe?.irpjNormal || 0)]);
+    impostos.push(["Limite mensal", Number(apuracao.irpjDetalhe?.limite || 0)]);
+    impostos.push(["Excedente", Number(apuracao.irpjDetalhe?.excedente || 0)]);
+    impostos.push([`Adicional (${Number(apuracao.irpjDetalhe?.aliquotaAdicional || 0).toFixed(2)}%)`, Number(apuracao.irpjDetalhe?.adicional || 0)]);
+    if (!aliquotas || aliquotas.length === 0) {
+      impostos.push([]);
+      impostos.push([`Nenhuma alíquota configurada para ${empresa}. Configure em Configuração.`]);
+    }
     const ws2 = XLSX.utils.aoa_to_sheet(impostos);
-    ws2["!cols"] = [{ wch: 20 }, { wch: 16 }];
+    ws2["!cols"] = [{ wch: 26 }, { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 16 }];
     XLSX.utils.book_append_sheet(wb, ws2, "Impostos");
+
 
     const safe = (s: string) => s.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
     XLSX.writeFile(wb, `apuracao-${safe(empresa)}-${safe(mes)}-${ano}.xlsx`);
