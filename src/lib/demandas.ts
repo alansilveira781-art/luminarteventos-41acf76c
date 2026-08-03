@@ -74,6 +74,8 @@ export const TIPO_DEMANDA_OPTIONS = [
   { value: "manutencao_galpao", label: "Manutenção do Galpão" },
   { value: "manutencao_veiculos", label: "Manutenção de Veículos" },
   { value: "manutencao_maquinario", label: "Manutenção de Maquinário" },
+  { value: "manutencao_estrutura", label: "Manutenção Estrutura" },
+  { value: "manutencao_equipamentos", label: "Manutenção Equipamentos" },
   { value: "fardamento", label: "Fardamento" },
   { value: "frete", label: "Frete" },
   { value: "reformas_construcoes", label: "Reformas & Construções" },
