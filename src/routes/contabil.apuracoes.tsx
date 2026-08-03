@@ -219,12 +219,32 @@ function ApuracoesPage() {
     ws1["!cols"] = [{ wch: 12 }, { wch: 12 }, { wch: 40 }, { wch: 14 }, { wch: 16 }];
     XLSX.utils.book_append_sheet(wb, ws1, "Lançamentos");
 
-    const impostos: any[][] = [["Imposto", "Valor"]];
-    for (const i of (apuracao.itens ?? [])) impostos.push([i.imposto, Number(i.valor || 0)]);
-    impostos.push(["Total", Number(apuracao.totalImpostos || 0)]);
+    const impostos: any[][] = [["Imposto", "Base", "Alíquota (%)", "Valor", "Adicional", "Total"]];
+    for (const i of (apuracao.itens ?? [])) {
+      impostos.push([
+        i.imposto,
+        Number(i.base || 0),
+        Number(i.aliquota || 0),
+        Number(i.valor || 0),
+        Number(i.adicional || 0),
+        Number(i.total ?? i.valor ?? 0),
+      ]);
+    }
+    impostos.push(["Total a pagar", "", "", "", "", Number(apuracao.totalImpostos || 0)]);
+    impostos.push([]);
+    impostos.push(["Base presumida (32%)", Number(apuracao.basePresumida || 0)]);
+    impostos.push(["IRPJ apurado", Number(apuracao.irpjDetalhe?.irpjNormal || 0)]);
+    impostos.push(["Limite mensal", Number(apuracao.irpjDetalhe?.limite || 0)]);
+    impostos.push(["Excedente", Number(apuracao.irpjDetalhe?.excedente || 0)]);
+    impostos.push([`Adicional (${Number(apuracao.irpjDetalhe?.aliquotaAdicional || 0).toFixed(2)}%)`, Number(apuracao.irpjDetalhe?.adicional || 0)]);
+    if (!aliquotas || aliquotas.length === 0) {
+      impostos.push([]);
+      impostos.push([`Nenhuma alíquota configurada para ${empresa}. Configure em Configuração.`]);
+    }
     const ws2 = XLSX.utils.aoa_to_sheet(impostos);
-    ws2["!cols"] = [{ wch: 20 }, { wch: 16 }];
+    ws2["!cols"] = [{ wch: 26 }, { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 16 }];
     XLSX.utils.book_append_sheet(wb, ws2, "Impostos");
+
 
     const safe = (s: string) => s.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
     XLSX.writeFile(wb, `apuracao-${safe(empresa)}-${safe(mes)}-${ano}.xlsx`);
@@ -235,7 +255,7 @@ function ApuracoesPage() {
 
     const esc = (s: string) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
     const impostosRows = (apuracao.itens ?? []).map((i: any) =>
-      `<tr><td>${esc(i.imposto)}</td><td style="text-align:right">${fmtBRL(Number(i.valor || 0))}</td></tr>`
+      `<tr><td>${esc(i.imposto)}</td><td class="num">${fmtBRL(Number(i.base || 0))}</td><td class="num">${Number(i.aliquota || 0).toFixed(2)}%</td><td class="num">${fmtBRL(Number(i.valor || 0))}</td><td class="num">${i.adicional ? fmtBRL(Number(i.adicional)) : "—"}</td><td class="num"><b>${fmtBRL(Number(i.total ?? i.valor ?? 0))}</b></td></tr>`
     ).join("");
 
     const html = `<!doctype html>
@@ -251,8 +271,10 @@ function ApuracoesPage() {
   th { background: #f4f4f5; text-transform: uppercase; font-size: 10px; letter-spacing: .04em; }
   td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   tfoot td { font-weight: 600; border-top: 2px solid #333; }
-  .impostos { margin-top: 20px; max-width: 320px; }
+  .impostos { margin-top: 8px; max-width: 640px; }
   .impostos th, .impostos td { border-bottom: 1px solid #eee; }
+  .secao { margin-top: 22px; font-size: 12px; font-weight: 600; }
+  .nota { margin-top: 8px; font-size: 10px; color: #555; max-width: 640px; }
   .foot { margin-top: 24px; font-size: 10px; color: #666; }
   @media print { body { margin: 12mm; } .noprint { display: none; } }
 </style></head><body>
@@ -278,8 +300,15 @@ function ApuracoesPage() {
     <td></td>
   </tr></tfoot>
 </table>
-${impostosRows ? `<table class="impostos"><thead><tr><th>Imposto</th><th class="num">Valor</th></tr></thead><tbody>${impostosRows}<tr><td><b>Total</b></td><td class="num"><b>${fmtBRL(Number(apuracao.totalImpostos || 0))}</b></td></tr></tbody></table>` : ""}
-<div class="foot">Documento de rascunho — não possui valor fiscal.</div>
+${impostosRows ? `<div class="secao">Impostos apurados — Base presumida (32%): <b>${fmtBRL(Number(apuracao.basePresumida || 0))}</b></div>
+<table class="impostos">
+  <thead><tr><th>Imposto</th><th class="num">Base</th><th class="num">Alíq.</th><th class="num">Valor</th><th class="num">Adic.</th><th class="num">Total</th></tr></thead>
+  <tbody>${impostosRows}</tbody>
+  <tfoot><tr><td colspan="5"><b>Total a pagar</b></td><td class="num"><b>${fmtBRL(Number(apuracao.totalImpostos || 0))}</b></td></tr></tfoot>
+</table>
+<div class="nota"><b>IRPJ:</b> apurado ${fmtBRL(Number(apuracao.irpjDetalhe?.irpjNormal || 0))} — Limite mensal ${fmtBRL(Number(apuracao.irpjDetalhe?.limite || 0))} — Excedente ${fmtBRL(Number(apuracao.irpjDetalhe?.excedente || 0))} — Adicional (${Number(apuracao.irpjDetalhe?.aliquotaAdicional || 0).toFixed(2)}%): <b>${fmtBRL(Number(apuracao.irpjDetalhe?.adicional || 0))}</b></div>` : ""}
+${(!aliquotas || aliquotas.length === 0) ? `<div class="nota">Nenhuma alíquota configurada para ${esc(empresa)}. Configure em <b>Configuração</b>.</div>` : ""}
+<div class="foot">Documento de rascunho — não possui valor fiscal. Gerado em ${format(new Date(), "dd/MM/yyyy HH:mm")}.</div>
 <script>window.onload = () => { window.print(); };</script>
 </body></html>`;
 
