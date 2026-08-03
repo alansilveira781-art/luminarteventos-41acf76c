@@ -271,8 +271,10 @@ function ApuracoesPage() {
   th { background: #f4f4f5; text-transform: uppercase; font-size: 10px; letter-spacing: .04em; }
   td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   tfoot td { font-weight: 600; border-top: 2px solid #333; }
-  .impostos { margin-top: 20px; max-width: 320px; }
+  .impostos { margin-top: 8px; max-width: 640px; }
   .impostos th, .impostos td { border-bottom: 1px solid #eee; }
+  .secao { margin-top: 22px; font-size: 12px; font-weight: 600; }
+  .nota { margin-top: 8px; font-size: 10px; color: #555; max-width: 640px; }
   .foot { margin-top: 24px; font-size: 10px; color: #666; }
   @media print { body { margin: 12mm; } .noprint { display: none; } }
 </style></head><body>
