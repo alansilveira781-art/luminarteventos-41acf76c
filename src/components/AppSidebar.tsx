@@ -505,7 +505,7 @@ export function AppTopBar() {
         <div className="ml-auto flex items-center gap-2">
           <ThemeToggle />
           <a
-            href="https://luminarteventos.lovable.app/solicitar"
+            href="/solicitar"
             target="_blank"
             rel="noopener noreferrer"
             title="Solicitar demanda"
@@ -514,6 +514,7 @@ export function AppTopBar() {
           >
             <ClipboardCheck className="h-4 w-4" />
           </a>
+          <CopiarLinkButton path="/solicitar" label="" size="icon" variant="outline" title="Copiar link do formulário de solicitação" />
           <NotificationBell />
           <div className="hidden sm:flex items-center gap-2 px-2 py-1 rounded-md border border-border bg-card">
             <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
