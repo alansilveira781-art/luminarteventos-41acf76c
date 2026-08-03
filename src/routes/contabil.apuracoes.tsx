@@ -298,8 +298,15 @@ function ApuracoesPage() {
     <td></td>
   </tr></tfoot>
 </table>
-${impostosRows ? `<table class="impostos"><thead><tr><th>Imposto</th><th class="num">Valor</th></tr></thead><tbody>${impostosRows}<tr><td><b>Total</b></td><td class="num"><b>${fmtBRL(Number(apuracao.totalImpostos || 0))}</b></td></tr></tbody></table>` : ""}
-<div class="foot">Documento de rascunho — não possui valor fiscal.</div>
+${impostosRows ? `<div class="secao">Impostos apurados — Base presumida (32%): <b>${fmtBRL(Number(apuracao.basePresumida || 0))}</b></div>
+<table class="impostos">
+  <thead><tr><th>Imposto</th><th class="num">Base</th><th class="num">Alíq.</th><th class="num">Valor</th><th class="num">Adic.</th><th class="num">Total</th></tr></thead>
+  <tbody>${impostosRows}</tbody>
+  <tfoot><tr><td colspan="5"><b>Total a pagar</b></td><td class="num"><b>${fmtBRL(Number(apuracao.totalImpostos || 0))}</b></td></tr></tfoot>
+</table>
+<div class="nota"><b>IRPJ:</b> apurado ${fmtBRL(Number(apuracao.irpjDetalhe?.irpjNormal || 0))} — Limite mensal ${fmtBRL(Number(apuracao.irpjDetalhe?.limite || 0))} — Excedente ${fmtBRL(Number(apuracao.irpjDetalhe?.excedente || 0))} — Adicional (${Number(apuracao.irpjDetalhe?.aliquotaAdicional || 0).toFixed(2)}%): <b>${fmtBRL(Number(apuracao.irpjDetalhe?.adicional || 0))}</b></div>` : ""}
+${(!aliquotas || aliquotas.length === 0) ? `<div class="nota">Nenhuma alíquota configurada para ${esc(empresa)}. Configure em <b>Configuração</b>.</div>` : ""}
+<div class="foot">Documento de rascunho — não possui valor fiscal. Gerado em ${format(new Date(), "dd/MM/yyyy HH:mm")}.</div>
 <script>window.onload = () => { window.print(); };</script>
 </body></html>`;
 
