@@ -1,21 +1,22 @@
-## Diagnóstico (confirmado)
+# Corrigir link e botão "Solicitar"
 
-No banco, a COMPRA-243 está correta: duas linhas PIX, parcelamento 2x, uma paga (31/08) e uma em aberto (03/08).
+## Problema encontrado
 
-O card não fica amarelo porque as consultas dos quadros **não trazem o campo `forma`**:
+O botão de atalho no topo do painel aponta para um endereço fixo do domínio antigo:
+`https://luminarteventos.lovable.app/solicitar` (em `src/components/AppSidebar.tsx`).
 
-- `src/routes/compras.index.tsx` (linha 113): `select("compra_id,valor,parcelamento,data_pagamento,pago,pago_em")`
-- `src/routes/financeiro.index.tsx` (linha 101): idem para `demanda_pagamentos`
+Como o app agora é publicado em outro endereço (`grupoluminart.lovable.app`), esse link leva para um site que não é mais o atual — por isso o botão "não funciona".
 
-Sem `forma`, o teste "é PIX?" sempre dá falso, então `parcelado` fica falso e o card nunca recebe o destaque nem os badges.
+O formulário em si (`/solicitar`) e o endpoint público continuam existindo e liberados sem login; o problema é só o endereço fixo.
 
 ## O que será feito
 
-1. Incluir `forma` no `select` das duas consultas.
-2. Passar `forma` para os objetos de pagamento montados no agrupamento (`pagamentosPorCompra` e equivalente em despesas), para que a regra "PIX + parcelamento maior que 1x" seja avaliada corretamente.
+1. Trocar o link fixo do botão "Solicitar demanda" no cabeçalho por um caminho relativo (`/solicitar`), abrindo em nova aba. Assim ele sempre acompanha o domínio atual (preview, publicado ou domínio próprio no futuro).
+2. Adicionar um botão "Copiar link" do formulário de solicitação (mesmo componente já usado no Jurídico), para compartilhar o endereço público correto sem digitar o domínio.
+3. Conferir que nenhum outro ponto do app ainda usa o domínio antigo.
 
-Nenhuma mudança de regra de negócio: continua valendo exatamente o combinado — amarelo só para PIX parcelado com parcela em aberto.
+## Detalhes técnicos
 
-## Verificação
-
-Após o ajuste, conferir no Quadro de Compras que a COMPRA-243 aparece amarela com badge de parcela em aberto, e que cards não-PIX permanecem normais.
+- `src/components/AppSidebar.tsx`: `href="https://luminarteventos.lovable.app/solicitar"` → `href="/solicitar"` (mantendo `target="_blank"`).
+- Reuso de `CopiarLinkButton` (`path="/solicitar"`), que monta a URL a partir de `window.location.origin`.
+- Nenhuma mudança de banco de dados ou de regras de acesso.
