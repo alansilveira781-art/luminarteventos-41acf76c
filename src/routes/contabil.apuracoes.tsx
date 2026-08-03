@@ -255,7 +255,7 @@ function ApuracoesPage() {
 
     const esc = (s: string) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
     const impostosRows = (apuracao.itens ?? []).map((i: any) =>
-      `<tr><td>${esc(i.imposto)}</td><td style="text-align:right">${fmtBRL(Number(i.valor || 0))}</td></tr>`
+      `<tr><td>${esc(i.imposto)}</td><td class="num">${fmtBRL(Number(i.base || 0))}</td><td class="num">${Number(i.aliquota || 0).toFixed(2)}%</td><td class="num">${fmtBRL(Number(i.valor || 0))}</td><td class="num">${i.adicional ? fmtBRL(Number(i.adicional)) : "—"}</td><td class="num"><b>${fmtBRL(Number(i.total ?? i.valor ?? 0))}</b></td></tr>`
     ).join("");
 
     const html = `<!doctype html>
