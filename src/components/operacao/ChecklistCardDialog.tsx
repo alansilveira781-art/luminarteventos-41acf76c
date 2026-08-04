@@ -38,7 +38,7 @@ export async function garantirChecklist(ordemId: string, setorId: string) {
   if ((existentes ?? []).length > 0) return;
   const { data: etapas } = await sb
     .from("op_setor_etapas")
-    .select("id,nome,ordem")
+    .select("id,nome,descricao,ordem")
     .eq("setor_id", setorId)
     .eq("ativo", true)
     .order("ordem");
@@ -47,6 +47,7 @@ export async function garantirChecklist(ordemId: string, setorId: string) {
     setor_id: setorId,
     etapa_id: e.id,
     nome: e.nome,
+    descricao: e.descricao ?? null,
     ordem: e.ordem ?? i * 10,
   }));
   if (rows.length) await sb.from("op_ordem_checklist").insert(rows);
