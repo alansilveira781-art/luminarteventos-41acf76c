@@ -12,7 +12,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,6 +28,24 @@ import {
 } from "@/lib/operacao";
 
 const sb = supabase as any;
+const SEM_RESP = "__sem__";
+
+export type ProfileLite = { id: string; display_name: string | null; email: string | null };
+
+export function useProfilesLite() {
+  return useQuery<ProfileLite[]>({
+    queryKey: ["op_profiles_lite"],
+    queryFn: async () =>
+      (await sb.from("profiles").select("id,display_name,email").order("display_name")).data ?? [],
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function nomeProfile(profiles: ProfileLite[], id: string | null | undefined) {
+  if (!id) return null;
+  const p = profiles.find((x) => x.id === id);
+  return p?.display_name || p?.email || "—";
+}
 
 /** Cria os itens de checklist do setor a partir das etapas configuradas, se ainda não existirem. */
 export async function garantirChecklist(ordemId: string, setorId: string) {
@@ -69,6 +89,8 @@ export function ChecklistCardDialog({
   const [obs, setObs] = useState("");
   const [salvando, setSalvando] = useState(false);
 
+  const { data: profiles = [] } = useProfilesLite();
+
   const { data: ordem } = useQuery<Ordem | null>({
     queryKey: ["op_ordem", ordemId],
     queryFn: async () => (await sb.from("op_ordens").select("*").eq("id", ordemId).maybeSingle()).data,
@@ -104,6 +126,7 @@ export function ChecklistCardDialog({
   const itens = checklist.filter((c) => c.setor_id === setorAtualId);
   const prog = progressoOrdem(roteiro, checklist, setorAtualId);
   const finalizada = ordem.status === "finalizada" || ordem.status === "cancelada";
+  const limitePrazo = ordem.prazo ?? undefined;
 
   async function toggleItem(item: ChecklistItem, valor: boolean) {
     if (!podeEditar) return;
@@ -119,6 +142,26 @@ export function ChecklistCardDialog({
     if (ordem && ordem.status === "aberta") {
       await sb.from("op_ordens").update({ status: "em_andamento" }).eq("id", ordemId);
     }
+    invalidar();
+  }
+
+  async function definirResponsavel(item: ChecklistItem, valor: string) {
+    if (!podeEditar) return;
+    const { error } = await sb
+      .from("op_ordem_checklist")
+      .update({ responsavel_id: valor === SEM_RESP ? null : valor })
+      .eq("id", item.id);
+    if (error) return toast.error(error.message);
+    invalidar();
+  }
+
+  async function definirPrazoSetor(r: OrdemSetor, valor: string) {
+    if (!podeEditar) return;
+    if (valor && limitePrazo && valor > limitePrazo) {
+      return toast.error(`O prazo do setor não pode ultrapassar ${fmtData(limitePrazo)} (prazo final).`);
+    }
+    const { error } = await sb.from("op_ordem_setores").update({ prazo: valor || null }).eq("id", r.id);
+    if (error) return toast.error(error.message);
     invalidar();
   }
 
@@ -175,6 +218,8 @@ export function ChecklistCardDialog({
     }
   }
 
+  const hojeISO = new Date().toISOString().slice(0, 10);
+
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -204,22 +249,52 @@ export function ChecklistCardDialog({
             <div className="h-2 w-full rounded bg-muted overflow-hidden">
               <div className="h-full bg-primary transition-all" style={{ width: `${prog.pct}%` }} />
             </div>
-            <div className="mt-2 flex flex-wrap gap-1">
-              {roteiro.map((r) => (
-                <span
-                  key={r.id}
-                  className={`text-[10px] rounded-full border px-2 py-0.5 ${
-                    r.status === "concluido"
-                      ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
-                      : r.setor_id === setorAtualId
-                        ? "bg-primary/10 text-primary border-primary/30"
-                        : "text-muted-foreground"
-                  }`}
-                >
-                  {nomeSetor(r.setor_id)}
-                </span>
-              ))}
-            </div>
+          </div>
+
+          <div>
+            <div className="text-xs uppercase text-muted-foreground mb-2">Roteiro e prazos</div>
+            <ul className="space-y-1">
+              {roteiro.map((r) => {
+                const atrasado =
+                  !!r.prazo && r.status !== "concluido" && r.prazo < hojeISO;
+                return (
+                  <li
+                    key={r.id}
+                    className={`flex items-center gap-2 rounded border px-2 py-1.5 text-sm ${
+                      r.setor_id === setorAtualId ? "border-primary/40 bg-primary/5" : ""
+                    }`}
+                  >
+                    <span
+                      className={`h-2 w-2 shrink-0 rounded-full ${
+                        r.status === "concluido"
+                          ? "bg-emerald-500"
+                          : r.setor_id === setorAtualId
+                            ? "bg-primary"
+                            : "bg-muted-foreground/30"
+                      }`}
+                    />
+                    <span className="flex-1 truncate">{nomeSetor(r.setor_id)}</span>
+                    {atrasado && <span className="text-[10px] text-destructive">atrasado</span>}
+                    {podeEditar && !finalizada ? (
+                      <Input
+                        type="date"
+                        className="h-7 w-[150px] text-xs"
+                        max={limitePrazo}
+                        value={r.prazo ?? ""}
+                        onChange={(e) => definirPrazoSetor(r, e.target.value)}
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">{fmtData(r.prazo)}</span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+            {limitePrazo && (
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Prazos limitados à data final do projeto: {fmtData(limitePrazo)}.
+              </p>
+            )}
           </div>
 
           <div>
@@ -248,11 +323,35 @@ export function ChecklistCardDialog({
                           {i.descricao}
                         </div>
                       )}
-                      {i.concluido_em && (
-                        <div className="text-[11px] text-muted-foreground">
-                          concluído em {fmtData(i.concluido_em)}
-                        </div>
-                      )}
+                      <div className="mt-1 flex items-center gap-2">
+                        {podeEditar && !finalizada ? (
+                          <Select
+                            value={i.responsavel_id ?? SEM_RESP}
+                            onValueChange={(v) => definirResponsavel(i, v)}
+                          >
+                            <SelectTrigger className="h-7 w-[220px] text-xs">
+                              <SelectValue placeholder="Atribuir responsável" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={SEM_RESP}>Sem responsável</SelectItem>
+                              {profiles.map((p) => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  {p.display_name || p.email || p.id}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground">
+                            {nomeProfile(profiles, i.responsavel_id) ?? "sem responsável"}
+                          </span>
+                        )}
+                        {i.concluido_em && (
+                          <span className="text-[11px] text-muted-foreground">
+                            concluído em {fmtData(i.concluido_em)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </li>
                 ))}

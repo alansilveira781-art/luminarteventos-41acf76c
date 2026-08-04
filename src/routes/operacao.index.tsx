@@ -125,7 +125,37 @@ function OperacaoQuadro() {
       const roteiro = roteiros.filter((r) => r.ordem_id === ordem.id);
       const destino = roteiro.find((r) => r.setor_id === setorId);
       if (!destino) throw new Error("Este setor não faz parte do roteiro desta ordem");
+      const atual = roteiro.find((r) => r.setor_id === ordem.setor_id);
+      const voltando = !!atual && destino.posicao < atual.posicao;
       const agora = new Date().toISOString();
+
+      if (voltando) {
+        // volta o setor de destino para "em andamento" e limpa todos os posteriores
+        await sb
+          .from("op_ordem_setores")
+          .update({ status: "em_andamento", iniciado_em: agora, concluido_em: null })
+          .eq("id", destino.id);
+        const posteriores = roteiro.filter((r) => r.posicao > destino.posicao).map((r) => r.id);
+        if (posteriores.length) {
+          await sb
+            .from("op_ordem_setores")
+            .update({ status: "pendente", iniciado_em: null, concluido_em: null })
+            .in("id", posteriores);
+        }
+        await sb
+          .from("op_ordem_apontamentos")
+          .update({ finalizado_em: agora })
+          .eq("ordem_id", ordem.id)
+          .is("finalizado_em", null);
+        await garantirChecklist(ordem.id, setorId);
+        const { error } = await sb
+          .from("op_ordens")
+          .update({ setor_id: setorId, status: "em_andamento" })
+          .eq("id", ordem.id);
+        if (error) throw error;
+        return;
+      }
+
       if (ordem.setor_id) {
         await sb
           .from("op_ordem_setores")
@@ -156,9 +186,12 @@ function OperacaoQuadro() {
       qc.invalidateQueries({ queryKey: ["op_ordens"] });
       qc.invalidateQueries({ queryKey: ["op_roteiros"] });
       qc.invalidateQueries({ queryKey: ["op_checklists"] });
+      qc.invalidateQueries({ queryKey: ["op_roteiro"] });
+      qc.invalidateQueries({ queryKey: ["op_checklist"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Falha ao mover"),
   });
+
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -172,8 +205,18 @@ function OperacaoQuadro() {
       toast.error("Você não tem permissão para mover esta ordem");
       return;
     }
+    const roteiro = roteiros.filter((r) => r.ordem_id === card.id);
+    const destino = roteiro.find((r) => r.setor_id === overId);
+    const atual = roteiro.find((r) => r.setor_id === card.setor_id);
+    const voltando = !!destino && !!atual && destino.posicao < atual.posicao;
+    if (voltando && !(isAdmin || isModuleAdmin("operacao"))) {
+      toast.error("Somente administradores podem retornar um card para um setor anterior");
+      return;
+    }
     mover.mutate({ ordem: card, setorId: overId });
   }
+
+
 
   const cardSelecionado = ordens.find((o) => o.id === cardId) ?? null;
 
@@ -346,6 +389,8 @@ function CardOrdem({
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: ordem.id });
   const prog = progressoOrdem(roteiro, checklist, ordem.setor_id);
   const nome = (id: string) => setores.find((s) => s.id === id)?.nome ?? "—";
+  const prazoSetor = roteiro.find((r) => r.setor_id === ordem.setor_id)?.prazo ?? null;
+
   return (
     <div
       ref={setNodeRef}
@@ -369,34 +414,35 @@ function CardOrdem({
         {ordem.prazo && <> · prazo {new Date(`${ordem.prazo}T12:00:00`).toLocaleDateString("pt-BR")}</>}
       </div>
       <div className="mt-2">
-        <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-0.5">
-          <span>
-            {prog.itensTotal > 0 ? `${prog.itensFeitos}/${prog.itensTotal} etapas` : "sem checklist"}
-          </span>
-          <span>{prog.pct}%</span>
-        </div>
         <div className="h-1.5 w-full rounded bg-muted overflow-hidden">
           <div className="h-full bg-primary" style={{ width: `${prog.pct}%` }} />
         </div>
-        {roteiro.length > 0 && (
-          <div className="mt-1 flex flex-wrap gap-1">
-            {roteiro.map((r) => (
-              <span
-                key={r.id}
-                className={`text-[9px] rounded-full px-1.5 py-0.5 border ${
-                  r.status === "concluido"
-                    ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
-                    : r.setor_id === ordem.setor_id
-                      ? "bg-primary/10 text-primary border-primary/30"
-                      : "text-muted-foreground"
-                }`}
-              >
-                {nome(r.setor_id)}
-              </span>
-            ))}
-          </div>
-        )}
+        <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
+          <span className="truncate font-medium text-foreground/80">{nome(ordem.setor_id ?? "")}</span>
+          {roteiro.length > 0 && (
+            <span className="flex items-center gap-0.5 shrink-0">
+              {roteiro.map((r) => (
+                <span
+                  key={r.id}
+                  title={nome(r.setor_id)}
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    r.status === "concluido"
+                      ? "bg-emerald-500"
+                      : r.setor_id === ordem.setor_id
+                        ? "bg-primary"
+                        : "bg-muted-foreground/30"
+                  }`}
+                />
+              ))}
+            </span>
+          )}
+          <span className="ml-auto shrink-0 tabular-nums">
+            {prog.concluidos}/{prog.total}
+            {prazoSetor ? ` · ${new Date(`${prazoSetor}T12:00:00`).toLocaleDateString("pt-BR")}` : ""}
+          </span>
+        </div>
       </div>
+
     </div>
   );
 }
@@ -422,7 +468,9 @@ function NovaOrdemDialog({
   const [dataInicio, setDataInicio] = useState<string>("");
   const [prazo, setPrazo] = useState<string>("");
   const [roteiro, setRoteiro] = useState<string[]>([]);
+  const [prazosSetor, setPrazosSetor] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+
 
   const selecionados = setores.filter((s) => s.fixo || roteiro.includes(s.id));
 
@@ -433,8 +481,13 @@ function NovaOrdemDialog({
   async function salvar() {
     if (!titulo.trim()) return toast.error("Informe um título");
     if (selecionados.length === 0) return toast.error("Selecione ao menos um setor no roteiro");
+    const invalido = selecionados.find((s) => prazosSetor[s.id] && prazo && prazosSetor[s.id] > prazo);
+    if (invalido) {
+      return toast.error(`O prazo de ${invalido.nome} não pode ultrapassar o prazo final da ordem.`);
+    }
     setSaving(true);
     try {
+
       const primeiro = selecionados[0];
       const { data: nova, error } = await sb
         .from("op_ordens")
@@ -463,8 +516,10 @@ function NovaOrdemDialog({
           posicao: i,
           status: i === 0 ? "em_andamento" : "pendente",
           iniciado_em: i === 0 ? agora : null,
+          prazo: prazosSetor[s.id] || null,
         })),
       );
+
       await garantirChecklist(nova.id, primeiro.id);
 
       toast.success("Ordem criada");
@@ -518,26 +573,45 @@ function NovaOrdemDialog({
             </div>
           </div>
           <div>
-            <Label>Roteiro de setores</Label>
-            <div className="mt-1 space-y-1 rounded border p-2 max-h-48 overflow-y-auto">
-              {setores.map((s) => (
-                <label key={s.id} className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={s.fixo || roteiro.includes(s.id)}
-                    disabled={s.fixo}
-                    onCheckedChange={(v) => toggleSetor(s.id, !!v)}
-                  />
-                  {s.nome}
-                  {s.fixo && <span className="text-[10px] text-muted-foreground">(fixo)</span>}
-                </label>
-              ))}
+            <Label>Roteiro de setores e prazos</Label>
+            <div className="mt-1 space-y-1 rounded border p-2 max-h-56 overflow-y-auto">
+              {setores.map((s) => {
+                const marcado = s.fixo || roteiro.includes(s.id);
+                return (
+                  <div key={s.id} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={marcado}
+                      disabled={s.fixo}
+                      onCheckedChange={(v) => toggleSetor(s.id, !!v)}
+                    />
+                    <span className="flex-1 truncate">
+                      {s.nome}
+                      {s.fixo && <span className="ml-1 text-[10px] text-muted-foreground">(fixo)</span>}
+                    </span>
+                    <Input
+                      type="date"
+                      className="h-7 w-[150px] text-xs"
+                      disabled={!marcado}
+                      max={prazo || undefined}
+                      value={prazosSetor[s.id] ?? ""}
+                      onChange={(e) => setPrazosSetor((p) => ({ ...p, [s.id]: e.target.value }))}
+                    />
+                  </div>
+                );
+              })}
             </div>
+            {prazo && (
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Prazos por setor limitados ao prazo final da ordem.
+              </p>
+            )}
             {selecionados.length > 0 && (
               <p className="text-[11px] text-muted-foreground mt-1">
                 Sequência: {selecionados.map((s) => s.nome).join(" → ")}
               </p>
             )}
           </div>
+
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

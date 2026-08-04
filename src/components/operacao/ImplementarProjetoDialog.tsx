@@ -12,9 +12,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { CalendarDays, CheckCircle2 } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronLeft } from "lucide-react";
 import { garantirChecklist } from "./ChecklistCardDialog";
 import { fmtData, type Setor } from "@/lib/operacao";
 
@@ -68,7 +69,10 @@ export function ImplementarProjetoDialog({
   const [mes, setMes] = useState(`${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`);
   const [modo, setModo] = useState("semana");
   const [busca, setBusca] = useState("");
-  const [criando, setCriando] = useState<string | null>(null);
+  const [criando, setCriando] = useState(false);
+  const [evento, setEvento] = useState<EventoLite | null>(null);
+  const [selecionadosIds, setSelecionadosIds] = useState<string[]>([]);
+  const [prazos, setPrazos] = useState<Record<string, string>>({});
 
   const inicioMes = `${mes}-01`;
   const fimMes = useMemo(() => {
@@ -131,29 +135,50 @@ export function ImplementarProjetoDialog({
       }));
   }, [filtrados, modo]);
 
-  const roteiroPadrao = useMemo(() => {
-    const fixos = setores.filter((s) => s.fixo);
-    const demais = setores.filter((s) => !s.fixo);
-    return [...fixos, ...demais];
-  }, [setores]);
+  const roteiroSelecionado = useMemo(
+    () => setores.filter((s) => s.fixo || selecionadosIds.includes(s.id)),
+    [setores, selecionadosIds],
+  );
 
-  async function implementar(ev: EventoLite) {
-    if (roteiroPadrao.length === 0) return toast.error("Nenhum setor configurado");
-    setCriando(ev.id);
+  const limitePrazo = evento?.data_evento_fim ?? evento?.data_evento ?? undefined;
+
+  function escolherEvento(ev: EventoLite) {
+    setEvento(ev);
+    setSelecionadosIds(setores.filter((s) => !s.fixo).map((s) => s.id));
+    setPrazos({});
+  }
+
+  function voltar() {
+    setEvento(null);
+    setPrazos({});
+  }
+
+  async function confirmar() {
+    if (!evento) return;
+    if (roteiroSelecionado.length === 0) return toast.error("Selecione ao menos um setor");
+    const invalido = roteiroSelecionado.find(
+      (s) => prazos[s.id] && limitePrazo && prazos[s.id] > limitePrazo,
+    );
+    if (invalido) {
+      return toast.error(
+        `O prazo de ${invalido.nome} não pode ultrapassar ${fmtData(limitePrazo!)} (data final do evento).`,
+      );
+    }
+    setCriando(true);
     try {
-      const primeiro = roteiroPadrao[0];
+      const primeiro = roteiroSelecionado[0];
       const { data: nova, error } = await sb
         .from("op_ordens")
         .insert({
           setor_id: primeiro.id,
-          titulo: ev.nome,
-          descricao: [ev.local, ev.cidade, ev.uf].filter(Boolean).join(" · ") || null,
-          evento_ref: ev.codigo_evento ?? ev.codigo ?? ev.nome,
-          evento_id: ev.id,
+          titulo: evento.nome,
+          descricao: [evento.local, evento.cidade, evento.uf].filter(Boolean).join(" · ") || null,
+          evento_ref: evento.codigo_evento ?? evento.codigo ?? evento.nome,
+          evento_id: evento.id,
           origem: "evento",
           status: "aberta",
           data_inicio: toISO(new Date()),
-          prazo: ev.data_montagem ?? ev.data_evento ?? null,
+          prazo: limitePrazo ?? evento.data_montagem ?? null,
           created_by: userId,
         })
         .select("id")
@@ -162,22 +187,25 @@ export function ImplementarProjetoDialog({
 
       const agora = new Date().toISOString();
       await sb.from("op_ordem_setores").insert(
-        roteiroPadrao.map((s, i) => ({
+        roteiroSelecionado.map((s, i) => ({
           ordem_id: nova.id,
           setor_id: s.id,
           posicao: i,
           status: i === 0 ? "em_andamento" : "pendente",
           iniciado_em: i === 0 ? agora : null,
+          prazo: prazos[s.id] || null,
         })),
       );
       await garantirChecklist(nova.id, primeiro.id);
 
-      toast.success(`Projeto de "${ev.nome}" iniciado em ${primeiro.nome}`);
+      toast.success(`Projeto de "${evento.nome}" iniciado em ${primeiro.nome}`);
+      setEvento(null);
       onCreated();
+      onOpenChange(false);
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao implementar projeto");
     } finally {
-      setCriando(null);
+      setCriando(false);
     }
   }
 
@@ -187,92 +215,163 @@ export function ImplementarProjetoDialog({
         <DialogHeader>
           <DialogTitle>Implementar projeto</DialogTitle>
           <DialogDescription>
-            Escolha um evento do calendário para iniciar o processo em {roteiroPadrao[0]?.nome ?? "Preparação"}.
+            {evento
+              ? `Defina os setores e os prazos de ${evento.nome}.`
+              : "Escolha um evento do calendário para iniciar o processo."}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-wrap items-end gap-3">
-          <div>
-            <Label className="text-xs">Mês</Label>
-            <Input type="month" value={mes} onChange={(e) => setMes(e.target.value)} className="h-9 w-44" />
-          </div>
-          <Tabs value={modo} onValueChange={setModo}>
-            <TabsList>
-              <TabsTrigger value="semana">Semana</TabsTrigger>
-              <TabsTrigger value="mes">Mês</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <div className="flex-1 min-w-[180px]">
-            <Label className="text-xs">Buscar</Label>
-            <Input
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              placeholder="Nome, código, local…"
-              className="h-9"
-            />
-          </div>
-        </div>
+        {!evento ? (
+          <>
+            <div className="flex flex-wrap items-end gap-3">
+              <div>
+                <Label className="text-xs">Mês</Label>
+                <Input type="month" value={mes} onChange={(e) => setMes(e.target.value)} className="h-9 w-44" />
+              </div>
+              <Tabs value={modo} onValueChange={setModo}>
+                <TabsList>
+                  <TabsTrigger value="semana">Semana</TabsTrigger>
+                  <TabsTrigger value="mes">Mês</TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <div className="flex-1 min-w-[180px]">
+                <Label className="text-xs">Buscar</Label>
+                <Input
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  placeholder="Nome, código, local…"
+                  className="h-9"
+                />
+              </div>
+            </div>
 
-        <div className="space-y-4 mt-2">
-          {isLoading && <div className="text-sm text-muted-foreground">Carregando eventos…</div>}
-          {!isLoading && filtrados.length === 0 && (
-            <div className="text-sm text-muted-foreground">Nenhum evento no período.</div>
-          )}
-          {grupos.map((g) => (
-            <div key={g.chave}>
-              {g.titulo && (
-                <div className="flex items-center gap-1.5 text-xs uppercase text-muted-foreground mb-1">
-                  <CalendarDays className="h-3.5 w-3.5" /> {g.titulo}
-                </div>
+            <div className="space-y-4 mt-2">
+              {isLoading && <div className="text-sm text-muted-foreground">Carregando eventos…</div>}
+              {!isLoading && filtrados.length === 0 && (
+                <div className="text-sm text-muted-foreground">Nenhum evento no período.</div>
               )}
-              <div className="space-y-1.5">
-                {g.itens.map((e) => {
-                  const feito = jaCriados.includes(e.id);
-                  return (
-                    <div
-                      key={e.id}
-                      className="flex items-center justify-between gap-3 rounded border p-2"
-                    >
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium truncate">
-                          {e.nome}
-                          {e.codigo ? ` · ${e.codigo}` : ""}
-                        </div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          {[e.local, [e.cidade, e.uf].filter(Boolean).join("/")].filter(Boolean).join(" · ")}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          evento {fmtData(e.data_evento)}
-                          {e.data_evento_fim ? ` a ${fmtData(e.data_evento_fim)}` : ""}
-                          {e.data_montagem ? ` · montagem ${fmtData(e.data_montagem)}` : ""}
-                        </div>
-                      </div>
-                      {feito ? (
-                        <span className="flex items-center gap-1 text-xs text-emerald-600 shrink-0">
-                          <CheckCircle2 className="h-3.5 w-3.5" /> já implementado
-                        </span>
-                      ) : (
-                        <Button
-                          size="sm"
-                          className="shrink-0"
-                          disabled={criando !== null}
-                          onClick={() => implementar(e)}
+              {grupos.map((g) => (
+                <div key={g.chave}>
+                  {g.titulo && (
+                    <div className="flex items-center gap-1.5 text-xs uppercase text-muted-foreground mb-1">
+                      <CalendarDays className="h-3.5 w-3.5" /> {g.titulo}
+                    </div>
+                  )}
+                  <div className="space-y-1.5">
+                    {g.itens.map((e) => {
+                      const feito = jaCriados.includes(e.id);
+                      return (
+                        <div
+                          key={e.id}
+                          className="flex items-center justify-between gap-3 rounded border p-2"
                         >
-                          Implementar
-                        </Button>
-                      )}
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium truncate">
+                              {e.nome}
+                              {e.codigo ? ` · ${e.codigo}` : ""}
+                            </div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {[e.local, [e.cidade, e.uf].filter(Boolean).join("/")].filter(Boolean).join(" · ")}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              evento {fmtData(e.data_evento)}
+                              {e.data_evento_fim ? ` a ${fmtData(e.data_evento_fim)}` : ""}
+                              {e.data_montagem ? ` · montagem ${fmtData(e.data_montagem)}` : ""}
+                            </div>
+                          </div>
+                          {feito ? (
+                            <span className="flex items-center gap-1 text-xs text-emerald-600 shrink-0">
+                              <CheckCircle2 className="h-3.5 w-3.5" /> já implementado
+                            </span>
+                          ) : (
+                            <Button size="sm" className="shrink-0" onClick={() => escolherEvento(e)}>
+                              Selecionar
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="space-y-3">
+            <div className="rounded border p-2 text-sm">
+              <div className="font-medium">{evento.nome}</div>
+              <div className="text-xs text-muted-foreground">
+                {[evento.local, [evento.cidade, evento.uf].filter(Boolean).join("/")]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                evento {fmtData(evento.data_evento)}
+                {evento.data_evento_fim ? ` a ${fmtData(evento.data_evento_fim)}` : ""}
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs uppercase text-muted-foreground">Setores do roteiro</Label>
+              <div className="mt-1 space-y-1 rounded border p-2 max-h-72 overflow-y-auto">
+                {setores.map((s) => {
+                  const marcado = s.fixo || selecionadosIds.includes(s.id);
+                  return (
+                    <div key={s.id} className="flex items-center gap-2">
+                      <Checkbox
+                        checked={marcado}
+                        disabled={s.fixo}
+                        onCheckedChange={(v) =>
+                          setSelecionadosIds((prev) =>
+                            v ? [...prev, s.id] : prev.filter((x) => x !== s.id),
+                          )
+                        }
+                      />
+                      <span className="flex-1 truncate text-sm">
+                        {s.nome}
+                        {s.fixo && <span className="ml-1 text-[10px] text-muted-foreground">(fixo)</span>}
+                      </span>
+                      <Input
+                        type="date"
+                        className="h-7 w-[150px] text-xs"
+                        disabled={!marcado}
+                        max={limitePrazo}
+                        value={prazos[s.id] ?? ""}
+                        onChange={(e) => setPrazos((p) => ({ ...p, [s.id]: e.target.value }))}
+                      />
                     </div>
                   );
                 })}
               </div>
+              {limitePrazo && (
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Prazos limitados à data final do evento: {fmtData(limitePrazo)}.
+                </p>
+              )}
+              {roteiroSelecionado.length > 0 && (
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Sequência: {roteiroSelecionado.map((s) => s.nome).join(" → ")}
+                </p>
+              )}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Fechar
-          </Button>
+          {evento ? (
+            <>
+              <Button variant="outline" onClick={voltar}>
+                <ChevronLeft className="h-4 w-4 mr-1" /> Voltar
+              </Button>
+              <Button onClick={confirmar} disabled={criando}>
+                Implementar
+              </Button>
+            </>
+          ) : (
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Fechar
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
