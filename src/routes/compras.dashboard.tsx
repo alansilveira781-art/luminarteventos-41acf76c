@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, CartesianGrid,
+  Cell, Legend, CartesianGrid, LabelList,
 } from "recharts";
 import { COMPRA_STATUSES } from "@/lib/compras";
 import { EMPRESAS } from "@/lib/empresas";
@@ -17,6 +17,59 @@ import { AlertaEstoqueCard } from "@/components/compras/AlertaEstoqueCard";
 
 const sb = supabase as any;
 const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#06b6d4", "#8b5cf6", "#ec4899", "#84cc16"];
+
+/** Cores dos status do quadro (mesma leitura visual do kanban). */
+const STATUS_HEX: Record<string, string> = {
+  solicitacao: "#64748b",
+  analise: "#3b82f6",
+  pendente_aprovacao: "#f59e0b",
+  aprovada: "#10b981",
+  em_andamento: "#6366f1",
+  a_receber: "#06b6d4",
+  finalizado: "#16a34a",
+  negada: "#ef4444",
+};
+
+function truncate(s: string, n = 28) {
+  return s.length > n ? `${s.slice(0, n - 1)}…` : s;
+}
+
+/** Mantém os N maiores e agrupa o restante em "Outros". */
+function topN(rows: { nome: string; valor: number }[], n = 12) {
+  const sorted = [...rows].sort((a, b) => b.valor - a.valor);
+  if (sorted.length <= n) return sorted;
+  const resto = sorted.slice(n).reduce((s, r) => s + r.valor, 0);
+  return [...sorted.slice(0, n), { nome: "Outros", valor: Math.round(resto * 100) / 100 }];
+}
+
+const barHeight = (len: number, min = 220) => Math.max(min, len * 28 + 40);
+
+/** Rótulo do eixo X quebrado em até duas linhas, evitando textos inclinados/sobrepostos. */
+function TwoLineTick({ x, y, payload }: any) {
+  const words = String(payload?.value ?? "").split(" ");
+  const linhas: string[] = [];
+  let atual = "";
+  words.forEach((w: string) => {
+    if ((atual + " " + w).trim().length > 14 && atual) {
+      linhas.push(atual);
+      atual = w;
+    } else {
+      atual = (atual + " " + w).trim();
+    }
+  });
+  if (atual) linhas.push(atual);
+  return (
+    <g transform={`translate(${x},${y + 10})`}>
+      {linhas.slice(0, 2).map((l, i) => (
+        <text key={i} x={0} y={i * 12} textAnchor="middle" fontSize={10} fill="currentColor" opacity={0.75}>
+          {l}
+        </text>
+      ))}
+    </g>
+  );
+}
+
+
 
 export const Route = createFileRoute("/compras/dashboard")({
   component: ComprasDashboard,
@@ -219,7 +272,7 @@ function ComprasDashboard() {
       const k = c.condicao_pagamento || "Não informado";
       map.set(k, (map.get(k) ?? 0) + Number(c.valor_total || 0));
     });
-    return Array.from(map.entries()).map(([nome, valor]) => ({ nome, valor: Math.round(valor * 100) / 100 }));
+    return topN(Array.from(map.entries()).map(([nome, valor]) => ({ nome, valor: Math.round(valor * 100) / 100 })));
   }, [compras, pagamentos]);
 
 
@@ -233,16 +286,16 @@ function ComprasDashboard() {
       const v = Number(it.quantidade || 0) * Number(it.valor_unitario || 0);
       map.set(cat, (map.get(cat) ?? 0) + v);
     });
-    return Array.from(map.entries()).map(([nome, valor]) => ({ nome, valor: Math.round(valor * 100) / 100 }));
+    return topN(Array.from(map.entries()).map(([nome, valor]) => ({ nome, valor: Math.round(valor * 100) / 100 })));
   }, [compras, itens, estoque]);
 
-  // Por status
+  // Por status — na ordem das etapas do quadro
   const porStatus = useMemo(() => {
-    const labels = Object.fromEntries(COMPRA_STATUSES.map((s) => [s.key, s.label]));
     const map = new Map<string, number>();
     compras.forEach((c) => map.set(c.status, (map.get(c.status) ?? 0) + 1));
-    return Array.from(map.entries()).map(([k, v]) => ({ nome: labels[k] ?? k, valor: v }));
+    return COMPRA_STATUSES.map((s) => ({ key: s.key, nome: s.label, valor: map.get(s.key) ?? 0 }));
   }, [compras]);
+
 
   const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -309,40 +362,62 @@ function ComprasDashboard() {
         </ChartCard>
 
         <ChartCard title="Compras por categoria (R$)">
-          <ResponsiveContainer width="100%" height={260}>
-            <PieChart>
-              <Pie data={porCategoria} dataKey="valor" nameKey="nome" outerRadius={90} label>
-                {porCategoria.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-              </Pie>
+          <ResponsiveContainer width="100%" height={barHeight(porCategoria.length)}>
+            <BarChart data={porCategoria} layout="vertical" margin={{ right: 80, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+              <XAxis type="number" fontSize={11} />
+              <YAxis
+                type="category"
+                dataKey="nome"
+                width={180}
+                fontSize={11}
+                tickFormatter={(v: string) => truncate(v, 24)}
+              />
               <Tooltip formatter={(v: any) => fmt(Number(v))} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-            </PieChart>
+              <Bar dataKey="valor" radius={[0, 4, 4, 0]}>
+                {porCategoria.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                <LabelList dataKey="valor" position="right" fontSize={10} formatter={(v: any) => fmt(Number(v))} />
+              </Bar>
+            </BarChart>
           </ResponsiveContainer>
         </ChartCard>
 
         <ChartCard title="Compras por condição de pagamento (R$)">
-          <ResponsiveContainer width="100%" height={260}>
-            <PieChart>
-              <Pie data={porCondicao} dataKey="valor" nameKey="nome" outerRadius={90} label>
-                {porCondicao.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-              </Pie>
+          <ResponsiveContainer width="100%" height={barHeight(porCondicao.length)}>
+            <BarChart data={porCondicao} layout="vertical" margin={{ right: 80, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+              <XAxis type="number" fontSize={11} />
+              <YAxis
+                type="category"
+                dataKey="nome"
+                width={180}
+                fontSize={11}
+                tickFormatter={(v: string) => truncate(v, 24)}
+              />
               <Tooltip formatter={(v: any) => fmt(Number(v))} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-            </PieChart>
+              <Bar dataKey="valor" radius={[0, 4, 4, 0]}>
+                {porCondicao.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                <LabelList dataKey="valor" position="right" fontSize={10} formatter={(v: any) => fmt(Number(v))} />
+              </Bar>
+            </BarChart>
           </ResponsiveContainer>
         </ChartCard>
 
         <ChartCard title="Compras por status (qtd)" className="lg:col-span-2">
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={porStatus}>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={porStatus} margin={{ bottom: 12 }}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-              <XAxis dataKey="nome" fontSize={10} angle={-15} textAnchor="end" height={60} />
-              <YAxis fontSize={11} />
+              <XAxis dataKey="nome" fontSize={10} interval={0} height={56} tick={<TwoLineTick />} />
+              <YAxis fontSize={11} allowDecimals={false} />
               <Tooltip />
-              <Bar dataKey="valor" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
+                {porStatus.map((s) => <Cell key={s.key} fill={STATUS_HEX[s.key] ?? "#8b5cf6"} />)}
+                <LabelList dataKey="valor" position="top" fontSize={10} />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
+
       </div>
 
       <Card className="p-4 mt-4">
@@ -388,15 +463,23 @@ function ComprasDashboard() {
               </ChartCard>
 
               <ChartCard title="Saving por fornecedor (R$)">
-                <ResponsiveContainer width="100%" height={260}>
-                  <BarChart data={saving.fornecedores} layout="vertical">
+                <ResponsiveContainer width="100%" height={barHeight(saving.fornecedores.length)}>
+                  <BarChart data={saving.fornecedores} layout="vertical" margin={{ right: 16, left: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                     <XAxis type="number" fontSize={11} />
-                    <YAxis type="category" dataKey="nome" width={120} fontSize={11} />
+                    <YAxis
+                      type="category"
+                      dataKey="nome"
+                      width={200}
+                      fontSize={11}
+                      interval={0}
+                      tickFormatter={(v: string) => truncate(v, 26)}
+                    />
                     <Tooltip formatter={(v: any) => fmt(Number(v))} />
-                    <Bar dataKey="saving" fill="#10b981" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="saving" fill="#10b981" radius={[0, 4, 4, 0]} barSize={16} />
                   </BarChart>
                 </ResponsiveContainer>
+
               </ChartCard>
             </div>
 
