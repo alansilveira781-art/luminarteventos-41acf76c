@@ -4,9 +4,16 @@ export type Setor = {
   slug: string;
   ordem: number;
   responsavel_id: string | null;
+  fixo?: boolean;
 };
 
-export type Etapa = { id: string; setor_id: string; nome: string; ordem: number };
+export type Etapa = {
+  id: string;
+  setor_id: string;
+  nome: string;
+  descricao?: string | null;
+  ordem: number;
+};
 
 export type Ordem = {
   id: string;
