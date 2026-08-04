@@ -44,6 +44,32 @@ function topN(rows: { nome: string; valor: number }[], n = 12) {
 
 const barHeight = (len: number, min = 220) => Math.max(min, len * 28 + 40);
 
+/** Rótulo do eixo X quebrado em até duas linhas, evitando textos inclinados/sobrepostos. */
+function TwoLineTick({ x, y, payload }: any) {
+  const words = String(payload?.value ?? "").split(" ");
+  const linhas: string[] = [];
+  let atual = "";
+  words.forEach((w: string) => {
+    if ((atual + " " + w).trim().length > 14 && atual) {
+      linhas.push(atual);
+      atual = w;
+    } else {
+      atual = (atual + " " + w).trim();
+    }
+  });
+  if (atual) linhas.push(atual);
+  return (
+    <g transform={`translate(${x},${y + 10})`}>
+      {linhas.slice(0, 2).map((l, i) => (
+        <text key={i} x={0} y={i * 12} textAnchor="middle" fontSize={10} fill="currentColor" opacity={0.75}>
+          {l}
+        </text>
+      ))}
+    </g>
+  );
+}
+
+
 
 export const Route = createFileRoute("/compras/dashboard")({
   component: ComprasDashboard,
