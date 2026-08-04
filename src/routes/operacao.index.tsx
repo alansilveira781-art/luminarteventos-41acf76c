@@ -49,6 +49,7 @@ function OperacaoQuadro() {
   const qc = useQueryClient();
   const { user, isAdmin, isModuleAdmin } = useAuth();
   const [novoOpen, setNovoOpen] = useState(false);
+  const [projetoOpen, setProjetoOpen] = useState(false);
   const [cardId, setCardId] = useState<string | null>(null);
   const [view, setView] = useState("quadro");
 
