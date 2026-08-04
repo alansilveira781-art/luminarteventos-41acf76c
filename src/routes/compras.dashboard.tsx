@@ -272,7 +272,7 @@ function ComprasDashboard() {
       const k = c.condicao_pagamento || "Não informado";
       map.set(k, (map.get(k) ?? 0) + Number(c.valor_total || 0));
     });
-    return Array.from(map.entries()).map(([nome, valor]) => ({ nome, valor: Math.round(valor * 100) / 100 }));
+    return topN(Array.from(map.entries()).map(([nome, valor]) => ({ nome, valor: Math.round(valor * 100) / 100 })));
   }, [compras, pagamentos]);
 
 
