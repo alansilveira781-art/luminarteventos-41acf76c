@@ -243,6 +243,11 @@ export function ChecklistCardDialog({
                       <div className={`text-sm ${i.concluido ? "line-through text-muted-foreground" : ""}`}>
                         {i.nome}
                       </div>
+                      {i.descricao && (
+                        <div className="text-xs text-muted-foreground whitespace-pre-wrap mt-0.5">
+                          {i.descricao}
+                        </div>
+                      )}
                       {i.concluido_em && (
                         <div className="text-[11px] text-muted-foreground">
                           concluído em {fmtData(i.concluido_em)}
