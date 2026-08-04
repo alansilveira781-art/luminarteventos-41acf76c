@@ -274,6 +274,23 @@ function OperacaoQuadro() {
         />
       )}
 
+      {projetoOpen && (
+        <ImplementarProjetoDialog
+          open={projetoOpen}
+          onOpenChange={setProjetoOpen}
+          setores={setores}
+          userId={user?.id ?? null}
+          onCreated={() => {
+            qc.invalidateQueries({ queryKey: ["op_ordens"] });
+            qc.invalidateQueries({ queryKey: ["op_roteiros"] });
+            qc.invalidateQueries({ queryKey: ["op_checklists"] });
+            qc.invalidateQueries({ queryKey: ["op_ordens_evento_ids"] });
+          }}
+        />
+      )}
+
+
+
       {cardId && cardSelecionado && (
         <ChecklistCardDialog
           ordemId={cardId}
