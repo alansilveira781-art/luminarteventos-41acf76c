@@ -463,15 +463,23 @@ function ComprasDashboard() {
               </ChartCard>
 
               <ChartCard title="Saving por fornecedor (R$)">
-                <ResponsiveContainer width="100%" height={260}>
-                  <BarChart data={saving.fornecedores} layout="vertical">
+                <ResponsiveContainer width="100%" height={barHeight(saving.fornecedores.length)}>
+                  <BarChart data={saving.fornecedores} layout="vertical" margin={{ right: 16, left: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                     <XAxis type="number" fontSize={11} />
-                    <YAxis type="category" dataKey="nome" width={120} fontSize={11} />
+                    <YAxis
+                      type="category"
+                      dataKey="nome"
+                      width={200}
+                      fontSize={11}
+                      interval={0}
+                      tickFormatter={(v: string) => truncate(v, 26)}
+                    />
                     <Tooltip formatter={(v: any) => fmt(Number(v))} />
-                    <Bar dataKey="saving" fill="#10b981" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="saving" fill="#10b981" radius={[0, 4, 4, 0]} barSize={16} />
                   </BarChart>
                 </ResponsiveContainer>
+
               </ChartCard>
             </div>
 
