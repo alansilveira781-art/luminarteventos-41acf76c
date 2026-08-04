@@ -181,9 +181,14 @@ function OperacaoQuadro() {
         title="Operação"
         description="Passo a passo da produção: cada card percorre os setores do seu roteiro"
         actions={
-          <Button onClick={() => setNovoOpen(true)} disabled={setores.length === 0}>
-            <Plus className="h-4 w-4 mr-1" /> Nova ordem
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setProjetoOpen(true)} disabled={setores.length === 0}>
+              <CalendarDays className="h-4 w-4 mr-1" /> Implementar projeto
+            </Button>
+            <Button onClick={() => setNovoOpen(true)} disabled={setores.length === 0}>
+              <Plus className="h-4 w-4 mr-1" /> Nova ordem
+            </Button>
+          </div>
         }
       />
 
