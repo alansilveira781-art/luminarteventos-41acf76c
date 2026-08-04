@@ -87,6 +87,7 @@ export const TIPO_DEMANDA_OPTIONS = [
   { value: "departamento_pessoal", label: "Departamento Pessoal" },
   { value: "recursos_humanos", label: "Recursos Humanos" },
   { value: "pro_labore", label: "Pro Labore" },
+  { value: "institucional", label: "Institucional" },
 ] as const;
 
 
