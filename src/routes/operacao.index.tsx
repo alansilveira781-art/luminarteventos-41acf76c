@@ -499,10 +499,12 @@ function NovaOrdemDialog({
               {setores.map((s) => (
                 <label key={s.id} className="flex items-center gap-2 text-sm">
                   <Checkbox
-                    checked={roteiro.includes(s.id)}
+                    checked={s.fixo || roteiro.includes(s.id)}
+                    disabled={s.fixo}
                     onCheckedChange={(v) => toggleSetor(s.id, !!v)}
                   />
                   {s.nome}
+                  {s.fixo && <span className="text-[10px] text-muted-foreground">(fixo)</span>}
                 </label>
               ))}
             </div>
