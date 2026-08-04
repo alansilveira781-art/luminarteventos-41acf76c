@@ -400,7 +400,7 @@ function NovaOrdemDialog({
   const [roteiro, setRoteiro] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
-  const selecionados = setores.filter((s) => roteiro.includes(s.id));
+  const selecionados = setores.filter((s) => s.fixo || roteiro.includes(s.id));
 
   function toggleSetor(id: string, v: boolean) {
     setRoteiro((prev) => (v ? [...prev, id] : prev.filter((x) => x !== id)));
