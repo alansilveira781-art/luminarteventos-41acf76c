@@ -1,14 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Trash2, ArrowUp, ArrowDown, Lock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "@tanstack/react-router";
 
@@ -16,8 +17,16 @@ export const Route = createFileRoute("/operacao/setores")({ component: SetoresPa
 
 const sb = supabase as any;
 
-type Setor = { id: string; nome: string; slug: string; ordem: number; ativo: boolean; responsavel_id: string | null };
-type Etapa = { id: string; setor_id: string; nome: string; ordem: number; ativo: boolean };
+type Setor = {
+  id: string;
+  nome: string;
+  slug: string;
+  ordem: number;
+  ativo: boolean;
+  fixo: boolean;
+  responsavel_id: string | null;
+};
+type Etapa = { id: string; setor_id: string; nome: string; descricao: string | null; ordem: number; ativo: boolean };
 type Profile = { id: string; nome: string | null; email: string | null };
 
 function SetoresPage() {
@@ -70,7 +79,7 @@ function SetoresPage() {
     <div className="space-y-4">
       <PageHeader
         title="Setores e etapas"
-        description="Configure roteiros de produção por setor"
+        description="Configure roteiros de produção por setor. Preparação e Executivo são setores fixos e vêm sempre primeiro."
         actions={<Button onClick={addSetor}><Plus className="h-4 w-4 mr-1" /> Novo setor</Button>}
       />
       <div className="space-y-4">
@@ -80,7 +89,15 @@ function SetoresPage() {
             <div key={s.id} className="rounded-lg border p-3 space-y-2">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
-                  <Input className="w-64" value={s.nome} onChange={async (e) => {
+                  {s.fixo && (
+                    <span
+                      title="Setor fixo do início do processo"
+                      className="flex items-center gap-1 text-[10px] uppercase rounded-full border px-2 py-0.5 text-muted-foreground"
+                    >
+                      <Lock className="h-3 w-3" /> fixo
+                    </span>
+                  )}
+                  <Input className="w-64" value={s.nome} disabled={s.fixo} onChange={async (e) => {
                     await sb.from("op_setores").update({ nome: e.target.value }).eq("id", s.id);
                     inv();
                   }} />
@@ -100,40 +117,101 @@ function SetoresPage() {
                   <Button size="sm" variant="outline" onClick={() => addEtapa(s.id)}>
                     <Plus className="h-3.5 w-3.5 mr-1" /> Etapa
                   </Button>
-                  <Button size="sm" variant={s.ativo ? "outline" : "default"} onClick={async () => {
-                    await sb.from("op_setores").update({ ativo: !s.ativo }).eq("id", s.id);
-                    inv();
-                  }}>{s.ativo ? "Desativar" : "Ativar"}</Button>
+                  {!s.fixo && (
+                    <Button size="sm" variant={s.ativo ? "outline" : "default"} onClick={async () => {
+                      await sb.from("op_setores").update({ ativo: !s.ativo }).eq("id", s.id);
+                      inv();
+                    }}>{s.ativo ? "Desativar" : "Ativar"}</Button>
+                  )}
                 </div>
               </div>
-              <div className="grid gap-1">
+              <div className="grid gap-2">
                 {etapas.map((e, i) => (
-                  <div key={e.id} className="flex items-center gap-2 text-sm">
-                    <span className="text-xs text-muted-foreground w-8">#{i + 1}</span>
-                    <Input className="flex-1 h-8" value={e.nome} onChange={async (ev) => {
-                      await sb.from("op_setor_etapas").update({ nome: ev.target.value }).eq("id", e.id);
-                      inv();
-                    }} />
-                    <Button size="icon" variant="ghost" disabled={i === 0} onClick={() => swap(e, etapas[i - 1])}>
-                      <ArrowUp className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button size="icon" variant="ghost" disabled={i === etapas.length - 1} onClick={() => swap(e, etapas[i + 1])}>
-                      <ArrowDown className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button size="icon" variant="ghost" onClick={async () => {
-                      if (!confirm("Excluir etapa?")) return;
-                      const { error } = await sb.from("op_setor_etapas").delete().eq("id", e.id);
-                      if (error) return toast.error(error.message);
-                      inv();
-                    }}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
+                  <EtapaRow
+                    key={e.id}
+                    etapa={e}
+                    index={i}
+                    primeira={i === 0}
+                    ultima={i === etapas.length - 1}
+                    onUp={() => swap(e, etapas[i - 1])}
+                    onDown={() => swap(e, etapas[i + 1])}
+                    onChanged={inv}
+                  />
                 ))}
               </div>
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function EtapaRow({
+  etapa,
+  index,
+  primeira,
+  ultima,
+  onUp,
+  onDown,
+  onChanged,
+}: {
+  etapa: Etapa;
+  index: number;
+  primeira: boolean;
+  ultima: boolean;
+  onUp: () => void;
+  onDown: () => void;
+  onChanged: () => void;
+}) {
+  const [nome, setNome] = useState(etapa.nome);
+  const [descricao, setDescricao] = useState(etapa.descricao ?? "");
+
+  useEffect(() => {
+    setNome(etapa.nome);
+    setDescricao(etapa.descricao ?? "");
+  }, [etapa.id, etapa.nome, etapa.descricao]);
+
+  async function salvar(patch: Record<string, any>) {
+    const { error } = await sb.from("op_setor_etapas").update(patch).eq("id", etapa.id);
+    if (error) return toast.error(error.message);
+    onChanged();
+  }
+
+  return (
+    <div className="rounded border p-2 space-y-1.5">
+      <div className="flex items-center gap-2 text-sm">
+        <span className="text-xs text-muted-foreground w-8">#{index + 1}</span>
+        <Input
+          className="flex-1 h-8"
+          value={nome}
+          onChange={(ev) => setNome(ev.target.value)}
+          onBlur={() => nome !== etapa.nome && salvar({ nome })}
+        />
+        <Button size="icon" variant="ghost" disabled={primeira} onClick={onUp}>
+          <ArrowUp className="h-3.5 w-3.5" />
+        </Button>
+        <Button size="icon" variant="ghost" disabled={ultima} onClick={onDown}>
+          <ArrowDown className="h-3.5 w-3.5" />
+        </Button>
+        <Button size="icon" variant="ghost" onClick={async () => {
+          if (!confirm("Excluir etapa?")) return;
+          const { error } = await sb.from("op_setor_etapas").delete().eq("id", etapa.id);
+          if (error) return toast.error(error.message);
+          onChanged();
+        }}>
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+      <div className="pl-10">
+        <Textarea
+          rows={2}
+          className="text-sm"
+          placeholder="Descrição: o que deve ser feito nesta etapa"
+          value={descricao}
+          onChange={(ev) => setDescricao(ev.target.value)}
+          onBlur={() => (descricao || null) !== (etapa.descricao ?? null) && salvar({ descricao: descricao || null })}
+        />
       </div>
     </div>
   );

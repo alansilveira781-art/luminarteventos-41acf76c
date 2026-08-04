@@ -20,7 +20,7 @@ import {
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import { Plus, CalendarDays } from "lucide-react";
 import {
   DndContext,
   PointerSensor,
@@ -32,6 +32,7 @@ import {
 } from "@dnd-kit/core";
 import { GanttOrdens } from "@/components/operacao/GanttOrdens";
 import { ChecklistCardDialog, garantirChecklist } from "@/components/operacao/ChecklistCardDialog";
+import { ImplementarProjetoDialog } from "@/components/operacao/ImplementarProjetoDialog";
 import {
   STATUS_COLORS,
   progressoOrdem,
@@ -49,6 +50,7 @@ function OperacaoQuadro() {
   const qc = useQueryClient();
   const { user, isAdmin, isModuleAdmin } = useAuth();
   const [novoOpen, setNovoOpen] = useState(false);
+  const [projetoOpen, setProjetoOpen] = useState(false);
   const [cardId, setCardId] = useState<string | null>(null);
   const [view, setView] = useState("quadro");
 
@@ -57,7 +59,7 @@ function OperacaoQuadro() {
     queryFn: async () => {
       const { data, error } = await sb
         .from("op_setores")
-        .select("id,nome,slug,ordem,responsavel_id")
+        .select("id,nome,slug,ordem,responsavel_id,fixo")
         .eq("ativo", true)
         .order("ordem");
       if (error) throw error;
@@ -181,9 +183,14 @@ function OperacaoQuadro() {
         title="Operação"
         description="Passo a passo da produção: cada card percorre os setores do seu roteiro"
         actions={
-          <Button onClick={() => setNovoOpen(true)} disabled={setores.length === 0}>
-            <Plus className="h-4 w-4 mr-1" /> Nova ordem
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setProjetoOpen(true)} disabled={setores.length === 0}>
+              <CalendarDays className="h-4 w-4 mr-1" /> Implementar projeto
+            </Button>
+            <Button onClick={() => setNovoOpen(true)} disabled={setores.length === 0}>
+              <Plus className="h-4 w-4 mr-1" /> Nova ordem
+            </Button>
+          </div>
         }
       />
 
@@ -267,6 +274,23 @@ function OperacaoQuadro() {
           }}
         />
       )}
+
+      {projetoOpen && (
+        <ImplementarProjetoDialog
+          open={projetoOpen}
+          onOpenChange={setProjetoOpen}
+          setores={setores}
+          userId={user?.id ?? null}
+          onCreated={() => {
+            qc.invalidateQueries({ queryKey: ["op_ordens"] });
+            qc.invalidateQueries({ queryKey: ["op_roteiros"] });
+            qc.invalidateQueries({ queryKey: ["op_checklists"] });
+            qc.invalidateQueries({ queryKey: ["op_ordens_evento_ids"] });
+          }}
+        />
+      )}
+
+
 
       {cardId && cardSelecionado && (
         <ChecklistCardDialog
@@ -400,7 +424,7 @@ function NovaOrdemDialog({
   const [roteiro, setRoteiro] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
-  const selecionados = setores.filter((s) => roteiro.includes(s.id));
+  const selecionados = setores.filter((s) => s.fixo || roteiro.includes(s.id));
 
   function toggleSetor(id: string, v: boolean) {
     setRoteiro((prev) => (v ? [...prev, id] : prev.filter((x) => x !== id)));
@@ -499,10 +523,12 @@ function NovaOrdemDialog({
               {setores.map((s) => (
                 <label key={s.id} className="flex items-center gap-2 text-sm">
                   <Checkbox
-                    checked={roteiro.includes(s.id)}
+                    checked={s.fixo || roteiro.includes(s.id)}
+                    disabled={s.fixo}
                     onCheckedChange={(v) => toggleSetor(s.id, !!v)}
                   />
                   {s.nome}
+                  {s.fixo && <span className="text-[10px] text-muted-foreground">(fixo)</span>}
                 </label>
               ))}
             </div>

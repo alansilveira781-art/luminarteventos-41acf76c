@@ -3890,6 +3890,7 @@ export type Database = {
           concluido_em: string | null
           concluido_por: string | null
           created_at: string
+          descricao: string | null
           etapa_id: string | null
           id: string
           nome: string
@@ -3903,6 +3904,7 @@ export type Database = {
           concluido_em?: string | null
           concluido_por?: string | null
           created_at?: string
+          descricao?: string | null
           etapa_id?: string | null
           id?: string
           nome: string
@@ -3916,6 +3918,7 @@ export type Database = {
           concluido_em?: string | null
           concluido_por?: string | null
           created_at?: string
+          descricao?: string | null
           etapa_id?: string | null
           id?: string
           nome?: string
@@ -4089,6 +4092,7 @@ export type Database = {
           data_inicio: string | null
           descricao: string | null
           etapa_atual_id: string | null
+          evento_id: string | null
           evento_ref: string | null
           id: string
           numero: number
@@ -4112,6 +4116,7 @@ export type Database = {
           data_inicio?: string | null
           descricao?: string | null
           etapa_atual_id?: string | null
+          evento_id?: string | null
           evento_ref?: string | null
           id?: string
           numero?: number
@@ -4135,6 +4140,7 @@ export type Database = {
           data_inicio?: string | null
           descricao?: string | null
           etapa_atual_id?: string | null
+          evento_id?: string | null
           evento_ref?: string | null
           id?: string
           numero?: number
@@ -4167,6 +4173,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "op_ordens_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "op_ordens_proposta_id_fkey"
             columns: ["proposta_id"]
             isOneToOne: false
@@ -4186,6 +4199,7 @@ export type Database = {
         Row: {
           ativo: boolean
           created_at: string
+          descricao: string | null
           id: string
           nome: string
           ordem: number
@@ -4194,6 +4208,7 @@ export type Database = {
         Insert: {
           ativo?: boolean
           created_at?: string
+          descricao?: string | null
           id?: string
           nome: string
           ordem: number
@@ -4202,6 +4217,7 @@ export type Database = {
         Update: {
           ativo?: boolean
           created_at?: string
+          descricao?: string | null
           id?: string
           nome?: string
           ordem?: number
@@ -4221,6 +4237,7 @@ export type Database = {
         Row: {
           ativo: boolean
           created_at: string
+          fixo: boolean
           id: string
           nome: string
           ordem: number
@@ -4231,6 +4248,7 @@ export type Database = {
         Insert: {
           ativo?: boolean
           created_at?: string
+          fixo?: boolean
           id?: string
           nome: string
           ordem?: number
@@ -4241,6 +4259,7 @@ export type Database = {
         Update: {
           ativo?: boolean
           created_at?: string
+          fixo?: boolean
           id?: string
           nome?: string
           ordem?: number
