@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, CartesianGrid,
+  Cell, Legend, CartesianGrid, LabelList,
 } from "recharts";
 import { COMPRA_STATUSES } from "@/lib/compras";
 import { EMPRESAS } from "@/lib/empresas";
@@ -17,6 +17,33 @@ import { AlertaEstoqueCard } from "@/components/compras/AlertaEstoqueCard";
 
 const sb = supabase as any;
 const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#06b6d4", "#8b5cf6", "#ec4899", "#84cc16"];
+
+/** Cores dos status do quadro (mesma leitura visual do kanban). */
+const STATUS_HEX: Record<string, string> = {
+  solicitacao: "#64748b",
+  analise: "#3b82f6",
+  pendente_aprovacao: "#f59e0b",
+  aprovada: "#10b981",
+  em_andamento: "#6366f1",
+  a_receber: "#06b6d4",
+  finalizado: "#16a34a",
+  negada: "#ef4444",
+};
+
+function truncate(s: string, n = 28) {
+  return s.length > n ? `${s.slice(0, n - 1)}…` : s;
+}
+
+/** Mantém os N maiores e agrupa o restante em "Outros". */
+function topN(rows: { nome: string; valor: number }[], n = 12) {
+  const sorted = [...rows].sort((a, b) => b.valor - a.valor);
+  if (sorted.length <= n) return sorted;
+  const resto = sorted.slice(n).reduce((s, r) => s + r.valor, 0);
+  return [...sorted.slice(0, n), { nome: "Outros", valor: Math.round(resto * 100) / 100 }];
+}
+
+const barHeight = (len: number, min = 220) => Math.max(min, len * 28 + 40);
+
 
 export const Route = createFileRoute("/compras/dashboard")({
   component: ComprasDashboard,
