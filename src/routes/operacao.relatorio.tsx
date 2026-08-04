@@ -17,34 +17,44 @@ function RelatorioGargalo() {
     queryKey: ["op_setores_all_r"],
     queryFn: async () => (await sb.from("op_setores").select("id,nome").order("ordem")).data ?? [],
   });
-  const { data: etapas = [] } = useQuery<any[]>({
-    queryKey: ["op_etapas_all_r"],
-    queryFn: async () => (await sb.from("op_setor_etapas").select("id,setor_id,nome,ordem").order("ordem")).data ?? [],
+  const { data: passagens = [] } = useQuery<any[]>({
+    queryKey: ["op_passagens_r"],
+    queryFn: async () =>
+      (await sb.from("op_ordem_setores").select("setor_id,iniciado_em,concluido_em")).data ?? [],
   });
-  const { data: aponts = [] } = useQuery<any[]>({
-    queryKey: ["op_aponts_r"],
-    queryFn: async () => (await sb.from("op_ordem_apontamentos").select("etapa_id,iniciado_em,finalizado_em").not("finalizado_em", "is", null)).data ?? [],
+  const { data: checklist = [] } = useQuery<any[]>({
+    queryKey: ["op_checklist_r"],
+    queryFn: async () =>
+      (await sb.from("op_ordem_checklist").select("setor_id,concluido")).data ?? [],
   });
   const { data: ordens = [] } = useQuery<any[]>({
     queryKey: ["op_ordens_all_r"],
-    queryFn: async () => (await sb.from("op_ordens").select("id,setor_id,etapa_atual_id,status")).data ?? [],
+    queryFn: async () => (await sb.from("op_ordens").select("id,setor_id,status")).data ?? [],
   });
 
   const rows = useMemo(() => {
-    const filteredEtapas = setorId === "__all__" ? etapas : etapas.filter((e) => e.setor_id === setorId);
-    return filteredEtapas.map((et) => {
-      const setor = setores.find((s) => s.id === et.setor_id);
-      const eventos = aponts.filter((a) => a.etapa_id === et.id);
-      const total = eventos.length;
-      let sum = 0;
-      eventos.forEach((a) => {
-        sum += (new Date(a.finalizado_em).getTime() - new Date(a.iniciado_em).getTime()) / 60000;
-      });
-      const media = total ? sum / total : 0;
-      const abertas = ordens.filter((o) => o.etapa_atual_id === et.id && o.status !== "finalizada" && o.status !== "cancelada").length;
-      return { setor: setor?.nome, etapa: et.nome, ordem: et.ordem, total, media, abertas };
-    }).sort((a, b) => (b.abertas - a.abertas) || (b.media - a.media));
-  }, [etapas, aponts, ordens, setorId, setores]);
+    const alvo = setorId === "__all__" ? setores : setores.filter((s) => s.id === setorId);
+    return alvo
+      .map((s) => {
+        const concluidas = passagens.filter(
+          (p) => p.setor_id === s.id && p.iniciado_em && p.concluido_em,
+        );
+        const total = concluidas.length;
+        let sum = 0;
+        concluidas.forEach((p) => {
+          sum += (new Date(p.concluido_em).getTime() - new Date(p.iniciado_em).getTime()) / 60000;
+        });
+        const media = total ? sum / total : 0;
+        const abertas = ordens.filter(
+          (o) => o.setor_id === s.id && o.status !== "finalizada" && o.status !== "cancelada",
+        ).length;
+        const itens = checklist.filter((c) => c.setor_id === s.id);
+        const pendentes = itens.filter((c) => !c.concluido).length;
+        return { setor: s.nome, pendentes, itens: itens.length, total, media, abertas };
+      })
+      .sort((a, b) => b.abertas - a.abertas || b.media - a.media);
+  }, [setores, passagens, checklist, ordens, setorId]);
+
 
   const fmtMin = (m: number) => m < 60 ? `${Math.round(m)} min` : `${(m / 60).toFixed(1)} h`;
 
@@ -68,17 +78,17 @@ function RelatorioGargalo() {
           <TableHeader>
             <TableRow>
               <TableHead>Setor</TableHead>
-              <TableHead>Etapa</TableHead>
+              <TableHead className="text-right">Etapas pendentes</TableHead>
               <TableHead className="text-right">Ordens paradas</TableHead>
               <TableHead className="text-right">Tempo médio</TableHead>
-              <TableHead className="text-right">Apontamentos</TableHead>
+              <TableHead className="text-right">Passagens</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((r, i) => (
               <TableRow key={i}>
                 <TableCell>{r.setor}</TableCell>
-                <TableCell>{r.etapa}</TableCell>
+                <TableCell className="text-right">{r.itens ? `${r.pendentes}/${r.itens}` : "—"}</TableCell>
                 <TableCell className="text-right">
                   <span className={r.abertas > 3 ? "font-semibold text-rose-600" : ""}>{r.abertas}</span>
                 </TableCell>

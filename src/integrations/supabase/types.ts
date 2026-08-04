@@ -3884,6 +3884,70 @@ export type Database = {
           },
         ]
       }
+      op_ordem_checklist: {
+        Row: {
+          concluido: boolean
+          concluido_em: string | null
+          concluido_por: string | null
+          created_at: string
+          etapa_id: string | null
+          id: string
+          nome: string
+          ordem: number
+          ordem_id: string
+          setor_id: string
+          updated_at: string
+        }
+        Insert: {
+          concluido?: boolean
+          concluido_em?: string | null
+          concluido_por?: string | null
+          created_at?: string
+          etapa_id?: string | null
+          id?: string
+          nome: string
+          ordem?: number
+          ordem_id: string
+          setor_id: string
+          updated_at?: string
+        }
+        Update: {
+          concluido?: boolean
+          concluido_em?: string | null
+          concluido_por?: string | null
+          created_at?: string
+          etapa_id?: string | null
+          id?: string
+          nome?: string
+          ordem?: number
+          ordem_id?: string
+          setor_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "op_ordem_checklist_etapa_id_fkey"
+            columns: ["etapa_id"]
+            isOneToOne: false
+            referencedRelation: "op_setor_etapas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "op_ordem_checklist_ordem_id_fkey"
+            columns: ["ordem_id"]
+            isOneToOne: false
+            referencedRelation: "op_ordens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "op_ordem_checklist_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "op_setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       op_ordem_comentarios: {
         Row: {
           created_at: string
@@ -3966,11 +4030,63 @@ export type Database = {
           },
         ]
       }
+      op_ordem_setores: {
+        Row: {
+          concluido_em: string | null
+          created_at: string
+          id: string
+          iniciado_em: string | null
+          ordem_id: string
+          posicao: number
+          setor_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          concluido_em?: string | null
+          created_at?: string
+          id?: string
+          iniciado_em?: string | null
+          ordem_id: string
+          posicao?: number
+          setor_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          concluido_em?: string | null
+          created_at?: string
+          id?: string
+          iniciado_em?: string | null
+          ordem_id?: string
+          posicao?: number
+          setor_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "op_ordem_setores_ordem_id_fkey"
+            columns: ["ordem_id"]
+            isOneToOne: false
+            referencedRelation: "op_ordens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "op_ordem_setores_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "op_setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       op_ordens: {
         Row: {
           acervo_id: string | null
           created_at: string
           created_by: string | null
+          data_inicio: string | null
           descricao: string | null
           etapa_atual_id: string | null
           evento_ref: string | null
@@ -3993,6 +4109,7 @@ export type Database = {
           acervo_id?: string | null
           created_at?: string
           created_by?: string | null
+          data_inicio?: string | null
           descricao?: string | null
           etapa_atual_id?: string | null
           evento_ref?: string | null
@@ -4015,6 +4132,7 @@ export type Database = {
           acervo_id?: string | null
           created_at?: string
           created_by?: string | null
+          data_inicio?: string | null
           descricao?: string | null
           etapa_atual_id?: string | null
           evento_ref?: string | null
