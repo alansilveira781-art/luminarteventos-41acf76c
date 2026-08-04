@@ -48,6 +48,7 @@ export type ChecklistItem = {
   setor_id: string;
   etapa_id: string | null;
   nome: string;
+  descricao?: string | null;
   ordem: number;
   concluido: boolean;
   concluido_por: string | null;
