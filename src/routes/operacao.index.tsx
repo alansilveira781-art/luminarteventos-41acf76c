@@ -20,7 +20,7 @@ import {
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import { Plus, CalendarDays } from "lucide-react";
 import {
   DndContext,
   PointerSensor,
