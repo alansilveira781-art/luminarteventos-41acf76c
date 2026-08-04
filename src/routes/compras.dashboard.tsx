@@ -336,40 +336,62 @@ function ComprasDashboard() {
         </ChartCard>
 
         <ChartCard title="Compras por categoria (R$)">
-          <ResponsiveContainer width="100%" height={260}>
-            <PieChart>
-              <Pie data={porCategoria} dataKey="valor" nameKey="nome" outerRadius={90} label>
-                {porCategoria.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-              </Pie>
+          <ResponsiveContainer width="100%" height={barHeight(porCategoria.length)}>
+            <BarChart data={porCategoria} layout="vertical" margin={{ right: 80, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+              <XAxis type="number" fontSize={11} />
+              <YAxis
+                type="category"
+                dataKey="nome"
+                width={180}
+                fontSize={11}
+                tickFormatter={(v: string) => truncate(v, 24)}
+              />
               <Tooltip formatter={(v: any) => fmt(Number(v))} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-            </PieChart>
+              <Bar dataKey="valor" radius={[0, 4, 4, 0]}>
+                {porCategoria.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                <LabelList dataKey="valor" position="right" fontSize={10} formatter={(v: any) => fmt(Number(v))} />
+              </Bar>
+            </BarChart>
           </ResponsiveContainer>
         </ChartCard>
 
         <ChartCard title="Compras por condição de pagamento (R$)">
-          <ResponsiveContainer width="100%" height={260}>
-            <PieChart>
-              <Pie data={porCondicao} dataKey="valor" nameKey="nome" outerRadius={90} label>
-                {porCondicao.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-              </Pie>
+          <ResponsiveContainer width="100%" height={barHeight(porCondicao.length)}>
+            <BarChart data={porCondicao} layout="vertical" margin={{ right: 80, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+              <XAxis type="number" fontSize={11} />
+              <YAxis
+                type="category"
+                dataKey="nome"
+                width={180}
+                fontSize={11}
+                tickFormatter={(v: string) => truncate(v, 24)}
+              />
               <Tooltip formatter={(v: any) => fmt(Number(v))} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-            </PieChart>
+              <Bar dataKey="valor" radius={[0, 4, 4, 0]}>
+                {porCondicao.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                <LabelList dataKey="valor" position="right" fontSize={10} formatter={(v: any) => fmt(Number(v))} />
+              </Bar>
+            </BarChart>
           </ResponsiveContainer>
         </ChartCard>
 
         <ChartCard title="Compras por status (qtd)" className="lg:col-span-2">
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={porStatus}>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={porStatus} margin={{ bottom: 12 }}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-              <XAxis dataKey="nome" fontSize={10} angle={-15} textAnchor="end" height={60} />
-              <YAxis fontSize={11} />
+              <XAxis dataKey="nome" fontSize={10} interval={0} height={56} tick={<TwoLineTick />} />
+              <YAxis fontSize={11} allowDecimals={false} />
               <Tooltip />
-              <Bar dataKey="valor" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
+                {porStatus.map((s) => <Cell key={s.key} fill={STATUS_HEX[s.key] ?? "#8b5cf6"} />)}
+                <LabelList dataKey="valor" position="top" fontSize={10} />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
+
       </div>
 
       <Card className="p-4 mt-4">
