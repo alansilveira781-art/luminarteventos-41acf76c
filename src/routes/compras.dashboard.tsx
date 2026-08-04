@@ -260,16 +260,16 @@ function ComprasDashboard() {
       const v = Number(it.quantidade || 0) * Number(it.valor_unitario || 0);
       map.set(cat, (map.get(cat) ?? 0) + v);
     });
-    return Array.from(map.entries()).map(([nome, valor]) => ({ nome, valor: Math.round(valor * 100) / 100 }));
+    return topN(Array.from(map.entries()).map(([nome, valor]) => ({ nome, valor: Math.round(valor * 100) / 100 })));
   }, [compras, itens, estoque]);
 
-  // Por status
+  // Por status — na ordem das etapas do quadro
   const porStatus = useMemo(() => {
-    const labels = Object.fromEntries(COMPRA_STATUSES.map((s) => [s.key, s.label]));
     const map = new Map<string, number>();
     compras.forEach((c) => map.set(c.status, (map.get(c.status) ?? 0) + 1));
-    return Array.from(map.entries()).map(([k, v]) => ({ nome: labels[k] ?? k, valor: v }));
+    return COMPRA_STATUSES.map((s) => ({ key: s.key, nome: s.label, valor: map.get(s.key) ?? 0 }));
   }, [compras]);
+
 
   const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
