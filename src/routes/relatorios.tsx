@@ -557,30 +557,6 @@ function formatReport(id: ReportId, rows: any[]): { headers: string[]; body: any
     });
     return { headers, body, totals: ["TOTAL", "", "", sumQ, "", "", ""] };
   }
-  if (id === "projecao_materiais") {
-    if (!filtroItem) return [];
-    const rows = await fetchPaged((f, t) =>
-      supabase
-        .from("itens")
-        .select(sel("id,nome,codigo,unidade,quantidade_atual,valor_unitario,status"))
-        .in("id", filtroItem)
-        .order("nome")
-        .range(f, t),
-    );
-    const byId = new Map(rows.map((r: any) => [r.id, r]));
-    return filtroItem.map(
-      (id2) =>
-        byId.get(id2) ?? {
-          id: id2,
-          nome: "(item não encontrado)",
-          codigo: null,
-          unidade: "",
-          quantidade_atual: 0,
-          valor_unitario: 0,
-          status: null,
-        },
-    );
-  }
   if (id === "estoque") {
     const headers = ["Código", "Item", "Categoria", "Un", "Qtd atual", "Mín", "Valor unit.", "Valor total", "Localização", "Status"];
     let sumQ = 0, sumMin = 0, sumT = 0;
