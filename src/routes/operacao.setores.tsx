@@ -27,7 +27,7 @@ type Setor = {
   responsavel_id: string | null;
 };
 type Etapa = { id: string; setor_id: string; nome: string; descricao: string | null; ordem: number; ativo: boolean };
-type Profile = { id: string; nome: string | null; email: string | null };
+type Profile = { id: string; display_name: string | null; email: string | null };
 
 function SetoresPage() {
   const qc = useQueryClient();
@@ -44,7 +44,7 @@ function SetoresPage() {
   });
   const { data: profiles = [] } = useQuery<Profile[]>({
     queryKey: ["profiles_min"],
-    queryFn: async () => (await sb.from("profiles").select("id,nome,email").order("nome")).data ?? [],
+    queryFn: async () => (await sb.from("profiles").select("id,display_name,email").order("display_name")).data ?? [],
   });
 
   const inv = () => {
@@ -109,7 +109,7 @@ function SetoresPage() {
                     <SelectTrigger className="w-56 h-8"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none__">— nenhum —</SelectItem>
-                      {profiles.map((p) => <SelectItem key={p.id} value={p.id}>{p.nome ?? p.email ?? p.id}</SelectItem>)}
+                      {profiles.map((p) => <SelectItem key={p.id} value={p.id}>{p.display_name ?? p.email ?? p.id}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>

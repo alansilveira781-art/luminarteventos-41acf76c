@@ -52,6 +52,8 @@ function Dashboard() {
   const [pessoaTipo, setPessoaTipo] = useState<"solicitante" | "fornecedor">("solicitante");
   const [pessoaId, setPessoaId] = useState(ALL);
   const [categoriaAbc, setCategoriaAbc] = useState(ALL);
+  const [eventoSel, setEventoSel] = useState(ALL);
+
 
   // Filtro de visão geral (cards): ano e mês
   const [anoVisao, setAnoVisao] = useState<number>(hoje.getFullYear());
@@ -325,7 +327,83 @@ function Dashboard() {
     });
   }, [saidasAbc]);
 
+  // Saídas por evento/projeto no período
+  const { data: saidasEvento } = useQuery({
+    queryKey: ["dashboard-saidas-evento", dataIni, dataFim],
+    queryFn: async () => {
+      const all: any[] = [];
+      const size = 1000;
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("movimentacoes")
+          .select("quantidade,valor_unitario,evento_projeto,saida_tipo,observacoes,finalidade,tipo,item:itens(nome,codigo,unidade,valor_unitario)")
+          .eq("tipo", "saida")
+          .gte("data_movimento", new Date(dataIni).toISOString())
+          .lte("data_movimento", new Date(`${dataFim}T23:59:59`).toISOString())
+          .range(from, from + size - 1);
+        if (error) throw error;
+        const rows = data ?? [];
+        all.push(...rows);
+        if (rows.length < size) break;
+        from += size;
+      }
+      return all.filter((r: any) => !isAjusteMovimentacao(r));
+    },
+  });
+
+  const eventosRank = useMemo(() => {
+    const map = new Map<string, { evento: string; qtd: number; valor: number }>();
+    for (const r of saidasEvento ?? []) {
+      const ev = (r.evento_projeto ?? "").trim() || "Sem evento/projeto";
+      const it: any = r.item;
+      const vu = Number(r.valor_unitario ?? it?.valor_unitario ?? 0);
+      const q = Number(r.quantidade || 0);
+      const cur = map.get(ev) ?? { evento: ev, qtd: 0, valor: 0 };
+      cur.qtd += q;
+      cur.valor += q * vu;
+      map.set(ev, cur);
+    }
+    return Array.from(map.values()).sort((a, b) => b.valor - a.valor);
+  }, [saidasEvento]);
+
+  const itensDoEvento = useMemo(() => {
+    if (eventoSel === ALL) return [];
+    const map = new Map<string, { nome: string; unidade: string; qtd: number; valor: number }>();
+    for (const r of saidasEvento ?? []) {
+      const ev = (r.evento_projeto ?? "").trim() || "Sem evento/projeto";
+      if (ev !== eventoSel) continue;
+      const it: any = r.item;
+      if (!it) continue;
+      const vu = Number(r.valor_unitario ?? it.valor_unitario ?? 0);
+      const q = Number(r.quantidade || 0);
+      const cur = map.get(it.nome) ?? { nome: it.nome, unidade: it.unidade ?? "", qtd: 0, valor: 0 };
+      cur.qtd += q;
+      cur.valor += q * vu;
+      map.set(it.nome, cur);
+    }
+    return Array.from(map.values()).sort((a, b) => b.valor - a.valor);
+  }, [saidasEvento, eventoSel]);
+
+  // Volume de entradas por mês (12 meses)
+  const entradasVolume = useMemo(() => {
+    const m = new Map<string, { mes: string; volume: number; lancamentos: number }>();
+    for (let i = 11; i >= 0; i--) {
+      const k = format(subMonths(hoje, i), "yyyy-MM");
+      m.set(k, { mes: format(subMonths(hoje, i), "MMM/yy"), volume: 0, lancamentos: 0 });
+    }
+    for (const mov of movs12m ?? []) {
+      if (mov.tipo !== "entrada" || isAjusteMovimentacao(mov)) continue;
+      const cur = m.get(format(new Date(mov.data_movimento), "yyyy-MM"));
+      if (!cur) continue;
+      cur.volume += Number(mov.quantidade || 0);
+      cur.lancamentos += 1;
+    }
+    return Array.from(m.values());
+  }, [movs12m, hoje]);
+
   const pessoasOptions = pessoaTipo === "solicitante" ? (solicitantes ?? []) : (fornecedores ?? []);
+
 
   return (
     <>
@@ -453,13 +531,13 @@ function Dashboard() {
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={graficoMensal}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="mes" stroke="#ffffff" tick={{ fill: "#ffffff" }} fontSize={11} />
-                  <YAxis stroke="#ffffff" tick={{ fill: "#ffffff" }} fontSize={11} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 60% / 0.25)" />
+                  <XAxis dataKey="mes" stroke="currentColor" tick={{ fill: "currentColor" }} fontSize={11} />
+                  <YAxis stroke="currentColor" tick={{ fill: "currentColor" }} fontSize={11} />
                   <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="entradas" fill="hsl(var(--success))" name="Entradas" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="saidas" fill="hsl(var(--destructive))" name="Saídas" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="entradas" fill="#22c55e" name="Entradas" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="saidas" fill="#ef4444" name="Saídas" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -486,14 +564,14 @@ function Dashboard() {
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={abc}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="nome" stroke="#ffffff" tick={false} axisLine={false} height={10} />
-                    <YAxis yAxisId="left" stroke="#ffffff" tick={{ fill: "#ffffff" }} fontSize={11} />
-                    <YAxis yAxisId="right" orientation="right" stroke="#ffffff" tick={{ fill: "#ffffff" }} fontSize={11} domain={[0, 100]} unit="%" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 60% / 0.25)" />
+                    <XAxis dataKey="nome" stroke="currentColor" tick={false} axisLine={false} height={10} />
+                    <YAxis yAxisId="left" stroke="currentColor" tick={{ fill: "currentColor" }} fontSize={11} />
+                    <YAxis yAxisId="right" orientation="right" stroke="currentColor" tick={{ fill: "currentColor" }} fontSize={11} domain={[0, 100]} unit="%" />
                     <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
                     <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <Bar yAxisId="left" dataKey="valor" fill="hsl(var(--primary))" name="Valor R$" radius={[4, 4, 0, 0]} />
-                    <Line yAxisId="right" type="monotone" dataKey="acumuladoPct" stroke="hsl(var(--accent))" name="% acumulado" strokeWidth={2} />
+                    <Bar yAxisId="left" dataKey="valor" fill="#3b82f6" name="Valor R$" radius={[4, 4, 0, 0]} />
+                    <Line yAxisId="right" type="monotone" dataKey="acumuladoPct" stroke="#f59e0b" name="% acumulado" strokeWidth={2} />
                   </ComposedChart>
                 </ResponsiveContainer>
               )}
@@ -508,6 +586,87 @@ function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <Card>
+          <CardHeader><CardTitle>Volume de entradas por mês (12 meses)</CardTitle></CardHeader>
+          <CardContent>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={entradasVolume}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 60% / 0.25)" />
+                  <XAxis dataKey="mes" stroke="currentColor" tick={{ fill: "currentColor" }} fontSize={11} />
+                  <YAxis yAxisId="left" stroke="currentColor" tick={{ fill: "currentColor" }} fontSize={11} />
+                  <YAxis yAxisId="right" orientation="right" stroke="currentColor" tick={{ fill: "currentColor" }} fontSize={11} />
+                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Bar yAxisId="left" dataKey="volume" fill="#22c55e" name="Volume (qtd)" radius={[4, 4, 0, 0]} />
+                  <Line yAxisId="right" type="monotone" dataKey="lancamentos" stroke="#0ea5e9" strokeWidth={2} name="Nº de entradas" />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <CardTitle>Saídas por evento / projeto</CardTitle>
+              <Select value={eventoSel} onValueChange={setEventoSel}>
+                <SelectTrigger className="w-[220px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>Todos os eventos</SelectItem>
+                  {eventosRank.map((e) => <SelectItem key={e.evento} value={e.evento}>{e.evento}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {eventoSel === ALL ? (
+              <div className="h-72">
+                {eventosRank.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Sem saídas no período.</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={eventosRank.slice(0, 10)} layout="vertical" margin={{ left: 8, right: 16 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 60% / 0.25)" />
+                      <XAxis type="number" stroke="currentColor" tick={{ fill: "currentColor" }} fontSize={11} />
+                      <YAxis type="category" dataKey="evento" width={160} stroke="currentColor" tick={{ fill: "currentColor", fontSize: 11 }} />
+                      <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                      <Bar dataKey="valor" fill="#8b5cf6" name="Valor R$" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            ) : (
+              <div className="max-h-72 overflow-y-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs uppercase text-muted-foreground border-b border-border">
+                      <th className="py-2 pr-4 font-medium">Item</th>
+                      <th className="py-2 pr-4 font-medium text-right">Qtd</th>
+                      <th className="py-2 pr-0 font-medium text-right">Valor</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {itensDoEvento.length === 0 ? (
+                      <tr><td colSpan={3} className="py-8 text-center text-muted-foreground">Sem saídas para este evento.</td></tr>
+                    ) : itensDoEvento.map((r) => (
+                      <tr key={r.nome} className="border-b border-border/50 last:border-0">
+                        <td className="py-2 pr-4">{r.nome}</td>
+                        <td className="py-2 pr-4 text-right tabular-nums">{r.qtd} {r.unidade}</td>
+                        <td className="py-2 text-right tabular-nums font-medium">R$ {r.valor.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">

@@ -3896,6 +3896,7 @@ export type Database = {
           nome: string
           ordem: number
           ordem_id: string
+          responsavel_id: string | null
           setor_id: string
           updated_at: string
         }
@@ -3910,6 +3911,7 @@ export type Database = {
           nome: string
           ordem?: number
           ordem_id: string
+          responsavel_id?: string | null
           setor_id: string
           updated_at?: string
         }
@@ -3924,6 +3926,7 @@ export type Database = {
           nome?: string
           ordem?: number
           ordem_id?: string
+          responsavel_id?: string | null
           setor_id?: string
           updated_at?: string
         }
@@ -4041,6 +4044,7 @@ export type Database = {
           iniciado_em: string | null
           ordem_id: string
           posicao: number
+          prazo: string | null
           setor_id: string
           status: string
           updated_at: string
@@ -4052,6 +4056,7 @@ export type Database = {
           iniciado_em?: string | null
           ordem_id: string
           posicao?: number
+          prazo?: string | null
           setor_id: string
           status?: string
           updated_at?: string
@@ -4063,6 +4068,7 @@ export type Database = {
           iniciado_em?: string | null
           ordem_id?: string
           posicao?: number
+          prazo?: string | null
           setor_id?: string
           status?: string
           updated_at?: string

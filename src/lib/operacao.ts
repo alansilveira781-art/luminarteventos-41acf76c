@@ -40,6 +40,7 @@ export type OrdemSetor = {
   status: "pendente" | "em_andamento" | "concluido";
   iniciado_em: string | null;
   concluido_em: string | null;
+  prazo: string | null;
 };
 
 export type ChecklistItem = {
@@ -53,7 +54,9 @@ export type ChecklistItem = {
   concluido: boolean;
   concluido_por: string | null;
   concluido_em: string | null;
+  responsavel_id: string | null;
 };
+
 
 export const STATUS_COLORS: Record<string, string> = {
   aberta: "bg-slate-400",

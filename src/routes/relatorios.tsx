@@ -33,6 +33,7 @@ type ReportId =
   | "gastos_mes"
   | "gastos_categoria"
   | "saidas_evento"
+  | "projecao_materiais"
   | "ajustes";
 
 const REPORTS: { id: ReportId; label: string; description: string; needsPeriod: boolean }[] = [
@@ -47,6 +48,7 @@ const REPORTS: { id: ReportId; label: string; description: string; needsPeriod: 
   { id: "gastos_mes", label: "Gastos por mês", description: "Total comprado por mês no período selecionado.", needsPeriod: true },
   { id: "gastos_categoria", label: "Gastos por categoria", description: "Total comprado por categoria de item.", needsPeriod: true },
   { id: "saidas_evento", label: "Saídas por evento", description: "Quantidade e valor das saídas agrupadas por evento/projeto.", needsPeriod: true },
+  { id: "projecao_materiais", label: "Projeção de materiais", description: "Selecione os itens: mostra quantidade em estoque e valor, inclusive itens sem saldo (zerados).", needsPeriod: false },
 ];
 
 
@@ -409,6 +411,30 @@ async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemId
     });
     return rows.filter((m: any) => isAjusteMovimentacao(m));
   }
+  if (id === "projecao_materiais") {
+    if (!filtroItem) return [];
+    const rows = await fetchPaged((f, t) =>
+      supabase
+        .from("itens")
+        .select(sel("id,nome,codigo,unidade,quantidade_atual,valor_unitario,status"))
+        .in("id", filtroItem)
+        .order("nome")
+        .range(f, t),
+    );
+    const byId = new Map(rows.map((r: any) => [r.id, r]));
+    return filtroItem.map(
+      (id2) =>
+        byId.get(id2) ?? {
+          id: id2,
+          nome: "(item não encontrado)",
+          codigo: null,
+          unidade: "",
+          quantidade_atual: 0,
+          valor_unitario: 0,
+          status: null,
+        },
+    );
+  }
   if (id === "estoque") {
     return fetchPaged((f, t) => {
       let q: any = supabase.from("itens").select(sel("*")).order("nome");
@@ -453,6 +479,21 @@ async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemId
 
 function formatReport(id: ReportId, rows: any[]): { headers: string[]; body: any[][]; totals: any[] | null } {
   const fmtBRL = (n: number) => `R$ ${n.toFixed(2)}`;
+
+  if (id === "projecao_materiais") {
+    const headers = ["Código", "Item", "Qtd em estoque", "Un", "Valor unitário", "Valor total"];
+    const body = rows.map((r) => {
+      const qtd = Number(r.quantidade_atual ?? 0);
+      const vu = Number(r.valor_unitario ?? 0);
+      return [r.codigo ?? "", r.nome ?? "", qtd, r.unidade ?? "", fmtBRL(vu), fmtBRL(qtd * vu)];
+    });
+    const totalQtd = rows.reduce((a, r) => a + Number(r.quantidade_atual ?? 0), 0);
+    const totalValor = rows.reduce(
+      (a, r) => a + Number(r.quantidade_atual ?? 0) * Number(r.valor_unitario ?? 0),
+      0,
+    );
+    return { headers, body, totals: ["", "TOTAL", totalQtd, "", "", fmtBRL(totalValor)] };
+  }
 
   if (id === "ajustes") {
     const headers = ["Data", "Tipo", "Código", "Item", "Qtd", "Un", "Observação"];
