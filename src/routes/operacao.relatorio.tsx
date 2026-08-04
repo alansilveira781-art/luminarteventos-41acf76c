@@ -78,17 +78,17 @@ function RelatorioGargalo() {
           <TableHeader>
             <TableRow>
               <TableHead>Setor</TableHead>
-              <TableHead>Etapa</TableHead>
+              <TableHead className="text-right">Etapas pendentes</TableHead>
               <TableHead className="text-right">Ordens paradas</TableHead>
               <TableHead className="text-right">Tempo médio</TableHead>
-              <TableHead className="text-right">Apontamentos</TableHead>
+              <TableHead className="text-right">Passagens</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((r, i) => (
               <TableRow key={i}>
                 <TableCell>{r.setor}</TableCell>
-                <TableCell>{r.etapa}</TableCell>
+                <TableCell className="text-right">{r.itens ? `${r.pendentes}/${r.itens}` : "—"}</TableCell>
                 <TableCell className="text-right">
                   <span className={r.abertas > 3 ? "font-semibold text-rose-600" : ""}>{r.abertas}</span>
                 </TableCell>
