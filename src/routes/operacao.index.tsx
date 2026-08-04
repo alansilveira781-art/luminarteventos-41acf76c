@@ -32,6 +32,7 @@ import {
 } from "@dnd-kit/core";
 import { GanttOrdens } from "@/components/operacao/GanttOrdens";
 import { ChecklistCardDialog, garantirChecklist } from "@/components/operacao/ChecklistCardDialog";
+import { ImplementarProjetoDialog } from "@/components/operacao/ImplementarProjetoDialog";
 import {
   STATUS_COLORS,
   progressoOrdem,
