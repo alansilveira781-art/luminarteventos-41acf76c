@@ -14,7 +14,10 @@ import { Plus, Link2, ExternalLink, Trash2, CalendarPlus } from "lucide-react";
 import { toast } from "sonner";
 import { GanttEventos, type EventoCal } from "@/components/eventos/GanttEventos";
 import { SearchableSelect } from "@/components/SearchableSelect";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DbComboboxCreatable } from "@/components/DbComboboxCreatable";
 import { fetchEstados, fetchMunicipios } from "@/lib/ibge";
+
 
 const sb = supabase as any;
 
