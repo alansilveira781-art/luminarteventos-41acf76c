@@ -56,7 +56,8 @@ export function CadastroCombobox({
   const [extras, setExtras] = useState<Record<string, number>>({});
 
   const { data = [] } = useQuery({
-    queryKey: [queryKey],
+    queryKey: ["comercial-cadastro-opcoes", table],
+
     queryFn: async (): Promise<Opt[]> => {
       const { data, error } = await sb.from(table).select("id,nome").order("nome");
       if (error) throw error;
