@@ -1076,8 +1076,10 @@ function FechamentoTab() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => exportarPdf()}>PDF (relatório)</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => exportar("xlsx")}>Excel (.xlsx)</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => exportar("csv")}>CSV</DropdownMenuItem>
+
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
