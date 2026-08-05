@@ -105,7 +105,9 @@ export function CadastroCombobox({
       return data as Opt;
     },
     onSuccess: (d) => {
+      qc.invalidateQueries({ queryKey: ["comercial-cadastro-opcoes", table] });
       qc.invalidateQueries({ queryKey: [queryKey] });
+
       onChange(d.nome);
       toast.success("Adicionado");
       setSearch("");
