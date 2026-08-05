@@ -26,6 +26,7 @@ import {
   multiplicadorDaCategoria,
   type FechamentoItemRow,
 } from "@/lib/comercial/bonificacao";
+import { gerarRelatorioBonificacao, type LinhaRelatorio } from "@/lib/comercial/bonificacao-relatorio";
 
 const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
