@@ -234,7 +234,11 @@ function useNavItems(pathname: string) {
     if (i.module === "estoque") return ctx === "estoque" && (isAdmin || hasModule("estoque"));
     if (i.module === "compras") return ctx === "compras" && (isAdmin || hasModule("compras"));
     if (i.module === "financeiro") return ctx === "financeiro" && (isAdmin || hasModule("financeiro"));
-    if (i.module === "financeiro_op") return ctx === "financeiro_op" && (isAdmin || hasModule("financeiro_op"));
+    if (i.module === "financeiro_op") {
+      if (ctx !== "financeiro_op") return false;
+      if (isAdmin || hasModule("financeiro_op")) return true;
+      return !!i.diaristaLancador && podeLancarDiaria;
+    }
     if (i.module === "comercial") {
       if (ctx !== "comercial") return false;
       if (!(isAdmin || hasModule("comercial"))) return false;
