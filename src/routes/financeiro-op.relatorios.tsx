@@ -34,7 +34,27 @@ export const Route = createFileRoute("/financeiro-op/relatorios")({
   component: RelatoriosPage,
 });
 
-const STATUS_INCLUIDOS = ["finalizado", "a_receber"] as const;
+const STATUS_PRESETS = {
+  padrao: {
+    label: "Finalizado + A receber",
+    statuses: ["finalizado", "a_receber"] as string[] | null,
+  },
+  abertos: {
+    label: "Incluir em aberto",
+    statuses: [
+      "finalizado",
+      "a_receber",
+      "em_andamento",
+      "aprovada",
+      "pendente_aprovacao",
+      "analise",
+      "solicitacao",
+    ] as string[] | null,
+  },
+  todos: { label: "Todos os status", statuses: null as string[] | null },
+} as const;
+
+type StatusPreset = keyof typeof STATUS_PRESETS;
 
 const brl = (v: number | null | undefined) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v ?? 0));
@@ -49,8 +69,13 @@ type Row = {
   descritivo_fallback: string | null;
   valor_total: number | null;
   parcelamento: string | null;
+  status: string | null;
+  dataRef: string | null;
   itens: { descricao: string | null; quantidade: number | null }[];
 };
+
+type CartoesData = { rows: Row[]; total: number };
+
 
 function RelatoriosPage() {
   return (
