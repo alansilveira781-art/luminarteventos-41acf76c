@@ -59,10 +59,11 @@ import {
 } from "lucide-react";
 import logo from "@/assets/luminart-logo-white.png";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDiaristaAcesso } from "@/lib/diaristas-acesso";
 import { useTheme } from "@/contexts/ThemeContext";
 import { NotificationBell } from "@/components/NotificationBell";
 
-type NavItem = { title: string; url: string; icon: any; group: string; module?: string; adminOnly?: boolean; moduleAdminOnly?: string; expectadorEventos?: boolean; juridicoSolicitante?: boolean };
+type NavItem = { title: string; url: string; icon: any; group: string; module?: string; adminOnly?: boolean; moduleAdminOnly?: string; expectadorEventos?: boolean; juridicoSolicitante?: boolean; diaristaLancador?: boolean };
 
 const allItems: NavItem[] = [
   { title: "Início", url: "/", icon: LayoutDashboard, group: "Visão geral" },
@@ -85,7 +86,7 @@ const allItems: NavItem[] = [
   { title: "Configurações", url: "/financeiro/configuracoes", icon: Settings, group: "Despesas", module: "financeiro", moduleAdminOnly: "financeiro" },
 
   { title: "Dashboard", url: "/financeiro-op/dashboard", icon: BarChart3, group: "Financeiro", module: "financeiro_op" },
-  { title: "Diaristas", url: "/financeiro-op/diaristas", icon: Users2, group: "Financeiro", module: "financeiro_op" },
+  { title: "Diaristas", url: "/financeiro-op/diaristas", icon: Users2, group: "Financeiro", module: "financeiro_op", diaristaLancador: true },
   { title: "Quadro Financeiro", url: "/financeiro-op/quadro", icon: KanbanSquare, group: "Financeiro", module: "financeiro_op" },
   { title: "Rotinas Financeiras", url: "/financeiro-op/rotinas", icon: ClipboardCheck, group: "Financeiro", module: "financeiro_op" },
   { title: "Conta Azul", url: "/financeiro-op/conta-azul", icon: Link2, group: "Financeiro", module: "financeiro_op" },
@@ -176,6 +177,7 @@ function getContext(pathname: string): "home" | "estoque" | "compras" | "finance
 
 function useNavItems(pathname: string) {
   const { isAdmin, hasModule, modulos, user } = useAuth();
+  const { podeLancar: podeLancarDiaria } = useDiaristaAcesso();
   const ctx = getContext(pathname);
 
   // Consulta reativa ao flag "expectador de eventos" do próprio usuário.
@@ -234,7 +236,11 @@ function useNavItems(pathname: string) {
     if (i.module === "estoque") return ctx === "estoque" && (isAdmin || hasModule("estoque"));
     if (i.module === "compras") return ctx === "compras" && (isAdmin || hasModule("compras"));
     if (i.module === "financeiro") return ctx === "financeiro" && (isAdmin || hasModule("financeiro"));
-    if (i.module === "financeiro_op") return ctx === "financeiro_op" && (isAdmin || hasModule("financeiro_op"));
+    if (i.module === "financeiro_op") {
+      if (ctx !== "financeiro_op") return false;
+      if (isAdmin || hasModule("financeiro_op")) return true;
+      return !!i.diaristaLancador && podeLancarDiaria;
+    }
     if (i.module === "comercial") {
       if (ctx !== "comercial") return false;
       if (!(isAdmin || hasModule("comercial"))) return false;

@@ -28,7 +28,14 @@ import { MoneyInput } from "@/components/MoneyInput";
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { calcularApontamento, formatHoras, type Local } from "@/lib/diaristas-calc";
+import {
+  calcularApontamento,
+  calcularApontamentoComEventos,
+  formatHoras,
+  type Local,
+  type ModoDivisao,
+} from "@/lib/diaristas-calc";
+import { useDiaristaAcesso } from "@/lib/diaristas-acesso";
 
 export const Route = createFileRoute("/financeiro-op/diaristas/")({
   component: DiaristasIndex,
@@ -57,6 +64,21 @@ type Apontamento = {
   local: string;
   obs: string | null;
   extra_manual: number;
+  created_by: string | null;
+  modo_divisao: ModoDivisao | null;
+};
+
+type EventoLinha = {
+  evento_nome: string;
+  hora_inicial: string;
+  hora_final: string;
+  intervalo_minutos: number;
+};
+
+type ApontamentoEventoRow = EventoLinha & {
+  id: string;
+  apontamento_id: string;
+  ordem: number;
 };
 
 type ApontamentoForm = {
@@ -70,7 +92,16 @@ type ApontamentoForm = {
   local: Local;
   obs: string;
   extra_manual: number;
+  modo_divisao: ModoDivisao;
+  eventos: EventoLinha[];
 };
+
+const emptyEvento = (): EventoLinha => ({
+  evento_nome: "",
+  hora_inicial: "08:00",
+  hora_final: "12:00",
+  intervalo_minutos: 0,
+});
 
 const emptyApontamento = (): ApontamentoForm => ({
   diarista_id: "",
@@ -82,6 +113,8 @@ const emptyApontamento = (): ApontamentoForm => ({
   local: "Fortaleza",
   obs: "",
   extra_manual: 0,
+  modo_divisao: "unico",
+  eventos: [],
 });
 
 function fmtBRL(v: number) {
@@ -96,38 +129,56 @@ function fmtDate(iso: string) {
 }
 
 function DiaristasIndex() {
-  const { isAdmin, modulos } = useAuth();
-  const isFinAdmin = isAdmin || modulos.some((m) => m.slug === "financeiro_op" && m.is_admin);
+  const { isFinAdmin, podeLancar, podeAcessar, verValores, loading } = useDiaristaAcesso();
+
+  if (loading) return null;
+  if (!podeAcessar) {
+    return (
+      <div className="p-6">
+        <Card className="p-8 text-center text-sm text-muted-foreground">
+          Você não tem acesso ao módulo de diaristas.
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <PageHeader
           title="Diaristas"
-          description="Apontamento de dias trabalhados e fechamento por período."
+          description={
+            verValores
+              ? "Apontamento de dias trabalhados e fechamento por período."
+              : "Lance as diárias do pessoal. Você vê, edita e exclui apenas os seus lançamentos."
+          }
         />
-        {isFinAdmin && (
+        {(isFinAdmin || podeLancar) && (
           <Button asChild variant="outline">
             <Link to="/financeiro-op/diaristas/configuracoes">
               <Settings className="h-4 w-4 mr-2" />
-              Configurações
+              {isFinAdmin ? "Configurações" : "Cadastro de diaristas"}
             </Link>
           </Button>
         )}
       </div>
 
-      <Tabs defaultValue="apontamento">
-        <TabsList>
-          <TabsTrigger value="apontamento">Apontamento</TabsTrigger>
-          <TabsTrigger value="fechamento">Fechamento</TabsTrigger>
-        </TabsList>
-        <TabsContent value="apontamento" className="mt-4">
-          <ApontamentoTab />
-        </TabsContent>
-        <TabsContent value="fechamento" className="mt-4">
-          <FechamentoTab />
-        </TabsContent>
-      </Tabs>
+      {verValores ? (
+        <Tabs defaultValue="apontamento">
+          <TabsList>
+            <TabsTrigger value="apontamento">Apontamento</TabsTrigger>
+            <TabsTrigger value="fechamento">Fechamento</TabsTrigger>
+          </TabsList>
+          <TabsContent value="apontamento" className="mt-4">
+            <ApontamentoTab />
+          </TabsContent>
+          <TabsContent value="fechamento" className="mt-4">
+            <FechamentoTab />
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <ApontamentoTab />
+      )}
     </div>
   );
 }
@@ -165,15 +216,46 @@ function useApontamentos() {
   });
 }
 
+function useApontamentoEventos() {
+  return useQuery({
+    queryKey: ["diarista_apontamento_eventos"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("diarista_apontamento_eventos")
+        .select("*")
+        .order("ordem", { ascending: true });
+      if (error) throw error;
+      const map = new Map<string, ApontamentoEventoRow[]>();
+      for (const r of (data ?? []) as any[]) {
+        const row: ApontamentoEventoRow = {
+          id: r.id,
+          apontamento_id: r.apontamento_id,
+          ordem: r.ordem ?? 0,
+          evento_nome: r.evento_nome ?? "",
+          hora_inicial: (r.hora_inicial ?? "").slice(0, 5),
+          hora_final: (r.hora_final ?? "").slice(0, 5),
+          intervalo_minutos: r.intervalo_minutos ?? 0,
+        };
+        const list = map.get(row.apontamento_id) ?? [];
+        list.push(row);
+        map.set(row.apontamento_id, list);
+      }
+      return map;
+    },
+  });
+}
+
 // ─────────────────────────────────────────────────────────────
 // Apontamento
 // ─────────────────────────────────────────────────────────────
 
-
 function ApontamentoTab() {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const { verValores, somenteProprios } = useDiaristaAcesso();
   const { data: diaristas = [] } = useDiaristas();
   const { data: apontamentos = [], isLoading } = useApontamentos();
+  const { data: eventosMap } = useApontamentoEventos();
 
   const diaristasAtivos = useMemo(() => diaristas.filter((d) => d.ativo), [diaristas]);
   const diaristasMap = useMemo(
@@ -190,13 +272,29 @@ function ApontamentoTab() {
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ApontamentoForm>(emptyApontamento());
+  const [expandido, setExpandido] = useState<Set<string>>(new Set());
+
+  const toggleExp = (id: string) =>
+    setExpandido((prev) => {
+      const s = new Set(prev);
+      if (s.has(id)) s.delete(id);
+      else s.add(id);
+      return s;
+    });
 
   const upsert = useMutation({
     mutationFn: async (payload: ApontamentoForm) => {
       if (!payload.diarista_id) throw new Error("Selecione o diarista");
+      const eventos = payload.eventos.filter((e) => e.evento_nome.trim() !== "");
+      if (payload.modo_divisao !== "unico" && eventos.length < 2) {
+        throw new Error("Informe pelo menos 2 eventos para dividir o dia");
+      }
       const row = {
         diarista_id: payload.diarista_id,
-        projeto: payload.projeto.trim() || null,
+        projeto:
+          payload.modo_divisao === "unico"
+            ? payload.projeto.trim() || null
+            : eventos.map((e) => e.evento_nome).join(" + "),
         data: payload.data,
         hora_inicial: payload.hora_inicial,
         hora_final: payload.hora_final,
@@ -204,20 +302,48 @@ function ApontamentoTab() {
         local: payload.local,
         obs: payload.obs.trim() || null,
         extra_manual: Number(payload.extra_manual) || 0,
+        modo_divisao: payload.modo_divisao,
       };
+
+      let apontamentoId = payload.id;
       if (payload.id) {
         const { error } = await (supabase as any)
           .from("diarista_apontamentos").update(row).eq("id", payload.id);
         if (error) throw error;
       } else {
+        const { data, error } = await (supabase as any)
+          .from("diarista_apontamentos").insert(row).select("id").single();
+        if (error) throw error;
+        apontamentoId = data.id;
+      }
+
+      // Eventos do dia
+      await (supabase as any)
+        .from("diarista_apontamento_eventos")
+        .delete()
+        .eq("apontamento_id", apontamentoId);
+
+      if (payload.modo_divisao !== "unico" && eventos.length > 0) {
         const { error } = await (supabase as any)
-          .from("diarista_apontamentos").insert(row);
+          .from("diarista_apontamento_eventos")
+          .insert(
+            eventos.map((e, i) => ({
+              apontamento_id: apontamentoId,
+              evento_nome: e.evento_nome.trim(),
+              hora_inicial: payload.modo_divisao === "horarios" ? e.hora_inicial : null,
+              hora_final: payload.modo_divisao === "horarios" ? e.hora_final : null,
+              intervalo_minutos:
+                payload.modo_divisao === "horarios" ? Number(e.intervalo_minutos) || 0 : 0,
+              ordem: i,
+            })),
+          );
         if (error) throw error;
       }
     },
     onSuccess: () => {
       toast.success("Apontamento salvo");
       qc.invalidateQueries({ queryKey: ["diarista_apontamentos"] });
+      qc.invalidateQueries({ queryKey: ["diarista_apontamento_eventos"] });
       setOpen(false);
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao salvar"),
@@ -232,12 +358,14 @@ function ApontamentoTab() {
     onSuccess: () => {
       toast.success("Apontamento removido");
       qc.invalidateQueries({ queryKey: ["diarista_apontamentos"] });
+      qc.invalidateQueries({ queryKey: ["diarista_apontamento_eventos"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
   });
 
   const filtered = useMemo(() => {
     return apontamentos.filter((a) => {
+      if (somenteProprios && a.created_by !== user?.id) return false;
       if (fDiarista !== "todos" && a.diarista_id !== fDiarista) return false;
       if (fLocal !== "todos" && a.local !== fLocal) return false;
       if (fProjeto && !(a.projeto ?? "").toLowerCase().includes(fProjeto.toLowerCase())) return false;
@@ -245,13 +373,26 @@ function ApontamentoTab() {
       if (fAte && a.data > fAte) return false;
       return true;
     });
-  }, [apontamentos, fDiarista, fLocal, fProjeto, fDe, fAte]);
+  }, [apontamentos, fDiarista, fLocal, fProjeto, fDe, fAte, somenteProprios, user?.id]);
+
+  const calcDe = (a: Apontamento) => {
+    const d = diaristasMap.get(a.diarista_id);
+    if (!d) return null;
+    const evs = eventosMap?.get(a.id) ?? [];
+    return calcularApontamentoComEventos(a, d, (a.modo_divisao ?? "unico") as ModoDivisao, evs);
+  };
 
   // preview em tempo real no formulário
   const previewDiarista = diaristasMap.get(editing.diarista_id);
   const preview = previewDiarista
-    ? calcularApontamento(editing, previewDiarista)
+    ? calcularApontamentoComEventos(editing, previewDiarista, editing.modo_divisao, editing.eventos)
     : null;
+
+  const setEvento = (i: number, patch: Partial<EventoLinha>) =>
+    setEditing((prev) => ({
+      ...prev,
+      eventos: prev.eventos.map((e, idx) => (idx === i ? { ...e, ...patch } : e)),
+    }));
 
   return (
     <div className="space-y-4">
@@ -319,6 +460,7 @@ function ApontamentoTab() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left border-b border-border text-muted-foreground text-xs uppercase tracking-wide">
+                  <th className="py-2 pr-3 w-8" />
                   <th className="py-2 pr-3">Data</th>
                   <th className="py-2 px-3">Diarista</th>
                   <th className="py-2 px-3">Projeto</th>
@@ -326,83 +468,137 @@ function ApontamentoTab() {
                   <th className="py-2 px-3">Horário</th>
                   <th className="py-2 px-3 text-right">Interv.</th>
                   <th className="py-2 px-3 text-right">Horas</th>
-                  <th className="py-2 px-3 text-right">R$/h</th>
-                  <th className="py-2 px-3 text-right">Diária</th>
-                  <th className="py-2 px-3 text-right">Extra</th>
-                  <th className="py-2 px-3 text-right">Total</th>
+                  {verValores && <th className="py-2 px-3 text-right">R$/h</th>}
+                  {verValores && <th className="py-2 px-3 text-right">Diária</th>}
+                  {verValores && <th className="py-2 px-3 text-right">Extra</th>}
+                  {verValores && <th className="py-2 px-3 text-right">Total</th>}
                   <th className="py-2 pl-3 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((a) => {
                   const d = diaristasMap.get(a.diarista_id);
-                  const calc = d ? calcularApontamento(a, d) : null;
+                  const calc = calcDe(a);
+                  const evs = eventosMap?.get(a.id) ?? [];
+                  const dividido = (a.modo_divisao ?? "unico") !== "unico" && evs.length > 0;
+                  const aberto = expandido.has(a.id);
+                  const colSpan = verValores ? 13 : 9;
                   return (
-                    <tr key={a.id} className="border-b border-border/50 hover:bg-muted/40">
-                      <td className="py-2 pr-3 tabular-nums">{fmtDate(a.data)}</td>
-                      <td className="py-2 px-3 font-medium">{d?.nome ?? "—"}</td>
-                      <td className="py-2 px-3">{a.projeto ?? "—"}</td>
-                      <td className="py-2 px-3">{a.local}</td>
-                      <td className="py-2 px-3 tabular-nums">
-                        {a.hora_inicial.slice(0, 5)}–{a.hora_final.slice(0, 5)}
-                      </td>
-                      <td className="py-2 px-3 text-right tabular-nums">{a.intervalo_minutos}min</td>
-                      <td className="py-2 px-3 text-right tabular-nums">{calc?.horasLabel ?? "—"}</td>
-                      <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
-                        {calc ? fmtBRL(calc.valorHora) : "—"}
-                      </td>
-                      <td className="py-2 px-3 text-right tabular-nums">{calc ? fmtBRL(calc.diaria) : "—"}</td>
-                      <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
-                        {calc ? fmtBRL(calc.extra) : "—"}
-                      </td>
-                      <td className="py-2 px-3 text-right tabular-nums font-semibold">
-                        {calc ? fmtBRL(calc.total) : "—"}
-                      </td>
-                      <td className="py-2 pl-3 text-right">
-                        <div className="flex gap-1 justify-end">
-                          <Button size="icon" variant="ghost" className="h-8 w-8"
-                            onClick={() => {
-                              setEditing({
-                                id: a.id,
-                                diarista_id: a.diarista_id,
-                                projeto: a.projeto ?? "",
-                                data: a.data,
-                                hora_inicial: a.hora_inicial.slice(0, 5),
-                                hora_final: a.hora_final.slice(0, 5),
-                                intervalo_minutos: a.intervalo_minutos,
-                                local: (a.local as Local) ?? "Fortaleza",
-                                obs: a.obs ?? "",
-                                extra_manual: Number(a.extra_manual) || 0,
-                              });
-                              setOpen(true);
-                            }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => { if (confirm("Excluir este apontamento?")) remove.mutate(a.id); }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
+                    <Fragment key={a.id}>
+                      <tr className="border-b border-border/50 hover:bg-muted/40">
+                        <td className="py-2 pr-1">
+                          {dividido && (
+                            <Button size="icon" variant="ghost" className="h-6 w-6"
+                              onClick={() => toggleExp(a.id)}
+                            >
+                              {aberto ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                            </Button>
+                          )}
+                        </td>
+                        <td className="py-2 pr-3 tabular-nums">{fmtDate(a.data)}</td>
+                        <td className="py-2 px-3 font-medium">{d?.nome ?? "—"}</td>
+                        <td className="py-2 px-3">
+                          {a.projeto ?? "—"}
+                          {dividido && (
+                            <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                              {a.modo_divisao === "horarios" ? "por horários" : "dividido"}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2 px-3">{a.local}</td>
+                        <td className="py-2 px-3 tabular-nums">
+                          {a.hora_inicial.slice(0, 5)}–{a.hora_final.slice(0, 5)}
+                        </td>
+                        <td className="py-2 px-3 text-right tabular-nums">{a.intervalo_minutos}min</td>
+                        <td className="py-2 px-3 text-right tabular-nums">{calc?.horasLabel ?? "—"}</td>
+                        {verValores && (
+                          <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
+                            {calc ? fmtBRL(calc.valorHora) : "—"}
+                          </td>
+                        )}
+                        {verValores && (
+                          <td className="py-2 px-3 text-right tabular-nums">{calc ? fmtBRL(calc.diaria) : "—"}</td>
+                        )}
+                        {verValores && (
+                          <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
+                            {calc ? fmtBRL(calc.extra) : "—"}
+                          </td>
+                        )}
+                        {verValores && (
+                          <td className="py-2 px-3 text-right tabular-nums font-semibold">
+                            {calc ? fmtBRL(calc.total) : "—"}
+                          </td>
+                        )}
+                        <td className="py-2 pl-3 text-right">
+                          <div className="flex gap-1 justify-end">
+                            <Button size="icon" variant="ghost" className="h-8 w-8"
+                              onClick={() => {
+                                setEditing({
+                                  id: a.id,
+                                  diarista_id: a.diarista_id,
+                                  projeto: a.projeto ?? "",
+                                  data: a.data,
+                                  hora_inicial: a.hora_inicial.slice(0, 5),
+                                  hora_final: a.hora_final.slice(0, 5),
+                                  intervalo_minutos: a.intervalo_minutos,
+                                  local: (a.local as Local) ?? "Fortaleza",
+                                  obs: a.obs ?? "",
+                                  extra_manual: Number(a.extra_manual) || 0,
+                                  modo_divisao: (a.modo_divisao ?? "unico") as ModoDivisao,
+                                  eventos: evs.map((e) => ({
+                                    evento_nome: e.evento_nome,
+                                    hora_inicial: e.hora_inicial || "08:00",
+                                    hora_final: e.hora_final || "12:00",
+                                    intervalo_minutos: e.intervalo_minutos,
+                                  })),
+                                });
+                                setOpen(true);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => { if (confirm("Excluir este apontamento?")) remove.mutate(a.id); }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                      {dividido && aberto && (
+                        <tr className="border-b border-border/50 bg-muted/20">
+                          <td />
+                          <td colSpan={colSpan - 1} className="py-2 px-3">
+                            <div className="space-y-1">
+                              {(calc?.rateio ?? []).map((r, i) => (
+                                <div key={i} className="flex items-center justify-between gap-4 text-xs">
+                                  <span className="font-medium">{r.evento_nome}</span>
+                                  <span className="tabular-nums text-muted-foreground">
+                                    {r.horasLabel}
+                                    {verValores ? ` · ${fmtBRL(r.valor)}` : ""}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   );
                 })}
               </tbody>
-              <tfoot>
-                <tr className="border-t border-border font-semibold">
-                  <td colSpan={10} className="py-2 pr-3 text-right">Total</td>
-                  <td className="py-2 px-3 text-right tabular-nums">
-                    {fmtBRL(filtered.reduce((acc, a) => {
-                      const d = diaristasMap.get(a.diarista_id);
-                      return acc + (d ? calcularApontamento(a, d).total : 0);
-                    }, 0))}
-                  </td>
-                  <td />
-                </tr>
-              </tfoot>
+              {verValores && (
+                <tfoot>
+                  <tr className="border-t border-border font-semibold">
+                    <td colSpan={11} className="py-2 pr-3 text-right">Total</td>
+                    <td className="py-2 px-3 text-right tabular-nums">
+                      {fmtBRL(filtered.reduce((acc, a) => acc + (calcDe(a)?.total ?? 0), 0))}
+                    </td>
+                    <td />
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
         )}
@@ -416,7 +612,7 @@ function ApontamentoTab() {
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Diarista</Label>
                 <Select
@@ -444,38 +640,77 @@ function ApontamentoTab() {
                   </SelectContent>
                 </Select>
               </div>
+
               <div className="space-y-1.5 sm:col-span-2">
-                <Label>Projeto (evento)</Label>
-                <EventoSheetCombobox
-                  value={editing.projeto || null}
-                  onChange={(v) => setEditing({ ...editing, projeto: v ?? "" })}
-                />
+                <Label>Trabalhou em mais de um evento no dia?</Label>
+                <Select
+                  value={editing.modo_divisao}
+                  onValueChange={(v) => {
+                    const modo = v as ModoDivisao;
+                    setEditing((prev) => ({
+                      ...prev,
+                      modo_divisao: modo,
+                      eventos:
+                        modo === "unico"
+                          ? []
+                          : prev.eventos.length >= 2
+                            ? prev.eventos
+                            : [emptyEvento(), emptyEvento()],
+                    }));
+                  }}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unico">Não — um evento só</SelectItem>
+                    <SelectItem value="horarios">Sim — informar os horários de cada evento</SelectItem>
+                    <SelectItem value="igual">Sim — dividir o valor igualmente entre os eventos</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+
+              {editing.modo_divisao === "unico" && (
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Projeto (evento)</Label>
+                  <EventoSheetCombobox
+                    value={editing.projeto || null}
+                    onChange={(v) => setEditing({ ...editing, projeto: v ?? "" })}
+                  />
+                </div>
+              )}
+
               <div className="space-y-1.5">
                 <Label>Data</Label>
                 <Input type="date" value={editing.data}
                   onChange={(e) => setEditing({ ...editing, data: e.target.value })} />
               </div>
-              <div className="space-y-1.5">
-                <Label>Intervalo (min)</Label>
-                <Input type="number" min={0} value={editing.intervalo_minutos}
-                  onChange={(e) => setEditing({ ...editing, intervalo_minutos: Number(e.target.value) || 0 })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Horário inicial</Label>
-                <Input type="time" value={editing.hora_inicial}
-                  onChange={(e) => setEditing({ ...editing, hora_inicial: e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Horário final</Label>
-                <Input type="time" value={editing.hora_final}
-                  onChange={(e) => setEditing({ ...editing, hora_final: e.target.value })} />
-              </div>
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label>Extra (R$)</Label>
-                <MoneyInput value={editing.extra_manual}
-                  onChange={(v) => setEditing({ ...editing, extra_manual: v })} />
-              </div>
+
+              {editing.modo_divisao !== "horarios" && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label>Intervalo (min)</Label>
+                    <Input type="number" min={0} value={editing.intervalo_minutos}
+                      onChange={(e) => setEditing({ ...editing, intervalo_minutos: Number(e.target.value) || 0 })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Horário inicial</Label>
+                    <Input type="time" value={editing.hora_inicial}
+                      onChange={(e) => setEditing({ ...editing, hora_inicial: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Horário final</Label>
+                    <Input type="time" value={editing.hora_final}
+                      onChange={(e) => setEditing({ ...editing, hora_final: e.target.value })} />
+                  </div>
+                </>
+              )}
+
+              {verValores && (
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Extra (R$)</Label>
+                  <MoneyInput value={editing.extra_manual}
+                    onChange={(v) => setEditing({ ...editing, extra_manual: v })} />
+                </div>
+              )}
               <div className="space-y-1.5 sm:col-span-2">
                 <Label>Observações</Label>
                 <Textarea rows={2} value={editing.obs}
@@ -483,34 +718,115 @@ function ApontamentoTab() {
               </div>
             </div>
 
+            {/* Eventos do dia */}
+            {editing.modo_divisao !== "unico" && (
+              <div className="rounded-md border border-border p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-medium">Eventos do dia</div>
+                    <div className="text-xs text-muted-foreground">
+                      {editing.modo_divisao === "horarios"
+                        ? "Informe o horário trabalhado em cada evento."
+                        : "O valor total do dia será dividido em partes iguais entre os eventos."}
+                    </div>
+                  </div>
+                  <Button size="sm" variant="outline"
+                    onClick={() => setEditing((p) => ({ ...p, eventos: [...p.eventos, emptyEvento()] }))}
+                  >
+                    <Plus className="h-4 w-4 mr-1" /> Adicionar evento
+                  </Button>
+                </div>
+
+                {editing.eventos.map((ev, i) => (
+                  <div key={i} className="rounded-md border border-border/60 p-2 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1 space-y-1.5">
+                        <Label className="text-xs">Evento {i + 1}</Label>
+                        <EventoSheetCombobox
+                          value={ev.evento_nome || null}
+                          onChange={(v) => setEvento(i, { evento_nome: v ?? "" })}
+                        />
+                      </div>
+                      <Button size="icon" variant="ghost"
+                        className="h-8 w-8 mt-6 text-destructive hover:text-destructive"
+                        onClick={() =>
+                          setEditing((p) => ({ ...p, eventos: p.eventos.filter((_, idx) => idx !== i) }))
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {editing.modo_divisao === "horarios" && (
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Início</Label>
+                          <Input type="time" value={ev.hora_inicial}
+                            onChange={(e) => setEvento(i, { hora_inicial: e.target.value })} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Fim</Label>
+                          <Input type="time" value={ev.hora_final}
+                            onChange={(e) => setEvento(i, { hora_final: e.target.value })} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Intervalo (min)</Label>
+                          <Input type="number" min={0} value={ev.intervalo_minutos}
+                            onChange={(e) => setEvento(i, { intervalo_minutos: Number(e.target.value) || 0 })} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Preview de cálculo */}
             <div className="rounded-md border border-border bg-muted/40 p-3">
               <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
                 Cálculo automático
               </div>
               {preview ? (
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-sm">
-                  <div>
-                    <div className="text-muted-foreground text-xs">Horas trabalhadas</div>
-                    <div className="font-semibold tabular-nums">{preview.horasLabel}</div>
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-sm">
+                    <div>
+                      <div className="text-muted-foreground text-xs">Horas trabalhadas</div>
+                      <div className="font-semibold tabular-nums">{preview.horasLabel}</div>
+                    </div>
+                    {verValores && (
+                      <>
+                        <div>
+                          <div className="text-muted-foreground text-xs">Valor/hora</div>
+                          <div className="tabular-nums">{fmtBRL(preview.valorHora)}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground text-xs">Valor da diária</div>
+                          <div className="tabular-nums">{fmtBRL(preview.diaria)}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground text-xs">Extra</div>
+                          <div className="tabular-nums">{fmtBRL(preview.extra)}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground text-xs">Total</div>
+                          <div className="font-semibold tabular-nums">{fmtBRL(preview.total)}</div>
+                        </div>
+                      </>
+                    )}
                   </div>
-                  <div>
-                    <div className="text-muted-foreground text-xs">Valor/hora</div>
-                    <div className="tabular-nums">{fmtBRL(preview.valorHora)}</div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground text-xs">Valor da diária</div>
-                    <div className="tabular-nums">{fmtBRL(preview.diaria)}</div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground text-xs">Extra</div>
-                    <div className="tabular-nums">{fmtBRL(preview.extra)}</div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground text-xs">Total</div>
-                    <div className="font-semibold tabular-nums">{fmtBRL(preview.total)}</div>
-                  </div>
-                </div>
+                  {preview.rateio.length > 0 && (
+                    <div className="mt-3 space-y-1 border-t border-border pt-2">
+                      {preview.rateio.map((r, i) => (
+                        <div key={i} className="flex items-center justify-between gap-3 text-xs">
+                          <span>{r.evento_nome || `Evento ${i + 1}`}</span>
+                          <span className="tabular-nums text-muted-foreground">
+                            {r.horasLabel}
+                            {verValores ? ` · ${fmtBRL(r.valor)}` : ""}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="text-xs text-muted-foreground">
                   Selecione um diarista para ver o cálculo.

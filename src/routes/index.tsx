@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDiaristaAcesso } from "@/lib/diaristas-acesso";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import * as Icons from "lucide-react";
@@ -13,6 +14,7 @@ export const Route = createFileRoute("/")({
 
 function Hub() {
   const { isAdmin, modulos } = useAuth();
+  const { podeLancar } = useDiaristaAcesso();
 
   const { data: stats } = useQuery({
     enabled: isAdmin,
@@ -73,7 +75,24 @@ function Hub() {
           );
         })}
 
-        {!isAdmin && modulos.length === 0 && (
+        {podeLancar && !modulos.some((m) => m.slug === "financeiro_op") && (
+          <Link to="/financeiro-op/diaristas" className="group">
+            <Card className="p-3 h-full hover:border-primary/60 transition-colors">
+              <div className="flex items-start justify-between mb-2">
+                <div className="h-8 w-8 rounded-md bg-muted text-foreground flex items-center justify-center">
+                  <UsersIcon className="h-4 w-4" />
+                </div>
+                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition" />
+              </div>
+              <div className="text-sm font-semibold">Diaristas</div>
+              <div className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                Lançar diárias trabalhadas
+              </div>
+            </Card>
+          </Link>
+        )}
+
+        {!isAdmin && modulos.length === 0 && !podeLancar && (
           <Card className="p-8 text-center text-sm text-muted-foreground sm:col-span-2 lg:col-span-3">
             Você ainda não tem acesso a nenhum módulo. Solicite a um administrador.
           </Card>

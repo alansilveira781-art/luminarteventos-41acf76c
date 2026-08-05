@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useDiaristaAcesso } from "@/lib/diaristas-acesso";
 import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -70,9 +70,7 @@ function useDiaristas() {
 }
 
 function DiaristasConfiguracoes() {
-  const { isAdmin, modulos } = useAuth();
-  const isFinAdmin = isAdmin || modulos.some((m) => m.slug === "financeiro_op" && m.is_admin);
-  if (!isFinAdmin) return <Navigate to="/financeiro-op/diaristas" />;
+  const { isFinAdmin, podeLancar, loading: loadingAcesso } = useDiaristaAcesso();
 
   const qc = useQueryClient();
   const { data = [], isLoading } = useDiaristas();
@@ -133,6 +131,9 @@ function DiaristasConfiguracoes() {
 
   const rows = useMemo(() => data, [data]);
 
+  if (loadingAcesso) return null;
+  if (!isFinAdmin && !podeLancar) return <Navigate to="/financeiro-op/diaristas" />;
+
   return (
     <div className="space-y-6 p-4 sm:p-6">
       <div>
@@ -143,10 +144,16 @@ function DiaristasConfiguracoes() {
           </Link>
         </Button>
         <PageHeader
-          title="Configurações — Diaristas"
-          description="Cadastre diaristas com valor/hora por localidade e chave Pix. Estes dados serão usados no apontamento e fechamento."
+          title={isFinAdmin ? "Configurações — Diaristas" : "Cadastro de diaristas"}
+          description={
+            isFinAdmin
+              ? "Cadastre diaristas com valor/hora por localidade e chave Pix. Estes dados serão usados no apontamento e fechamento."
+              : "Cadastre os diaristas que você vai usar nos lançamentos. Os valores por hora são definidos pelo financeiro."
+          }
         />
       </div>
+
+      {isFinAdmin && <LancadoresCard />}
 
       <Card className="p-4">
         <div className="flex items-center justify-between mb-3">
@@ -333,5 +340,125 @@ function DiaristasConfiguracoes() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Liberação de acesso ao lançamento de diárias
+// ─────────────────────────────────────────────────────────────
+
+type PerfilRow = { id: string; email: string | null; display_name: string | null };
+
+function LancadoresCard() {
+  const qc = useQueryClient();
+  const [busca, setBusca] = useState("");
+
+  const { data: perfis = [] } = useQuery({
+    queryKey: ["diarista-lancadores-perfis"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("profiles")
+        .select("id,email,display_name")
+        .order("display_name", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as PerfilRow[];
+    },
+  });
+
+  const { data: liberados = [], isLoading } = useQuery({
+    queryKey: ["diarista-lancadores"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("diarista_lancadores")
+        .select("user_id");
+      if (error) throw error;
+      return (data ?? []).map((r: any) => r.user_id as string);
+    },
+  });
+
+  const toggle = useMutation({
+    mutationFn: async ({ userId, liberar }: { userId: string; liberar: boolean }) => {
+      if (liberar) {
+        const { error } = await (supabase as any)
+          .from("diarista_lancadores")
+          .insert({ user_id: userId });
+        if (error) throw error;
+      } else {
+        const { error } = await (supabase as any)
+          .from("diarista_lancadores")
+          .delete()
+          .eq("user_id", userId);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["diarista-lancadores"] });
+      qc.invalidateQueries({ queryKey: ["diarista-lancador"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao alterar acesso"),
+  });
+
+  const set = new Set(liberados);
+  const filtrados = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    const lista = q
+      ? perfis.filter(
+          (p) =>
+            (p.display_name ?? "").toLowerCase().includes(q) ||
+            (p.email ?? "").toLowerCase().includes(q),
+        )
+      : perfis;
+    // Liberados primeiro
+    return [...lista].sort(
+      (a, b) => Number(set.has(b.id)) - Number(set.has(a.id)),
+    );
+  }, [perfis, busca, liberados]);
+
+  return (
+    <Card className="p-4">
+      <div className="flex items-center justify-between gap-3 mb-1 flex-wrap">
+        <h2 className="text-sm font-semibold">Quem pode lançar diárias</h2>
+        <Input
+          className="max-w-xs"
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder="Buscar usuário"
+        />
+      </div>
+      <p className="text-xs text-muted-foreground mb-3">
+        Os usuários liberados veem a aba Diaristas, cadastram novos diaristas e lançam,
+        editam e excluem apenas os próprios lançamentos — sem acesso a valores nem ao fechamento.
+      </p>
+
+      {isLoading ? (
+        <div className="p-6 flex justify-center text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+        </div>
+      ) : (
+        <div className="max-h-72 overflow-y-auto divide-y divide-border/60">
+          {filtrados.map((p) => (
+            <div key={p.id} className="flex items-center justify-between gap-3 py-2">
+              <div className="min-w-0">
+                <div className="text-sm font-medium truncate">
+                  {p.display_name || p.email || p.id}
+                </div>
+                {p.display_name && p.email && (
+                  <div className="text-xs text-muted-foreground truncate">{p.email}</div>
+                )}
+              </div>
+              <Switch
+                checked={set.has(p.id)}
+                onCheckedChange={(v) => toggle.mutate({ userId: p.id, liberar: v })}
+              />
+            </div>
+          ))}
+          {filtrados.length === 0 && (
+            <div className="py-6 text-center text-sm text-muted-foreground">
+              Nenhum usuário encontrado.
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
   );
 }

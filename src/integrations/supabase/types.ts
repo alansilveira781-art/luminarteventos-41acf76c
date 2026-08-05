@@ -2518,6 +2518,50 @@ export type Database = {
           },
         ]
       }
+      diarista_apontamento_eventos: {
+        Row: {
+          apontamento_id: string
+          created_at: string
+          evento_id: string | null
+          evento_nome: string
+          hora_final: string | null
+          hora_inicial: string | null
+          id: string
+          intervalo_minutos: number
+          ordem: number
+        }
+        Insert: {
+          apontamento_id: string
+          created_at?: string
+          evento_id?: string | null
+          evento_nome: string
+          hora_final?: string | null
+          hora_inicial?: string | null
+          id?: string
+          intervalo_minutos?: number
+          ordem?: number
+        }
+        Update: {
+          apontamento_id?: string
+          created_at?: string
+          evento_id?: string | null
+          evento_nome?: string
+          hora_final?: string | null
+          hora_inicial?: string | null
+          id?: string
+          intervalo_minutos?: number
+          ordem?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diarista_apontamento_eventos_apontamento_id_fkey"
+            columns: ["apontamento_id"]
+            isOneToOne: false
+            referencedRelation: "diarista_apontamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       diarista_apontamentos: {
         Row: {
           atividade: string | null
@@ -2533,6 +2577,7 @@ export type Database = {
           id: string
           intervalo_minutos: number
           local: string
+          modo_divisao: string
           obs: string | null
           projeto: string | null
           updated_at: string
@@ -2551,6 +2596,7 @@ export type Database = {
           id?: string
           intervalo_minutos?: number
           local?: string
+          modo_divisao?: string
           obs?: string | null
           projeto?: string | null
           updated_at?: string
@@ -2569,6 +2615,7 @@ export type Database = {
           id?: string
           intervalo_minutos?: number
           local?: string
+          modo_divisao?: string
           obs?: string | null
           projeto?: string | null
           updated_at?: string
@@ -2582,6 +2629,21 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      diarista_lancadores: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       diaristas: {
         Row: {
@@ -4877,6 +4939,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_diaria_admin: { Args: { _user_id: string }; Returns: boolean }
       is_expectador_eventos: { Args: { _user_id: string }; Returns: boolean }
       is_module_admin: {
         Args: { _slug: string; _user_id: string }
@@ -4894,6 +4957,7 @@ export type Database = {
       next_pat_requisicao_numero: { Args: never; Returns: number }
       next_proposta_numero: { Args: never; Returns: number }
       next_requisicao_numero: { Args: never; Returns: number }
+      pode_lancar_diaria: { Args: { _user_id: string }; Returns: boolean }
       primeira_data_rotina: {
         Args: {
           p_data_inicio: string
