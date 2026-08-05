@@ -38,6 +38,7 @@ const fmtBRL = (v: number) =>
 type EventoBonif = {
   eventoId: string;
   nomeEvento: string;
+  local: string | null;
   dataEvento: string | null;
   categoria: string;
   origemVenda: "vinculada" | "nome" | null;
