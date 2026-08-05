@@ -70,9 +70,7 @@ function useDiaristas() {
 }
 
 function DiaristasConfiguracoes() {
-  const { isAdmin, modulos } = useAuth();
-  const isFinAdmin = isAdmin || modulos.some((m) => m.slug === "financeiro_op" && m.is_admin);
-  if (!isFinAdmin) return <Navigate to="/financeiro-op/diaristas" />;
+  const { isFinAdmin, podeLancar, loading: loadingAcesso } = useDiaristaAcesso();
 
   const qc = useQueryClient();
   const { data = [], isLoading } = useDiaristas();
