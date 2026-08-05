@@ -14,6 +14,7 @@ export type AlcadaRow = {
 export type BonificacaoRow = {
   id: string;
   venda_id: string | null;
+  evento_id?: string | null;
   nome_evento: string;
   data_evento: string | null;
   categoria: string | null;
@@ -39,6 +40,7 @@ export type FechamentoItemRow = {
   id: string;
   fechamento_id: string;
   venda_id: string | null;
+  evento_id?: string | null;
   nome_evento: string | null;
   data_evento: string | null;
   categoria: string | null;
@@ -47,6 +49,7 @@ export type FechamentoItemRow = {
   complexidade: number | null;
   valor_final: number | null;
 };
+
 
 export function useFechamentoMes(ano: number | "Todos", mes: string) {
   const enabled = ano !== "Todos" && !!mes && mes !== "Todos";
@@ -283,4 +286,123 @@ export function useBonificacaoMutations() {
     onSuccess: inv,
   });
   return { upsert, remove };
+}
+
+/** Mutations para bonificação vinculada a eventos do calendário. */
+export function useBonificacaoEventoMutations() {
+  const qc = useQueryClient();
+  const inv = () => qc.invalidateQueries({ queryKey: ["comercial-bonificacao"] });
+  const upsert = useMutation({
+    mutationFn: async (row: Omit<BonificacaoRow, "id"> & { id?: string }) => {
+      const { id, ...rest } = row;
+      if (id) {
+        const { error } = await sb.from("comercial_bonificacao_producao").update(rest).eq("id", id);
+        if (error) throw error;
+        return;
+      }
+      // Já existe registro para este evento + produtor? Atualiza em vez de duplicar.
+      const { data: existente, error: selErr } = await sb
+        .from("comercial_bonificacao_producao")
+        .select("id")
+        .eq("evento_id", rest.evento_id)
+        .eq("produtor_id", rest.produtor_id)
+        .maybeSingle();
+      if (selErr) throw selErr;
+      if (existente?.id) {
+        const { error } = await sb
+          .from("comercial_bonificacao_producao")
+          .update(rest)
+          .eq("id", existente.id);
+        if (error) throw error;
+        return;
+      }
+      const { error } = await sb.from("comercial_bonificacao_producao").insert(rest);
+      if (error) throw error;
+    },
+    onSuccess: inv,
+  });
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await sb.from("comercial_bonificacao_producao").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: inv,
+  });
+  return { upsert, remove };
+}
+
+export type EventoRealizado = {
+  id: string;
+  nome: string;
+  local: string | null;
+  tipo: string | null;
+  dataFim: string | null;
+  valorFinal: number;
+  ano: number | null;
+  mes: string | null;
+};
+
+const MESES_LOWER = [
+  "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+];
+
+/** Eventos do calendário já realizados (data final <= hoje), com valor da venda vinculada. */
+export function useEventosRealizados(ano: number | "Todos", mes: string) {
+  return useQuery({
+    queryKey: ["bonificacao-eventos-realizados", ano, mes],
+    queryFn: async (): Promise<EventoRealizado[]> => {
+      const hoje = new Date().toISOString().slice(0, 10);
+      const { data, error } = await sb
+        .from("eventos")
+        .select("id,nome,local,tipo,data_evento,data_evento_fim,venda_id")
+        .order("data_evento_fim", { ascending: true });
+      if (error) throw error;
+
+      const brutos = ((data ?? []) as any[])
+        .map((e) => ({
+          id: e.id as string,
+          nome: (e.nome as string) || "-",
+          local: (e.local as string) ?? null,
+          tipo: (e.tipo as string) ?? null,
+          dataFim: (e.data_evento_fim || e.data_evento) as string | null,
+          vendaId: (e.venda_id as string) ?? null,
+        }))
+        .filter((e) => !!e.dataFim && e.dataFim! <= hoje);
+
+      const vendaIds = [...new Set(brutos.map((e) => e.vendaId).filter(Boolean))] as string[];
+      const valores = new Map<string, number>();
+      if (vendaIds.length) {
+        const { data: vd, error: ve } = await sb
+          .from("comercial_vendas")
+          .select("id,valor_final")
+          .in("id", vendaIds);
+        if (ve) throw ve;
+        for (const v of (vd ?? []) as any[]) valores.set(v.id, Number(v.valor_final) || 0);
+      }
+
+      const lista: EventoRealizado[] = brutos.map((e) => {
+        const y = e.dataFim ? Number(e.dataFim.slice(0, 4)) : null;
+        const m = e.dataFim ? Number(e.dataFim.slice(5, 7)) : null;
+        return {
+          id: e.id,
+          nome: e.nome,
+          local: e.local,
+          tipo: e.tipo,
+          dataFim: e.dataFim,
+          valorFinal: e.vendaId ? (valores.get(e.vendaId) ?? 0) : 0,
+          ano: Number.isFinite(y as number) ? (y as number) : null,
+          mes: m ? MESES_LOWER[m - 1] : null,
+        };
+      });
+
+      const mesAlvo = mes && mes !== "Todos" ? mes.toLowerCase() : null;
+      return lista.filter((e) => {
+        if (ano !== "Todos" && e.ano !== ano) return false;
+        if (mesAlvo && (e.mes ?? "") !== mesAlvo) return false;
+        return true;
+      });
+    },
+    staleTime: 30_000,
+  });
 }

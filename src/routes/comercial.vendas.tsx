@@ -17,8 +17,9 @@ import { MoneyInput } from "@/components/MoneyInput";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
-  AlertTriangle, Download, Loader2, Pencil, Plus, ShieldAlert, Trash2,
+  AlertTriangle, Download, Loader2, Pencil, Plus, RefreshCw, ShieldAlert, Trash2,
 } from "lucide-react";
+
 import { listVendasDb } from "@/lib/comercial/vendas-db.functions";
 import type { VendaRow } from "@/lib/comercial/vendas.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,6 +35,8 @@ import {
 import { useSort, SortableTh } from "@/components/SortableTh";
 import { useVendedores, useCerimoniais, useDecoradores, useClassificacoes } from "@/lib/comercial/cadastros";
 import { CadastroCombobox } from "@/components/comercial/CadastroCombobox";
+import { calcularDerivados, matchCadastro } from "@/lib/comercial/comissao";
+
 
 
 
@@ -221,18 +224,26 @@ function VendasPage() {
   const { data: classificacoes = [] } = useClassificacoes();
 
 
-  const derived = useMemo(() => {
-    const valor_final = Math.max(0, (form.valor_proposta || 0) - (form.desconto || 0));
-    const vend = vendedores.find((v) => v.nome === form.consultor);
-    const ceri = cerimoniais.find((c) => c.nome === form.cerimonial);
-    const valor_comissao = vend ? valor_final * (Number(vend.percentual_comissao) || 0) / 100 : 0;
-    const valor_bv = ceri ? valor_final * (Number(ceri.percentual_bv) || 0) / 100 : 0;
-    return {
-      valor_final: Number(valor_final.toFixed(2)),
-      valor_bv: Number(valor_bv.toFixed(2)),
-      valor_comissao: Number(valor_comissao.toFixed(2)),
-    };
-  }, [form.valor_proposta, form.desconto, form.consultor, form.cerimonial, vendedores, cerimoniais]);
+  const derived = useMemo(
+    () =>
+      calcularDerivados(
+        {
+          valor_proposta: form.valor_proposta,
+          desconto: form.desconto,
+          consultor: form.consultor,
+          cerimonial: form.cerimonial,
+        },
+        vendedores as any,
+        cerimoniais as any,
+      ),
+    [form.valor_proposta, form.desconto, form.consultor, form.cerimonial, vendedores, cerimoniais],
+  );
+
+  const consultorSemCadastro = useMemo(
+    () => !!form.consultor.trim() && !matchCadastro(form.consultor, vendedores as any),
+    [form.consultor, vendedores],
+  );
+
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["comercial-vendas-db"],
@@ -359,6 +370,39 @@ function VendasPage() {
     onError: (e: any) => toast.error(e?.message ?? "Erro ao excluir"),
   });
 
+  async function recalcularIds(ids: string[]) {
+    if (!ids.length) return 0;
+    const { data: atuais, error } = await supabase
+      .from("comercial_vendas")
+      .select("id,valor_proposta,desconto,consultor,cerimonial,valor_final,valor_bv,valor_comissao")
+      .in("id", ids);
+    if (error) throw error;
+    let n = 0;
+    for (const r of (atuais ?? []) as any[]) {
+      const d = calcularDerivados(
+        {
+          valor_proposta: Number(r.valor_proposta) || 0,
+          desconto: Number(r.desconto) || 0,
+          consultor: r.consultor,
+          cerimonial: r.cerimonial,
+        },
+        vendedores as any,
+        cerimoniais as any,
+      );
+      if (
+        Number(r.valor_final) === d.valor_final &&
+        Number(r.valor_bv) === d.valor_bv &&
+        Number(r.valor_comissao) === d.valor_comissao
+      ) continue;
+      const { error: upErr } = await supabase.from("comercial_vendas").update(d as any).eq("id", r.id);
+      if (upErr) throw upErr;
+      n++;
+    }
+    return n;
+  }
+
+  const RECALC_KEYS = ["consultor", "cerimonial", "valor_proposta", "desconto"];
+
   const bulkMut = useMutation({
     mutationFn: async (patch: Record<string, any>) => {
       const ids = Array.from(sel.selected);
@@ -369,6 +413,11 @@ function VendasPage() {
         .update(norm as any)
         .in("id", ids);
       if (error) throw error;
+      const tocaDerivados = Object.keys(norm).some((k) => RECALC_KEYS.includes(k));
+      const manual = Object.keys(norm).some((k) =>
+        ["valor_final", "valor_bv"].includes(k),
+      );
+      if (tocaDerivados && !manual) await recalcularIds(ids);
     },
     onSuccess: () => {
       toast.success("Vendas atualizadas");
@@ -378,6 +427,21 @@ function VendasPage() {
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao atualizar"),
   });
+
+  const recalcMut = useMutation({
+    mutationFn: async () => {
+      const ids = (sel.selected.size
+        ? Array.from(sel.selected)
+        : sorted.map((r) => r.id).filter(Boolean)) as string[];
+      return recalcularIds(ids);
+    },
+    onSuccess: (n) => {
+      toast.success(n ? `${n} venda(s) recalculada(s)` : "Nenhum ajuste necessário");
+      qc.invalidateQueries({ queryKey: ["comercial-vendas-db"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao recalcular"),
+  });
+
 
   function handleBulkDelete() {
     const ids = Array.from(sel.selected);
@@ -497,6 +561,23 @@ function VendasPage() {
             <Button variant="outline" size="sm" onClick={exportCsv} disabled={!sorted.length}>
               <Download className="h-4 w-4 mr-2" /> Exportar CSV
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const qtd = sel.selected.size || sorted.length;
+                if (!qtd) return;
+                if (!confirm(`Recalcular comissão e BV de ${qtd} venda(s) usando os percentuais cadastrados?`)) return;
+                recalcMut.mutate();
+              }}
+              disabled={recalcMut.isPending || !sorted.length}
+            >
+              {recalcMut.isPending
+                ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                : <RefreshCw className="h-4 w-4 mr-2" />}
+              Recalcular comissões/BV
+            </Button>
+
             <Button size="sm" onClick={openNew}>
               <Plus className="h-4 w-4 mr-2" /> Nova venda
             </Button>
@@ -737,7 +818,13 @@ function VendasPage() {
                 onChange={(v) => setForm({ ...form, consultor: v })}
                 extraFields={[{ key: "percentual_comissao", label: "% Comissão", type: "number", default: 0 }]}
               />
+              {consultorSemCadastro && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  Consultor(a) sem cadastro — comissão ficará zerada. Cadastre o percentual em Configurações.
+                </p>
+              )}
             </Field>
+
             <Field label="Cerimonial">
               <CadastroCombobox
                 table="comercial_cerimoniais"
