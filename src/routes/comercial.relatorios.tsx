@@ -18,6 +18,8 @@ import { Loader2, AlertTriangle, Download, FileBarChart, CalendarRange, Printer 
 import { listVendasDb } from "@/lib/comercial/vendas-db.functions";
 import { getAno, getMes, cleanText } from "@/lib/comercial/vendas-metrics";
 import { RelatorioVendasPeriodo } from "@/components/comercial/RelatorioVendasPeriodo";
+import { useVendedores } from "@/lib/comercial/cadastros";
+import { matchCadastro } from "@/lib/comercial/comissao";
 
 export const Route = createFileRoute("/comercial/relatorios")({
   component: RelatoriosPage,
@@ -46,6 +48,7 @@ type LinhaVenda = {
   tipo: string;
   valorFinal: number;
   valorComissao: number;
+  divergente: boolean;
 };
 
 type Grupo = {
@@ -53,6 +56,9 @@ type Grupo = {
   linhas: LinhaVenda[];
   totalFinal: number;
   totalComissao: number;
+  semCadastro: boolean;
+  gatilho: boolean;
+  percentual: number;
 };
 
 function RelatoriosPage() {
@@ -60,6 +66,7 @@ function RelatoriosPage() {
   const [ano, setAno] = useState<number | "Todos">("Todos");
   const [mes, setMes] = useState<string>("Todos");
 
+  const { data: vendedores = [] } = useVendedores();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["comercial-vendas-db", "relatorios"],
@@ -112,14 +119,20 @@ function RelatoriosPage() {
   const grupos = useMemo<Grupo[]>(() => {
     const map = new Map<string, LinhaVenda[]>();
     for (const r of filtradas) {
-      const consultor = cleanText(r.consultor) || "(vazio)";
+      const cad = matchCadastro(r.consultor, vendedores);
+      const consultor = cad?.nome ?? (cleanText(r.consultor) || "(vazio)");
+      const valorFinal = Number(r.valorFinal || 0);
+      const pct = cad && cad.tipo_comissao !== "gatilho" ? Number(cad.percentual_comissao) || 0 : 0;
+      const calculada = Number(((valorFinal * pct) / 100).toFixed(2));
+      const gravada = Number(r.valorComissao || 0);
       const linha: LinhaVenda = {
         consultor,
         evento: cleanText(r.nomeEvento) || "-",
         local: cleanText(r.local) || "-",
         tipo: cleanText(r.tipo) || "-",
-        valorFinal: Number(r.valorFinal || 0),
-        valorComissao: Number(r.valorComissao || 0),
+        valorFinal,
+        valorComissao: calculada,
+        divergente: Math.abs(calculada - gravada) > 0.01,
       };
       const arr = map.get(consultor) ?? [];
       arr.push(linha);
@@ -134,9 +147,27 @@ function RelatoriosPage() {
       const linhas = map.get(consultor)!;
       const totalFinal = linhas.reduce((s, l) => s + l.valorFinal, 0);
       const totalComissao = linhas.reduce((s, l) => s + l.valorComissao, 0);
-      return { consultor, linhas, totalFinal, totalComissao };
+      const cad = matchCadastro(consultor, vendedores);
+      return {
+        consultor,
+        linhas,
+        totalFinal,
+        totalComissao,
+        semCadastro: !cad,
+        gatilho: cad?.tipo_comissao === "gatilho",
+        percentual: cad && cad.tipo_comissao !== "gatilho" ? Number(cad.percentual_comissao) || 0 : 0,
+      };
     });
-  }, [filtradas]);
+  }, [filtradas, vendedores]);
+
+  const semCadastroResumo = useMemo(
+    () =>
+      grupos
+        .filter((g) => g.semCadastro)
+        .map((g) => ({ consultor: g.consultor, qtd: g.linhas.length, valor: g.totalFinal })),
+    [grupos],
+  );
+
 
   const totalGeral = useMemo(
     () => ({
@@ -310,6 +341,22 @@ function RelatoriosPage() {
             </Card>
           </div>
 
+          {semCadastroResumo.length > 0 && (
+            <Card className="p-4 flex items-start gap-2 text-sm">
+              <AlertTriangle className="h-4 w-4 mt-0.5 text-amber-500 shrink-0" />
+              <div>
+                <p className="font-medium">Consultores sem cadastro em Configurações (comissão 0%)</p>
+                <p className="text-muted-foreground mt-1">
+                  {semCadastroResumo
+                    .map((s) => `${s.consultor} — ${s.qtd} venda(s), ${fmtBRL(s.valor)}`)
+                    .join(" · ")}
+                </p>
+              </div>
+            </Card>
+          )}
+
+
+
           <Card className="overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -354,7 +401,23 @@ function RelatoriosPage() {
                       <tr className="bg-muted/40 font-semibold border-t border-border">
                         <td className="px-3 py-2" colSpan={4}>
                           {g.consultor} Total
+                          {g.semCadastro && (
+                            <span className="ml-2 font-normal text-xs text-amber-600">
+                              sem cadastro
+                            </span>
+                          )}
+                          {g.gatilho && (
+                            <span className="ml-2 font-normal text-xs text-muted-foreground">
+                              comissão por gatilho
+                            </span>
+                          )}
+                          {!g.semCadastro && !g.gatilho && (
+                            <span className="ml-2 font-normal text-xs text-muted-foreground">
+                              {g.percentual}%
+                            </span>
+                          )}
                         </td>
+
                         <td className="px-3 py-2 text-right tabular-nums">
                           {fmtBRL(g.totalFinal)}
                         </td>
