@@ -391,21 +391,58 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
                 <Label>Hora da desmontagem</Label>
                 <Input type="time" value={f.hora_desmontagem} onChange={(e) => set("hora_desmontagem", e.target.value)} />
               </div>
-              <div className="sm:col-span-2">
-                <Label>Produtor do evento</Label>
-                <select
-                  value={f.produtor_id}
-                  onChange={(e) => {
-                    const id = e.target.value;
-                    const nome = produtores.find((p) => p.id === id)?.nome ?? "";
-                    setF((prev: any) => ({ ...prev, produtor_id: id, produtor: nome }));
-                  }}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  <option value="">— Selecione —</option>
-                  {produtores.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                </select>
+              <div className="sm:col-span-2 flex items-center gap-2">
+                <Checkbox
+                  id="produtor-terceirizado"
+                  checked={!!f.produtor_terceirizado}
+                  onCheckedChange={(v) =>
+                    setF((prev: any) => ({
+                      ...prev,
+                      produtor_terceirizado: !!v,
+                      produtor: "",
+                      produtor_id: "",
+                      terceirizado_id: "",
+                    }))
+                  }
+                />
+                <Label htmlFor="produtor-terceirizado" className="cursor-pointer">
+                  Produção terceirizada?
+                </Label>
               </div>
+              <div className="sm:col-span-2">
+                <Label>{f.produtor_terceirizado ? "Terceirizado (PJ)" : "Produtor do evento"}</Label>
+                {f.produtor_terceirizado ? (
+                  <DbComboboxCreatable
+                    table="eventos_terceirizados"
+                    value={f.produtor || null}
+                    onChange={(nome) => {
+                      const id = terceirizados.find((t) => t.nome === nome)?.id ?? "";
+                      setF((prev: any) => ({
+                        ...prev,
+                        produtor: nome ?? "",
+                        terceirizado_id: id,
+                        produtor_id: "",
+                      }));
+                    }}
+                    placeholder="Selecione ou cadastre um terceirizado…"
+                    searchPlaceholder="Buscar ou digitar novo terceirizado…"
+                  />
+                ) : (
+                  <select
+                    value={f.produtor_id}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      const nome = produtores.find((p) => p.id === id)?.nome ?? "";
+                      setF((prev: any) => ({ ...prev, produtor_id: id, produtor: nome, terceirizado_id: "" }));
+                    }}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="">— Selecione —</option>
+                    {produtores.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                  </select>
+                )}
+              </div>
+
             </div>
           </div>
         )}
