@@ -223,7 +223,10 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
         payload.data_desmontagem = f.data_desmontagem || null;
         payload.data_desmontagem_fim = f.data_desmontagem_fim || null;
         payload.produtor = f.produtor || null;
-        payload.produtor_id = f.produtor_id || null;
+        payload.produtor_id = f.produtor_terceirizado ? null : (f.produtor_id || null);
+        payload.produtor_terceirizado = !!f.produtor_terceirizado;
+        payload.terceirizado_id = f.produtor_terceirizado ? (f.terceirizado_id || null) : null;
+
         payload.hora_montagem = f.hora_montagem || null;
         payload.hora_desmontagem = f.hora_desmontagem || null;
 
