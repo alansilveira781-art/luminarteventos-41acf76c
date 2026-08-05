@@ -671,7 +671,13 @@ function FechamentoReadonlyBody({
 
   return (
     <>
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" className="gap-2" onClick={imprimirRelatorio}>
+          <Printer className="h-4 w-4" /> Imprimir relatório
+        </Button>
+      </div>
       <Card className="overflow-hidden">
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
