@@ -28,7 +28,14 @@ import { MoneyInput } from "@/components/MoneyInput";
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { calcularApontamento, formatHoras, type Local } from "@/lib/diaristas-calc";
+import {
+  calcularApontamento,
+  calcularApontamentoComEventos,
+  formatHoras,
+  type Local,
+  type ModoDivisao,
+} from "@/lib/diaristas-calc";
+import { useDiaristaAcesso } from "@/lib/diaristas-acesso";
 
 export const Route = createFileRoute("/financeiro-op/diaristas/")({
   component: DiaristasIndex,
