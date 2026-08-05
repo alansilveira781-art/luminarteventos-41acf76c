@@ -57,6 +57,21 @@ type Apontamento = {
   local: string;
   obs: string | null;
   extra_manual: number;
+  created_by: string | null;
+  modo_divisao: ModoDivisao | null;
+};
+
+type EventoLinha = {
+  evento_nome: string;
+  hora_inicial: string;
+  hora_final: string;
+  intervalo_minutos: number;
+};
+
+type ApontamentoEventoRow = EventoLinha & {
+  id: string;
+  apontamento_id: string;
+  ordem: number;
 };
 
 type ApontamentoForm = {
@@ -70,7 +85,16 @@ type ApontamentoForm = {
   local: Local;
   obs: string;
   extra_manual: number;
+  modo_divisao: ModoDivisao;
+  eventos: EventoLinha[];
 };
+
+const emptyEvento = (): EventoLinha => ({
+  evento_nome: "",
+  hora_inicial: "08:00",
+  hora_final: "12:00",
+  intervalo_minutos: 0,
+});
 
 const emptyApontamento = (): ApontamentoForm => ({
   diarista_id: "",
@@ -82,6 +106,8 @@ const emptyApontamento = (): ApontamentoForm => ({
   local: "Fortaleza",
   obs: "",
   extra_manual: 0,
+  modo_divisao: "unico",
+  eventos: [],
 });
 
 function fmtBRL(v: number) {
