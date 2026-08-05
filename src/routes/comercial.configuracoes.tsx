@@ -18,11 +18,8 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   useVendedores, useCerimoniais, useDecoradores, useCadastroMutations,
 } from "@/lib/comercial/cadastros";
-import {
-  useProdutores, useProdutorMutations, useAlcadas, useAlcadaMutation,
-} from "@/lib/comercial/bonificacao";
-import { TIPOS_EVENTO } from "@/lib/comercial/types";
 import { Switch } from "@/components/ui/switch";
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type UsuarioComercial = { id: string; nome: string; is_admin: boolean };
