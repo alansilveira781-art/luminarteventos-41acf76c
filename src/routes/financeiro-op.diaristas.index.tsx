@@ -858,6 +858,8 @@ function ApontamentoTab() {
 function FechamentoTab() {
   const { data: diaristas = [] } = useDiaristas();
   const { data: apontamentos = [], isLoading } = useApontamentos();
+  const { data: eventosMap } = useApontamentoEventos();
+
 
   const diaristasMap = useMemo(
     () => new Map(diaristas.map((d) => [d.id, d])),
