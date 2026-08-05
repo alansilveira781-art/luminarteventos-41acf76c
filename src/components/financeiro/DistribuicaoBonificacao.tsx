@@ -622,6 +622,7 @@ function FechamentoReadonlyBody({ fechamentoId }: { fechamentoId: string }) {
                       {idx === 0 ? (
                         <>
                           <td className="px-3 py-2" rowSpan={grp.itens.length}>{i.nome_evento || "-"}</td>
+                          <td className="px-3 py-2" rowSpan={grp.itens.length}>{(i as any).local || "—"}</td>
                           <td className="px-3 py-2" rowSpan={grp.itens.length}>
                             {i.data_evento ? new Date(i.data_evento + "T00:00:00").toLocaleDateString("pt-BR") : "-"}
                           </td>
