@@ -38,6 +38,7 @@ const fmtBRL = (v: number) =>
 type EventoBonif = {
   eventoId: string;
   nomeEvento: string;
+  local: string | null;
   dataEvento: string | null;
   categoria: string;
   origemVenda: "vinculada" | "nome" | null;
@@ -89,6 +90,7 @@ export function DistribuicaoBonificacao() {
       (eventosData ?? []).map((e) => ({
         eventoId: e.id,
         nomeEvento: e.nome,
+        local: e.local ?? null,
         dataEvento: e.dataInicio ?? e.dataFim,
         categoria: e.categoria || e.tipo || "",
         origemVenda: e.origemVenda,
@@ -431,6 +433,7 @@ export function DistribuicaoBonificacao() {
                 <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
                   <tr>
                     <th className="text-left px-3 py-2">Nome do evento</th>
+                    <th className="text-left px-3 py-2">Local</th>
                     <th className="text-left px-3 py-2">Data</th>
                     <th className="text-left px-3 py-2">Categoria</th>
                     <th className="text-left px-3 py-2">Produtor</th>
@@ -442,7 +445,7 @@ export function DistribuicaoBonificacao() {
                 <tbody>
                   {eventos.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">
+                      <td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">
                         Nenhum evento realizado no período.
                       </td>
                     </tr>
@@ -465,6 +468,7 @@ export function DistribuicaoBonificacao() {
                                         : "sem venda"}
                                   </span>
                                 </td>
+                                <td className="px-3 py-2" rowSpan={linhas.length}>{e.local || "—"}</td>
                                 <td className="px-3 py-2" rowSpan={linhas.length}>
                                   {e.dataEvento ? new Date(e.dataEvento + "T00:00:00").toLocaleDateString("pt-BR") : "-"}
                                 </td>
@@ -595,6 +599,7 @@ function FechamentoReadonlyBody({ fechamentoId }: { fechamentoId: string }) {
             <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="text-left px-3 py-2">Nome do evento</th>
+                <th className="text-left px-3 py-2">Local</th>
                 <th className="text-left px-3 py-2">Data</th>
                 <th className="text-left px-3 py-2">Categoria</th>
                 <th className="text-left px-3 py-2">Produtor</th>
@@ -605,7 +610,7 @@ function FechamentoReadonlyBody({ fechamentoId }: { fechamentoId: string }) {
             <tbody>
               {porEvento.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">
                     Nenhum item no fechamento.
                   </td>
                 </tr>
@@ -617,6 +622,7 @@ function FechamentoReadonlyBody({ fechamentoId }: { fechamentoId: string }) {
                       {idx === 0 ? (
                         <>
                           <td className="px-3 py-2" rowSpan={grp.itens.length}>{i.nome_evento || "-"}</td>
+                          <td className="px-3 py-2" rowSpan={grp.itens.length}>{(i as any).local || "—"}</td>
                           <td className="px-3 py-2" rowSpan={grp.itens.length}>
                             {i.data_evento ? new Date(i.data_evento + "T00:00:00").toLocaleDateString("pt-BR") : "-"}
                           </td>
