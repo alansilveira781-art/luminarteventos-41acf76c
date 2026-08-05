@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDiaristaAcesso } from "@/lib/diaristas-acesso";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import * as Icons from "lucide-react";
