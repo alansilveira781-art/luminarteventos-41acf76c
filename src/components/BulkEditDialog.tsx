@@ -6,9 +6,23 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MoneyInput } from "@/components/MoneyInput";
+import { CadastroCombobox } from "@/components/comercial/CadastroCombobox";
 
 export type BulkField =
   | { key: string; label: string; type: "text" }
+  | {
+      key: string;
+      label: string;
+      type: "cadastro";
+      table:
+        | "comercial_vendedores"
+        | "comercial_cerimoniais"
+        | "comercial_decoradores"
+        | "comercial_classificacoes";
+      queryKey: string;
+      extraFields?: Array<{ key: string; label: string; type: "number"; default?: number }>;
+      allowClear?: boolean;
+    }
   | { key: string; label: string; type: "textarea" }
   | { key: string; label: string; type: "number"; step?: string }
   | { key: string; label: string; type: "money" }
@@ -129,6 +143,26 @@ export function BulkEditDialog({
                         value={values[f.key] ?? ""}
                         onChange={(e) => set(f.key, e.target.value)}
                       />
+                    )}
+                    {f.type === "cadastro" && (
+                      <div className="space-y-1">
+                        <CadastroCombobox
+                          table={f.table}
+                          queryKey={f.queryKey}
+                          value={values[f.key] === "__null__" ? "" : (values[f.key] ?? "")}
+                          onChange={(v) => set(f.key, v)}
+                          extraFields={f.extraFields}
+                        />
+                        {f.allowClear !== false && (
+                          <button
+                            type="button"
+                            className="text-[11px] text-muted-foreground hover:text-foreground underline"
+                            onClick={() => set(f.key, "__null__")}
+                          >
+                            {values[f.key] === "__null__" ? "Será limpado" : "Limpar valor"}
+                          </button>
+                        )}
+                      </div>
                     )}
                     {f.type === "select" && (
                       <Select value={values[f.key] ?? ""} onValueChange={(v) => set(f.key, v)}>
