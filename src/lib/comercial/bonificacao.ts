@@ -387,7 +387,7 @@ export function useEventosRealizados(ano: number | "Todos", mes: string) {
 
           vendaId: (e.venda_id as string) ?? null,
         }))
-        .filter((e) => !!e.dataFim && e.dataFim! <= hoje);
+        .filter((e) => !!e.dataInicio && e.dataInicio! <= hoje);
 
       // Vendas: lookup por id (vínculo direto) e índice por nome normalizado.
       const { data: vendasData, error: ve } = await sb
@@ -457,6 +457,8 @@ export function useEventosRealizados(ano: number | "Todos", mes: string) {
           origemVenda: origem,
           dataInicio: e.dataInicio,
           dataFim: e.dataFim,
+          emAndamento: !!e.dataFim && e.dataFim > hoje,
+
 
           valorFinal: venda?.valorFinal ?? 0,
           ano: Number.isFinite(y as number) ? (y as number) : null,
