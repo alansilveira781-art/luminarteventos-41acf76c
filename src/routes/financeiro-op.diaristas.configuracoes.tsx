@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useDiaristaAcesso } from "@/lib/diaristas-acesso";
 import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
