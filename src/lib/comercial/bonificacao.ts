@@ -372,27 +372,72 @@ export function useEventosRealizados(ano: number | "Todos", mes: string) {
         }))
         .filter((e) => !!e.dataFim && e.dataFim! <= hoje);
 
-      const vendaIds = [...new Set(brutos.map((e) => e.vendaId).filter(Boolean))] as string[];
-      const valores = new Map<string, number>();
-      if (vendaIds.length) {
-        const { data: vd, error: ve } = await sb
-          .from("comercial_vendas")
-          .select("id,valor_final")
-          .in("id", vendaIds);
-        if (ve) throw ve;
-        for (const v of (vd ?? []) as any[]) valores.set(v.id, Number(v.valor_final) || 0);
+      // Vendas: lookup por id (vínculo direto) e índice por nome normalizado.
+      const { data: vendasData, error: ve } = await sb
+        .from("comercial_vendas")
+        .select("id,nome_evento,tipo_evento,valor_final,data_evento");
+      if (ve) throw ve;
+
+      type VendaLite = {
+        id: string;
+        nome: string;
+        categoria: string | null;
+        valorFinal: number;
+        dataEvento: string | null;
+      };
+      const porId = new Map<string, VendaLite>();
+      const porNome = new Map<string, VendaLite[]>();
+      for (const v of (vendasData ?? []) as any[]) {
+        const lite: VendaLite = {
+          id: v.id,
+          nome: (v.nome_evento as string) || "",
+          categoria: (v.tipo_evento as string) ?? null,
+          valorFinal: Number(v.valor_final) || 0,
+          dataEvento: (v.data_evento as string) ?? null,
+        };
+        porId.set(lite.id, lite);
+        const chave = normalizeNome(lite.nome);
+        if (!chave) continue;
+        const arr = porNome.get(chave) ?? [];
+        arr.push(lite);
+        porNome.set(chave, arr);
       }
+
+      const diasEntre = (a: string | null, b: string | null) => {
+        if (!a || !b) return Number.MAX_SAFE_INTEGER;
+        return Math.abs(
+          (new Date(a + "T00:00:00").getTime() - new Date(b + "T00:00:00").getTime()) / 86400000,
+        );
+      };
 
       const lista: EventoRealizado[] = brutos.map((e) => {
         const y = e.dataFim ? Number(e.dataFim.slice(0, 4)) : null;
         const m = e.dataFim ? Number(e.dataFim.slice(5, 7)) : null;
+
+        let venda: VendaLite | null = e.vendaId ? (porId.get(e.vendaId) ?? null) : null;
+        let origem: "vinculada" | "nome" | null = venda ? "vinculada" : null;
+        if (!venda) {
+          const candidatos = porNome.get(normalizeNome(e.nome)) ?? [];
+          if (candidatos.length === 1) {
+            venda = candidatos[0];
+            origem = "nome";
+          } else if (candidatos.length > 1) {
+            venda = [...candidatos].sort(
+              (a, b) => diasEntre(a.dataEvento, e.dataFim) - diasEntre(b.dataEvento, e.dataFim),
+            )[0];
+            origem = "nome";
+          }
+        }
+
         return {
           id: e.id,
           nome: e.nome,
           local: e.local,
           tipo: e.tipo,
+          categoria: venda?.categoria ?? e.tipo ?? null,
+          origemVenda: origem,
           dataFim: e.dataFim,
-          valorFinal: e.vendaId ? (valores.get(e.vendaId) ?? 0) : 0,
+          valorFinal: venda?.valorFinal ?? 0,
           ano: Number.isFinite(y as number) ? (y as number) : null,
           mes: m ? MESES_LOWER[m - 1] : null,
         };
