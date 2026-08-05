@@ -226,6 +226,15 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
         payload.produtor_id = f.produtor_terceirizado ? null : (f.produtor_id || null);
         payload.produtor_terceirizado = !!f.produtor_terceirizado;
         payload.terceirizado_id = f.produtor_terceirizado ? (f.terceirizado_id || null) : null;
+        if (f.produtor_terceirizado && f.produtor && !payload.terceirizado_id) {
+          const { data: t } = await sb
+            .from("eventos_terceirizados")
+            .select("id")
+            .eq("nome", f.produtor)
+            .maybeSingle();
+          payload.terceirizado_id = t?.id ?? null;
+        }
+
 
         payload.hora_montagem = f.hora_montagem || null;
         payload.hora_desmontagem = f.hora_desmontagem || null;
