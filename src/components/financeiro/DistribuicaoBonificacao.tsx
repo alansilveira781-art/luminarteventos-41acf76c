@@ -40,6 +40,7 @@ type EventoBonif = {
   nomeEvento: string;
   dataEvento: string | null;
   categoria: string;
+  origemVenda: "vinculada" | "nome" | null;
   valorFinal: number;
   ano: number | null;
   mes: string | null;
