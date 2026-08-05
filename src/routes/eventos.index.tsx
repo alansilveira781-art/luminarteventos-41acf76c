@@ -522,6 +522,9 @@ function LocaisAdicionais({ evento, onChanged }: { evento: any; onChanged: () =>
         uf: evento.uf ?? null,
         produtor: evento.produtor ?? null,
         produtor_id: evento.produtor_id ?? null,
+        produtor_terceirizado: evento.produtor_terceirizado ?? false,
+        terceirizado_id: evento.terceirizado_id ?? null,
+
         local: row.local.trim(),
         data_evento: row.data_evento,
         data_evento_fim: row.data_evento_fim,
