@@ -103,6 +103,8 @@ function CartoesReport() {
   const [cartao, setCartao] = useState<string>("");
   const [preset, setPreset] = useState<PeriodoPreset>(PERIODO_MES_DEFAULT.preset);
   const [periodo, setPeriodo] = useState<Periodo>(PERIODO_MES_DEFAULT.periodo);
+  const [statusPreset, setStatusPreset] = useState<StatusPreset>("padrao");
+
 
   const { data: cartoes = [] } = useQuery({
     queryKey: ["condicoes_pagamento"],
