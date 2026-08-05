@@ -1,0 +1,193 @@
+// Relatório de Diaristas em PDF (A4 retrato).
+// jspdf carregado sob demanda para não pesar no bundle.
+
+export type RelatorioItemEvento = {
+  evento_nome: string;
+  horasLabel: string;
+  valor: number;
+};
+
+export type RelatorioItem = {
+  data: string; // ISO yyyy-mm-dd
+  projeto: string;
+  local: string;
+  horasLabel: string;
+  diaria: number;
+  extra: number;
+  total: number;
+  eventos?: RelatorioItemEvento[];
+};
+
+export type RelatorioGrupo = {
+  nome: string;
+  chavePix: string | null;
+  dias: number;
+  horasLabel: string;
+  total: number;
+  itens: RelatorioItem[];
+};
+
+export type RelatorioDiaristasParams = {
+  de: string;
+  ate: string;
+  filtros?: string[];
+  grupos: RelatorioGrupo[];
+  totais: { dias: number; horasLabel: string; valor: number };
+};
+
+const brl = (v: number) =>
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
+
+const fmtDate = (iso: string) => {
+  if (!iso) return "—";
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+};
+
+export async function gerarRelatorioDiaristasPdf(params: RelatorioDiaristasParams) {
+  const { default: jsPDF } = await import("jspdf");
+  const autoTable = (await import("jspdf-autotable")).default;
+
+  const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const marginX = 14;
+  const contentW = pageW - marginX * 2;
+
+  // Cabeçalho
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text("Relatório de Diaristas", marginX, 16);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.text(`Período: ${fmtDate(params.de)} a ${fmtDate(params.ate)}`, marginX, 22);
+  const filtros = (params.filtros ?? []).filter(Boolean);
+  let y = 26;
+  if (filtros.length) {
+    doc.text(`Filtros: ${filtros.join(" · ")}`, marginX, y);
+    y += 4;
+  }
+  const agora = new Date();
+  doc.setTextColor(120);
+  doc.text(
+    `Gerado em ${agora.toLocaleDateString("pt-BR")} às ${agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`,
+    marginX,
+    y,
+  );
+  doc.setTextColor(0);
+  y += 6;
+
+  doc.setDrawColor(200);
+  doc.line(marginX, y, pageW - marginX, y);
+  y += 8;
+
+  for (const g of params.grupos) {
+    const alturaEstimada = 16 + 8 + g.itens.length * 6.5;
+    if (y + Math.min(alturaEstimada, 60) > pageH - 18) {
+      doc.addPage();
+      y = 18;
+    }
+
+    // Faixa com nome + total
+    doc.setFillColor(240, 240, 240);
+    doc.rect(marginX, y, contentW, 9, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text(g.nome, marginX + 3, y + 6.2);
+    doc.text(brl(g.total), pageW - marginX - 3, y + 6.2, { align: "right" });
+    y += 12;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(90);
+    const info = [
+      g.chavePix ? `Pix: ${g.chavePix}` : null,
+      `${g.dias} ${g.dias === 1 ? "dia" : "dias"}`,
+      `${g.horasLabel} trabalhadas`,
+    ]
+      .filter(Boolean)
+      .join("   |   ");
+    doc.text(info, marginX + 1, y);
+    doc.setTextColor(0);
+    y += 3;
+
+    const body: Array<Array<string | { content: string; colSpan?: number; styles?: any }>> = [];
+    for (const it of g.itens) {
+      body.push([
+        fmtDate(it.data),
+        it.projeto || "—",
+        it.local || "—",
+        it.horasLabel || "—",
+        brl(it.diaria),
+        brl(it.extra),
+        brl(it.total),
+      ]);
+      for (const ev of it.eventos ?? []) {
+        body.push([
+          "",
+          {
+            content: `↳ ${ev.evento_nome}`,
+            colSpan: 2,
+            styles: { textColor: [110, 110, 110], fontStyle: "italic" },
+          },
+          { content: ev.horasLabel, styles: { textColor: [110, 110, 110] } },
+          { content: "", colSpan: 2 },
+          { content: brl(ev.valor), styles: { textColor: [110, 110, 110] } },
+        ] as any);
+      }
+    }
+
+    autoTable(doc, {
+      startY: y,
+      head: [["Data", "Projeto / Evento", "Local", "Horas", "Diária", "Extra", "Total"]],
+      body: body as any,
+      theme: "grid",
+      styles: { fontSize: 8, cellPadding: 1.6, overflow: "linebreak" },
+      headStyles: { fillColor: [55, 55, 55], textColor: 255, fontSize: 8, fontStyle: "bold" },
+      columnStyles: {
+        0: { cellWidth: 20 },
+        1: { cellWidth: 62 },
+        2: { cellWidth: 20 },
+        3: { cellWidth: 16, halign: "right" },
+        4: { cellWidth: 22, halign: "right" },
+        5: { cellWidth: 19, halign: "right" },
+        6: { cellWidth: 23, halign: "right", fontStyle: "bold" },
+      },
+      margin: { left: marginX, right: marginX },
+    });
+
+    y = ((doc as any).lastAutoTable?.finalY ?? y) + 10;
+  }
+
+  // Total geral
+  if (y + 14 > pageH - 18) {
+    doc.addPage();
+    y = 18;
+  }
+  doc.setFillColor(55, 55, 55);
+  doc.rect(marginX, y, contentW, 10, "F");
+  doc.setTextColor(255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text(
+    `TOTAL GERAL — ${params.totais.dias} dia(s) · ${params.totais.horasLabel}`,
+    marginX + 3,
+    y + 6.6,
+  );
+  doc.text(brl(params.totais.valor), pageW - marginX - 3, y + 6.6, { align: "right" });
+  doc.setTextColor(0);
+
+  // Rodapé com paginação
+  const total = doc.getNumberOfPages();
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(130);
+    doc.text(`Página ${i} de ${total}`, pageW - marginX, pageH - 8, { align: "right" });
+    doc.setTextColor(0);
+  }
+
+  doc.save(`relatorio-diaristas-${params.de}_a_${params.ate}.pdf`);
+}
