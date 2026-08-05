@@ -433,6 +433,7 @@ export function DistribuicaoBonificacao() {
                 <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
                   <tr>
                     <th className="text-left px-3 py-2">Nome do evento</th>
+                    <th className="text-left px-3 py-2">Local</th>
                     <th className="text-left px-3 py-2">Data</th>
                     <th className="text-left px-3 py-2">Categoria</th>
                     <th className="text-left px-3 py-2">Produtor</th>
@@ -444,7 +445,7 @@ export function DistribuicaoBonificacao() {
                 <tbody>
                   {eventos.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">
+                      <td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">
                         Nenhum evento realizado no período.
                       </td>
                     </tr>
