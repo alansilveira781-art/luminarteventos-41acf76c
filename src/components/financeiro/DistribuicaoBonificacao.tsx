@@ -89,7 +89,7 @@ export function DistribuicaoBonificacao() {
       (eventosData ?? []).map((e) => ({
         eventoId: e.id,
         nomeEvento: e.nome,
-        dataEvento: e.dataFim,
+        dataEvento: e.dataInicio ?? e.dataFim,
         categoria: e.categoria || e.tipo || "",
         origemVenda: e.origemVenda,
         valorFinal: e.valorFinal,
