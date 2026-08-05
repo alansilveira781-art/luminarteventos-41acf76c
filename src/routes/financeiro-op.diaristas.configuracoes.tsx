@@ -131,6 +131,9 @@ function DiaristasConfiguracoes() {
 
   const rows = useMemo(() => data, [data]);
 
+  if (loadingAcesso) return null;
+  if (!isFinAdmin && !podeLancar) return <Navigate to="/financeiro-op/diaristas" />;
+
   return (
     <div className="space-y-6 p-4 sm:p-6">
       <div>
@@ -141,10 +144,16 @@ function DiaristasConfiguracoes() {
           </Link>
         </Button>
         <PageHeader
-          title="Configurações — Diaristas"
-          description="Cadastre diaristas com valor/hora por localidade e chave Pix. Estes dados serão usados no apontamento e fechamento."
+          title={isFinAdmin ? "Configurações — Diaristas" : "Cadastro de diaristas"}
+          description={
+            isFinAdmin
+              ? "Cadastre diaristas com valor/hora por localidade e chave Pix. Estes dados serão usados no apontamento e fechamento."
+              : "Cadastre os diaristas que você vai usar nos lançamentos. Os valores por hora são definidos pelo financeiro."
+          }
         />
       </div>
+
+      {isFinAdmin && <LancadoresCard />}
 
       <Card className="p-4">
         <div className="flex items-center justify-between mb-3">
