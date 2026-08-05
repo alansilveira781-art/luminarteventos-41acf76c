@@ -2704,8 +2704,10 @@ export type Database = {
           origem: string
           produtor: string | null
           produtor_id: string | null
+          produtor_terceirizado: boolean
           responsavel: string | null
           situacao: string | null
+          terceirizado_id: string | null
           tipo: string | null
           uf: string | null
           updated_at: string
@@ -2736,8 +2738,10 @@ export type Database = {
           origem?: string
           produtor?: string | null
           produtor_id?: string | null
+          produtor_terceirizado?: boolean
           responsavel?: string | null
           situacao?: string | null
+          terceirizado_id?: string | null
           tipo?: string | null
           uf?: string | null
           updated_at?: string
@@ -2768,8 +2772,10 @@ export type Database = {
           origem?: string
           produtor?: string | null
           produtor_id?: string | null
+          produtor_terceirizado?: boolean
           responsavel?: string | null
           situacao?: string | null
+          terceirizado_id?: string | null
           tipo?: string | null
           uf?: string | null
           updated_at?: string
@@ -2788,6 +2794,13 @@ export type Database = {
             columns: ["produtor_id"]
             isOneToOne: false
             referencedRelation: "produtores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eventos_terceirizado_id_fkey"
+            columns: ["terceirizado_id"]
+            isOneToOne: false
+            referencedRelation: "eventos_terceirizados"
             referencedColumns: ["id"]
           },
         ]
@@ -2878,6 +2891,33 @@ export type Database = {
           observacoes?: string | null
           produtor?: string | null
           uf?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      eventos_terceirizados: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          documento: string | null
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          documento?: string | null
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          documento?: string | null
+          id?: string
+          nome?: string
           updated_at?: string
         }
         Relationships: []
