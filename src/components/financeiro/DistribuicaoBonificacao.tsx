@@ -26,6 +26,7 @@ import {
   multiplicadorDaCategoria,
   type FechamentoItemRow,
 } from "@/lib/comercial/bonificacao";
+import { gerarRelatorioBonificacao, type LinhaRelatorio } from "@/lib/comercial/bonificacao-relatorio";
 
 const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -356,27 +357,50 @@ export function DistribuicaoBonificacao() {
     }
   };
 
+  const imprimirRelatorio = () => {
+    const linhas: LinhaRelatorio[] = [];
+    for (const e of eventos) {
+      const ls = linhasPorEvento[e.eventoId] ?? [];
+      if (ls.length === 0) {
+        linhas.push({
+          eventoKey: e.eventoId,
+          evento: e.nomeEvento,
+          local: e.local,
+          data: e.dataEvento,
+          categoria: e.categoria,
+          produtor: null,
+          peso: null,
+          valor: 0,
+        });
+        continue;
+      }
+      for (const l of ls) {
+        const p = produtores.find((x) => x.id === l.produtorId);
+        linhas.push({
+          eventoKey: e.eventoId,
+          evento: e.nomeEvento,
+          local: e.local,
+          data: e.dataEvento,
+          categoria: e.categoria,
+          produtor: p?.nome ?? null,
+          peso: l.complexidade,
+          valor: l.produtorId ? valorBonificacao(e, l.complexidade) : 0,
+        });
+      }
+    }
+    const ok = gerarRelatorioBonificacao({
+      titulo: "Distribuição de Bonificação",
+      subtitulo: `${ano === "Todos" ? "Todos os anos" : ano} · ${mes === "Todos" ? "Todos os meses" : mes}`,
+      linhas,
+    });
+    if (!ok) toast.error("Bloqueado pelo navegador. Permita pop-ups para gerar o relatório.");
+  };
+
   return (
-    <div className="print-area space-y-6">
-      <style>{`
-        @media print {
-          body * { visibility: hidden; }
-          .print-area, .print-area * { visibility: visible !important; }
-          .print-area { position: absolute; inset: 0; padding: 0; }
-          .print\\:hidden { display: none !important; }
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        }
-      `}</style>
-
-      <div className="hidden print:block mb-6">
-        <h1 className="text-2xl font-bold">Distribuição Bonificação</h1>
-        <p className="text-muted-foreground">
-          {ano === "Todos" ? "Todos os anos" : ano} · {mes === "Todos" ? "Todos os meses" : mes}
-        </p>
-      </div>
-
-      <Card className="p-4 print:hidden">
+    <div className="space-y-6">
+      <Card className="p-4">
         <div className="grid gap-3 sm:grid-cols-[160px_200px_1fr] sm:items-end">
+
           <div className="space-y-1">
             <Label>Ano</Label>
             <Select value={String(ano)} onValueChange={(v) => setAno(v === "Todos" ? "Todos" : Number(v))}>
@@ -401,13 +425,15 @@ export function DistribuicaoBonificacao() {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex flex-wrap justify-end gap-2 print:hidden">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button variant="outline" size="sm" className="gap-2" onClick={() => setHistoricoOpen(true)}>
               <History className="h-4 w-4" /> Ver períodos anteriores
             </Button>
-            <Button variant="outline" size="sm" className="gap-2" onClick={() => window.print()}>
-              <Printer className="h-4 w-4" /> Imprimir
-            </Button>
+            {!isClosed && (
+              <Button variant="outline" size="sm" className="gap-2" onClick={imprimirRelatorio}>
+                <Printer className="h-4 w-4" /> Imprimir relatório
+              </Button>
+            )}
             {isFinAdmin && (
               <Button
                 size="sm"
@@ -446,7 +472,10 @@ export function DistribuicaoBonificacao() {
       )}
 
       {!isLoading && !error && isClosed && (
-        <FechamentoReadonlyBody fechamentoId={fechamentoMes!.id} />
+        <FechamentoReadonlyBody
+          fechamentoId={fechamentoMes!.id}
+          subtitulo={`${ano === "Todos" ? "Todos os anos" : ano} · ${mes === "Todos" ? "Todos os meses" : mes} · mês fechado`}
+        />
       )}
 
       {!isLoading && !error && !isClosed && (
@@ -585,9 +614,32 @@ export function DistribuicaoBonificacao() {
 
 /* -------------------- Visão somente leitura do mês fechado -------------------- */
 
-function FechamentoReadonlyBody({ fechamentoId }: { fechamentoId: string }) {
+function FechamentoReadonlyBody({
+  fechamentoId,
+  subtitulo,
+}: { fechamentoId: string; subtitulo?: string }) {
   const { data, isLoading } = useFechamentoItens(fechamentoId);
   const itens = data ?? [];
+
+  const imprimirRelatorio = () => {
+    const linhas: LinhaRelatorio[] = itens.map((i) => ({
+      eventoKey: String((i as any).evento_id || i.venda_id || i.nome_evento || i.id),
+      evento: i.nome_evento || "—",
+      local: (i as any).local ?? null,
+      data: i.data_evento ?? null,
+      categoria: i.categoria ?? null,
+      produtor: i.produtor_nome ?? null,
+      peso: i.complexidade ?? null,
+      valor: Number(i.valor_final || 0),
+    }));
+    const ok = gerarRelatorioBonificacao({
+      titulo: "Distribuição de Bonificação",
+      subtitulo,
+      linhas,
+    });
+    if (!ok) toast.error("Bloqueado pelo navegador. Permita pop-ups para gerar o relatório.");
+  };
+
 
   const porEvento = useMemo(() => {
     const map = new Map<string, FechamentoItemRow[]>();
@@ -622,7 +674,13 @@ function FechamentoReadonlyBody({ fechamentoId }: { fechamentoId: string }) {
 
   return (
     <>
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" className="gap-2" onClick={imprimirRelatorio}>
+          <Printer className="h-4 w-4" /> Imprimir relatório
+        </Button>
+      </div>
       <Card className="overflow-hidden">
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
@@ -757,17 +815,8 @@ function HistoricoFechamentosDialog({
             )}
           </div>
         ) : (
-          <div className="print-area space-y-4">
-            <style>{`
-              @media print {
-                body * { visibility: hidden; }
-                .print-area, .print-area * { visibility: visible !important; }
-                .print-area { position: absolute; inset: 0; padding: 0; }
-                .print\\:hidden { display: none !important; }
-                body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-              }
-            `}</style>
-            <div className="flex items-center justify-between gap-2 print:hidden">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-2">
               <Button size="sm" variant="outline" onClick={() => setSelectedId(null)}>
                 ← Voltar
               </Button>
@@ -776,19 +825,13 @@ function HistoricoFechamentosDialog({
                 {new Date(selected.fechado_em).toLocaleString("pt-BR")} por{" "}
                 <strong>{selected.fechado_por_nome || "—"}</strong>
               </div>
-              <Button size="sm" variant="outline" className="gap-2" onClick={() => window.print()}>
-                <Printer className="h-4 w-4" /> Imprimir
-              </Button>
             </div>
-            <div className="hidden print:block mb-4">
-              <h1 className="text-2xl font-bold">Distribuição Bonificação — {selected.ano} / {selected.mes}</h1>
-              <p className="text-muted-foreground">
-                Fechado em {new Date(selected.fechado_em).toLocaleString("pt-BR")} por{" "}
-                {selected.fechado_por_nome || "—"}
-              </p>
-            </div>
-            <FechamentoReadonlyBody fechamentoId={selected.id} />
+            <FechamentoReadonlyBody
+              fechamentoId={selected.id}
+              subtitulo={`${selected.ano} · ${selected.mes} · fechado por ${selected.fechado_por_nome || "—"} em ${new Date(selected.fechado_em).toLocaleString("pt-BR")}`}
+            />
           </div>
+
         )}
       </DialogContent>
     </Dialog>
