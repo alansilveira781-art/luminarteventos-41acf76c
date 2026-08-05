@@ -375,7 +375,9 @@ export function useEventosRealizados(ano: number | "Todos", mes: string) {
           nome: (e.nome as string) || "-",
           local: (e.local as string) ?? null,
           tipo: (e.tipo as string) ?? null,
+          dataInicio: (e.data_evento || e.data_evento_fim) as string | null,
           dataFim: (e.data_evento_fim || e.data_evento) as string | null,
+
           vendaId: (e.venda_id as string) ?? null,
         }))
         .filter((e) => !!e.dataFim && e.dataFim! <= hoje);
