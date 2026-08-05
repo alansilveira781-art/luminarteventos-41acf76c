@@ -349,6 +349,12 @@ const MESES_LOWER = [
   "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
 ];
 
+/** Normaliza nome de evento para casamento flexível (acentos, caixa, pontuação, espaços). */
+const normalizeNome = (s: string) =>
+  normalize(s)
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
 /** Eventos do calendário já realizados (data final <= hoje), com valor da venda vinculada. */
 export function useEventosRealizados(ano: number | "Todos", mes: string) {
   return useQuery({
