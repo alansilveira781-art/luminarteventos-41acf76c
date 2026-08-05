@@ -14,7 +14,10 @@ import { Plus, Link2, ExternalLink, Trash2, CalendarPlus } from "lucide-react";
 import { toast } from "sonner";
 import { GanttEventos, type EventoCal } from "@/components/eventos/GanttEventos";
 import { SearchableSelect } from "@/components/SearchableSelect";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DbComboboxCreatable } from "@/components/DbComboboxCreatable";
 import { fetchEstados, fetchMunicipios } from "@/lib/ibge";
+
 
 const sb = supabase as any;
 
@@ -132,6 +135,8 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
     data_desmontagem_fim: evento?.data_desmontagem_fim ?? "",
     produtor: evento?.produtor ?? "",
     produtor_id: evento?.produtor_id ?? "",
+    produtor_terceirizado: evento?.produtor_terceirizado ?? false,
+    terceirizado_id: evento?.terceirizado_id ?? "",
     situacao: evento?.situacao ?? "Em Aprovação",
     hora_montagem: evento?.hora_montagem ?? "",
     hora_desmontagem: evento?.hora_desmontagem ?? "",
@@ -139,13 +144,23 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
   const set = (k: string, v: any) => setF((p: any) => ({ ...p, [k]: v }));
 
   const { data: produtores = [] } = useQuery({
-    queryKey: ["produtores"],
+    queryKey: ["comercial-produtores-ativos"],
     queryFn: async () => {
-      const { data } = await sb.from("produtores").select("id,nome").order("nome");
+      const { data } = await sb.from("comercial_produtores").select("id,nome,ativo").order("nome");
+      return ((data ?? []) as any[]).filter((p) => p.ativo !== false) as { id: string; nome: string }[];
+    },
+    staleTime: 60_000,
+  });
+
+  const { data: terceirizados = [] } = useQuery({
+    queryKey: ["opts-eventos_terceirizados"],
+    queryFn: async () => {
+      const { data } = await sb.from("eventos_terceirizados").select("id,nome").order("nome");
       return (data ?? []) as { id: string; nome: string }[];
     },
     staleTime: 60_000,
   });
+
 
   const { data: estados = [] } = useQuery({
     queryKey: ["ibge-estados"],
@@ -208,7 +223,19 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
         payload.data_desmontagem = f.data_desmontagem || null;
         payload.data_desmontagem_fim = f.data_desmontagem_fim || null;
         payload.produtor = f.produtor || null;
-        payload.produtor_id = f.produtor_id || null;
+        payload.produtor_id = f.produtor_terceirizado ? null : (f.produtor_id || null);
+        payload.produtor_terceirizado = !!f.produtor_terceirizado;
+        payload.terceirizado_id = f.produtor_terceirizado ? (f.terceirizado_id || null) : null;
+        if (f.produtor_terceirizado && f.produtor && !payload.terceirizado_id) {
+          const { data: t } = await sb
+            .from("eventos_terceirizados")
+            .select("id")
+            .eq("nome", f.produtor)
+            .maybeSingle();
+          payload.terceirizado_id = t?.id ?? null;
+        }
+
+
         payload.hora_montagem = f.hora_montagem || null;
         payload.hora_desmontagem = f.hora_desmontagem || null;
 
@@ -379,21 +406,58 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
                 <Label>Hora da desmontagem</Label>
                 <Input type="time" value={f.hora_desmontagem} onChange={(e) => set("hora_desmontagem", e.target.value)} />
               </div>
-              <div className="sm:col-span-2">
-                <Label>Produtor do evento</Label>
-                <select
-                  value={f.produtor_id}
-                  onChange={(e) => {
-                    const id = e.target.value;
-                    const nome = produtores.find((p) => p.id === id)?.nome ?? "";
-                    setF((prev: any) => ({ ...prev, produtor_id: id, produtor: nome }));
-                  }}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  <option value="">— Selecione —</option>
-                  {produtores.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                </select>
+              <div className="sm:col-span-2 flex items-center gap-2">
+                <Checkbox
+                  id="produtor-terceirizado"
+                  checked={!!f.produtor_terceirizado}
+                  onCheckedChange={(v) =>
+                    setF((prev: any) => ({
+                      ...prev,
+                      produtor_terceirizado: !!v,
+                      produtor: "",
+                      produtor_id: "",
+                      terceirizado_id: "",
+                    }))
+                  }
+                />
+                <Label htmlFor="produtor-terceirizado" className="cursor-pointer">
+                  Produção terceirizada?
+                </Label>
               </div>
+              <div className="sm:col-span-2">
+                <Label>{f.produtor_terceirizado ? "Terceirizado (PJ)" : "Produtor do evento"}</Label>
+                {f.produtor_terceirizado ? (
+                  <DbComboboxCreatable
+                    table="eventos_terceirizados"
+                    value={f.produtor || null}
+                    onChange={(nome) => {
+                      const id = terceirizados.find((t) => t.nome === nome)?.id ?? "";
+                      setF((prev: any) => ({
+                        ...prev,
+                        produtor: nome ?? "",
+                        terceirizado_id: id,
+                        produtor_id: "",
+                      }));
+                    }}
+                    placeholder="Selecione ou cadastre um terceirizado…"
+                    searchPlaceholder="Buscar ou digitar novo terceirizado…"
+                  />
+                ) : (
+                  <select
+                    value={f.produtor_id}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      const nome = produtores.find((p) => p.id === id)?.nome ?? "";
+                      setF((prev: any) => ({ ...prev, produtor_id: id, produtor: nome, terceirizado_id: "" }));
+                    }}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="">— Selecione —</option>
+                    {produtores.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                  </select>
+                )}
+              </div>
+
             </div>
           </div>
         )}
@@ -467,6 +531,9 @@ function LocaisAdicionais({ evento, onChanged }: { evento: any; onChanged: () =>
         uf: evento.uf ?? null,
         produtor: evento.produtor ?? null,
         produtor_id: evento.produtor_id ?? null,
+        produtor_terceirizado: evento.produtor_terceirizado ?? false,
+        terceirizado_id: evento.terceirizado_id ?? null,
+
         local: row.local.trim(),
         data_evento: row.data_evento,
         data_evento_fim: row.data_evento_fim,
