@@ -62,7 +62,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { NotificationBell } from "@/components/NotificationBell";
 
-type NavItem = { title: string; url: string; icon: any; group: string; module?: string; adminOnly?: boolean; moduleAdminOnly?: string; expectadorEventos?: boolean; juridicoSolicitante?: boolean };
+type NavItem = { title: string; url: string; icon: any; group: string; module?: string; adminOnly?: boolean; moduleAdminOnly?: string; expectadorEventos?: boolean; juridicoSolicitante?: boolean; diaristaLancador?: boolean };
 
 const allItems: NavItem[] = [
   { title: "Início", url: "/", icon: LayoutDashboard, group: "Visão geral" },
