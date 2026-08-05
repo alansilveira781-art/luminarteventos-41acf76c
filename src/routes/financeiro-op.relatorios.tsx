@@ -34,7 +34,27 @@ export const Route = createFileRoute("/financeiro-op/relatorios")({
   component: RelatoriosPage,
 });
 
-const STATUS_INCLUIDOS = ["finalizado", "a_receber"] as const;
+const STATUS_PRESETS = {
+  padrao: {
+    label: "Finalizado + A receber",
+    statuses: ["finalizado", "a_receber"] as string[] | null,
+  },
+  abertos: {
+    label: "Incluir em aberto",
+    statuses: [
+      "finalizado",
+      "a_receber",
+      "em_andamento",
+      "aprovada",
+      "pendente_aprovacao",
+      "analise",
+      "solicitacao",
+    ] as string[] | null,
+  },
+  todos: { label: "Todos os status", statuses: null as string[] | null },
+} as const;
+
+type StatusPreset = keyof typeof STATUS_PRESETS;
 
 const brl = (v: number | null | undefined) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v ?? 0));
@@ -49,8 +69,13 @@ type Row = {
   descritivo_fallback: string | null;
   valor_total: number | null;
   parcelamento: string | null;
+  status: string | null;
+  dataRef: string | null;
   itens: { descricao: string | null; quantidade: number | null }[];
 };
+
+type CartoesData = { rows: Row[]; total: number };
+
 
 function RelatoriosPage() {
   return (
@@ -78,6 +103,8 @@ function CartoesReport() {
   const [cartao, setCartao] = useState<string>("");
   const [preset, setPreset] = useState<PeriodoPreset>(PERIODO_MES_DEFAULT.preset);
   const [periodo, setPeriodo] = useState<Periodo>(PERIODO_MES_DEFAULT.periodo);
+  const [statusPreset, setStatusPreset] = useState<StatusPreset>("padrao");
+
 
   const { data: cartoes = [] } = useQuery({
     queryKey: ["condicoes_pagamento"],
@@ -95,13 +122,10 @@ function CartoesReport() {
     return `${f} a ${t}`;
   }, [periodo]);
 
-  const { data: rows = [], isLoading } = useQuery({
-    queryKey: ["financeiro-relatorio-cartoes", cartao, periodo.from?.toISOString() ?? "", periodo.to?.toISOString() ?? ""],
+  const { data, isLoading } = useQuery({
+    queryKey: ["financeiro-relatorio-cartoes", cartao],
     enabled: !!cartao,
-    queryFn: async (): Promise<Row[]> => {
-      const fromYmd = periodo.from ? format(periodo.from, "yyyy-MM-dd") : null;
-      const toYmd = periodo.to ? format(periodo.to, "yyyy-MM-dd") : null;
-
+    queryFn: async (): Promise<CartoesData> => {
       // Formas de pagamento deste cartão (uma compra pode ser dividida em
       // vários cartões: cada linha entra pelo seu próprio valor).
       const [pagC, pagD] = await Promise.all([
@@ -131,29 +155,18 @@ function CartoesReport() {
       const idsCompras = [...pagPorCompra.keys()];
       const idsDemandas = [...pagPorDemanda.keys()];
 
-      const buildFilter = (q: any, dateCol: string, ids: string[], idCol: string) => {
-        let x = q.in(idCol, ids).in("status", STATUS_INCLUIDOS as unknown as string[]);
-        if (fromYmd) x = x.gte(dateCol, fromYmd);
-        if (toYmd) x = x.lte(dateCol, toYmd);
-        return x;
-      };
-
       const [comprasRes, demandasRes] = await Promise.all([
         idsCompras.length
-          ? buildFilter(
-              sb.from("compras").select("id, numero, titulo, solicitante, comprador, observacoes, valor_total, data_compra, parcelamento"),
-              "data_compra",
-              idsCompras,
-              "id",
-            )
+          ? sb
+              .from("compras")
+              .select("id, numero, titulo, solicitante, comprador, observacoes, valor_total, data_compra, data_solicitacao, created_at, parcelamento, status")
+              .in("id", idsCompras)
           : Promise.resolve({ data: [], error: null }),
         idsDemandas.length
-          ? buildFilter(
-              sb.from("demandas").select("id, numero, titulo, solicitante, comprador, descritivo, observacoes, valor_total, data_compra, parcelamento"),
-              "data_compra",
-              idsDemandas,
-              "id",
-            )
+          ? sb
+              .from("demandas")
+              .select("id, numero, titulo, solicitante, comprador, descritivo, observacoes, valor_total, data_compra, data_solicitacao, created_at, parcelamento, status")
+              .in("id", idsDemandas)
           : Promise.resolve({ data: [], error: null }),
       ]);
       if ((comprasRes as any).error) throw (comprasRes as any).error;
@@ -189,6 +202,13 @@ function CartoesReport() {
         groupD.set(it.demanda_id, arr);
       }
 
+      // Data de referência: data da compra e, na falta dela, a data de
+      // solicitação ou a criação do card (evita sumir do relatório).
+      const dataRef = (r: any): string | null => {
+        const v = r.data_compra ?? r.data_solicitacao ?? r.created_at ?? null;
+        return v ? String(v).slice(0, 10) : null;
+      };
+
       const cRows: Row[] = compras.map((c) => ({
         tipo: "COMPRA",
         numero: c.numero,
@@ -199,6 +219,8 @@ function CartoesReport() {
         descritivo_fallback: c.observacoes ?? c.titulo ?? null,
         valor_total: pagPorCompra.get(c.id)?.valor ?? c.valor_total,
         parcelamento: pagPorCompra.get(c.id)?.parcelamento ?? c.parcelamento ?? null,
+        status: c.status ?? null,
+        dataRef: dataRef(c),
         itens: groupC.get(c.id) ?? [],
       }));
       const dRows: Row[] = demandas.map((d) => ({
@@ -211,18 +233,41 @@ function CartoesReport() {
         descritivo_fallback: d.descritivo ?? d.observacoes ?? d.titulo ?? null,
         valor_total: pagPorDemanda.get(d.id)?.valor ?? d.valor_total,
         parcelamento: pagPorDemanda.get(d.id)?.parcelamento ?? d.parcelamento ?? null,
+        status: d.status ?? null,
+        dataRef: dataRef(d),
         itens: groupD.get(d.id) ?? [],
       }));
 
-
-      return [...cRows, ...dRows].sort((a, b) => {
+      const all = [...cRows, ...dRows].sort((a, b) => {
         if (a.tipo !== b.tipo) return a.tipo < b.tipo ? -1 : 1;
         return (b.numero ?? 0) - (a.numero ?? 0);
       });
+
+      return { rows: all, total: all.length };
     },
   });
 
+  const todas = data?.rows ?? [];
+
+  const rows = useMemo(() => {
+    const fromYmd = periodo.from ? format(periodo.from, "yyyy-MM-dd") : null;
+    const toYmd = periodo.to ? format(periodo.to, "yyyy-MM-dd") : null;
+    const statuses = STATUS_PRESETS[statusPreset].statuses;
+    return todas.filter((r) => {
+      if (statuses && !statuses.includes(String(r.status ?? ""))) return false;
+      if (fromYmd || toYmd) {
+        if (!r.dataRef) return false;
+        if (fromYmd && r.dataRef < fromYmd) return false;
+        if (toYmd && r.dataRef > toYmd) return false;
+      }
+      return true;
+    });
+  }, [todas, periodo, statusPreset]);
+
+  const foraDoFiltro = (data?.total ?? 0) - rows.length;
+
   const totalGeral = rows.reduce((s, r) => s + Number(r.valor_total ?? 0), 0);
+
   const totalCompras = rows.filter((r) => r.tipo === "COMPRA").reduce((s, r) => s + Number(r.valor_total ?? 0), 0);
   const totalDemandas = rows.filter((r) => r.tipo === "DEMANDA").reduce((s, r) => s + Number(r.valor_total ?? 0), 0);
 
@@ -325,6 +370,19 @@ function CartoesReport() {
             onChange={(p, per) => { setPreset(p); setPeriodo(per); }}
           />
         </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Status</label>
+          <Select value={statusPreset} onValueChange={(v) => setStatusPreset(v as StatusPreset)}>
+            <SelectTrigger className="w-[210px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(STATUS_PRESETS) as StatusPreset[]).map((k) => (
+                <SelectItem key={k} value={k}>{STATUS_PRESETS[k].label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="ml-auto">
           <Button variant="outline" onClick={exportPdf} disabled={!cartao || rows.length === 0}>
             <Printer className="h-4 w-4 mr-2" />
@@ -341,8 +399,10 @@ function CartoesReport() {
         <div className="text-sm text-muted-foreground">Carregando…</div>
       ) : rows.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-          Nenhum registro finalizado ou a receber para este cartão no período.
+          Nenhum lançamento deste cartão no período/status selecionados.
+          {foraDoFiltro > 0 && ` Existem ${foraDoFiltro} lançamento(s) fora do filtro atual.`}
         </div>
+
       ) : (
         <div className="overflow-x-auto rounded-lg border">
           <table className="w-full text-sm">
@@ -393,8 +453,14 @@ function CartoesReport() {
               </tr>
             </tfoot>
           </table>
+          {foraDoFiltro > 0 && (
+            <p className="border-t px-3 py-2 text-xs text-muted-foreground">
+              {foraDoFiltro} lançamento(s) deste cartão ficaram fora do período/status selecionados.
+            </p>
+          )}
         </div>
       )}
+
     </div>
   );
 }
