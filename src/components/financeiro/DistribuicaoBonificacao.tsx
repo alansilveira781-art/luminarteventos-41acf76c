@@ -472,7 +472,10 @@ export function DistribuicaoBonificacao() {
       )}
 
       {!isLoading && !error && isClosed && (
-        <FechamentoReadonlyBody fechamentoId={fechamentoMes!.id} />
+        <FechamentoReadonlyBody
+          fechamentoId={fechamentoMes!.id}
+          subtitulo={`${ano === "Todos" ? "Todos os anos" : ano} · ${mes === "Todos" ? "Todos os meses" : mes} · mês fechado`}
+        />
       )}
 
       {!isLoading && !error && !isClosed && (
