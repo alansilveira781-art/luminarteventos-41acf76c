@@ -425,13 +425,15 @@ export function DistribuicaoBonificacao() {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex flex-wrap justify-end gap-2 print:hidden">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button variant="outline" size="sm" className="gap-2" onClick={() => setHistoricoOpen(true)}>
               <History className="h-4 w-4" /> Ver períodos anteriores
             </Button>
-            <Button variant="outline" size="sm" className="gap-2" onClick={() => window.print()}>
-              <Printer className="h-4 w-4" /> Imprimir
-            </Button>
+            {!isClosed && (
+              <Button variant="outline" size="sm" className="gap-2" onClick={imprimirRelatorio}>
+                <Printer className="h-4 w-4" /> Imprimir relatório
+              </Button>
+            )}
             {isFinAdmin && (
               <Button
                 size="sm"
