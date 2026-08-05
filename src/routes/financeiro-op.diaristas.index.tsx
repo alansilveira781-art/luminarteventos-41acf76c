@@ -919,7 +919,52 @@ function FechamentoTab() {
   const totalDias = linhas.reduce((acc, l) => acc + l.dias, 0);
   const totalMinutos = linhas.reduce((acc, l) => acc + l.minutos, 0);
 
+  const exportarPdf = async () => {
+    const { gerarRelatorioDiaristasPdf } = await import("@/lib/diaristas-pdf");
+    const filtros: string[] = [];
+    if (fLocal !== "todos") filtros.push(`Local: ${fLocal}`);
+    if (fDiarista !== "todos")
+      filtros.push(`Diarista: ${diaristasMap.get(fDiarista)?.nome ?? "—"}`);
+
+    await gerarRelatorioDiaristasPdf({
+      de,
+      ate,
+      filtros,
+      grupos: linhas.map((l) => ({
+        nome: l.diarista?.nome ?? "—",
+        chavePix: l.diarista?.chave_pix ?? null,
+        dias: l.dias,
+        horasLabel: formatHoras(l.minutos),
+        total: l.total,
+        itens: l.itens.map((it) => {
+          const evs = eventosMap?.get(it.ap.id) ?? [];
+          const modo = it.ap.modo_divisao ?? "unico";
+          const rateio =
+            l.diarista && modo !== "unico" && evs.length > 0
+              ? calcularApontamentoComEventos(it.ap, l.diarista, modo, evs).rateio
+              : [];
+          return {
+            data: it.ap.data,
+            projeto: it.ap.projeto ?? "",
+            local: it.ap.local,
+            horasLabel: it.calc?.horasLabel ?? "",
+            diaria: it.calc?.diaria ?? 0,
+            extra: it.calc?.extra ?? 0,
+            total: it.calc?.total ?? 0,
+            eventos: rateio.map((r) => ({
+              evento_nome: r.evento_nome,
+              horasLabel: r.horasLabel,
+              valor: r.valor,
+            })),
+          };
+        }),
+      })),
+      totais: { dias: totalDias, horasLabel: formatHoras(totalMinutos), valor: totalGeral },
+    });
+  };
+
   const exportar = async (formato: "xlsx" | "csv") => {
+
     const header = ["Diarista", "Chave Pix", "Qtde de dias", "Total de horas", "Total a pagar"];
     const body = linhas.map((l) => [
       l.diarista?.nome ?? "—",
