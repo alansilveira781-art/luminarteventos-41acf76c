@@ -263,25 +263,38 @@ export function DistribuicaoBonificacao() {
       toast.error("Apenas administradores do Financeiro podem fechar o mês.");
       return;
     }
-    const semProdutor = eventos.filter(
-      (e) => !(linhasPorEvento[e.eventoId] ?? []).some((l) => !!l.produtorId),
-    );
-    if (semProdutor.length) {
-      toast.error(
-        `Existem ${semProdutor.length} evento(s) sem produtor: ${semProdutor
-          .slice(0, 3).map((e) => e.nomeEvento).join(", ")}${semProdutor.length > 3 ? "…" : ""}`,
-      );
-      return;
-    }
     if (!eventos.length) {
       toast.error("Não há eventos realizados no período para fechar.");
       return;
     }
+    const semProdutor = eventos.filter(
+      (e) => !(linhasPorEvento[e.eventoId] ?? []).some((l) => !!l.produtorId),
+    );
+    if (semProdutor.length) {
+      toast.warning(
+        `${semProdutor.length} evento(s) sem produtor serão salvos em branco: ${semProdutor
+          .slice(0, 3).map((e) => e.nomeEvento).join(", ")}${semProdutor.length > 3 ? "…" : ""}`,
+      );
+    }
 
     const itens: Array<Omit<FechamentoItemRow, "id" | "fechamento_id">> = [];
     for (const e of eventos) {
-      for (const l of linhasPorEvento[e.eventoId] ?? []) {
-        if (!l.produtorId) continue;
+      const linhas = (linhasPorEvento[e.eventoId] ?? []).filter((l) => !!l.produtorId);
+      if (!linhas.length) {
+        itens.push({
+          venda_id: null,
+          evento_id: e.eventoId,
+          nome_evento: e.nomeEvento,
+          data_evento: e.dataEvento,
+          categoria: e.categoria,
+          produtor_id: null,
+          produtor_nome: null,
+          complexidade: null,
+          valor_final: 0,
+        });
+        continue;
+      }
+      for (const l of linhas) {
         const produtor = produtores.find((p) => p.id === l.produtorId);
         itens.push({
           venda_id: null,
@@ -296,6 +309,7 @@ export function DistribuicaoBonificacao() {
         });
       }
     }
+
 
     try {
       await fecharMes.mutateAsync({
