@@ -59,6 +59,7 @@ import {
 } from "lucide-react";
 import logo from "@/assets/luminart-logo-white.png";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDiaristaAcesso } from "@/lib/diaristas-acesso";
 import { useTheme } from "@/contexts/ThemeContext";
 import { NotificationBell } from "@/components/NotificationBell";
 
