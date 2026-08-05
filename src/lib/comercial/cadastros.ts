@@ -89,7 +89,11 @@ export function useCadastroMutations(
 ) {
 
   const qc = useQueryClient();
-  const invalidate = () => qc.invalidateQueries({ queryKey: [queryKey] });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: [queryKey] });
+    qc.invalidateQueries({ queryKey: ["comercial-cadastro-opcoes", table] });
+  };
+
   const upsert = useMutation({
     mutationFn: async (row: Record<string, any>) => {
       if (row.id) {

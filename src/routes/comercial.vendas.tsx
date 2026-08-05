@@ -218,8 +218,10 @@ function VendasPage() {
   const [form, setForm] = useState<FormState>(emptyForm());
   const [bulkOpen, setBulkOpen] = useState(false);
 
-  const { data: vendedores = [] } = useVendedores();
-  const { data: cerimoniais = [] } = useCerimoniais();
+  const { data: vendedores = [], isLoading: loadingVendedores } = useVendedores();
+  const { data: cerimoniais = [], isLoading: loadingCerimoniais } = useCerimoniais();
+  const cadastrosCarregando = loadingVendedores || loadingCerimoniais;
+
   const { data: decoradores = [] } = useDecoradores();
   const { data: classificacoes = [] } = useClassificacoes();
 
@@ -243,6 +245,13 @@ function VendasPage() {
     () => !!form.consultor.trim() && !matchCadastro(form.consultor, vendedores as any),
     [form.consultor, vendedores],
   );
+
+  const consultorGatilho = useMemo(
+    () => (matchCadastro(form.consultor, vendedores as any) as any)?.tipo_comissao === "gatilho",
+    [form.consultor, vendedores],
+  );
+
+
 
 
   const { data, isLoading, error } = useQuery({
@@ -870,14 +879,17 @@ function VendasPage() {
               <span>
                 Valor Final = Proposta − Desconto. BV e Comissão usam os percentuais cadastrados no
                 consultor/cerimonial.
+                {consultorGatilho && " Este consultor tem comissão por gatilho (meta), por isso a comissão da venda fica zerada."}
+                {cadastrosCarregando && " Carregando cadastros de consultores/cerimoniais…"}
               </span>
             </div>
 
             <div className="sm:col-span-2 lg:col-span-3 flex justify-end gap-2 pt-2 border-t border-border">
               <Button type="button" variant="ghost" onClick={() => setFormOpen(false)}>Cancelar</Button>
-              <Button type="submit" disabled={saveMut.isPending}>
-                {saveMut.isPending ? "Salvando..." : editing ? "Salvar alterações" : "Cadastrar venda"}
+              <Button type="submit" disabled={saveMut.isPending || cadastrosCarregando}>
+                {saveMut.isPending ? "Salvando..." : cadastrosCarregando ? "Carregando..." : editing ? "Salvar alterações" : "Cadastrar venda"}
               </Button>
+
             </div>
           </form>
         </DialogContent>
