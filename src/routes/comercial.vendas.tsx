@@ -218,8 +218,10 @@ function VendasPage() {
   const [form, setForm] = useState<FormState>(emptyForm());
   const [bulkOpen, setBulkOpen] = useState(false);
 
-  const { data: vendedores = [] } = useVendedores();
-  const { data: cerimoniais = [] } = useCerimoniais();
+  const { data: vendedores = [], isLoading: loadingVendedores } = useVendedores();
+  const { data: cerimoniais = [], isLoading: loadingCerimoniais } = useCerimoniais();
+  const cadastrosCarregando = loadingVendedores || loadingCerimoniais;
+
   const { data: decoradores = [] } = useDecoradores();
   const { data: classificacoes = [] } = useClassificacoes();
 
