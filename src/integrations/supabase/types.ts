@@ -535,6 +535,7 @@ export type Database = {
           categoria: string | null
           complexidade: number | null
           data_evento: string | null
+          evento_id: string | null
           fechamento_id: string
           id: string
           nome_evento: string | null
@@ -547,6 +548,7 @@ export type Database = {
           categoria?: string | null
           complexidade?: number | null
           data_evento?: string | null
+          evento_id?: string | null
           fechamento_id: string
           id?: string
           nome_evento?: string | null
@@ -559,6 +561,7 @@ export type Database = {
           categoria?: string | null
           complexidade?: number | null
           data_evento?: string | null
+          evento_id?: string | null
           fechamento_id?: string
           id?: string
           nome_evento?: string | null
@@ -584,6 +587,7 @@ export type Database = {
           complexidade: number | null
           created_at: string
           data_evento: string | null
+          evento_id: string | null
           id: string
           mes: string | null
           nome_evento: string
@@ -599,6 +603,7 @@ export type Database = {
           complexidade?: number | null
           created_at?: string
           data_evento?: string | null
+          evento_id?: string | null
           id?: string
           mes?: string | null
           nome_evento: string
@@ -614,6 +619,7 @@ export type Database = {
           complexidade?: number | null
           created_at?: string
           data_evento?: string | null
+          evento_id?: string | null
           id?: string
           mes?: string | null
           nome_evento?: string
@@ -624,6 +630,13 @@ export type Database = {
           venda_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "comercial_bonificacao_producao_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "comercial_bonificacao_producao_produtor_id_fkey"
             columns: ["produtor_id"]
