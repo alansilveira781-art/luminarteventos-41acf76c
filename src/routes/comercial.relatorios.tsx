@@ -56,7 +56,7 @@ type Grupo = {
 };
 
 function RelatoriosPage() {
-  const [relatorioAtivo, setRelatorioAtivo] = useState<"comissao" | "periodo" | "bonificacao">("comissao");
+  const [relatorioAtivo, setRelatorioAtivo] = useState<"comissao" | "periodo">("comissao");
   const [ano, setAno] = useState<number | "Todos">("Todos");
   const [mes, setMes] = useState<string>("Todos");
 
