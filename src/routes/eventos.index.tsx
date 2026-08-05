@@ -132,6 +132,8 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
     data_desmontagem_fim: evento?.data_desmontagem_fim ?? "",
     produtor: evento?.produtor ?? "",
     produtor_id: evento?.produtor_id ?? "",
+    produtor_terceirizado: evento?.produtor_terceirizado ?? false,
+    terceirizado_id: evento?.terceirizado_id ?? "",
     situacao: evento?.situacao ?? "Em Aprovação",
     hora_montagem: evento?.hora_montagem ?? "",
     hora_desmontagem: evento?.hora_desmontagem ?? "",
@@ -139,13 +141,23 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
   const set = (k: string, v: any) => setF((p: any) => ({ ...p, [k]: v }));
 
   const { data: produtores = [] } = useQuery({
-    queryKey: ["produtores"],
+    queryKey: ["comercial-produtores-ativos"],
     queryFn: async () => {
-      const { data } = await sb.from("produtores").select("id,nome").order("nome");
+      const { data } = await sb.from("comercial_produtores").select("id,nome,ativo").order("nome");
+      return ((data ?? []) as any[]).filter((p) => p.ativo !== false) as { id: string; nome: string }[];
+    },
+    staleTime: 60_000,
+  });
+
+  const { data: terceirizados = [] } = useQuery({
+    queryKey: ["opts-eventos_terceirizados"],
+    queryFn: async () => {
+      const { data } = await sb.from("eventos_terceirizados").select("id,nome").order("nome");
       return (data ?? []) as { id: string; nome: string }[];
     },
     staleTime: 60_000,
   });
+
 
   const { data: estados = [] } = useQuery({
     queryKey: ["ibge-estados"],
