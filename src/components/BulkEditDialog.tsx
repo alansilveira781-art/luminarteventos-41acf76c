@@ -6,9 +6,23 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MoneyInput } from "@/components/MoneyInput";
+import { CadastroCombobox } from "@/components/comercial/CadastroCombobox";
 
 export type BulkField =
   | { key: string; label: string; type: "text" }
+  | {
+      key: string;
+      label: string;
+      type: "cadastro";
+      table:
+        | "comercial_vendedores"
+        | "comercial_cerimoniais"
+        | "comercial_decoradores"
+        | "comercial_classificacoes";
+      queryKey: string;
+      extraFields?: Array<{ key: string; label: string; type: "number"; default?: number }>;
+      allowClear?: boolean;
+    }
   | { key: string; label: string; type: "textarea" }
   | { key: string; label: string; type: "number"; step?: string }
   | { key: string; label: string; type: "money" }
