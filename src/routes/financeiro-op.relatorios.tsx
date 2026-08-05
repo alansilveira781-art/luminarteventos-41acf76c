@@ -453,8 +453,14 @@ function CartoesReport() {
               </tr>
             </tfoot>
           </table>
+          {foraDoFiltro > 0 && (
+            <p className="border-t px-3 py-2 text-xs text-muted-foreground">
+              {foraDoFiltro} lançamento(s) deste cartão ficaram fora do período/status selecionados.
+            </p>
+          )}
         </div>
       )}
+
     </div>
   );
 }
