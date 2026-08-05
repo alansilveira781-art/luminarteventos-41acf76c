@@ -294,9 +294,29 @@ export function useBonificacaoEventoMutations() {
   const inv = () => qc.invalidateQueries({ queryKey: ["comercial-bonificacao"] });
   const upsert = useMutation({
     mutationFn: async (row: Omit<BonificacaoRow, "id"> & { id?: string }) => {
-      const { error } = await sb
+      const { id, ...rest } = row;
+      if (id) {
+        const { error } = await sb.from("comercial_bonificacao_producao").update(rest).eq("id", id);
+        if (error) throw error;
+        return;
+      }
+      // Já existe registro para este evento + produtor? Atualiza em vez de duplicar.
+      const { data: existente, error: selErr } = await sb
         .from("comercial_bonificacao_producao")
-        .upsert(row, { onConflict: "evento_id,produtor_id" });
+        .select("id")
+        .eq("evento_id", rest.evento_id)
+        .eq("produtor_id", rest.produtor_id)
+        .maybeSingle();
+      if (selErr) throw selErr;
+      if (existente?.id) {
+        const { error } = await sb
+          .from("comercial_bonificacao_producao")
+          .update(rest)
+          .eq("id", existente.id);
+        if (error) throw error;
+        return;
+      }
+      const { error } = await sb.from("comercial_bonificacao_producao").insert(rest);
       if (error) throw error;
     },
     onSuccess: inv,
