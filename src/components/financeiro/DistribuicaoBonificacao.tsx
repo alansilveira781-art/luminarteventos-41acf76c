@@ -611,9 +611,32 @@ export function DistribuicaoBonificacao() {
 
 /* -------------------- Visão somente leitura do mês fechado -------------------- */
 
-function FechamentoReadonlyBody({ fechamentoId }: { fechamentoId: string }) {
+function FechamentoReadonlyBody({
+  fechamentoId,
+  subtitulo,
+}: { fechamentoId: string; subtitulo?: string }) {
   const { data, isLoading } = useFechamentoItens(fechamentoId);
   const itens = data ?? [];
+
+  const imprimirRelatorio = () => {
+    const linhas: LinhaRelatorio[] = itens.map((i) => ({
+      eventoKey: String((i as any).evento_id || i.venda_id || i.nome_evento || i.id),
+      evento: i.nome_evento || "—",
+      local: (i as any).local ?? null,
+      data: i.data_evento ?? null,
+      categoria: i.categoria ?? null,
+      produtor: i.produtor_nome ?? null,
+      peso: i.complexidade ?? null,
+      valor: Number(i.valor_final || 0),
+    }));
+    const ok = gerarRelatorioBonificacao({
+      titulo: "Distribuição de Bonificação",
+      subtitulo,
+      linhas,
+    });
+    if (!ok) toast.error("Bloqueado pelo navegador. Permita pop-ups para gerar o relatório.");
+  };
+
 
   const porEvento = useMemo(() => {
     const map = new Map<string, FechamentoItemRow[]>();
