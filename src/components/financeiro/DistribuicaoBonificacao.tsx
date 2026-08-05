@@ -815,17 +815,8 @@ function HistoricoFechamentosDialog({
             )}
           </div>
         ) : (
-          <div className="print-area space-y-4">
-            <style>{`
-              @media print {
-                body * { visibility: hidden; }
-                .print-area, .print-area * { visibility: visible !important; }
-                .print-area { position: absolute; inset: 0; padding: 0; }
-                .print\\:hidden { display: none !important; }
-                body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-              }
-            `}</style>
-            <div className="flex items-center justify-between gap-2 print:hidden">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-2">
               <Button size="sm" variant="outline" onClick={() => setSelectedId(null)}>
                 ← Voltar
               </Button>
@@ -834,19 +825,13 @@ function HistoricoFechamentosDialog({
                 {new Date(selected.fechado_em).toLocaleString("pt-BR")} por{" "}
                 <strong>{selected.fechado_por_nome || "—"}</strong>
               </div>
-              <Button size="sm" variant="outline" className="gap-2" onClick={() => window.print()}>
-                <Printer className="h-4 w-4" /> Imprimir
-              </Button>
             </div>
-            <div className="hidden print:block mb-4">
-              <h1 className="text-2xl font-bold">Distribuição Bonificação — {selected.ano} / {selected.mes}</h1>
-              <p className="text-muted-foreground">
-                Fechado em {new Date(selected.fechado_em).toLocaleString("pt-BR")} por{" "}
-                {selected.fechado_por_nome || "—"}
-              </p>
-            </div>
-            <FechamentoReadonlyBody fechamentoId={selected.id} />
+            <FechamentoReadonlyBody
+              fechamentoId={selected.id}
+              subtitulo={`${selected.ano} · ${selected.mes} · fechado por ${selected.fechado_por_nome || "—"} em ${new Date(selected.fechado_em).toLocaleString("pt-BR")}`}
+            />
           </div>
+
         )}
       </DialogContent>
     </Dialog>
