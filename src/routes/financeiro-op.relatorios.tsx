@@ -370,6 +370,19 @@ function CartoesReport() {
             onChange={(p, per) => { setPreset(p); setPeriodo(per); }}
           />
         </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Status</label>
+          <Select value={statusPreset} onValueChange={(v) => setStatusPreset(v as StatusPreset)}>
+            <SelectTrigger className="w-[210px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(STATUS_PRESETS) as StatusPreset[]).map((k) => (
+                <SelectItem key={k} value={k}>{STATUS_PRESETS[k].label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="ml-auto">
           <Button variant="outline" onClick={exportPdf} disabled={!cartao || rows.length === 0}>
             <Printer className="h-4 w-4 mr-2" />
@@ -386,8 +399,10 @@ function CartoesReport() {
         <div className="text-sm text-muted-foreground">Carregando…</div>
       ) : rows.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-          Nenhum registro finalizado ou a receber para este cartão no período.
+          Nenhum lançamento deste cartão no período/status selecionados.
+          {foraDoFiltro > 0 && ` Existem ${foraDoFiltro} lançamento(s) fora do filtro atual.`}
         </div>
+
       ) : (
         <div className="overflow-x-auto rounded-lg border">
           <table className="w-full text-sm">
