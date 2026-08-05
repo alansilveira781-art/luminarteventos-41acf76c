@@ -13,6 +13,7 @@ export const Route = createFileRoute("/")({
 
 function Hub() {
   const { isAdmin, modulos } = useAuth();
+  const { podeLancar } = useDiaristaAcesso();
 
   const { data: stats } = useQuery({
     enabled: isAdmin,
