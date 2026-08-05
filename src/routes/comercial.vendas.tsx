@@ -247,7 +247,7 @@ function VendasPage() {
   );
 
   const consultorGatilho = useMemo(
-    () => matchCadastro(form.consultor, vendedores as any)?.tipo_comissao === "gatilho",
+    () => (matchCadastro(form.consultor, vendedores as any) as any)?.tipo_comissao === "gatilho",
     [form.consultor, vendedores],
   );
 
