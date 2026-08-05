@@ -228,7 +228,7 @@ export function DistribuicaoBonificacao() {
     }
     const produtor = produtores.find((p) => p.id === l.produtorId);
     try {
-      await upsert.mutateAsync({
+      const novoId = await upsert.mutateAsync({
         id: l.bonifId,
         venda_id: null,
         evento_id: e.eventoId,
@@ -242,6 +242,14 @@ export function DistribuicaoBonificacao() {
         ano: e.ano,
         mes: e.mes,
       });
+      if (novoId) {
+        setLinhasPorEvento((prev) => ({
+          ...prev,
+          [e.eventoId]: (prev[e.eventoId] ?? []).map((x) =>
+            x.key === l.key ? { ...x, bonifId: novoId, dirty: false } : x,
+          ),
+        }));
+      }
       toast.success("Salvo");
     } catch (err: any) {
       toast.error(err?.message || "Falha ao salvar");
