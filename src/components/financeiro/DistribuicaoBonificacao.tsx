@@ -441,7 +441,16 @@ export function DistribuicaoBonificacao() {
                           <tr key={l.key} className="border-t border-border/50 align-top">
                             {idx === 0 ? (
                               <>
-                                <td className="px-3 py-2" rowSpan={linhas.length}>{e.nomeEvento}</td>
+                                <td className="px-3 py-2" rowSpan={linhas.length}>
+                                  <span>{e.nomeEvento}</span>
+                                  <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground">
+                                    {e.origemVenda === "vinculada"
+                                      ? "venda vinculada"
+                                      : e.origemVenda === "nome"
+                                        ? "casado por nome"
+                                        : "sem venda"}
+                                  </span>
+                                </td>
                                 <td className="px-3 py-2" rowSpan={linhas.length}>
                                   {e.dataEvento ? new Date(e.dataEvento + "T00:00:00").toLocaleDateString("pt-BR") : "-"}
                                 </td>
