@@ -99,6 +99,7 @@ import { Route as FinanceiroOpDiaristasIndexRouteImport } from './routes/finance
 import { Route as FinanceiroOpBonificacaoIndexRouteImport } from './routes/financeiro-op.bonificacao.index'
 import { Route as ComercialDashboardIndexRouteImport } from './routes/comercial.dashboard.index'
 import { Route as FinanceiroOpDiaristasConfiguracoesRouteImport } from './routes/financeiro-op.diaristas.configuracoes'
+import { Route as FinanceiroOpBonificacaoConfiguracoesRouteImport } from './routes/financeiro-op.bonificacao.configuracoes'
 import { Route as ComercialDashboardVendedoresRouteImport } from './routes/comercial.dashboard.vendedores'
 import { Route as ComercialDashboardRelatoriosRouteImport } from './routes/comercial.dashboard.relatorios'
 import { Route as ComercialDashboardPropostasRouteImport } from './routes/comercial.dashboard.propostas'
@@ -575,6 +576,12 @@ const FinanceiroOpDiaristasConfiguracoesRoute =
     path: '/diaristas/configuracoes',
     getParentRoute: () => FinanceiroOpRoute,
   } as any)
+const FinanceiroOpBonificacaoConfiguracoesRoute =
+  FinanceiroOpBonificacaoConfiguracoesRouteImport.update({
+    id: '/bonificacao/configuracoes',
+    path: '/bonificacao/configuracoes',
+    getParentRoute: () => FinanceiroOpRoute,
+  } as any)
 const ComercialDashboardVendedoresRoute =
   ComercialDashboardVendedoresRouteImport.update({
     id: '/vendedores',
@@ -792,6 +799,7 @@ export interface FileRoutesByFullPath {
   '/comercial/dashboard/propostas': typeof ComercialDashboardPropostasRoute
   '/comercial/dashboard/relatorios': typeof ComercialDashboardRelatoriosRoute
   '/comercial/dashboard/vendedores': typeof ComercialDashboardVendedoresRoute
+  '/financeiro-op/bonificacao/configuracoes': typeof FinanceiroOpBonificacaoConfiguracoesRoute
   '/financeiro-op/diaristas/configuracoes': typeof FinanceiroOpDiaristasConfiguracoesRoute
   '/comercial/dashboard/': typeof ComercialDashboardIndexRoute
   '/financeiro-op/bonificacao/': typeof FinanceiroOpBonificacaoIndexRoute
@@ -892,6 +900,7 @@ export interface FileRoutesByTo {
   '/comercial/dashboard/propostas': typeof ComercialDashboardPropostasRoute
   '/comercial/dashboard/relatorios': typeof ComercialDashboardRelatoriosRoute
   '/comercial/dashboard/vendedores': typeof ComercialDashboardVendedoresRoute
+  '/financeiro-op/bonificacao/configuracoes': typeof FinanceiroOpBonificacaoConfiguracoesRoute
   '/financeiro-op/diaristas/configuracoes': typeof FinanceiroOpDiaristasConfiguracoesRoute
   '/comercial/dashboard': typeof ComercialDashboardIndexRoute
   '/financeiro-op/bonificacao': typeof FinanceiroOpBonificacaoIndexRoute
@@ -1005,6 +1014,7 @@ export interface FileRoutesById {
   '/comercial/dashboard/propostas': typeof ComercialDashboardPropostasRoute
   '/comercial/dashboard/relatorios': typeof ComercialDashboardRelatoriosRoute
   '/comercial/dashboard/vendedores': typeof ComercialDashboardVendedoresRoute
+  '/financeiro-op/bonificacao/configuracoes': typeof FinanceiroOpBonificacaoConfiguracoesRoute
   '/financeiro-op/diaristas/configuracoes': typeof FinanceiroOpDiaristasConfiguracoesRoute
   '/comercial/dashboard/': typeof ComercialDashboardIndexRoute
   '/financeiro-op/bonificacao/': typeof FinanceiroOpBonificacaoIndexRoute
@@ -1119,6 +1129,7 @@ export interface FileRouteTypes {
     | '/comercial/dashboard/propostas'
     | '/comercial/dashboard/relatorios'
     | '/comercial/dashboard/vendedores'
+    | '/financeiro-op/bonificacao/configuracoes'
     | '/financeiro-op/diaristas/configuracoes'
     | '/comercial/dashboard/'
     | '/financeiro-op/bonificacao/'
@@ -1219,6 +1230,7 @@ export interface FileRouteTypes {
     | '/comercial/dashboard/propostas'
     | '/comercial/dashboard/relatorios'
     | '/comercial/dashboard/vendedores'
+    | '/financeiro-op/bonificacao/configuracoes'
     | '/financeiro-op/diaristas/configuracoes'
     | '/comercial/dashboard'
     | '/financeiro-op/bonificacao'
@@ -1331,6 +1343,7 @@ export interface FileRouteTypes {
     | '/comercial/dashboard/propostas'
     | '/comercial/dashboard/relatorios'
     | '/comercial/dashboard/vendedores'
+    | '/financeiro-op/bonificacao/configuracoes'
     | '/financeiro-op/diaristas/configuracoes'
     | '/comercial/dashboard/'
     | '/financeiro-op/bonificacao/'
@@ -2021,6 +2034,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FinanceiroOpDiaristasConfiguracoesRouteImport
       parentRoute: typeof FinanceiroOpRoute
     }
+    '/financeiro-op/bonificacao/configuracoes': {
+      id: '/financeiro-op/bonificacao/configuracoes'
+      path: '/bonificacao/configuracoes'
+      fullPath: '/financeiro-op/bonificacao/configuracoes'
+      preLoaderRoute: typeof FinanceiroOpBonificacaoConfiguracoesRouteImport
+      parentRoute: typeof FinanceiroOpRoute
+    }
     '/comercial/dashboard/vendedores': {
       id: '/comercial/dashboard/vendedores'
       path: '/vendedores'
@@ -2313,6 +2333,7 @@ interface FinanceiroOpRouteChildren {
   FinanceiroOpRotinasRoute: typeof FinanceiroOpRotinasRoute
   FinanceiroOpUberRoute: typeof FinanceiroOpUberRoute
   FinanceiroOpIndexRoute: typeof FinanceiroOpIndexRoute
+  FinanceiroOpBonificacaoConfiguracoesRoute: typeof FinanceiroOpBonificacaoConfiguracoesRoute
   FinanceiroOpDiaristasConfiguracoesRoute: typeof FinanceiroOpDiaristasConfiguracoesRoute
   FinanceiroOpBonificacaoIndexRoute: typeof FinanceiroOpBonificacaoIndexRoute
   FinanceiroOpDiaristasIndexRoute: typeof FinanceiroOpDiaristasIndexRoute
@@ -2326,6 +2347,8 @@ const FinanceiroOpRouteChildren: FinanceiroOpRouteChildren = {
   FinanceiroOpRotinasRoute: FinanceiroOpRotinasRoute,
   FinanceiroOpUberRoute: FinanceiroOpUberRoute,
   FinanceiroOpIndexRoute: FinanceiroOpIndexRoute,
+  FinanceiroOpBonificacaoConfiguracoesRoute:
+    FinanceiroOpBonificacaoConfiguracoesRoute,
   FinanceiroOpDiaristasConfiguracoesRoute:
     FinanceiroOpDiaristasConfiguracoesRoute,
   FinanceiroOpBonificacaoIndexRoute: FinanceiroOpBonificacaoIndexRoute,
