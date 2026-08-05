@@ -336,6 +336,8 @@ export type EventoRealizado = {
   nome: string;
   local: string | null;
   tipo: string | null;
+  categoria: string | null;
+  origemVenda: "vinculada" | "nome" | null;
   dataFim: string | null;
   valorFinal: number;
   ano: number | null;
