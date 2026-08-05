@@ -341,6 +341,22 @@ function RelatoriosPage() {
             </Card>
           </div>
 
+          {semCadastroResumo.length > 0 && (
+            <Card className="p-4 flex items-start gap-2 text-sm">
+              <AlertTriangle className="h-4 w-4 mt-0.5 text-amber-500 shrink-0" />
+              <div>
+                <p className="font-medium">Consultores sem cadastro em Configurações (comissão 0%)</p>
+                <p className="text-muted-foreground mt-1">
+                  {semCadastroResumo
+                    .map((s) => `${s.consultor} — ${s.qtd} venda(s), ${fmtBRL(s.valor)}`)
+                    .join(" · ")}
+                </p>
+              </div>
+            </Card>
+          )}
+
+
+
           <Card className="overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
