@@ -421,8 +421,10 @@ export function useEventosRealizados(ano: number | "Todos", mes: string) {
       };
 
       const lista: EventoRealizado[] = brutos.map((e) => {
-        const y = e.dataFim ? Number(e.dataFim.slice(0, 4)) : null;
-        const m = e.dataFim ? Number(e.dataFim.slice(5, 7)) : null;
+        const ref = e.dataInicio || e.dataFim;
+        const y = ref ? Number(ref.slice(0, 4)) : null;
+        const m = ref ? Number(ref.slice(5, 7)) : null;
+
 
         let venda: VendaLite | null = e.vendaId ? (porId.get(e.vendaId) ?? null) : null;
         let origem: "vinculada" | "nome" | null = venda ? "vinculada" : null;
