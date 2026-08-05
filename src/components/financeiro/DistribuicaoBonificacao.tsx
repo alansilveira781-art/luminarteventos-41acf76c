@@ -42,6 +42,7 @@ type EventoBonif = {
   dataEvento: string | null;
   categoria: string;
   origemVenda: "vinculada" | "nome" | null;
+  emAndamento: boolean;
   valorFinal: number;
   ano: number | null;
   mes: string | null;
@@ -94,6 +95,7 @@ export function DistribuicaoBonificacao() {
         dataEvento: e.dataInicio ?? e.dataFim,
         categoria: e.categoria || e.tipo || "",
         origemVenda: e.origemVenda,
+        emAndamento: e.emAndamento,
         valorFinal: e.valorFinal,
         ano: e.ano,
         mes: e.mes,
@@ -138,7 +140,21 @@ export function DistribuicaoBonificacao() {
 
       for (const [eid, linhasSalvas] of salvasPorEvento) {
         const atual = next[eid] ?? [];
-        if (!atual.some((l) => l.bonifId)) next[eid] = linhasSalvas;
+        // Mescla: atualiza/insere as linhas gravadas e preserva as linhas em edição.
+        const mescladas: LinhaAtribuicao[] = atual
+          .filter((l) => !l.bonifId || linhasSalvas.some((s) => s.bonifId === l.bonifId))
+          .map((l) => {
+            const salva = l.bonifId ? linhasSalvas.find((s) => s.bonifId === l.bonifId) : undefined;
+            return salva ? { ...l, ...salva, key: l.key } : l;
+          });
+        for (const s of linhasSalvas) {
+          if (!mescladas.some((l) => l.bonifId === s.bonifId)) mescladas.push(s);
+        }
+        // Remove placeholders vazios quando já há linhas gravadas.
+        const limpas = mescladas.filter(
+          (l) => l.bonifId || l.produtorId || l.dirty || !mescladas.some((x) => x.bonifId),
+        );
+        next[eid] = limpas.length ? limpas : linhasSalvas;
       }
 
       for (const e of eventos) {
@@ -212,7 +228,7 @@ export function DistribuicaoBonificacao() {
     }
     const produtor = produtores.find((p) => p.id === l.produtorId);
     try {
-      await upsert.mutateAsync({
+      const novoId = await upsert.mutateAsync({
         id: l.bonifId,
         venda_id: null,
         evento_id: e.eventoId,
@@ -226,6 +242,14 @@ export function DistribuicaoBonificacao() {
         ano: e.ano,
         mes: e.mes,
       });
+      if (novoId) {
+        setLinhasPorEvento((prev) => ({
+          ...prev,
+          [e.eventoId]: (prev[e.eventoId] ?? []).map((x) =>
+            x.key === l.key ? { ...x, bonifId: novoId, dirty: false } : x,
+          ),
+        }));
+      }
       toast.success("Salvo");
     } catch (err: any) {
       toast.error(err?.message || "Falha ao salvar");
@@ -467,6 +491,11 @@ export function DistribuicaoBonificacao() {
                                         ? "casado por nome"
                                         : "sem venda"}
                                   </span>
+                                  {e.emAndamento && (
+                                    <span className="ml-2 text-[10px] uppercase tracking-wide text-amber-600">
+                                      em andamento
+                                    </span>
+                                  )}
                                 </td>
                                 <td className="px-3 py-2" rowSpan={linhas.length}>{e.local || "—"}</td>
                                 <td className="px-3 py-2" rowSpan={linhas.length}>

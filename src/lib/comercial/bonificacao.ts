@@ -293,12 +293,12 @@ export function useBonificacaoEventoMutations() {
   const qc = useQueryClient();
   const inv = () => qc.invalidateQueries({ queryKey: ["comercial-bonificacao"] });
   const upsert = useMutation({
-    mutationFn: async (row: Omit<BonificacaoRow, "id"> & { id?: string }) => {
+    mutationFn: async (row: Omit<BonificacaoRow, "id"> & { id?: string }): Promise<string | null> => {
       const { id, ...rest } = row;
       if (id) {
         const { error } = await sb.from("comercial_bonificacao_producao").update(rest).eq("id", id);
         if (error) throw error;
-        return;
+        return id;
       }
       // Já existe registro para este evento + produtor? Atualiza em vez de duplicar.
       const { data: existente, error: selErr } = await sb
@@ -314,11 +314,17 @@ export function useBonificacaoEventoMutations() {
           .update(rest)
           .eq("id", existente.id);
         if (error) throw error;
-        return;
+        return existente.id as string;
       }
-      const { error } = await sb.from("comercial_bonificacao_producao").insert(rest);
+      const { data: inserido, error } = await sb
+        .from("comercial_bonificacao_producao")
+        .insert(rest)
+        .select("id")
+        .maybeSingle();
       if (error) throw error;
+      return (inserido?.id as string) ?? null;
     },
+
     onSuccess: inv,
   });
   const remove = useMutation({
@@ -340,6 +346,7 @@ export type EventoRealizado = {
   origemVenda: "vinculada" | "nome" | null;
   dataInicio: string | null;
   dataFim: string | null;
+  emAndamento: boolean;
   valorFinal: number;
   ano: number | null;
   mes: string | null;
@@ -380,7 +387,7 @@ export function useEventosRealizados(ano: number | "Todos", mes: string) {
 
           vendaId: (e.venda_id as string) ?? null,
         }))
-        .filter((e) => !!e.dataFim && e.dataFim! <= hoje);
+        .filter((e) => !!e.dataInicio && e.dataInicio! <= hoje);
 
       // Vendas: lookup por id (vínculo direto) e índice por nome normalizado.
       const { data: vendasData, error: ve } = await sb
@@ -450,6 +457,8 @@ export function useEventosRealizados(ano: number | "Todos", mes: string) {
           origemVenda: origem,
           dataInicio: e.dataInicio,
           dataFim: e.dataFim,
+          emAndamento: !!e.dataFim && e.dataFim > hoje,
+
 
           valorFinal: venda?.valorFinal ?? 0,
           ano: Number.isFinite(y as number) ? (y as number) : null,
