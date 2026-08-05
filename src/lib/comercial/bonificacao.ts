@@ -338,11 +338,13 @@ export type EventoRealizado = {
   tipo: string | null;
   categoria: string | null;
   origemVenda: "vinculada" | "nome" | null;
+  dataInicio: string | null;
   dataFim: string | null;
   valorFinal: number;
   ano: number | null;
   mes: string | null;
 };
+
 
 const MESES_LOWER = [
   "janeiro", "fevereiro", "março", "abril", "maio", "junho",
@@ -373,7 +375,9 @@ export function useEventosRealizados(ano: number | "Todos", mes: string) {
           nome: (e.nome as string) || "-",
           local: (e.local as string) ?? null,
           tipo: (e.tipo as string) ?? null,
+          dataInicio: (e.data_evento || e.data_evento_fim) as string | null,
           dataFim: (e.data_evento_fim || e.data_evento) as string | null,
+
           vendaId: (e.venda_id as string) ?? null,
         }))
         .filter((e) => !!e.dataFim && e.dataFim! <= hoje);
@@ -417,8 +421,10 @@ export function useEventosRealizados(ano: number | "Todos", mes: string) {
       };
 
       const lista: EventoRealizado[] = brutos.map((e) => {
-        const y = e.dataFim ? Number(e.dataFim.slice(0, 4)) : null;
-        const m = e.dataFim ? Number(e.dataFim.slice(5, 7)) : null;
+        const ref = e.dataInicio || e.dataFim;
+        const y = ref ? Number(ref.slice(0, 4)) : null;
+        const m = ref ? Number(ref.slice(5, 7)) : null;
+
 
         let venda: VendaLite | null = e.vendaId ? (porId.get(e.vendaId) ?? null) : null;
         let origem: "vinculada" | "nome" | null = venda ? "vinculada" : null;
@@ -442,7 +448,9 @@ export function useEventosRealizados(ano: number | "Todos", mes: string) {
           tipo: e.tipo,
           categoria: venda?.categoria ?? e.tipo ?? null,
           origemVenda: origem,
+          dataInicio: e.dataInicio,
           dataFim: e.dataFim,
+
           valorFinal: venda?.valorFinal ?? 0,
           ano: Number.isFinite(y as number) ? (y as number) : null,
           mes: m ? MESES_LOWER[m - 1] : null,
