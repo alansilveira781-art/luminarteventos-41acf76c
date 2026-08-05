@@ -448,7 +448,9 @@ export function useEventosRealizados(ano: number | "Todos", mes: string) {
           tipo: e.tipo,
           categoria: venda?.categoria ?? e.tipo ?? null,
           origemVenda: origem,
+          dataInicio: e.dataInicio,
           dataFim: e.dataFim,
+
           valorFinal: venda?.valorFinal ?? 0,
           ano: Number.isFinite(y as number) ? (y as number) : null,
           mes: m ? MESES_LOWER[m - 1] : null,
