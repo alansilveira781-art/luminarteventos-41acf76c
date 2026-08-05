@@ -5,7 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { CopiarLinkButton } from "@/components/CopiarLinkButton";
 import {
+  Award,
   LayoutDashboard,
+
   Package,
   Users,
   Users as UsersIcon,
