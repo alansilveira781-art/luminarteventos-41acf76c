@@ -429,14 +429,28 @@ function VendasPage() {
   }
 
   const BULK_FIELDS: BulkField[] = [
-    { key: "tipo", label: "Tipo", type: "text" },
     {
-      key: "classificacao", label: "Classificação", type: "select", allowClear: true,
-      options: classificacoes.map((c) => ({ value: c.nome, label: c.nome })),
+      key: "tipo", label: "Tipo", type: "select",
+      options: [{ value: "Venda", label: "Venda" }, { value: "Extra", label: "Extra" }],
     },
-    { key: "consultor", label: "Consultor", type: "text" },
-    { key: "cerimonial", label: "Cerimonial", type: "text" },
-    { key: "decorador", label: "Decorador", type: "text" },
+    {
+      key: "classificacao", label: "Classificação", type: "cadastro",
+      table: "comercial_classificacoes", queryKey: "comercial-classificacoes",
+    },
+    {
+      key: "consultor", label: "Consultor(a)", type: "cadastro",
+      table: "comercial_vendedores", queryKey: "comercial-vendedores",
+      extraFields: [{ key: "percentual_comissao", label: "% Comissão", type: "number", default: 0 }],
+    },
+    {
+      key: "cerimonial", label: "Cerimonial", type: "cadastro",
+      table: "comercial_cerimoniais", queryKey: "comercial-cerimoniais",
+      extraFields: [{ key: "percentual_bv", label: "% BV", type: "number", default: 0 }],
+    },
+    {
+      key: "decorador", label: "Decorador(a)/Agência", type: "cadastro",
+      table: "comercial_decoradores", queryKey: "comercial-decoradores",
+    },
     {
       key: "empresa", label: "Empresa", type: "select", allowClear: true,
       options: EMPRESAS.map((v) => ({ value: v, label: v })),
