@@ -867,8 +867,10 @@ function FechamentoTab() {
   );
 
   const hoje = new Date();
-  const [de, setDe] = useState<string>(format(startOfMonth(hoje), "yyyy-MM-dd"));
-  const [ate, setAte] = useState<string>(format(endOfMonth(hoje), "yyyy-MM-dd"));
+  const inicioSemanaAnterior = subDays(startOfWeek(hoje, { weekStartsOn: 1 }), 7);
+  const fimSemanaAnterior = endOfWeek(inicioSemanaAnterior, { weekStartsOn: 1 });
+  const [de, setDe] = useState<string>(format(inicioSemanaAnterior, "yyyy-MM-dd"));
+  const [ate, setAte] = useState<string>(format(fimSemanaAnterior, "yyyy-MM-dd"));
   const [fLocal, setFLocal] = useState<string>("todos");
   const [fDiarista, setFDiarista] = useState<string>("todos");
   const [expandido, setExpandido] = useState<Set<string>>(new Set());
