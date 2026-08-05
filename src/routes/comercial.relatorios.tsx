@@ -1,10 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, Fragment, useEffect, lazy, Suspense } from "react";
+import { useMemo, useState, Fragment, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -12,40 +11,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/PageHeader";
-import { Loader2, AlertTriangle, Download, FileBarChart, CalendarRange, Printer, Award, Plus, Trash2, Lock, History, Save } from "lucide-react";
+import { Loader2, AlertTriangle, Download, FileBarChart, CalendarRange, Printer } from "lucide-react";
 import { listVendasDb } from "@/lib/comercial/vendas-db.functions";
 import { getAno, getMes, cleanText } from "@/lib/comercial/vendas-metrics";
 import { RelatorioVendasPeriodo } from "@/components/comercial/RelatorioVendasPeriodo";
 
-import {
-  useProdutores,
-  useAlcadas,
-  useBonificacoes,
-  useBonificacaoMutations,
-  useFechamentoMes,
-  useFechamentos,
-  useFechamentoItens,
-  useFecharMes,
-  sugerirComplexidade,
-  multiplicadorDaCategoria,
-  type FechamentoRow,
-  type FechamentoItemRow,
-} from "@/lib/comercial/bonificacao";
-import { useAuth } from "@/contexts/AuthContext";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { toast } from "sonner";
-
 export const Route = createFileRoute("/comercial/relatorios")({
   component: RelatoriosPage,
 });
+
 
 const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
