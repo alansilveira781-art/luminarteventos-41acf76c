@@ -872,14 +872,17 @@ function VendasPage() {
               <span>
                 Valor Final = Proposta − Desconto. BV e Comissão usam os percentuais cadastrados no
                 consultor/cerimonial.
+                {consultorGatilho && " Este consultor tem comissão por gatilho (meta), por isso a comissão da venda fica zerada."}
+                {cadastrosCarregando && " Carregando cadastros de consultores/cerimoniais…"}
               </span>
             </div>
 
             <div className="sm:col-span-2 lg:col-span-3 flex justify-end gap-2 pt-2 border-t border-border">
               <Button type="button" variant="ghost" onClick={() => setFormOpen(false)}>Cancelar</Button>
-              <Button type="submit" disabled={saveMut.isPending}>
-                {saveMut.isPending ? "Salvando..." : editing ? "Salvar alterações" : "Cadastrar venda"}
+              <Button type="submit" disabled={saveMut.isPending || cadastrosCarregando}>
+                {saveMut.isPending ? "Salvando..." : cadastrosCarregando ? "Carregando..." : editing ? "Salvar alterações" : "Cadastrar venda"}
               </Button>
+
             </div>
           </form>
         </DialogContent>
