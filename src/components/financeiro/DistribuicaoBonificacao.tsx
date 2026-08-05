@@ -468,6 +468,7 @@ export function DistribuicaoBonificacao() {
                                         : "sem venda"}
                                   </span>
                                 </td>
+                                <td className="px-3 py-2" rowSpan={linhas.length}>{e.local || "—"}</td>
                                 <td className="px-3 py-2" rowSpan={linhas.length}>
                                   {e.dataEvento ? new Date(e.dataEvento + "T00:00:00").toLocaleDateString("pt-BR") : "-"}
                                 </td>
