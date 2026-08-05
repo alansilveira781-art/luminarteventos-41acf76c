@@ -357,27 +357,50 @@ export function DistribuicaoBonificacao() {
     }
   };
 
+  const imprimirRelatorio = () => {
+    const linhas: LinhaRelatorio[] = [];
+    for (const e of eventos) {
+      const ls = linhasPorEvento[e.eventoId] ?? [];
+      if (ls.length === 0) {
+        linhas.push({
+          eventoKey: e.eventoId,
+          evento: e.nomeEvento,
+          local: e.local,
+          data: e.dataEvento,
+          categoria: e.categoria,
+          produtor: null,
+          peso: null,
+          valor: 0,
+        });
+        continue;
+      }
+      for (const l of ls) {
+        const p = produtores.find((x) => x.id === l.produtorId);
+        linhas.push({
+          eventoKey: e.eventoId,
+          evento: e.nomeEvento,
+          local: e.local,
+          data: e.dataEvento,
+          categoria: e.categoria,
+          produtor: p?.nome ?? null,
+          peso: l.complexidade,
+          valor: l.produtorId ? valorBonificacao(e, l.complexidade) : 0,
+        });
+      }
+    }
+    const ok = gerarRelatorioBonificacao({
+      titulo: "Distribuição de Bonificação",
+      subtitulo: `${ano === "Todos" ? "Todos os anos" : ano} · ${mes === "Todos" ? "Todos os meses" : mes}`,
+      linhas,
+    });
+    if (!ok) toast.error("Bloqueado pelo navegador. Permita pop-ups para gerar o relatório.");
+  };
+
   return (
-    <div className="print-area space-y-6">
-      <style>{`
-        @media print {
-          body * { visibility: hidden; }
-          .print-area, .print-area * { visibility: visible !important; }
-          .print-area { position: absolute; inset: 0; padding: 0; }
-          .print\\:hidden { display: none !important; }
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        }
-      `}</style>
-
-      <div className="hidden print:block mb-6">
-        <h1 className="text-2xl font-bold">Distribuição Bonificação</h1>
-        <p className="text-muted-foreground">
-          {ano === "Todos" ? "Todos os anos" : ano} · {mes === "Todos" ? "Todos os meses" : mes}
-        </p>
-      </div>
-
-      <Card className="p-4 print:hidden">
+    <div className="space-y-6">
+      <Card className="p-4">
         <div className="grid gap-3 sm:grid-cols-[160px_200px_1fr] sm:items-end">
+
           <div className="space-y-1">
             <Label>Ano</Label>
             <Select value={String(ano)} onValueChange={(v) => setAno(v === "Todos" ? "Todos" : Number(v))}>
