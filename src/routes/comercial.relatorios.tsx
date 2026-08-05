@@ -119,14 +119,20 @@ function RelatoriosPage() {
   const grupos = useMemo<Grupo[]>(() => {
     const map = new Map<string, LinhaVenda[]>();
     for (const r of filtradas) {
-      const consultor = cleanText(r.consultor) || "(vazio)";
+      const cad = matchCadastro(r.consultor, vendedores);
+      const consultor = cad?.nome ?? (cleanText(r.consultor) || "(vazio)");
+      const valorFinal = Number(r.valorFinal || 0);
+      const pct = cad && cad.tipo_comissao !== "gatilho" ? Number(cad.percentual_comissao) || 0 : 0;
+      const calculada = Number(((valorFinal * pct) / 100).toFixed(2));
+      const gravada = Number(r.valorComissao || 0);
       const linha: LinhaVenda = {
         consultor,
         evento: cleanText(r.nomeEvento) || "-",
         local: cleanText(r.local) || "-",
         tipo: cleanText(r.tipo) || "-",
-        valorFinal: Number(r.valorFinal || 0),
-        valorComissao: Number(r.valorComissao || 0),
+        valorFinal,
+        valorComissao: calculada,
+        divergente: Math.abs(calculada - gravada) > 0.01,
       };
       const arr = map.get(consultor) ?? [];
       arr.push(linha);
@@ -141,9 +147,27 @@ function RelatoriosPage() {
       const linhas = map.get(consultor)!;
       const totalFinal = linhas.reduce((s, l) => s + l.valorFinal, 0);
       const totalComissao = linhas.reduce((s, l) => s + l.valorComissao, 0);
-      return { consultor, linhas, totalFinal, totalComissao };
+      const cad = matchCadastro(consultor, vendedores);
+      return {
+        consultor,
+        linhas,
+        totalFinal,
+        totalComissao,
+        semCadastro: !cad,
+        gatilho: cad?.tipo_comissao === "gatilho",
+        percentual: cad && cad.tipo_comissao !== "gatilho" ? Number(cad.percentual_comissao) || 0 : 0,
+      };
     });
-  }, [filtradas]);
+  }, [filtradas, vendedores]);
+
+  const semCadastroResumo = useMemo(
+    () =>
+      grupos
+        .filter((g) => g.semCadastro)
+        .map((g) => ({ consultor: g.consultor, qtd: g.linhas.length, valor: g.totalFinal })),
+    [grupos],
+  );
+
 
   const totalGeral = useMemo(
     () => ({
