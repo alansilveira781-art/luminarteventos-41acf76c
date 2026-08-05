@@ -95,6 +95,7 @@ export function DistribuicaoBonificacao() {
         dataEvento: e.dataInicio ?? e.dataFim,
         categoria: e.categoria || e.tipo || "",
         origemVenda: e.origemVenda,
+        emAndamento: e.emAndamento,
         valorFinal: e.valorFinal,
         ano: e.ano,
         mes: e.mes,
@@ -139,7 +140,21 @@ export function DistribuicaoBonificacao() {
 
       for (const [eid, linhasSalvas] of salvasPorEvento) {
         const atual = next[eid] ?? [];
-        if (!atual.some((l) => l.bonifId)) next[eid] = linhasSalvas;
+        // Mescla: atualiza/insere as linhas gravadas e preserva as linhas em edição.
+        const mescladas: LinhaAtribuicao[] = atual
+          .filter((l) => !l.bonifId || linhasSalvas.some((s) => s.bonifId === l.bonifId))
+          .map((l) => {
+            const salva = l.bonifId ? linhasSalvas.find((s) => s.bonifId === l.bonifId) : undefined;
+            return salva ? { ...l, ...salva, key: l.key } : l;
+          });
+        for (const s of linhasSalvas) {
+          if (!mescladas.some((l) => l.bonifId === s.bonifId)) mescladas.push(s);
+        }
+        // Remove placeholders vazios quando já há linhas gravadas.
+        const limpas = mescladas.filter(
+          (l) => l.bonifId || l.produtorId || l.dirty || !mescladas.some((x) => x.bonifId),
+        );
+        next[eid] = limpas.length ? limpas : linhasSalvas;
       }
 
       for (const e of eventos) {
