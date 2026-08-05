@@ -216,14 +216,6 @@ function RelatoriosPage() {
         >
           <CalendarRange className="h-4 w-4" /> Vendas por Período
         </Button>
-        <Button
-          variant={relatorioAtivo === "bonificacao" ? "default" : "outline"}
-          size="sm"
-          className="gap-2"
-          onClick={() => setRelatorioAtivo("bonificacao")}
-        >
-          <Award className="h-4 w-4" /> Distribuição Bonificação
-        </Button>
       </div>
 
       {relatorioAtivo === "periodo" && (
@@ -232,20 +224,7 @@ function RelatoriosPage() {
         </Suspense>
       )}
 
-      {relatorioAtivo === "bonificacao" && (
-        <DistribuicaoBonificacao
-          rows={rows}
-          isLoading={isLoading}
-          error={error as Error | null}
-          ano={ano}
-          setAno={setAno}
-          mes={mes}
-          setMes={setMes}
-          anosDisponiveis={anosDisponiveis}
-          anoDoRegistro={anoDoRegistro}
-          mesDoRegistro={mesDoRegistro}
-        />
-      )}
+
 
       {relatorioAtivo === "comissao" && (
         <div className="print-area space-y-6">
