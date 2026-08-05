@@ -491,6 +491,11 @@ export function DistribuicaoBonificacao() {
                                         ? "casado por nome"
                                         : "sem venda"}
                                   </span>
+                                  {e.emAndamento && (
+                                    <span className="ml-2 text-[10px] uppercase tracking-wide text-amber-600">
+                                      em andamento
+                                    </span>
+                                  )}
                                 </td>
                                 <td className="px-3 py-2" rowSpan={linhas.length}>{e.local || "—"}</td>
                                 <td className="px-3 py-2" rowSpan={linhas.length}>
