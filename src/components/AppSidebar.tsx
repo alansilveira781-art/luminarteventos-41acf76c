@@ -176,6 +176,7 @@ function getContext(pathname: string): "home" | "estoque" | "compras" | "finance
 
 function useNavItems(pathname: string) {
   const { isAdmin, hasModule, modulos, user } = useAuth();
+  const { podeLancar: podeLancarDiaria } = useDiaristaAcesso();
   const ctx = getContext(pathname);
 
   // Consulta reativa ao flag "expectador de eventos" do próprio usuário.
