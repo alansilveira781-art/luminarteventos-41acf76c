@@ -18,6 +18,8 @@ import { Loader2, AlertTriangle, Download, FileBarChart, CalendarRange, Printer 
 import { listVendasDb } from "@/lib/comercial/vendas-db.functions";
 import { getAno, getMes, cleanText } from "@/lib/comercial/vendas-metrics";
 import { RelatorioVendasPeriodo } from "@/components/comercial/RelatorioVendasPeriodo";
+import { useVendedores } from "@/lib/comercial/cadastros";
+import { matchCadastro } from "@/lib/comercial/comissao";
 
 export const Route = createFileRoute("/comercial/relatorios")({
   component: RelatoriosPage,
