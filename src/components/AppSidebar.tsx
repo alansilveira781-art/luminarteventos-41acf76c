@@ -1,4 +1,5 @@
-import { useState } from "react";
+import {
+  Award, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Link, useRouterState } from "@tanstack/react-router";
@@ -88,6 +89,7 @@ const allItems: NavItem[] = [
   { title: "Conta Azul", url: "/financeiro-op/conta-azul", icon: Link2, group: "Financeiro", module: "financeiro_op" },
   { title: "Uber", url: "/financeiro-op/uber", icon: Car, group: "Financeiro", module: "financeiro_op" },
   { title: "Relatórios", url: "/financeiro-op/relatorios", icon: FileBarChart, group: "Financeiro", module: "financeiro_op" },
+  { title: "Bonificação", url: "/financeiro-op/bonificacao", icon: Award, group: "Financeiro", module: "financeiro_op" },
   { title: "Dashboard", url: "/comercial/dashboard", icon: BarChart3, group: "Comercial", module: "comercial" },
   { title: "Quadro de Vendas", url: "/comercial", icon: KanbanSquare, group: "Comercial", module: "comercial" },
   { title: "Vendas", url: "/comercial/vendas", icon: DollarSign, group: "Comercial", module: "comercial", moduleAdminOnly: "comercial" },
