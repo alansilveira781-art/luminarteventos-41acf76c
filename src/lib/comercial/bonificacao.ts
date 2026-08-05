@@ -338,11 +338,13 @@ export type EventoRealizado = {
   tipo: string | null;
   categoria: string | null;
   origemVenda: "vinculada" | "nome" | null;
+  dataInicio: string | null;
   dataFim: string | null;
   valorFinal: number;
   ano: number | null;
   mes: string | null;
 };
+
 
 const MESES_LOWER = [
   "janeiro", "fevereiro", "março", "abril", "maio", "junho",
