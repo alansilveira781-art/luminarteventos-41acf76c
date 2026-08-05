@@ -401,7 +401,23 @@ function RelatoriosPage() {
                       <tr className="bg-muted/40 font-semibold border-t border-border">
                         <td className="px-3 py-2" colSpan={4}>
                           {g.consultor} Total
+                          {g.semCadastro && (
+                            <span className="ml-2 font-normal text-xs text-amber-600">
+                              sem cadastro
+                            </span>
+                          )}
+                          {g.gatilho && (
+                            <span className="ml-2 font-normal text-xs text-muted-foreground">
+                              comissão por gatilho
+                            </span>
+                          )}
+                          {!g.semCadastro && !g.gatilho && (
+                            <span className="ml-2 font-normal text-xs text-muted-foreground">
+                              {g.percentual}%
+                            </span>
+                          )}
                         </td>
+
                         <td className="px-3 py-2 text-right tabular-nums">
                           {fmtBRL(g.totalFinal)}
                         </td>
