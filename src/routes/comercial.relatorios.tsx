@@ -48,6 +48,7 @@ type LinhaVenda = {
   tipo: string;
   valorFinal: number;
   valorComissao: number;
+  divergente: boolean;
 };
 
 type Grupo = {
@@ -55,6 +56,9 @@ type Grupo = {
   linhas: LinhaVenda[];
   totalFinal: number;
   totalComissao: number;
+  semCadastro: boolean;
+  gatilho: boolean;
+  percentual: number;
 };
 
 function RelatoriosPage() {
@@ -62,6 +66,7 @@ function RelatoriosPage() {
   const [ano, setAno] = useState<number | "Todos">("Todos");
   const [mes, setMes] = useState<string>("Todos");
 
+  const { data: vendedores = [] } = useVendedores();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["comercial-vendas-db", "relatorios"],
