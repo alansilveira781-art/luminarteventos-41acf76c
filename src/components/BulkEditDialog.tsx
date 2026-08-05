@@ -144,6 +144,26 @@ export function BulkEditDialog({
                         onChange={(e) => set(f.key, e.target.value)}
                       />
                     )}
+                    {f.type === "cadastro" && (
+                      <div className="space-y-1">
+                        <CadastroCombobox
+                          table={f.table}
+                          queryKey={f.queryKey}
+                          value={values[f.key] === "__null__" ? "" : (values[f.key] ?? "")}
+                          onChange={(v) => set(f.key, v)}
+                          extraFields={f.extraFields}
+                        />
+                        {f.allowClear !== false && (
+                          <button
+                            type="button"
+                            className="text-[11px] text-muted-foreground hover:text-foreground underline"
+                            onClick={() => set(f.key, "__null__")}
+                          >
+                            {values[f.key] === "__null__" ? "Será limpado" : "Limpar valor"}
+                          </button>
+                        )}
+                      </div>
+                    )}
                     {f.type === "select" && (
                       <Select value={values[f.key] ?? ""} onValueChange={(v) => set(f.key, v)}>
                         <SelectTrigger>
