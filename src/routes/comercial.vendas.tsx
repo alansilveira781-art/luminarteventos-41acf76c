@@ -246,6 +246,13 @@ function VendasPage() {
     [form.consultor, vendedores],
   );
 
+  const consultorGatilho = useMemo(
+    () => matchCadastro(form.consultor, vendedores as any)?.tipo_comissao === "gatilho",
+    [form.consultor, vendedores],
+  );
+
+
+
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["comercial-vendas-db"],
