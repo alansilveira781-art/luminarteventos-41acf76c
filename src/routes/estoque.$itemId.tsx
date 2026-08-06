@@ -173,9 +173,89 @@ function ItemHistorico() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Histórico de movimentações</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>Histórico de movimentações</CardTitle>
+        </CardHeader>
         <CardContent>
+          <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6 mb-4">
+            <div className="space-y-1">
+              <label className="text-[11px] uppercase text-muted-foreground">Movimento</label>
+              <Select value={fTipo} onValueChange={setFTipo}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todos</SelectItem>
+                  <SelectItem value="entrada">Entrada</SelectItem>
+                  <SelectItem value="saida">Saída</SelectItem>
+                  <SelectItem value="devolucao">Devolução</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] uppercase text-muted-foreground">Evento/Projeto</label>
+              <Select value={fEvento ?? "__all__"} onValueChange={(v) => setFEvento(v === "__all__" ? null : v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todos</SelectItem>
+                  {eventosDisponiveis.map((e) => (
+                    <SelectItem key={e} value={e}>{e}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {showSaidaTipoFiltro && (
+              <div className="space-y-1">
+                <label className="text-[11px] uppercase text-muted-foreground">Tipo de saída</label>
+                <Select value={fSaidaTipo} onValueChange={setFSaidaTipo}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Todos</SelectItem>
+                    {Object.entries(saidaTipoLabels).map(([v, l]) => (
+                      <SelectItem key={v} value={v}>{l}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="space-y-1">
+              <label className="text-[11px] uppercase text-muted-foreground">Solicitante</label>
+              <Select value={fSolicitante} onValueChange={setFSolicitante}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todos</SelectItem>
+                  {solicitantesDisponiveis.map(([id, nome]) => (
+                    <SelectItem key={id} value={id}>{nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {showFornecedorFiltro && (
+              <div className="space-y-1">
+                <label className="text-[11px] uppercase text-muted-foreground">Fornecedor</label>
+                <Select value={fFornecedor} onValueChange={setFFornecedor}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Todos</SelectItem>
+                    {fornecedoresDisponiveis.map(([id, nome]) => (
+                      <SelectItem key={id} value={id}>{nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="space-y-1">
+              <label className="text-[11px] uppercase text-muted-foreground">De</label>
+              <Input type="date" value={fIni} onChange={(e) => setFIni(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] uppercase text-muted-foreground">Até</label>
+              <Input type="date" value={fFim} onChange={(e) => setFFim(e.target.value)} />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mb-2">
+            {movsFiltrados.length} de {movs?.length ?? 0} movimentações
+          </p>
           <div className="overflow-x-auto">
+
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="text-left text-xs uppercase text-muted-foreground border-b border-border">
