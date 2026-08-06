@@ -195,6 +195,9 @@ function SolicitarContratoPublico() {
 
   const [endCliente, setEndCliente] = useState<Endereco>({ ...enderecoVazio });
   const [endResp, setEndResp] = useState<Endereco>({ ...enderecoVazio });
+  const [resp2Ativo, setResp2Ativo] = useState(false);
+  const [endResp2, setEndResp2] = useState<Endereco>({ ...enderecoVazio });
+  const [testemunhas, setTestemunhas] = useState<Testemunha[]>([]);
   const [pagForma, setPagForma] = useState<"pix" | "boleto">("pix");
   const [pagModo, setPagModo] = useState<"igual" | "diferente">("igual");
   const [qtdParcelas, setQtdParcelas] = useState(1);
