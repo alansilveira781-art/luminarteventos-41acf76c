@@ -556,9 +556,11 @@ function Card({
         >⋮⋮</span>
         <div className="flex-1 text-left min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <div className="font-medium text-sm truncate text-foreground flex-1 min-w-0">
-              {compra.titulo || compra.fornecedor || "Compra sem título"}
+            <div className="font-medium text-sm truncate text-foreground flex-1 min-w-0 flex items-center gap-1.5">
+              <PrazoDot prazo={compra.prazo} />
+              <span className="truncate">{compra.titulo || compra.fornecedor || "Compra sem título"}</span>
             </div>
+
             {compra.numero != null && (
               <span className="text-[10px] text-muted-foreground font-mono shrink-0 mt-0.5">
                 COMPRA-{compra.numero}
