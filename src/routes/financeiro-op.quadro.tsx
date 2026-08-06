@@ -34,6 +34,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { FINANCEIRO_STATUSES, type FinanceiroStatus } from "@/lib/financeiro-quadro";
 import { PrazoDot } from "@/components/PrazoDot";
+import { prazoLabel } from "@/lib/prazo";
+
 
 
 export const Route = createFileRoute("/financeiro-op/quadro")({
