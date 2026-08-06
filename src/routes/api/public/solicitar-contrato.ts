@@ -45,6 +45,21 @@ const schema = z
     resp_legal_email: z.string().trim().max(160).optional().or(z.literal("")),
     resp_legal_telefone: z.string().trim().max(40).optional().or(z.literal("")),
     resp_legal_endereco: enderecoSchema.nullable().optional(),
+    resp_legal2_nome: z.string().trim().max(160).optional().or(z.literal("")),
+    resp_legal2_documento: z.string().trim().max(40).optional().or(z.literal("")),
+    resp_legal2_email: z.string().trim().max(160).optional().or(z.literal("")),
+    resp_legal2_telefone: z.string().trim().max(40).optional().or(z.literal("")),
+    resp_legal2_endereco: enderecoSchema.nullable().optional(),
+    testemunhas: z
+      .array(
+        z.object({
+          nome: z.string().trim().min(2).max(160),
+          documento: z.string().trim().max(40).optional().or(z.literal("")),
+          email: z.string().trim().max(160).optional().or(z.literal("")),
+        }),
+      )
+      .max(2)
+      .optional(),
     valor: z.number().nonnegative().max(100_000_000),
     pagamento_forma: z.enum(["pix", "boleto"]),
     pagamento_modo: z.enum(["igual", "diferente"]),
@@ -195,6 +210,7 @@ export const Route = createFileRoute("/api/public/solicitar-contrato")({
 
         const ec = d.cliente_endereco;
         const er = d.resp_legal_endereco ?? null;
+        const er2 = d.resp_legal2_endereco ?? null;
 
         const { data: criado, error } = await sb
           .from("juridico_contratos")
@@ -226,6 +242,18 @@ export const Route = createFileRoute("/api/public/solicitar-contrato")({
             resp_legal_bairro: er?.bairro ?? null,
             resp_legal_cidade: er?.cidade ?? null,
             resp_legal_uf: er?.uf ?? null,
+            resp_legal2_nome: d.resp_legal2_nome || null,
+            resp_legal2_documento: d.resp_legal2_documento || null,
+            resp_legal2_email: d.resp_legal2_email || null,
+            resp_legal2_telefone: d.resp_legal2_telefone || null,
+            resp_legal2_cep: er2?.cep ?? null,
+            resp_legal2_logradouro: er2?.logradouro ?? null,
+            resp_legal2_numero: er2?.numero ?? null,
+            resp_legal2_complemento: er2?.complemento || null,
+            resp_legal2_bairro: er2?.bairro ?? null,
+            resp_legal2_cidade: er2?.cidade ?? null,
+            resp_legal2_uf: er2?.uf ?? null,
+            testemunhas: d.testemunhas ?? [],
             valor: d.valor ?? null,
             forma_pagamento: d.pagamento_forma === "pix" ? "PIX" : "Boleto",
             pagamento_forma: d.pagamento_forma,

@@ -70,10 +70,17 @@ const vazio = {
   resp_legal_documento: "",
   resp_legal_email: "",
   resp_legal_telefone: "",
+  resp_legal2_nome: "",
+  resp_legal2_documento: "",
+  resp_legal2_email: "",
+  resp_legal2_telefone: "",
   valor: "",
   data_fechamento: "",
   observacoes: "",
 };
+
+type Testemunha = { nome: string; documento: string; email: string };
+const testemunhaVazia: Testemunha = { nome: "", documento: "", email: "" };
 
 type Campo = keyof typeof vazio;
 
@@ -188,6 +195,9 @@ function SolicitarContratoPublico() {
 
   const [endCliente, setEndCliente] = useState<Endereco>({ ...enderecoVazio });
   const [endResp, setEndResp] = useState<Endereco>({ ...enderecoVazio });
+  const [resp2Ativo, setResp2Ativo] = useState(false);
+  const [endResp2, setEndResp2] = useState<Endereco>({ ...enderecoVazio });
+  const [testemunhas, setTestemunhas] = useState<Testemunha[]>([]);
   const [pagForma, setPagForma] = useState<"pix" | "boleto">("pix");
   const [pagModo, setPagModo] = useState<"igual" | "diferente">("igual");
   const [qtdParcelas, setQtdParcelas] = useState(1);
@@ -268,7 +278,24 @@ function SolicitarContratoPublico() {
       if (!e.resp_legal_documento && digitos(form.resp_legal_documento).length !== 11)
         e.resp_legal_documento = "Informe um CPF válido (11 dígitos)";
       validarEndereco(endResp, "resp_legal");
+
+      if (resp2Ativo) {
+        req("resp_legal2_nome", form.resp_legal2_nome);
+        req("resp_legal2_documento", form.resp_legal2_documento);
+        if (!e.resp_legal2_documento && digitos(form.resp_legal2_documento).length !== 11)
+          e.resp_legal2_documento = "Informe um CPF válido (11 dígitos)";
+        if (form.resp_legal2_email && !emailOk(form.resp_legal2_email))
+          e.resp_legal2_email = "E-mail inválido";
+        validarEndereco(endResp2, "resp_legal2");
+      }
     }
+
+    testemunhas.forEach((t, i) => {
+      if (!t.nome.trim() && !t.documento.trim()) return;
+      if (!t.nome.trim()) e[`testemunha_${i}_nome`] = "Informe o nome";
+      if (digitos(t.documento).length !== 11) e[`testemunha_${i}_documento`] = "CPF inválido";
+      if (t.email && !emailOk(t.email)) e[`testemunha_${i}_email`] = "E-mail inválido";
+    });
 
     if (valorTotal <= 0) e.valor = "Informe o valor do contrato";
     parcelas.forEach((p, i) => {
@@ -308,6 +335,14 @@ function SolicitarContratoPublico() {
       resp_legal_email: isPJ ? form.resp_legal_email.trim() : "",
       resp_legal_telefone: isPJ ? form.resp_legal_telefone.trim() : "",
       resp_legal_endereco: isPJ ? endResp : null,
+      resp_legal2_nome: isPJ && resp2Ativo ? form.resp_legal2_nome.trim() : "",
+      resp_legal2_documento: isPJ && resp2Ativo ? form.resp_legal2_documento.trim() : "",
+      resp_legal2_email: isPJ && resp2Ativo ? form.resp_legal2_email.trim() : "",
+      resp_legal2_telefone: isPJ && resp2Ativo ? form.resp_legal2_telefone.trim() : "",
+      resp_legal2_endereco: isPJ && resp2Ativo ? endResp2 : null,
+      testemunhas: testemunhas
+        .filter((t) => t.nome.trim())
+        .map((t) => ({ nome: t.nome.trim(), documento: t.documento.trim(), email: t.email.trim() })),
       valor: valorTotal,
       pagamento_forma: pagForma,
       pagamento_modo: qtdParcelas > 1 ? pagModo : "igual",
@@ -353,6 +388,9 @@ function SolicitarContratoPublico() {
       setForm({ ...vazio });
       setEndCliente({ ...enderecoVazio });
       setEndResp({ ...enderecoVazio });
+      setEndResp2({ ...enderecoVazio });
+      setResp2Ativo(false);
+      setTestemunhas([]);
       setParcelas([{ vencimento: "", valor: "" }]);
       setQtdParcelas(1);
       setProposta(null);
@@ -547,8 +585,125 @@ function SolicitarContratoPublico() {
               <div className="text-xs font-medium text-muted-foreground mb-2">Endereço completo</div>
               <EnderecoFields valor={endResp} onChange={setEndResp} erros={erros} prefixo="resp_legal" />
             </div>
+
+            {!resp2Ativo ? (
+              <Button type="button" variant="outline" size="sm" onClick={() => setResp2Ativo(true)}>
+                Adicionar segundo responsável legal
+              </Button>
+            ) : (
+              <div className="border-t pt-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold">2º Responsável Legal</div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setResp2Ativo(false);
+                      setEndResp2({ ...enderecoVazio });
+                      set("resp_legal2_nome", "");
+                      set("resp_legal2_documento", "");
+                      set("resp_legal2_email", "");
+                      set("resp_legal2_telefone", "");
+                    }}
+                  >
+                    Remover
+                  </Button>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>Nome *</Label>
+                    <Input value={form.resp_legal2_nome} onChange={(e) => set("resp_legal2_nome", e.target.value)} placeholder="Nome completo" />
+                    <Erro msg={erros.resp_legal2_nome} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>CPF *</Label>
+                    <Input inputMode="numeric" value={form.resp_legal2_documento} onChange={(e) => set("resp_legal2_documento", e.target.value)} />
+                    <Erro msg={erros.resp_legal2_documento} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>E-mail</Label>
+                    <Input type="email" value={form.resp_legal2_email} onChange={(e) => set("resp_legal2_email", e.target.value)} />
+                    <Erro msg={erros.resp_legal2_email} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Telefone</Label>
+                    <Input value={form.resp_legal2_telefone} onChange={(e) => set("resp_legal2_telefone", e.target.value)} />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground mb-2">Endereço completo</div>
+                  <EnderecoFields valor={endResp2} onChange={setEndResp2} erros={erros} prefixo="resp_legal2" />
+                </div>
+              </div>
+            )}
           </Card>
         )}
+
+        <Card className="p-5 space-y-4">
+          <div>
+            <div className="text-sm font-semibold">Testemunhas (opcional)</div>
+            <p className="text-xs text-muted-foreground">
+              Até 2 testemunhas que assinarão o contrato.
+            </p>
+          </div>
+          {testemunhas.map((t, i) => (
+            <div key={i} className="grid gap-4 sm:grid-cols-[1fr_1fr_1fr_auto] items-start">
+              <div className="space-y-1.5">
+                <Label>Nome *</Label>
+                <Input
+                  value={t.nome}
+                  onChange={(e) =>
+                    setTestemunhas((p) => p.map((x, j) => (j === i ? { ...x, nome: e.target.value } : x)))
+                  }
+                />
+                <Erro msg={erros[`testemunha_${i}_nome`]} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>CPF *</Label>
+                <Input
+                  inputMode="numeric"
+                  value={t.documento}
+                  onChange={(e) =>
+                    setTestemunhas((p) => p.map((x, j) => (j === i ? { ...x, documento: e.target.value } : x)))
+                  }
+                />
+                <Erro msg={erros[`testemunha_${i}_documento`]} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>E-mail</Label>
+                <Input
+                  type="email"
+                  value={t.email}
+                  onChange={(e) =>
+                    setTestemunhas((p) => p.map((x, j) => (j === i ? { ...x, email: e.target.value } : x)))
+                  }
+                />
+                <Erro msg={erros[`testemunha_${i}_email`]} />
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="mt-6"
+                onClick={() => setTestemunhas((p) => p.filter((_, j) => j !== i))}
+              >
+                Remover
+              </Button>
+            </div>
+          ))}
+          {testemunhas.length < 2 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setTestemunhas((p) => [...p, { ...testemunhaVazia }])}
+            >
+              Adicionar testemunha
+            </Button>
+          )}
+        </Card>
+
 
         <Card className="p-5 space-y-4">
           <div>
