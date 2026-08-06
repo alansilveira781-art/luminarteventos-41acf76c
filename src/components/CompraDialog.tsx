@@ -547,12 +547,41 @@ export function CompraDialog({
               <FormField label="Data da solicitação">
                 <Input type="date" value={form.data_solicitacao ?? ""} onChange={(e) => setForm({ ...form, data_solicitacao: e.target.value })} />
               </FormField>
-              <FormField label="Prazo">
-                <div className="flex items-center gap-2">
-                  <Input type="date" value={(form as any).prazo ?? ""} onChange={(e) => setForm({ ...form, prazo: e.target.value || null } as any)} />
-                  <PrazoDot prazo={(form as any).prazo} />
-                </div>
-              </FormField>
+              {(() => {
+                const posAprovacao = ["aprovada", "em_andamento", "a_receber", "finalizado"].includes(
+                  String(form.status ?? ""),
+                );
+                return (
+                  <>
+                    <FormField label={posAprovacao ? "Prazo (fase de aprovação)" : "Prazo"}>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="date"
+                          disabled={posAprovacao}
+                          value={(form as any).prazo ?? ""}
+                          onChange={(e) => setForm({ ...form, prazo: e.target.value || null } as any)}
+                        />
+                        {!posAprovacao && <PrazoDot prazo={(form as any).prazo} />}
+                      </div>
+                    </FormField>
+                    {posAprovacao && (
+                      <FormField label="Prazo até finalizar">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="date"
+                            value={(form as any).prazo_aprovacao ?? ""}
+                            onChange={(e) =>
+                              setForm({ ...form, prazo_aprovacao: e.target.value || null } as any)
+                            }
+                          />
+                          <PrazoDot prazo={(form as any).prazo_aprovacao ?? (form as any).prazo} />
+                        </div>
+                      </FormField>
+                    )}
+                  </>
+                );
+              })()}
+
               {form.tipo_compra === "servico" ? (
                 <FormField label="Data do serviço">
                   <Input type="date" value={form.data_servico ?? ""} onChange={(e) => setForm({ ...form, data_servico: e.target.value })} />
