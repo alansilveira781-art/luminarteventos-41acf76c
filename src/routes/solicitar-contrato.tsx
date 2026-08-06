@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EMPRESAS } from "@/lib/empresas";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2, Building2, User } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/solicitar-contrato")({
@@ -31,6 +31,30 @@ export const Route = createFileRoute("/solicitar-contrato")({
   component: SolicitarContratoPublico,
 });
 
+type TipoPessoa = "pf" | "pj";
+
+type Endereco = {
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complemento: string;
+  bairro: string;
+  cidade: string;
+  uf: string;
+};
+
+const enderecoVazio: Endereco = {
+  cep: "",
+  logradouro: "",
+  numero: "",
+  complemento: "",
+  bairro: "",
+  cidade: "",
+  uf: "",
+};
+
+type Parcela = { vencimento: string; valor: string };
+
 const vazio = {
   tipo: "contrato" as "contrato" | "aditivo",
   titulo: "",
@@ -50,78 +74,243 @@ const vazio = {
 
 type Campo = keyof typeof vazio;
 
-const OBRIGATORIOS: Campo[] = [
-  "titulo",
-  "cliente_nome",
-  "cliente_documento",
-  "cliente_email",
-  "cliente_telefone",
-  "resp_legal_nome",
-  "resp_legal_documento",
-  "resp_legal_email",
-  "resp_legal_telefone",
-];
-
 const emailOk = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
-const docOk = (v: string) => v.replace(/\D/g, "").length >= 11;
-const telOk = (v: string) => v.replace(/\D/g, "").length >= 10;
-
-function validar(form: typeof vazio, proposta: File | null, cartao: File | null) {
-  const erros: Partial<Record<Campo | "proposta" | "cartao_cnpj", string>> = {};
-  for (const c of OBRIGATORIOS) {
-    if (!String(form[c] ?? "").trim()) erros[c] = "Campo obrigatório";
-  }
-  if (!erros.cliente_email && !emailOk(form.cliente_email)) erros.cliente_email = "E-mail inválido";
-  if (!erros.resp_legal_email && !emailOk(form.resp_legal_email)) erros.resp_legal_email = "E-mail inválido";
-  if (!erros.cliente_documento && !docOk(form.cliente_documento)) erros.cliente_documento = "Informe um CNPJ/CPF válido";
-  if (!erros.resp_legal_documento && !docOk(form.resp_legal_documento)) erros.resp_legal_documento = "Informe um CPF/CNPJ válido";
-  if (!erros.cliente_telefone && !telOk(form.cliente_telefone)) erros.cliente_telefone = "Telefone inválido";
-  if (!erros.resp_legal_telefone && !telOk(form.resp_legal_telefone)) erros.resp_legal_telefone = "Telefone inválido";
-  if (!proposta) erros.proposta = "Anexo obrigatório";
-  if (!cartao) erros.cartao_cnpj = "Anexo obrigatório";
-  return erros;
-}
+const digitos = (v: string) => v.replace(/\D/g, "");
+const telOk = (v: string) => digitos(v).length >= 10;
+const parseMoeda = (v: string) => {
+  const n = Number(String(v).replace(/\./g, "").replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
+};
+const fmtMoeda = (n: number) =>
+  n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 function Erro({ msg }: { msg?: string }) {
   if (!msg) return null;
   return <p className="text-[11px] text-destructive">{msg}</p>;
 }
 
+function EnderecoFields({
+  valor,
+  onChange,
+  erros,
+  prefixo,
+}: {
+  valor: Endereco;
+  onChange: (e: Endereco) => void;
+  erros: Record<string, string>;
+  prefixo: string;
+}) {
+  const [buscando, setBuscando] = useState(false);
+
+  async function buscarCep(cep: string) {
+    const d = digitos(cep);
+    if (d.length !== 8) return;
+    setBuscando(true);
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${d}/json/`);
+      const data = await res.json();
+      if (data?.erro) return;
+      onChange({
+        ...valor,
+        cep,
+        logradouro: data.logradouro || valor.logradouro,
+        bairro: data.bairro || valor.bairro,
+        cidade: data.localidade || valor.cidade,
+        uf: data.uf || valor.uf,
+      });
+    } catch {
+      /* preenchimento manual */
+    } finally {
+      setBuscando(false);
+    }
+  }
+
+  const set = (k: keyof Endereco, v: string) => onChange({ ...valor, [k]: v });
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-6">
+      <div className="space-y-1.5 sm:col-span-2">
+        <Label>CEP *</Label>
+        <div className="relative">
+          <Input
+            inputMode="numeric"
+            value={valor.cep}
+            onChange={(e) => set("cep", e.target.value)}
+            onBlur={(e) => buscarCep(e.target.value)}
+            placeholder="00000-000"
+          />
+          {buscando && (
+            <Loader2 className="h-4 w-4 animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          )}
+        </div>
+        <Erro msg={erros[`${prefixo}_cep`]} />
+      </div>
+      <div className="space-y-1.5 sm:col-span-3">
+        <Label>Logradouro *</Label>
+        <Input value={valor.logradouro} onChange={(e) => set("logradouro", e.target.value)} placeholder="Rua / Avenida" />
+        <Erro msg={erros[`${prefixo}_logradouro`]} />
+      </div>
+      <div className="space-y-1.5">
+        <Label>Número *</Label>
+        <Input value={valor.numero} onChange={(e) => set("numero", e.target.value)} />
+        <Erro msg={erros[`${prefixo}_numero`]} />
+      </div>
+      <div className="space-y-1.5 sm:col-span-2">
+        <Label>Complemento</Label>
+        <Input value={valor.complemento} onChange={(e) => set("complemento", e.target.value)} placeholder="Sala, bloco…" />
+      </div>
+      <div className="space-y-1.5 sm:col-span-2">
+        <Label>Bairro *</Label>
+        <Input value={valor.bairro} onChange={(e) => set("bairro", e.target.value)} />
+        <Erro msg={erros[`${prefixo}_bairro`]} />
+      </div>
+      <div className="space-y-1.5">
+        <Label>Cidade *</Label>
+        <Input value={valor.cidade} onChange={(e) => set("cidade", e.target.value)} />
+        <Erro msg={erros[`${prefixo}_cidade`]} />
+      </div>
+      <div className="space-y-1.5">
+        <Label>UF *</Label>
+        <Input maxLength={2} value={valor.uf} onChange={(e) => set("uf", e.target.value.toUpperCase())} />
+        <Erro msg={erros[`${prefixo}_uf`]} />
+      </div>
+    </div>
+  );
+}
+
 function SolicitarContratoPublico() {
+  const [tipoPessoa, setTipoPessoa] = useState<TipoPessoa | null>(null);
   const [form, setForm] = useState({ ...vazio });
+  const [endCliente, setEndCliente] = useState<Endereco>({ ...enderecoVazio });
+  const [endResp, setEndResp] = useState<Endereco>({ ...enderecoVazio });
+  const [pagForma, setPagForma] = useState<"pix" | "boleto">("pix");
+  const [pagModo, setPagModo] = useState<"igual" | "diferente">("igual");
+  const [qtdParcelas, setQtdParcelas] = useState(1);
+  const [parcelas, setParcelas] = useState<Parcela[]>([{ vencimento: "", valor: "" }]);
   const [proposta, setProposta] = useState<File | null>(null);
-  const [cartao, setCartao] = useState<File | null>(null);
+  const [docEmpresa, setDocEmpresa] = useState<File | null>(null);
   const [erros, setErros] = useState<Record<string, string>>({});
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState<{ tipo: string; numero: number | null } | null>(null);
+
+  const isPJ = tipoPessoa === "pj";
+  const valorTotal = parseMoeda(form.valor);
+
+  useEffect(() => {
+    setParcelas((prev) => {
+      const next: Parcela[] = [];
+      for (let i = 0; i < qtdParcelas; i++) next.push(prev[i] ?? { vencimento: "", valor: "" });
+      return next;
+    });
+  }, [qtdParcelas]);
+
+  const valoresCalculados = useMemo(() => {
+    if (pagModo === "igual" || qtdParcelas === 1) {
+      const cent = Math.round(valorTotal * 100);
+      const base = Math.floor(cent / qtdParcelas);
+      return Array.from({ length: qtdParcelas }, (_, i) =>
+        (i === qtdParcelas - 1 ? base + (cent - base * qtdParcelas) : base) / 100,
+      );
+    }
+    return parcelas.map((p) => parseMoeda(p.valor));
+  }, [pagModo, qtdParcelas, valorTotal, parcelas]);
+
+  const somaParcelas = valoresCalculados.reduce((a, b) => a + b, 0);
 
   const set = (k: Campo, v: string) => {
     setForm((f) => ({ ...f, [k]: v }));
     setErros((e) => (e[k] ? { ...e, [k]: "" } : e));
   };
 
+  function validar() {
+    const e: Record<string, string> = {};
+    const req = (k: string, v: string) => {
+      if (!String(v ?? "").trim()) e[k] = "Campo obrigatório";
+    };
+
+    req("titulo", form.titulo);
+    req("cliente_nome", form.cliente_nome);
+    req("cliente_documento", form.cliente_documento);
+    req("cliente_email", form.cliente_email);
+    req("cliente_telefone", form.cliente_telefone);
+
+    if (!e.cliente_email && !emailOk(form.cliente_email)) e.cliente_email = "E-mail inválido";
+    if (!e.cliente_telefone && !telOk(form.cliente_telefone)) e.cliente_telefone = "Telefone inválido";
+    if (!e.cliente_documento) {
+      const d = digitos(form.cliente_documento);
+      if (isPJ && d.length !== 14) e.cliente_documento = "Informe um CNPJ válido (14 dígitos)";
+      if (!isPJ && d.length !== 11) e.cliente_documento = "Informe um CPF válido (11 dígitos)";
+    }
+
+    const validarEndereco = (end: Endereco, prefixo: string) => {
+      req(`${prefixo}_cep`, end.cep);
+      req(`${prefixo}_logradouro`, end.logradouro);
+      req(`${prefixo}_numero`, end.numero);
+      req(`${prefixo}_bairro`, end.bairro);
+      req(`${prefixo}_cidade`, end.cidade);
+      req(`${prefixo}_uf`, end.uf);
+      if (!e[`${prefixo}_cep`] && digitos(end.cep).length !== 8) e[`${prefixo}_cep`] = "CEP inválido";
+    };
+    validarEndereco(endCliente, "cliente");
+
+    if (isPJ) {
+      req("resp_legal_nome", form.resp_legal_nome);
+      req("resp_legal_documento", form.resp_legal_documento);
+      req("resp_legal_email", form.resp_legal_email);
+      req("resp_legal_telefone", form.resp_legal_telefone);
+      if (!e.resp_legal_email && !emailOk(form.resp_legal_email)) e.resp_legal_email = "E-mail inválido";
+      if (!e.resp_legal_telefone && !telOk(form.resp_legal_telefone)) e.resp_legal_telefone = "Telefone inválido";
+      if (!e.resp_legal_documento && digitos(form.resp_legal_documento).length !== 11)
+        e.resp_legal_documento = "Informe um CPF válido (11 dígitos)";
+      validarEndereco(endResp, "resp_legal");
+    }
+
+    if (valorTotal <= 0) e.valor = "Informe o valor do contrato";
+    parcelas.forEach((p, i) => {
+      if (!p.vencimento) e[`parcela_${i}_venc`] = "Informe a data";
+      if (pagModo === "diferente" && qtdParcelas > 1 && parseMoeda(p.valor) <= 0)
+        e[`parcela_${i}_valor`] = "Informe o valor";
+    });
+    if (pagModo === "diferente" && qtdParcelas > 1 && valorTotal > 0 && Math.abs(somaParcelas - valorTotal) > 0.01) {
+      e.parcelas_soma = `A soma das parcelas (${fmtMoeda(somaParcelas)}) deve ser igual ao valor total (${fmtMoeda(valorTotal)})`;
+    }
+
+    if (!proposta) e.proposta = "Anexo obrigatório";
+    if (!docEmpresa) e.doc_empresa = "Anexo obrigatório";
+    return e;
+  }
+
   async function enviar() {
-    const e = validar(form, proposta, cartao);
-    setErros(e as Record<string, string>);
+    const e = validar();
+    setErros(e);
     if (Object.values(e).some(Boolean)) {
       toast.error("Revise os campos destacados");
       return;
     }
 
-    const valorNum = form.valor ? Number(form.valor.replace(/\./g, "").replace(",", ".")) : null;
     const payload = {
       tipo: form.tipo,
       titulo: form.titulo.trim(),
       empresa: form.empresa || "",
+      cliente_tipo: tipoPessoa,
       cliente_nome: form.cliente_nome.trim(),
       cliente_documento: form.cliente_documento.trim(),
       cliente_email: form.cliente_email.trim(),
       cliente_telefone: form.cliente_telefone.trim(),
-      resp_legal_nome: form.resp_legal_nome.trim(),
-      resp_legal_documento: form.resp_legal_documento.trim(),
-      resp_legal_email: form.resp_legal_email.trim(),
-      resp_legal_telefone: form.resp_legal_telefone.trim(),
-      valor: Number.isFinite(valorNum as number) ? valorNum : null,
+      cliente_endereco: endCliente,
+      resp_legal_nome: isPJ ? form.resp_legal_nome.trim() : "",
+      resp_legal_documento: isPJ ? form.resp_legal_documento.trim() : "",
+      resp_legal_email: isPJ ? form.resp_legal_email.trim() : "",
+      resp_legal_telefone: isPJ ? form.resp_legal_telefone.trim() : "",
+      resp_legal_endereco: isPJ ? endResp : null,
+      valor: valorTotal,
+      pagamento_forma: pagForma,
+      pagamento_modo: qtdParcelas > 1 ? pagModo : "igual",
+      pagamento_parcelas: parcelas.map((p, i) => ({
+        n: i + 1,
+        vencimento: p.vencimento,
+        valor: Number(valoresCalculados[i]?.toFixed(2) ?? 0),
+      })),
       data_fechamento: form.data_fechamento || "",
       observacoes: form.observacoes.trim(),
     };
@@ -129,7 +318,7 @@ function SolicitarContratoPublico() {
     const fd = new FormData();
     fd.append("payload", JSON.stringify(payload));
     if (proposta) fd.append("proposta", proposta);
-    if (cartao) fd.append("cartao_cnpj", cartao);
+    if (docEmpresa) fd.append(isPJ ? "cartao_cnpj" : "documento_foto", docEmpresa);
 
     setEnviando(true);
     try {
@@ -144,9 +333,14 @@ function SolicitarContratoPublico() {
       }
       setEnviado({ tipo: data.tipo, numero: data.numero ?? null });
       setForm({ ...vazio });
+      setEndCliente({ ...enderecoVazio });
+      setEndResp({ ...enderecoVazio });
+      setParcelas([{ vencimento: "", valor: "" }]);
+      setQtdParcelas(1);
       setProposta(null);
-      setCartao(null);
+      setDocEmpresa(null);
       setErros({});
+      setTipoPessoa(null);
     } catch {
       toast.error("Falha de conexão. Tente novamente.");
     } finally {
@@ -174,13 +368,51 @@ function SolicitarContratoPublico() {
     );
   }
 
+  if (!tipoPessoa) {
+    return (
+      <main className="min-h-dvh bg-muted/30 flex items-center justify-center p-6">
+        <div className="w-full max-w-2xl space-y-6">
+          <header className="space-y-1 text-center">
+            <h1 className="text-2xl font-semibold tracking-tight">Solicitar contrato</h1>
+            <p className="text-sm text-muted-foreground">
+              Para começar, informe se a contratação é com Pessoa Física ou Pessoa Jurídica.
+            </p>
+          </header>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Card
+              className="p-6 space-y-2 cursor-pointer hover:border-primary transition-colors"
+              onClick={() => setTipoPessoa("pf")}
+            >
+              <User className="h-6 w-6 text-primary" />
+              <div className="text-base font-medium">Pessoa Física</div>
+              <p className="text-xs text-muted-foreground">Nome, CPF, endereço completo, e-mail e telefone.</p>
+            </Card>
+            <Card
+              className="p-6 space-y-2 cursor-pointer hover:border-primary transition-colors"
+              onClick={() => setTipoPessoa("pj")}
+            >
+              <Building2 className="h-6 w-6 text-primary" />
+              <div className="text-base font-medium">Pessoa Jurídica</div>
+              <p className="text-xs text-muted-foreground">
+                Razão social, CNPJ, endereço completo e dados do responsável legal.
+              </p>
+            </Card>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-dvh bg-muted/30 py-8 px-4">
       <div className="max-w-3xl mx-auto space-y-4">
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Solicitar contrato</h1>
           <p className="text-sm text-muted-foreground">
-            Preencha os dados abaixo. A solicitação vai direto para o setor Jurídico do Grupo Luminart.
+            {isPJ ? "Pessoa Jurídica" : "Pessoa Física"} ·{" "}
+            <button className="underline underline-offset-2" onClick={() => setTipoPessoa(null)}>
+              trocar
+            </button>
           </p>
         </header>
 
@@ -214,8 +446,9 @@ function SolicitarContratoPublico() {
               <Erro msg={erros.titulo} />
             </div>
             <div className="space-y-1.5">
-              <Label>Valor (R$)</Label>
+              <Label>Valor total (R$) *</Label>
               <Input inputMode="decimal" value={form.valor} onChange={(e) => set("valor", e.target.value)} placeholder="0,00" />
+              <Erro msg={erros.valor} />
             </div>
             <div className="space-y-1.5">
               <Label>Data de fechamento</Label>
@@ -226,18 +459,25 @@ function SolicitarContratoPublico() {
 
         <Card className="p-5 space-y-4">
           <div>
-            <div className="text-sm font-semibold">Dados da Empresa</div>
-            <p className="text-xs text-muted-foreground">Empresa contratante/contratada do contrato. Todos os campos são obrigatórios.</p>
+            <div className="text-sm font-semibold">{isPJ ? "Dados da Empresa" : "Dados Pessoais"}</div>
+            <p className="text-xs text-muted-foreground">
+              {isPJ ? "Empresa contratante/contratada do contrato." : "Pessoa contratante/contratada do contrato."} Todos os campos são obrigatórios.
+            </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>Nome *</Label>
-              <Input autoComplete="organization" value={form.cliente_nome} onChange={(e) => set("cliente_nome", e.target.value)} placeholder="Razão social" />
+              <Label>{isPJ ? "Razão social *" : "Nome *"}</Label>
+              <Input
+                autoComplete={isPJ ? "organization" : "name"}
+                value={form.cliente_nome}
+                onChange={(e) => set("cliente_nome", e.target.value)}
+                placeholder={isPJ ? "Razão social" : "Nome completo"}
+              />
               <Erro msg={erros.cliente_nome} />
             </div>
             <div className="space-y-1.5">
-              <Label>CNPJ / CPF *</Label>
-              <Input value={form.cliente_documento} onChange={(e) => set("cliente_documento", e.target.value)} />
+              <Label>{isPJ ? "CNPJ *" : "CPF *"}</Label>
+              <Input inputMode="numeric" value={form.cliente_documento} onChange={(e) => set("cliente_documento", e.target.value)} />
               <Erro msg={erros.cliente_documento} />
             </div>
             <div className="space-y-1.5">
@@ -251,34 +491,130 @@ function SolicitarContratoPublico() {
               <Erro msg={erros.cliente_telefone} />
             </div>
           </div>
+          <div className="pt-1">
+            <div className="text-xs font-medium text-muted-foreground mb-2">Endereço completo</div>
+            <EnderecoFields valor={endCliente} onChange={setEndCliente} erros={erros} prefixo="cliente" />
+          </div>
         </Card>
+
+        {isPJ && (
+          <Card className="p-5 space-y-4">
+            <div>
+              <div className="text-sm font-semibold">Responsável Legal</div>
+              <p className="text-xs text-muted-foreground">Pessoa que assina pela empresa. Todos os campos são obrigatórios.</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Nome *</Label>
+                <Input value={form.resp_legal_nome} onChange={(e) => set("resp_legal_nome", e.target.value)} placeholder="Nome completo" />
+                <Erro msg={erros.resp_legal_nome} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>CPF *</Label>
+                <Input inputMode="numeric" value={form.resp_legal_documento} onChange={(e) => set("resp_legal_documento", e.target.value)} />
+                <Erro msg={erros.resp_legal_documento} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>E-mail *</Label>
+                <Input type="email" value={form.resp_legal_email} onChange={(e) => set("resp_legal_email", e.target.value)} />
+                <Erro msg={erros.resp_legal_email} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Telefone *</Label>
+                <Input value={form.resp_legal_telefone} onChange={(e) => set("resp_legal_telefone", e.target.value)} />
+                <Erro msg={erros.resp_legal_telefone} />
+              </div>
+            </div>
+            <div className="pt-1">
+              <div className="text-xs font-medium text-muted-foreground mb-2">Endereço completo</div>
+              <EnderecoFields valor={endResp} onChange={setEndResp} erros={erros} prefixo="resp_legal" />
+            </div>
+          </Card>
+        )}
 
         <Card className="p-5 space-y-4">
           <div>
-            <div className="text-sm font-semibold">Responsável Legal</div>
-            <p className="text-xs text-muted-foreground">Pessoa que assina pela empresa. Todos os campos são obrigatórios.</p>
+            <div className="text-sm font-semibold">Forma de pagamento</div>
+            <p className="text-xs text-muted-foreground">
+              Valor total informado: <span className="font-medium text-foreground">{fmtMoeda(valorTotal)}</span>
+            </p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-1.5">
-              <Label>Nome *</Label>
-              <Input value={form.resp_legal_nome} onChange={(e) => set("resp_legal_nome", e.target.value)} placeholder="Nome completo" />
-              <Erro msg={erros.resp_legal_nome} />
+              <Label>Forma *</Label>
+              <Select value={pagForma} onValueChange={(v) => setPagForma(v as "pix" | "boleto")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pix">Pix</SelectItem>
+                  <SelectItem value="boleto">Boleto</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>CNPJ / CPF *</Label>
-              <Input value={form.resp_legal_documento} onChange={(e) => set("resp_legal_documento", e.target.value)} />
-              <Erro msg={erros.resp_legal_documento} />
+              <Label>Parcelas *</Label>
+              <Input
+                type="number"
+                min={1}
+                max={36}
+                value={qtdParcelas}
+                onChange={(e) => setQtdParcelas(Math.min(36, Math.max(1, Number(e.target.value) || 1)))}
+              />
             </div>
-            <div className="space-y-1.5">
-              <Label>E-mail *</Label>
-              <Input type="email" value={form.resp_legal_email} onChange={(e) => set("resp_legal_email", e.target.value)} />
-              <Erro msg={erros.resp_legal_email} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Telefone *</Label>
-              <Input value={form.resp_legal_telefone} onChange={(e) => set("resp_legal_telefone", e.target.value)} />
-              <Erro msg={erros.resp_legal_telefone} />
-            </div>
+            {qtdParcelas > 1 && (
+              <div className="space-y-1.5">
+                <Label>Divisão *</Label>
+                <Select value={pagModo} onValueChange={(v) => setPagModo(v as "igual" | "diferente")}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="igual">Parcelas iguais</SelectItem>
+                    <SelectItem value="diferente">Valores diferentes</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            {parcelas.map((p, i) => (
+              <div key={i} className="grid gap-3 sm:grid-cols-[70px_1fr_1fr] items-start">
+                <div className="text-xs text-muted-foreground pt-2.5">{i + 1}ª parcela</div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Vencimento *</Label>
+                  <Input
+                    type="date"
+                    value={p.vencimento}
+                    onChange={(e) =>
+                      setParcelas((prev) => prev.map((x, j) => (j === i ? { ...x, vencimento: e.target.value } : x)))
+                    }
+                  />
+                  <Erro msg={erros[`parcela_${i}_venc`]} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Valor (R$)</Label>
+                  {pagModo === "diferente" && qtdParcelas > 1 ? (
+                    <>
+                      <Input
+                        inputMode="decimal"
+                        value={p.valor}
+                        onChange={(e) =>
+                          setParcelas((prev) => prev.map((x, j) => (j === i ? { ...x, valor: e.target.value } : x)))
+                        }
+                        placeholder="0,00"
+                      />
+                      <Erro msg={erros[`parcela_${i}_valor`]} />
+                    </>
+                  ) : (
+                    <Input readOnly value={fmtMoeda(valoresCalculados[i] ?? 0)} className="bg-muted/50" />
+                  )}
+                </div>
+              </div>
+            ))}
+            {erros.parcelas_soma && <Erro msg={erros.parcelas_soma} />}
+            {qtdParcelas > 1 && (
+              <p className="text-[11px] text-muted-foreground">
+                Soma das parcelas: <span className="font-medium">{fmtMoeda(somaParcelas)}</span>
+              </p>
+            )}
           </div>
         </Card>
 
@@ -306,21 +642,21 @@ function SolicitarContratoPublico() {
               <Erro msg={erros.proposta} />
             </div>
             <div className="space-y-1.5">
-              <Label>Cartão CNPJ (PDF/imagem) *</Label>
+              <Label>{isPJ ? "Cartão CNPJ (PDF/imagem) *" : "Documento com foto — RG/CNH (PDF/imagem) *"}</Label>
               <Input
                 type="file"
                 accept=".pdf,.png,.jpg,.jpeg,.webp"
                 onChange={(e) => {
-                  setCartao(e.target.files?.[0] ?? null);
-                  setErros((x) => ({ ...x, cartao_cnpj: "" }));
+                  setDocEmpresa(e.target.files?.[0] ?? null);
+                  setErros((x) => ({ ...x, doc_empresa: "" }));
                 }}
               />
-              {cartao && (
+              {docEmpresa && (
                 <p className="text-[11px] text-muted-foreground">
-                  {cartao.name} · {(cartao.size / 1024).toFixed(1)} KB
+                  {docEmpresa.name} · {(docEmpresa.size / 1024).toFixed(1)} KB
                 </p>
               )}
-              <Erro msg={erros.cartao_cnpj} />
+              <Erro msg={erros.doc_empresa} />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Observações</Label>
