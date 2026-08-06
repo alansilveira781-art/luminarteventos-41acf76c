@@ -212,8 +212,17 @@ function RelatoriosPage() {
       );
     }
 
+    let startY = 80;
+    if (filtrosResumo.length > 0) {
+      doc.setTextColor(80, 80, 80);
+      doc.setFontSize(8);
+      const linhas = doc.splitTextToSize(`Filtros: ${filtrosResumo.join("  ·  ")}`, pageWidth - 80);
+      doc.text(linhas, 40, 76);
+      startY = 76 + linhas.length * 11 + 8;
+    }
+
     autoTable(doc, {
-      startY: 80,
+      startY,
       head: [headers],
       body: body.map((r) => r.map((c) => String(c ?? ""))),
       foot: totals ? [totals.map((c) => String(c ?? ""))] : undefined,
