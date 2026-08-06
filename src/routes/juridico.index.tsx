@@ -150,8 +150,9 @@ function QuadroContratos() {
   async function aplicarCriacao(patch: Record<string, any>) {
     const id = criacaoCard!.id;
     const { error } = await sb.from("juridico_contratos").update(patch).eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Contrato gerado e movido para Criação");
+
     setCriacaoCard(null);
     await load();
   }
