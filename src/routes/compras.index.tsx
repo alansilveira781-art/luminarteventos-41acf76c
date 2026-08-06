@@ -62,6 +62,8 @@ type Compra = {
   data_compra: string | null;
   data_servico: string | null;
   valor_total: number | null;
+  prazo?: string | null;
+
   responsavel_id: string | null;
   responsavel_nome: string | null;
   tipo_compra: string | null;
