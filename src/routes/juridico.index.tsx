@@ -623,8 +623,14 @@ function ContratoDetalhesDialog({
                   </div>
                 </div>
               )}
+              {contrato.solicitante_email && (
+                <div className="col-span-2 text-xs text-muted-foreground">
+                  Enviado por: {contrato.solicitante_email}
+                </div>
+              )}
               {(contrato.resp_legal_nome || contrato.resp_legal_documento || contrato.resp_legal_email || contrato.resp_legal_telefone) && (
                 <div className="col-span-2 rounded-md border p-3 space-y-1">
+
                   <div className="text-xs font-semibold text-muted-foreground">Responsável Legal</div>
                   <div className="grid grid-cols-2 gap-1 text-sm">
                     <div>Nome: {contrato.resp_legal_nome || "—"}</div>
