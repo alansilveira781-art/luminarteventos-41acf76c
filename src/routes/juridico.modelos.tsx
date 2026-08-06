@@ -173,9 +173,10 @@ function ModeloDialog({ open, onOpenChange, editing, onSave }: {
           </div>
           {vars.length > 0 && (
             <div className="mt-2 text-xs text-muted-foreground">
-              Variáveis detectadas: {vars.map((v) => <span key={v} className="inline-block px-1.5 py-0.5 rounded bg-muted mr-1 font-mono">{v}</span>)}
+              Campos detectados: {vars.map((v) => <span key={v} className="inline-block px-1.5 py-0.5 rounded bg-muted mr-1 font-mono">[{v}]</span>)}
             </div>
           )}
+
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
