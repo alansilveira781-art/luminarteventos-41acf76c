@@ -7,16 +7,16 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FormField, FormSection } from "@/components/FormSection";
-import { Check, ChevronsUpDown, Download, FileText, Printer, X } from "lucide-react";
+import { Download, FileText, Printer } from "lucide-react";
 import { isAjusteMovimentacao } from "@/lib/utils";
 import { fetchAllRows } from "@/lib/fetch-all";
 import { saidaTipoLabels } from "@/lib/labels";
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
+import { ItensMultiSelect, itemLabel } from "@/components/estoque/ItensMultiSelect";
+import { ProjecaoMateriais } from "@/components/estoque/ProjecaoMateriais";
 
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 
@@ -35,7 +35,6 @@ type ReportId =
   | "gastos_mes"
   | "gastos_categoria"
   | "saidas_evento"
-  | "projecao_materiais"
   | "ajustes";
 
 const REPORTS: { id: ReportId; label: string; description: string; needsPeriod: boolean }[] = [
@@ -50,7 +49,6 @@ const REPORTS: { id: ReportId; label: string; description: string; needsPeriod: 
   { id: "gastos_mes", label: "Gastos por mês", description: "Total comprado por mês no período selecionado.", needsPeriod: true },
   { id: "gastos_categoria", label: "Gastos por categoria", description: "Total comprado por categoria de item.", needsPeriod: true },
   { id: "saidas_evento", label: "Saídas por evento", description: "Quantidade e valor das saídas agrupadas por evento/projeto.", needsPeriod: true },
-  { id: "projecao_materiais", label: "Projeção de materiais", description: "Selecione os itens: mostra quantidade em estoque e valor, inclusive itens sem saldo (zerados).", needsPeriod: false },
 ];
 
 
@@ -60,8 +58,8 @@ function RelatoriosPage() {
   const [dataIni, setDataIni] = useState(format(startOfMonth(subMonths(hoje, 2)), "yyyy-MM-dd"));
   const [dataFim, setDataFim] = useState(format(endOfMonth(hoje), "yyyy-MM-dd"));
   const [itemIds, setItemIds] = useState<string[]>([]);
-  const [buscaItem, setBuscaItem] = useState("");
-  const [itemPopoverOpen, setItemPopoverOpen] = useState(false);
+  const [aba, setAba] = useState<"relatorios" | "projecao">("relatorios");
+
   const [eventoProjeto, setEventoProjeto] = useState<string | null>(null);
   const [saidaTipo, setSaidaTipo] = useState<string>("__all__");
   const [solicitanteId, setSolicitanteId] = useState<string>("__all__");
@@ -98,33 +96,18 @@ function RelatoriosPage() {
   const showSolicitante = ["saidas", "devolucoes", "saidas_evento"].includes(reportId);
   const showFornecedor = ["entradas", "gastos_mes", "gastos_categoria"].includes(reportId);
 
-
-
-
-  const itensFiltrados = useMemo(() => {
-    const b = buscaItem.trim().toLowerCase();
-    if (!b) return itensLista;
-    return itensLista.filter((i) =>
-      `${i.nome} ${i.codigo ?? ""}`.toLowerCase().includes(b),
-    );
-  }, [itensLista, buscaItem]);
-
   const itensSelecionados = useMemo(
     () => itensLista.filter((i) => itemIds.includes(i.id)),
     [itensLista, itemIds],
   );
 
-  const toggleItem = (id: string) =>
-    setItemIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-
   const labelItens =
     itemIds.length === 0
       ? "Todos os itens"
       : itemIds.length === 1
-        ? (itensSelecionados[0]
-            ? `${itensSelecionados[0].codigo ? `${itensSelecionados[0].codigo} — ` : ""}${itensSelecionados[0].nome}`
-            : "1 item selecionado")
+        ? (itensSelecionados[0] ? itemLabel(itensSelecionados[0]) : "1 item selecionado")
         : `${itemIds.length} itens selecionados`;
+
 
   const meta = REPORTS.find((r) => r.id === reportId)!;
 
@@ -254,18 +237,32 @@ function RelatoriosPage() {
         title="Relatórios"
         description="Escolha um relatório, defina o período e visualize antes de exportar"
         actions={
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" size="lg" variant="outline" onClick={exportCsv} disabled={!body.length}>
-              <Download className="h-4 w-4 mr-1" /> Exportar CSV
-            </Button>
-            <Button type="button" size="lg" onClick={exportPdf} disabled={!body.length}>
-              <Printer className="h-4 w-4 mr-1" /> Exportar PDF
-            </Button>
-          </div>
+          aba === "relatorios" ? (
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" size="lg" variant="outline" onClick={exportCsv} disabled={!body.length}>
+                <Download className="h-4 w-4 mr-1" /> Exportar CSV
+              </Button>
+              <Button type="button" size="lg" onClick={exportPdf} disabled={!body.length}>
+                <Printer className="h-4 w-4 mr-1" /> Exportar PDF
+              </Button>
+            </div>
+          ) : null
         }
       />
 
+      <Tabs value={aba} onValueChange={(v: any) => setAba(v)}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
+          <TabsTrigger value="projecao">Projeção</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="projecao">
+          <ProjecaoMateriais itensLista={itensLista} />
+        </TabsContent>
+
+        <TabsContent value="relatorios">
       <Card className="p-4 mb-4">
+
         <FormSection>
           <FormField label="Tipo de relatório" wide>
             <Select value={reportId} onValueChange={(v: any) => setReportId(v)}>
@@ -284,72 +281,9 @@ function RelatoriosPage() {
             <Input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} disabled={!meta.needsPeriod} />
           </FormField>
           <FormField label="Item" wide>
-            <Popover open={itemPopoverOpen} onOpenChange={setItemPopoverOpen}>
-              <PopoverTrigger asChild>
-                <Button type="button" variant="outline" className="w-full justify-between font-normal">
-                  <span className="truncate">{labelItens}</span>
-                  <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                <div className="p-2 border-b">
-                  <Input
-                    placeholder="Buscar por nome ou código…"
-                    value={buscaItem}
-                    onChange={(e) => setBuscaItem(e.target.value)}
-                    className="h-8"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setItemIds([])}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted/50 border-b"
-                >
-                  {itemIds.length === 0 ? <Check className="h-4 w-4" /> : <span className="w-4" />}
-                  Todos os itens
-                </button>
-                <ScrollArea className="h-64">
-                  {itensFiltrados.length === 0 ? (
-                    <p className="px-3 py-4 text-sm text-muted-foreground">Nenhum item encontrado.</p>
-                  ) : (
-                    itensFiltrados.map((i) => (
-                      <button
-                        key={i.id}
-                        type="button"
-                        onClick={() => toggleItem(i.id)}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-left hover:bg-muted/50"
-                      >
-                        <Checkbox checked={itemIds.includes(i.id)} className="pointer-events-none" />
-                        <span className="truncate">{i.codigo ? `${i.codigo} — ` : ""}{i.nome}</span>
-                      </button>
-                    ))
-                  )}
-                </ScrollArea>
-                {itemIds.length > 0 && (
-                  <div className="p-2 border-t">
-                    <Button type="button" variant="ghost" size="sm" className="w-full" onClick={() => setItemIds([])}>
-                      Limpar seleção
-                    </Button>
-                  </div>
-                )}
-              </PopoverContent>
-            </Popover>
-            {itemIds.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {itensSelecionados.slice(0, 6).map((i) => (
-                  <Badge key={i.id} variant="secondary" className="gap-1">
-                    <span className="truncate max-w-[160px]">{i.codigo ? `${i.codigo} — ` : ""}{i.nome}</span>
-                    <button type="button" onClick={() => toggleItem(i.id)} aria-label={`Remover ${i.nome}`}>
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-                {itensSelecionados.length > 6 && (
-                  <Badge variant="outline">+{itensSelecionados.length - 6}</Badge>
-                )}
-              </div>
-            )}
+            <ItensMultiSelect itens={itensLista} value={itemIds} onChange={setItemIds} />
           </FormField>
+
 
           {showEvento && (
             <FormField label="Evento/Projeto" wide>
@@ -474,7 +408,10 @@ function RelatoriosPage() {
           )}
         </div>
       </Card>
+        </TabsContent>
+      </Tabs>
     </>
+
   );
 }
 
@@ -572,30 +509,6 @@ async function loadReport(
     });
     return rows.filter((m: any) => isAjusteMovimentacao(m));
   }
-  if (id === "projecao_materiais") {
-    if (!filtroItem) return [];
-    const rows = await fetchPaged((f, t) =>
-      supabase
-        .from("itens")
-        .select(sel("id,nome,codigo,unidade,quantidade_atual,valor_unitario,status"))
-        .in("id", filtroItem)
-        .order("nome")
-        .range(f, t),
-    );
-    const byId = new Map(rows.map((r: any) => [r.id, r]));
-    return filtroItem.map(
-      (id2) =>
-        byId.get(id2) ?? {
-          id: id2,
-          nome: "(item não encontrado)",
-          codigo: null,
-          unidade: "",
-          quantidade_atual: 0,
-          valor_unitario: 0,
-          status: null,
-        },
-    );
-  }
   if (id === "estoque") {
     return fetchPaged((f, t) => {
       let q: any = supabase.from("itens").select(sel("*")).order("nome");
@@ -641,21 +554,6 @@ async function loadReport(
 
 function formatReport(id: ReportId, rows: any[]): { headers: string[]; body: any[][]; totals: any[] | null } {
   const fmtBRL = (n: number) => `R$ ${n.toFixed(2)}`;
-
-  if (id === "projecao_materiais") {
-    const headers = ["Código", "Item", "Qtd em estoque", "Un", "Valor unitário", "Valor total"];
-    const body = rows.map((r) => {
-      const qtd = Number(r.quantidade_atual ?? 0);
-      const vu = Number(r.valor_unitario ?? 0);
-      return [r.codigo ?? "", r.nome ?? "", qtd, r.unidade ?? "", fmtBRL(vu), fmtBRL(qtd * vu)];
-    });
-    const totalQtd = rows.reduce((a, r) => a + Number(r.quantidade_atual ?? 0), 0);
-    const totalValor = rows.reduce(
-      (a, r) => a + Number(r.quantidade_atual ?? 0) * Number(r.valor_unitario ?? 0),
-      0,
-    );
-    return { headers, body, totals: ["", "TOTAL", totalQtd, "", "", fmtBRL(totalValor)] };
-  }
 
   if (id === "ajustes") {
     const headers = ["Data", "Tipo", "Código", "Item", "Qtd", "Un", "Observação"];
