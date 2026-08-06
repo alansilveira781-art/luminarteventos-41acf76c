@@ -88,6 +88,9 @@ type Contrato = {
   proposta_ref: string | null;
   modelo_id: string | null;
   corpo_html: string | null;
+  categoria?: string | null;
+  variaveis_valores?: Record<string, string> | null;
+
 };
 
 export function contratoCodigo(c: Pick<Contrato, "tipo" | "numero">) {
