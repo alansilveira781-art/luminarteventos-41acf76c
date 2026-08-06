@@ -36,6 +36,13 @@ const baseSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional()
     .or(z.literal("")),
+  prazo: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .or(z.literal("")),
+
   is_reembolso: z.boolean().optional(),
   reembolsar_para: z.string().trim().max(160).optional().or(z.literal("")),
 });
