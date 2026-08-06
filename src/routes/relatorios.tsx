@@ -15,6 +15,8 @@ import { FormField, FormSection } from "@/components/FormSection";
 import { Check, ChevronsUpDown, Download, FileText, Printer, X } from "lucide-react";
 import { isAjusteMovimentacao } from "@/lib/utils";
 import { fetchAllRows } from "@/lib/fetch-all";
+import { saidaTipoLabels } from "@/lib/labels";
+import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 
@@ -60,6 +62,10 @@ function RelatoriosPage() {
   const [itemIds, setItemIds] = useState<string[]>([]);
   const [buscaItem, setBuscaItem] = useState("");
   const [itemPopoverOpen, setItemPopoverOpen] = useState(false);
+  const [eventoProjeto, setEventoProjeto] = useState<string | null>(null);
+  const [saidaTipo, setSaidaTipo] = useState<string>("__all__");
+  const [solicitanteId, setSolicitanteId] = useState<string>("__all__");
+  const [fornecedorId, setFornecedorId] = useState<string>("__all__");
 
   const { data: itensLista = [] } = useQuery({
     queryKey: ["relatorios-itens-select"],
@@ -70,6 +76,29 @@ function RelatoriosPage() {
         { orderBy: { column: "nome" } },
       )),
   });
+
+  const { data: solicitantesLista = [] } = useQuery({
+    queryKey: ["relatorios-solicitantes-select"],
+    queryFn: async () =>
+      await fetchAllRows<{ id: string; nome: string }>("solicitantes", "id,nome", {
+        orderBy: { column: "nome" },
+      }),
+  });
+
+  const { data: fornecedoresLista = [] } = useQuery({
+    queryKey: ["relatorios-fornecedores-select"],
+    queryFn: async () =>
+      await fetchAllRows<{ id: string; nome: string }>("fornecedores", "id,nome", {
+        orderBy: { column: "nome" },
+      }),
+  });
+
+  const showEvento = ["saidas", "saidas_evento", "devolucoes"].includes(reportId);
+  const showSaidaTipo = ["saidas", "saidas_evento"].includes(reportId);
+  const showSolicitante = ["saidas", "devolucoes", "saidas_evento"].includes(reportId);
+  const showFornecedor = ["entradas", "gastos_mes", "gastos_categoria"].includes(reportId);
+
+
 
 
   const itensFiltrados = useMemo(() => {
@@ -101,15 +130,42 @@ function RelatoriosPage() {
 
   const itemIdsKey = useMemo(() => [...itemIds].sort().join(","), [itemIds]);
 
+  const extras = {
+    eventoProjeto: showEvento ? eventoProjeto || null : null,
+    saidaTipo: showSaidaTipo && saidaTipo !== "__all__" ? saidaTipo : null,
+    solicitanteId: showSolicitante && solicitanteId !== "__all__" ? solicitanteId : null,
+    fornecedorId: showFornecedor && fornecedorId !== "__all__" ? fornecedorId : null,
+  };
+
   const { data: rows, isLoading } = useQuery({
-    queryKey: ["report", reportId, dataIni, dataFim, itemIdsKey],
-    queryFn: async () => loadReport(reportId, dataIni, dataFim, itemIds),
+    queryKey: [
+      "report", reportId, dataIni, dataFim, itemIdsKey,
+      extras.eventoProjeto, extras.saidaTipo, extras.solicitanteId, extras.fornecedorId,
+    ],
+    queryFn: async () => loadReport(reportId, dataIni, dataFim, itemIds, extras),
   });
+
+  const filtrosResumo = [
+    extras.eventoProjeto ? `Evento: ${extras.eventoProjeto}` : null,
+    extras.saidaTipo ? `Tipo: ${saidaTipoLabels[extras.saidaTipo] ?? extras.saidaTipo}` : null,
+    extras.solicitanteId
+      ? `Solicitante: ${solicitantesLista.find((s) => s.id === extras.solicitanteId)?.nome ?? ""}`
+      : null,
+    extras.fornecedorId
+      ? `Fornecedor: ${fornecedoresLista.find((f) => f.id === extras.fornecedorId)?.nome ?? ""}`
+      : null,
+  ].filter(Boolean) as string[];
 
   const { headers, body, totals } = useMemo(() => formatReport(reportId, rows ?? []), [reportId, rows]);
 
+
   const exportCsv = () => {
-    const linhas = [headers, ...body, ...(totals ? [totals] : [])];
+    const linhas = [
+      ...(filtrosResumo.length > 0 ? [[`Filtros: ${filtrosResumo.join(" | ")}`]] : []),
+      headers,
+      ...body,
+      ...(totals ? [totals] : []),
+    ];
     const csv = linhas.map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -156,8 +212,17 @@ function RelatoriosPage() {
       );
     }
 
+    let startY = 80;
+    if (filtrosResumo.length > 0) {
+      doc.setTextColor(80, 80, 80);
+      doc.setFontSize(8);
+      const linhas = doc.splitTextToSize(`Filtros: ${filtrosResumo.join("  ·  ")}`, pageWidth - 80);
+      doc.text(linhas, 40, 76);
+      startY = 76 + linhas.length * 11 + 8;
+    }
+
     autoTable(doc, {
-      startY: 80,
+      startY,
       head: [headers],
       body: body.map((r) => r.map((c) => String(c ?? ""))),
       foot: totals ? [totals.map((c) => String(c ?? ""))] : undefined,
@@ -286,7 +351,76 @@ function RelatoriosPage() {
             )}
           </FormField>
 
+          {showEvento && (
+            <FormField label="Evento/Projeto" wide>
+              <EventoSheetCombobox
+                value={eventoProjeto}
+                onChange={setEventoProjeto}
+                placeholder="Todos os eventos"
+              />
+            </FormField>
+          )}
+          {showSaidaTipo && (
+            <FormField label="Tipo de saída">
+              <Select value={saidaTipo} onValueChange={setSaidaTipo}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todos os tipos</SelectItem>
+                  {Object.entries(saidaTipoLabels).map(([v, l]) => (
+                    <SelectItem key={v} value={v}>{l}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+          )}
+          {showSolicitante && (
+            <FormField label="Solicitante">
+              <Select value={solicitanteId} onValueChange={setSolicitanteId}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todos os solicitantes</SelectItem>
+                  {solicitantesLista.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+          )}
+          {showFornecedor && (
+            <FormField label="Fornecedor">
+              <Select value={fornecedorId} onValueChange={setFornecedorId}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todos os fornecedores</SelectItem>
+                  {fornecedoresLista.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+          )}
+
         </FormSection>
+        {filtrosResumo.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1 mt-3">
+            {filtrosResumo.map((f) => (
+              <Badge key={f} variant="secondary">{f}</Badge>
+            ))}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setEventoProjeto(null);
+                setSaidaTipo("__all__");
+                setSolicitanteId("__all__");
+                setFornecedorId("__all__");
+              }}
+            >
+              Limpar filtros
+            </Button>
+          </div>
+        )}
         <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
           <FileText className="h-3 w-3" /> {meta.description}
         </p>
@@ -300,9 +434,11 @@ function RelatoriosPage() {
               {meta.needsPeriod ? `${format(new Date(dataIni), "dd/MM/yyyy")} → ${format(new Date(dataFim), "dd/MM/yyyy")} · ` : ""}
               {body.length} registro{body.length !== 1 ? "s" : ""}
               {itemIds.length > 0 ? ` · ${itemIds.length} item${itemIds.length !== 1 ? "ns" : ""} selecionado${itemIds.length !== 1 ? "s" : ""}` : ""}
+              {filtrosResumo.length > 0 ? ` · ${filtrosResumo.join(" · ")}` : ""}
             </p>
           </div>
         </div>
+
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-muted/50">
@@ -359,10 +495,31 @@ async function fetchPaged(build: (from: number, to: number) => any): Promise<any
   return all;
 }
 
-async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemIds: string[] = []): Promise<any[]> {
+type ReportExtras = {
+  eventoProjeto?: string | null;
+  saidaTipo?: string | null;
+  solicitanteId?: string | null;
+  fornecedorId?: string | null;
+};
+
+async function loadReport(
+  id: ReportId,
+  dataIni: string,
+  dataFim: string,
+  itemIds: string[] = [],
+  extras: ReportExtras = {},
+): Promise<any[]> {
   const ini = new Date(dataIni).toISOString();
   const fim = new Date(`${dataFim}T23:59:59`).toISOString();
   const filtroItem = itemIds.length > 0 ? itemIds : null;
+  const applyExtras = (q: any) => {
+    if (extras.eventoProjeto) q = q.eq("evento_projeto", extras.eventoProjeto);
+    if (extras.saidaTipo) q = q.eq("saida_tipo", extras.saidaTipo);
+    if (extras.solicitanteId) q = q.eq("solicitante_id", extras.solicitanteId);
+    if (extras.fornecedorId) q = q.eq("fornecedor_id", extras.fornecedorId);
+    return q;
+  };
+
 
   if (id === "saidas") {
     const rows = await fetchPaged((f, t) => {
@@ -372,6 +529,7 @@ async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemId
         .eq("tipo", "saida")
         .gte("data_movimento", ini).lte("data_movimento", fim);
       if (filtroItem) q = q.in("item_id", filtroItem);
+      q = applyExtras(q);
       return q.order("data_movimento", { ascending: false }).range(f, t);
     });
     return rows.filter((m: any) => !isAjusteMovimentacao(m));
@@ -384,6 +542,7 @@ async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemId
         .eq("tipo", "entrada")
         .gte("data_movimento", ini).lte("data_movimento", fim);
       if (filtroItem) q = q.in("item_id", filtroItem);
+      q = applyExtras(q);
       return q.order("data_movimento", { ascending: false }).range(f, t);
     });
     return rows.filter((m: any) => !isAjusteMovimentacao(m));
@@ -392,13 +551,15 @@ async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemId
     return fetchPaged((f, t) => {
       let q: any = supabase
         .from("movimentacoes")
-        .select(sel("data_movimento,quantidade,responsavel_recebimento, item:itens(nome,codigo,unidade), solicitante:solicitantes(nome)"))
+        .select(sel("data_movimento,quantidade,responsavel_recebimento,evento_projeto, item:itens(nome,codigo,unidade), solicitante:solicitantes(nome)"))
         .eq("tipo", "devolucao")
         .gte("data_movimento", ini).lte("data_movimento", fim);
       if (filtroItem) q = q.in("item_id", filtroItem);
+      q = applyExtras(q);
       return q.order("data_movimento", { ascending: false }).range(f, t);
     });
   }
+
   if (id === "ajustes") {
     const rows = await fetchPaged((f, t) => {
       let q: any = supabase
@@ -469,6 +630,7 @@ async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemId
         .eq("tipo", tipo)
         .gte("data_movimento", ini).lte("data_movimento", fim);
       if (filtroItem) q = q.in("item_id", filtroItem);
+      q = applyExtras(q);
       return q.order("data_movimento", { ascending: false }).range(f, t);
     });
     return rows.filter((m: any) => !isAjusteMovimentacao(m));
