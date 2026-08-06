@@ -27,6 +27,8 @@ import { DEMANDA_STATUSES, TIPO_DEMANDA_OPTIONS, TIPOS_QUE_VAO_PARA_ESTOQUE, TIP
 import { useAuth } from "@/contexts/AuthContext";
 import { CopiarLinkButton } from "@/components/CopiarLinkButton";
 import { PagamentosGrid } from "@/components/PagamentosGrid";
+import { PrazoDot } from "@/components/PrazoDot";
+
 import { agruparPagamentos, expandirPagamentos, pagamentosBatem, resumoPagamentos, validarPagamentos, type PagamentoLinha } from "@/lib/pagamentos";
 
 
