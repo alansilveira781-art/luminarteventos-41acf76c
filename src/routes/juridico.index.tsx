@@ -83,6 +83,10 @@ type Contrato = {
   ordem: number;
   data_fechamento: string | null;
   data_assinatura: string | null;
+  evento_inicio?: string | null;
+  evento_fim?: string | null;
+  evento_hora_inicio?: string | null;
+  evento_hora_fim?: string | null;
   montagem_inicio?: string | null;
   montagem_fim?: string | null;
   desmontagem_inicio?: string | null;
@@ -579,6 +583,10 @@ function ContratoDetalhesDialog({
       observacoes: form.observacoes || null,
       data_fechamento: form.data_fechamento || null,
       data_assinatura: form.data_assinatura || null,
+      evento_inicio: form.evento_inicio || null,
+      evento_fim: form.evento_fim || null,
+      evento_hora_inicio: form.evento_hora_inicio || null,
+      evento_hora_fim: form.evento_hora_fim || null,
       montagem_inicio: form.montagem_inicio || null,
       montagem_fim: form.montagem_fim || null,
       desmontagem_inicio: form.desmontagem_inicio || null,
@@ -917,6 +925,23 @@ function ContratoDetalhesDialog({
                 <Input type="date" value={form.data_assinatura ?? ""} onChange={(e) => setForm({ ...form, data_assinatura: e.target.value })} />
               </div>
               <div className="col-span-2 grid grid-cols-2 gap-3 rounded-md border p-3">
+                <div className="col-span-2 text-sm font-semibold">Período do evento</div>
+                <div>
+                  <Label>Início do evento</Label>
+                  <Input type="date" value={form.evento_inicio ?? ""} onChange={(e) => setForm({ ...form, evento_inicio: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Término do evento</Label>
+                  <Input type="date" value={form.evento_fim ?? ""} onChange={(e) => setForm({ ...form, evento_fim: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Horário — evento (início)</Label>
+                  <Input type="time" value={(form.evento_hora_inicio ?? "").slice(0, 5)} onChange={(e) => setForm({ ...form, evento_hora_inicio: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Horário — evento (término)</Label>
+                  <Input type="time" value={(form.evento_hora_fim ?? "").slice(0, 5)} onChange={(e) => setForm({ ...form, evento_hora_fim: e.target.value })} />
+                </div>
                 <div className="col-span-2 text-sm font-semibold">Montagem e desmontagem</div>
                 <div>
                   <Label>Início da montagem</Label>

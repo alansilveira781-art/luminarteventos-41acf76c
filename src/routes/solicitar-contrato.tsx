@@ -76,6 +76,10 @@ const vazio = {
   resp_legal2_telefone: "",
   valor: "",
   data_fechamento: "",
+  evento_inicio: "",
+  evento_fim: "",
+  evento_hora_inicio: "",
+  evento_hora_fim: "",
   montagem_inicio: "",
   montagem_fim: "",
   desmontagem_inicio: "",
@@ -316,6 +320,10 @@ function SolicitarContratoPublico() {
       e.parcelas_soma = `A soma das parcelas (${fmtMoeda(somaParcelas)}) deve ser igual ao valor total (${fmtMoeda(valorTotal)})`;
     }
 
+    req("evento_inicio", form.evento_inicio);
+    req("evento_fim", form.evento_fim);
+    if (form.evento_inicio && form.evento_fim && form.evento_fim < form.evento_inicio)
+      e.evento_fim = "O término não pode ser anterior ao início";
     req("montagem_inicio", form.montagem_inicio);
     req("montagem_fim", form.montagem_fim);
     req("desmontagem_inicio", form.desmontagem_inicio);
@@ -326,6 +334,10 @@ function SolicitarContratoPublico() {
       e.desmontagem_fim = "O término não pode ser anterior ao início";
     if (form.montagem_inicio && form.desmontagem_inicio && form.desmontagem_inicio < form.montagem_inicio)
       e.desmontagem_inicio = "A desmontagem não pode começar antes da montagem";
+    if (form.evento_inicio && form.montagem_inicio && form.montagem_inicio > form.evento_inicio)
+      e.montagem_inicio = "A montagem não pode começar depois do início do evento";
+    if (form.evento_fim && form.desmontagem_inicio && form.desmontagem_inicio < form.evento_fim)
+      e.desmontagem_inicio = "A desmontagem não pode começar antes do término do evento";
 
     if (!proposta) e.proposta = "Anexo obrigatório";
     if (!docEmpresa) e.doc_empresa = "Anexo obrigatório";
@@ -372,6 +384,10 @@ function SolicitarContratoPublico() {
         valor: Number(valoresCalculados[i]?.toFixed(2) ?? 0),
       })),
       data_fechamento: form.data_fechamento || "",
+      evento_inicio: form.evento_inicio,
+      evento_fim: form.evento_fim,
+      evento_hora_inicio: horariosAtivos ? form.evento_hora_inicio : "",
+      evento_hora_fim: horariosAtivos ? form.evento_hora_fim : "",
       montagem_inicio: form.montagem_inicio,
       montagem_fim: form.montagem_fim,
       desmontagem_inicio: form.desmontagem_inicio,
@@ -540,6 +556,27 @@ function SolicitarContratoPublico() {
 
           <div className="space-y-3 border-t pt-4">
             <div>
+              <div className="text-sm font-semibold">Período do evento</div>
+              <p className="text-xs text-muted-foreground">
+                Informe as datas de início e término do evento/projeto.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Início do evento *</Label>
+                <Input type="date" value={form.evento_inicio} onChange={(e) => set("evento_inicio", e.target.value)} />
+                <Erro msg={erros.evento_inicio} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Término do evento *</Label>
+                <Input type="date" value={form.evento_fim} onChange={(e) => set("evento_fim", e.target.value)} />
+                <Erro msg={erros.evento_fim} />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3 border-t pt-4">
+            <div>
               <div className="text-sm font-semibold">Período de montagem e desmontagem</div>
               <p className="text-xs text-muted-foreground">
                 Informe as datas do período de montagem e do período de desmontagem. Os horários são opcionais.
@@ -578,6 +615,16 @@ function SolicitarContratoPublico() {
             </label>
             {horariosAtivos && (
               <div className="space-y-4 rounded-lg border p-4 bg-muted/20">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Evento — início</Label>
+                    <Input type="time" value={form.evento_hora_inicio} onChange={(e) => set("evento_hora_inicio", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Evento — término</Label>
+                    <Input type="time" value={form.evento_hora_fim} onChange={(e) => set("evento_hora_fim", e.target.value)} />
+                  </div>
+                </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label className="text-xs">Montagem — início</Label>

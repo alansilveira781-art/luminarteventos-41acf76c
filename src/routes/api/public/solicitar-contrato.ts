@@ -70,6 +70,10 @@ const schema = z
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .optional()
       .or(z.literal("")),
+    evento_inicio: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
+    evento_fim: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
+    evento_hora_inicio: z.string().trim().regex(/^\d{2}:\d{2}$/).optional().or(z.literal("")),
+    evento_hora_fim: z.string().trim().regex(/^\d{2}:\d{2}$/).optional().or(z.literal("")),
     montagem_inicio: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
     montagem_fim: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
     desmontagem_inicio: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -96,6 +100,8 @@ const schema = z
       ctx.addIssue({ code: "custom", path: ["cliente_documento"], message: "CPF inválido" });
     }
 
+    if (d.evento_fim < d.evento_inicio)
+      ctx.addIssue({ code: "custom", path: ["evento_fim"], message: "Término anterior ao início" });
     if (d.montagem_fim < d.montagem_inicio)
       ctx.addIssue({ code: "custom", path: ["montagem_fim"], message: "Término anterior ao início" });
     if (d.desmontagem_fim < d.desmontagem_inicio)
@@ -284,6 +290,10 @@ export const Route = createFileRoute("/api/public/solicitar-contrato")({
             montagem_fim: d.montagem_fim,
             desmontagem_inicio: d.desmontagem_inicio,
             desmontagem_fim: d.desmontagem_fim,
+            evento_inicio: d.evento_inicio,
+            evento_fim: d.evento_fim,
+            evento_hora_inicio: d.evento_hora_inicio || null,
+            evento_hora_fim: d.evento_hora_fim || null,
             montagem_hora_inicio: d.montagem_hora_inicio || null,
             montagem_hora_fim: d.montagem_hora_fim || null,
             desmontagem_hora_inicio: d.desmontagem_hora_inicio || null,
