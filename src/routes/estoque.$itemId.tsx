@@ -264,13 +264,14 @@ function ItemHistorico() {
                   <th className="py-2 pr-4">Subtipo</th>
                   <th className="py-2 pr-4 text-right">Qtd</th>
                   <th className="py-2 pr-4">Requisição</th>
+                  <th className="py-2 pr-4">Evento/Projeto</th>
                   <th className="py-2 pr-4">Origem</th>
                   <th className="py-2 pr-4">Responsável</th>
                   <th className="py-2 pr-0">Obs</th>
                 </tr>
               </thead>
               <tbody>
-                {movs?.length ? movs.map((m: any) => (
+                {movsFiltrados.length ? movsFiltrados.map((m: any) => (
                   <tr key={m.id} className="border-b border-border/50">
                     <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">{format(new Date(m.data_movimento), "dd/MM/yyyy HH:mm")}</td>
                     <td className="py-2.5 pr-4">{movementKindLabels[m.tipo]}</td>
@@ -287,13 +288,15 @@ function ItemHistorico() {
                     <td className="py-2.5 pr-4 tabular-nums text-muted-foreground">
                       {m.requisicao_numero ? `REQ-${m.requisicao_numero}` : "—"}
                     </td>
+                    <td className="py-2.5 pr-4 text-muted-foreground">{m.evento_projeto ?? "—"}</td>
                     <td className="py-2.5 pr-4 text-muted-foreground">{m.fornecedor?.nome ?? m.solicitante?.nome ?? "—"}</td>
                     <td className="py-2.5 pr-4 text-muted-foreground">{m.responsavel_lancamento ?? "—"}</td>
                     <td className="py-2.5 text-muted-foreground truncate max-w-[200px]">{m.observacoes ?? ""}</td>
                   </tr>
                 )) : (
-                  <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">Sem movimentações.</td></tr>
+                  <tr><td colSpan={9} className="text-center py-8 text-muted-foreground">Sem movimentações para os filtros aplicados.</td></tr>
                 )}
+
               </tbody>
             </table>
           </div>
