@@ -96,6 +96,13 @@ const schema = z
       ctx.addIssue({ code: "custom", path: ["cliente_documento"], message: "CPF inválido" });
     }
 
+    if (d.montagem_fim < d.montagem_inicio)
+      ctx.addIssue({ code: "custom", path: ["montagem_fim"], message: "Término anterior ao início" });
+    if (d.desmontagem_fim < d.desmontagem_inicio)
+      ctx.addIssue({ code: "custom", path: ["desmontagem_fim"], message: "Término anterior ao início" });
+    if (d.desmontagem_inicio < d.montagem_inicio)
+      ctx.addIssue({ code: "custom", path: ["desmontagem_inicio"], message: "Desmontagem antes da montagem" });
+
     const soma = d.pagamento_parcelas.reduce((a, p) => a + p.valor, 0);
     if (Math.abs(soma - d.valor) > 0.01) {
       ctx.addIssue({
@@ -213,6 +220,8 @@ export const Route = createFileRoute("/api/public/solicitar-contrato")({
           `Tipo de pessoa: ${d.cliente_tipo === "pj" ? "Pessoa Jurídica" : "Pessoa Física"}`,
           `Endereço: ${enderecoTexto(d.cliente_endereco)}`,
           d.resp_legal_endereco ? `Endereço do responsável legal: ${enderecoTexto(d.resp_legal_endereco)}` : "",
+          `Montagem: ${d.montagem_inicio} a ${d.montagem_fim}${d.montagem_hora_inicio ? ` (${d.montagem_hora_inicio}${d.montagem_hora_fim ? ` às ${d.montagem_hora_fim}` : ""})` : ""}`,
+          `Desmontagem: ${d.desmontagem_inicio} a ${d.desmontagem_fim}${d.desmontagem_hora_inicio ? ` (${d.desmontagem_hora_inicio}${d.desmontagem_hora_fim ? ` às ${d.desmontagem_hora_fim}` : ""})` : ""}`,
           resumoPagamento,
           d.observacoes ? `\n${d.observacoes}` : "",
         ]
@@ -271,6 +280,14 @@ export const Route = createFileRoute("/api/public/solicitar-contrato")({
             pagamento_modo: d.pagamento_modo,
             pagamento_parcelas: d.pagamento_parcelas,
             data_fechamento: d.data_fechamento || null,
+            montagem_inicio: d.montagem_inicio,
+            montagem_fim: d.montagem_fim,
+            desmontagem_inicio: d.desmontagem_inicio,
+            desmontagem_fim: d.desmontagem_fim,
+            montagem_hora_inicio: d.montagem_hora_inicio || null,
+            montagem_hora_fim: d.montagem_hora_fim || null,
+            desmontagem_hora_inicio: d.desmontagem_hora_inicio || null,
+            desmontagem_hora_fim: d.desmontagem_hora_fim || null,
             observacoes,
             solicitante_email: solicitanteEmail || null,
             created_by: solicitanteId,
