@@ -146,7 +146,22 @@ function ModeloDialog({ open, onOpenChange, editing, onSave }: {
               <button type="button" onClick={() => exec("formatBlock", "<h2>")} className="h-7 w-7 rounded hover:bg-muted inline-flex items-center justify-center"><Heading2 className="h-3.5 w-3.5" /></button>
               <button type="button" onClick={() => exec("insertUnorderedList")} className="h-7 w-7 rounded hover:bg-muted inline-flex items-center justify-center"><List className="h-3.5 w-3.5" /></button>
               <div className="mx-2 h-4 w-px bg-border" />
-              <button type="button" onClick={() => { const v = prompt("Nome da variável (sem espaços, ex: cliente_nome)"); if (v) exec("insertText", `{{${v.trim()}}}`); }} className="text-xs px-2 h-7 rounded hover:bg-muted">+ Variável</button>
+              <button type="button" onClick={() => { const v = prompt("Nome do campo (ex: cliente_nome)"); if (v) exec("insertText", `[${v.trim().replace(/\s+/g, "_")}]`); }} className="text-xs px-2 h-7 rounded hover:bg-muted">+ Campo</button>
+            </div>
+            <div className="flex flex-wrap gap-1 border-b border-border p-1 bg-muted/10">
+              <span className="text-[11px] text-muted-foreground px-1 py-0.5">Campos automáticos:</span>
+              {CAMPOS_SUGERIDOS.map((c) => (
+                <button
+                  key={c.campo}
+                  type="button"
+                  title={`[${c.campo}]`}
+                  onClick={() => exec("insertText", `[${c.campo}]`)}
+                  className="text-[11px] px-1.5 py-0.5 rounded bg-muted hover:bg-primary/10"
+                >
+                  {c.label}
+                </button>
+              ))}
+
             </div>
             <div
               ref={ref}
