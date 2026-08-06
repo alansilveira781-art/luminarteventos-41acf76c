@@ -214,6 +214,7 @@ function SolicitarContratoPublico() {
   const [docEmpresa, setDocEmpresa] = useState<File | null>(null);
   const [erros, setErros] = useState<Record<string, string>>({});
   const [enviando, setEnviando] = useState(false);
+  const [horariosAtivos, setHorariosAtivos] = useState(false);
   const [enviado, setEnviado] = useState<{ tipo: string; numero: number | null } | null>(null);
 
   const isPJ = tipoPessoa === "pj";
