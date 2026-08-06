@@ -496,10 +496,136 @@ function ComprasDashboard() {
         )}
       </Card>
 
+      <ComprasPorEventoSection />
+
       <FornecedorItensSection />
     </>
   );
 }
+
+function ComprasPorEventoSection() {
+  const { eventos, isLoading: loadingEventos } = useEventosInfo();
+  const [eventoId, setEventoId] = useState<string>("");
+
+  const evento = useMemo(
+    () => (eventoId ? acharEvento(eventos, eventoId) : null),
+    [eventos, eventoId],
+  );
+
+  const { data: itens = [] } = useQuery({
+    queryKey: ["compra-itens-evento"],
+    queryFn: async () => {
+      const { data } = await sb.from("compra_itens").select("compra_id,evento_projeto");
+      return (data ?? []) as any[];
+    },
+  });
+
+  const { data: compras = [] } = useQuery({
+    queryKey: ["compras-evento-dash"],
+    queryFn: async () => {
+      const { data } = await sb
+        .from("compras")
+        .select("id,numero,titulo,fornecedor,valor_total,data_compra,data_solicitacao");
+      return (data ?? []) as any[];
+    },
+  });
+
+  const grupos = useMemo(() => {
+    const vazio = { antes: [] as any[], durante: [] as any[], depois: [] as any[] };
+    if (!evento) return vazio;
+    const alvo = normalize(evento.id);
+    const nomeAlvo = normalize(evento.nome ?? "");
+    const ids = new Set(
+      itens
+        .filter((it) => {
+          const v = normalize(it.evento_projeto ?? "");
+          if (!v) return false;
+          return v === alvo || v.includes(alvo) || alvo.includes(v)
+            || (!!nomeAlvo && (v === nomeAlvo || v.includes(nomeAlvo) || nomeAlvo.includes(v)));
+        })
+        .map((it) => it.compra_id),
+    );
+    for (const c of compras) {
+      if (!ids.has(c.id)) continue;
+      const cls = classificarData(c.data_compra ?? c.data_solicitacao, evento);
+      if (cls) vazio[cls].push(c);
+    }
+    return vazio;
+  }, [evento, itens, compras]);
+
+  const soma = (arr: any[]) => arr.reduce((s, c) => s + Number(c.valor_total || 0), 0);
+  const { inicio, fim } = evento ? periodoEvento(evento) : { inicio: "", fim: "" };
+
+  return (
+    <Card className="p-4 mt-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold">Compras x período do evento</h3>
+          <p className="text-xs text-muted-foreground">
+            Compare o que foi comprado antes, durante e depois do evento selecionado.
+          </p>
+        </div>
+        <div className="w-full sm:w-[360px]">
+          <EventoSheetCombobox
+            value={eventoId || null}
+            onChange={(v) => setEventoId(v ?? "")}
+            placeholder={loadingEventos ? "Carregando eventos…" : "Selecione um evento…"}
+          />
+        </div>
+      </div>
+
+      {!evento ? (
+        <p className="text-sm text-muted-foreground mt-4">
+          Selecione um evento para ver a análise.
+        </p>
+      ) : (
+        <>
+          <p className="text-xs text-muted-foreground mt-3">
+            Período considerado: {formatBRDate(inicio) || "—"} até {formatBRDate(fim) || "—"}
+            {evento.local ? ` · ${evento.local}` : ""}
+          </p>
+          <div className="grid gap-4 mt-4 lg:grid-cols-3">
+            {([
+              ["antes", "Antes do evento"],
+              ["durante", "Durante o evento"],
+              ["depois", "Depois do evento"],
+            ] as const).map(([key, label]) => (
+              <Card key={key} className="p-3">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">{label}</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {grupos[key].length} compra{grupos[key].length === 1 ? "" : "s"}
+                  </span>
+                </div>
+                <div className="text-lg font-semibold mt-1">
+                  {soma(grupos[key]).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                </div>
+                <ul className="mt-2 space-y-1 max-h-56 overflow-y-auto">
+                  {grupos[key].length === 0 ? (
+                    <li className="text-xs text-muted-foreground">Nenhuma compra.</li>
+                  ) : (
+                    grupos[key].map((c) => (
+                      <li key={c.id} className="text-xs flex justify-between gap-2 border-b border-border/50 pb-1">
+                        <span className="truncate">
+                          {c.numero != null ? `COMPRA-${c.numero} · ` : ""}
+                          {c.titulo || c.fornecedor || "Sem título"}
+                        </span>
+                        <span className="shrink-0 tabular-nums">
+                          {Number(c.valor_total || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        </span>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
+    </Card>
+  );
+}
+
 
 function SavingList({
   title, linhas, fmt, vazio = "Sem dados no período.",
