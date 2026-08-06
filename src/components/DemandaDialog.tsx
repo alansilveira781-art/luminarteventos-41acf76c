@@ -65,6 +65,8 @@ export type Demanda = {
   comprador?: string | null;
   data_solicitacao?: string | null;
   data_compra?: string | null;
+  prazo?: string | null;
+
   parcelamento?: string | null;
   condicao_pagamento?: string | null;
   valor_total?: number | null;
