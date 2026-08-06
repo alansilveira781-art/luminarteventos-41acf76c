@@ -7,7 +7,7 @@ import { MoneyInput } from "@/components/MoneyInput";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TIPO_COMPRA_OPTIONS } from "@/lib/compras";
-import { TIPO_DEMANDA_OPTIONS } from "@/lib/demandas";
+import { TIPO_DEMANDA_OPTIONS, TIPOS_COM_ITENS } from "@/lib/demandas";
 import { ShoppingCart, Wallet, ChevronLeft, ChevronRight, Check, Loader2, Plus, Trash2, Paperclip, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -151,28 +151,71 @@ function SolicitarPage() {
   const removeItem = (idx: number) =>
     setForm((f) => ({ ...f, itens: f.itens.length > 1 ? f.itens.filter((_, i) => i !== idx) : f.itens }));
 
+  const usaItens =
+    form.tipo === "compra" ||
+    (form.tipo === "demanda" && TIPOS_COM_ITENS.includes(form.subtipo));
+
+  function itemVazio(it: ItemRow): boolean {
+    return (
+      it.descricao.trim().length === 0 &&
+      !(Number(String(it.valor_unitario).replace(",", ".")) > 0)
+    );
+  }
+
   function itemInvalido(it: ItemRow): boolean {
+    if (itemVazio(it)) return false;
     return it.descricao.trim().length === 0 || !(Number(it.quantidade) > 0);
   }
 
-  function canAdvance(): boolean {
-    if (step === 0) return !!form.tipo;
+  function itensPreenchidos(): ItemRow[] {
+    return form.itens.filter((it) => !itemVazio(it));
+  }
+
+  function somaItens(): number {
+    return itensPreenchidos().reduce(
+      (acc, it) =>
+        acc +
+        (Number(String(it.valor_unitario).replace(",", ".")) || 0) *
+          (Number(it.quantidade) || 0),
+      0,
+    );
+  }
+
+  /** Retorna a mensagem do que falta na etapa atual, ou null se estiver ok. */
+  function validarEtapa(): string | null {
+    if (step === 0) return form.tipo ? null : "Escolha o tipo da solicitação.";
     if (step === 1) {
-      if (form.titulo.trim().length === 0) return false;
-      if (!form.data_solicitacao) return false;
-      if (form.tipo === "demanda" && form.is_reembolso && form.reembolsar_para.trim().length === 0) return false;
-      return true;
+      if (form.titulo.trim().length === 0) return "Informe o título / resumo da solicitação.";
+      if (!form.data_solicitacao) return "Informe a data da solicitação.";
+      if (form.tipo === "demanda" && form.is_reembolso && form.reembolsar_para.trim().length === 0)
+        return "Informe o nome de quem será reembolsado.";
+      return null;
     }
     if (step === 2) {
-      if (form.solicitante_nome.trim().length === 0) return false;
-      if (form.tipo === "compra") {
-        // Todos os itens listados devem estar completos (descricao + qtd > 0)
-        if (form.itens.length === 0) return false;
-        return form.itens.every((it) => !itemInvalido(it));
+      if (form.solicitante_nome.trim().length === 0) return "Informe o seu nome.";
+      if (usaItens) {
+        const preenchidos = itensPreenchidos();
+        if (preenchidos.length === 0) return "Adicione ao menos um item com descrição.";
+        if (preenchidos.some((it) => itemInvalido(it)))
+          return "Preencha a descrição e a quantidade de todos os itens (ou remova as linhas em branco).";
+        return null;
       }
-      return form.descricao.trim().length > 0;
+      if (form.tipo === "demanda" && !(Number(form.valor_total) > 0))
+        return "Informe o valor total da despesa.";
+      return form.descricao.trim().length > 0 ? null : "Descreva a sua despesa.";
     }
-    return true;
+    return null;
+  }
+
+  function avancar() {
+    const erro = validarEtapa();
+    if (erro) {
+      setShowItemErrors(true);
+      toast.error(erro);
+      return;
+    }
+    setShowItemErrors(false);
+    setStep((s) => s + 1);
   }
 
   function addFiles(files: FileList | null) {
@@ -205,9 +248,9 @@ function SolicitarPage() {
 
   async function submit() {
     if (!form.tipo) return;
-    // Validação: se for compra, todos os itens listados devem estar completos.
-    if (form.tipo === "compra") {
-      if (form.itens.length === 0 || form.itens.some((it) => itemInvalido(it))) {
+    if (usaItens) {
+      const preenchidos = itensPreenchidos();
+      if (preenchidos.length === 0 || preenchidos.some((it) => itemInvalido(it))) {
         setShowItemErrors(true);
         toast.error("Preencha a descrição e a quantidade de todos os itens (ou remova as linhas em branco).");
         return;
@@ -215,15 +258,22 @@ function SolicitarPage() {
     }
     setSending(true);
     try {
-      const itensValidos =
-        form.tipo === "compra"
-          ? form.itens.map((it) => ({
-              descricao: it.descricao.trim(),
-              quantidade: Number(it.quantidade),
-              unidade: it.unidade.trim(),
-              valor_unitario: it.valor_unitario ? Number(it.valor_unitario) : null,
-            }))
-          : undefined;
+      const itensValidos = usaItens
+        ? itensPreenchidos().map((it) => ({
+            descricao: it.descricao.trim(),
+            quantidade: Number(it.quantidade),
+            unidade: it.unidade.trim(),
+            valor_unitario: it.valor_unitario
+              ? Number(String(it.valor_unitario).replace(",", "."))
+              : null,
+          }))
+        : undefined;
+
+      const total = usaItens
+        ? somaItens() || null
+        : form.tipo === "demanda" && Number(form.valor_total) > 0
+          ? Number(form.valor_total)
+          : null;
 
       const payload = {
         tipo: form.tipo,
@@ -234,7 +284,7 @@ function SolicitarPage() {
         solicitante_email: form.solicitante_email.trim(),
         solicitante_telefone: form.solicitante_telefone.trim(),
         descricao: form.descricao.trim(),
-        valor_total: null,
+        valor_total: total,
         itens: itensValidos,
         pago: form.tipo === "demanda" && !form.is_reembolso ? form.pago : null,
         parcelamento: form.is_reembolso ? "" : (form.parcelamento || ""),
@@ -544,11 +594,11 @@ function SolicitarPage() {
               </Field>
             </div>
 
-            {isCompra ? (
+            {usaItens ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-medium text-muted-foreground">
-                    Itens da compra *
+                    {isCompra ? "Itens da compra *" : "Itens da despesa *"}
                   </Label>
                   <Button type="button" size="sm" variant="outline" onClick={addItem}>
                     <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar item
@@ -556,8 +606,9 @@ function SolicitarPage() {
                 </div>
                 <div className="space-y-3">
                   {form.itens.map((it, idx) => {
-                    const descInvalido = showItemErrors && it.descricao.trim().length === 0;
-                    const qtdInvalido = showItemErrors && !(Number(it.quantidade) > 0);
+                    const vazio = itemVazio(it);
+                    const descInvalido = showItemErrors && !vazio && it.descricao.trim().length === 0;
+                    const qtdInvalido = showItemErrors && !vazio && !(Number(it.quantidade) > 0);
                     return (
                       <div
                         key={idx}
@@ -599,34 +650,50 @@ function SolicitarPage() {
                               />
                             </div>
                           </div>
-                          {form.itens.length > 1 && (
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => removeItem(idx)}
-                              className="text-muted-foreground hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => removeItem(idx)}
+                            disabled={form.itens.length === 1}
+                            className="text-muted-foreground hover:text-destructive"
+                            aria-label="Remover item"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                     );
                   })}
                 </div>
+                <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2 bg-muted/30">
+                  <span className="text-xs text-muted-foreground">Valor total (soma dos itens)</span>
+                  <span className="text-sm font-semibold">
+                    {somaItens().toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Linhas em branco são ignoradas automaticamente.
+                </p>
                 <Field label="Observações (opcional)">
                   <Textarea
                     rows={3}
                     value={form.descricao}
                     maxLength={4000}
                     onChange={(e) => update({ descricao: e.target.value })}
-                    placeholder="Algum detalhe adicional sobre a compra…"
+                    placeholder={isCompra ? "Algum detalhe adicional sobre a compra…" : "Algum detalhe adicional sobre a despesa…"}
                   />
                 </Field>
               </div>
             ) : (
               <>
+                <Field label="Valor total *">
+                  <MoneyInput
+                    value={Number(form.valor_total) || 0}
+                    onChange={(n) => update({ valor_total: String(n) })}
+                    placeholder="0,00"
+                  />
+                </Field>
                 <Field label="Descreva sua despesa *">
                   <Textarea
                     rows={6}
@@ -709,22 +776,26 @@ function SolicitarPage() {
             {form.solicitante_email && <Row k="E-mail" v={form.solicitante_email} />}
             {form.solicitante_telefone && <Row k="Telefone" v={form.solicitante_telefone} />}
 
-            {isCompra ? (
+            {usaItens ? (
               <div className="p-3">
                 <div className="text-xs text-muted-foreground mb-2">Itens</div>
                 <ul className="space-y-1">
-                  {form.itens
-                    .filter((it) => it.descricao.trim() && Number(it.quantidade) > 0)
-                    .map((it, idx) => (
-                      <li key={idx} className="flex justify-between gap-3 text-sm">
-                        <span className="break-words">{it.descricao}</span>
-                        <span className="text-muted-foreground whitespace-nowrap">
-                          {it.quantidade} {it.unidade}
-                          {it.valor_unitario ? ` · R$ ${Number(it.valor_unitario).toFixed(2)}` : ""}
-                        </span>
-                      </li>
-                    ))}
+                  {itensPreenchidos().map((it, idx) => (
+                    <li key={idx} className="flex justify-between gap-3 text-sm">
+                      <span className="break-words">{it.descricao}</span>
+                      <span className="text-muted-foreground whitespace-nowrap">
+                        {it.quantidade} {it.unidade}
+                        {it.valor_unitario
+                          ? ` · R$ ${Number(String(it.valor_unitario).replace(",", ".")).toFixed(2)}`
+                          : ""}
+                      </span>
+                    </li>
+                  ))}
                 </ul>
+                <div className="flex justify-between gap-3 text-sm font-semibold mt-2 pt-2 border-t border-border">
+                  <span>Total</span>
+                  <span>{somaItens().toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                </div>
                 {form.descricao && (
                   <>
                     <div className="text-xs text-muted-foreground mt-3 mb-1">Observações</div>
@@ -752,7 +823,7 @@ function SolicitarPage() {
           <ChevronLeft className="h-4 w-4 mr-1" /> Voltar
         </Button>
         {step < 3 ? (
-          <Button onClick={() => setStep((s) => s + 1)} disabled={!canAdvance()}>
+          <Button onClick={avancar}>
             Avançar <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         ) : (

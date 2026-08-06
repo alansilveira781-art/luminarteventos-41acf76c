@@ -289,6 +289,16 @@ export const Route = createFileRoute("/api/public/solicitar")({
         }
 
         // Demanda
+        const itensDemanda = d.itens ?? [];
+        const somaItensDemanda = itensDemanda.reduce(
+          (acc, it) => acc + (it.valor_unitario ?? 0) * it.quantidade,
+          0,
+        );
+        const valorTotalDemanda =
+          itensDemanda.length > 0
+            ? (somaItensDemanda > 0 ? somaItensDemanda : (d.valor_total ?? null))
+            : (d.valor_total ?? null);
+
         const demandaInsert: any = {
           status: "solicitacao",
           titulo: d.titulo,
@@ -296,7 +306,7 @@ export const Route = createFileRoute("/api/public/solicitar")({
           fornecedor: d.fornecedor || null,
           descritivo: d.descricao || null,
           observacoes,
-          valor_total: d.valor_total ?? null,
+          valor_total: valorTotalDemanda,
           data_solicitacao: dataSolicitacao,
           tipo_demanda: d.is_reembolso ? "reembolso" : (d.subtipo || null),
           solicitante_email: solicitanteEmail,
@@ -319,6 +329,19 @@ export const Route = createFileRoute("/api/public/solicitar")({
             { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
           );
         }
+
+        if (itensDemanda.length > 0) {
+          await (supabaseAdmin as any).from("demanda_itens").insert(
+            itensDemanda.map((it) => ({
+              demanda_id: (demanda as any).id,
+              descricao: it.descricao,
+              quantidade: it.quantidade,
+              unidade: it.unidade || null,
+              valor_unitario: it.valor_unitario ?? null,
+            })),
+          );
+        }
+
 
         let anexosFalhadosDemanda = 0;
         if (uploadedFiles.length > 0) {
