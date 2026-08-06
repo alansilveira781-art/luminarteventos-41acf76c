@@ -536,7 +536,68 @@ function SolicitarContratoPublico() {
               <Input type="date" value={form.data_fechamento} onChange={(e) => set("data_fechamento", e.target.value)} />
             </div>
           </div>
+
+          <div className="space-y-3 border-t pt-4">
+            <div>
+              <div className="text-sm font-semibold">Período de montagem e desmontagem</div>
+              <p className="text-xs text-muted-foreground">
+                Informe as datas do período de montagem e do período de desmontagem. Os horários são opcionais.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Início da montagem *</Label>
+                <Input type="date" value={form.montagem_inicio} onChange={(e) => set("montagem_inicio", e.target.value)} />
+                <Erro msg={erros.montagem_inicio} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Término da montagem *</Label>
+                <Input type="date" value={form.montagem_fim} onChange={(e) => set("montagem_fim", e.target.value)} />
+                <Erro msg={erros.montagem_fim} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Início da desmontagem *</Label>
+                <Input type="date" value={form.desmontagem_inicio} onChange={(e) => set("desmontagem_inicio", e.target.value)} />
+                <Erro msg={erros.desmontagem_inicio} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Término da desmontagem *</Label>
+                <Input type="date" value={form.desmontagem_fim} onChange={(e) => set("desmontagem_fim", e.target.value)} />
+                <Erro msg={erros.desmontagem_fim} />
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-primary"
+                checked={horariosAtivos}
+                onChange={(e) => setHorariosAtivos(e.target.checked)}
+              />
+              Informar horários (opcional)
+            </label>
+            {horariosAtivos && (
+              <div className="grid gap-4 sm:grid-cols-4">
+                <div className="space-y-1.5">
+                  <Label>Montagem — início</Label>
+                  <Input type="time" value={form.montagem_hora_inicio} onChange={(e) => set("montagem_hora_inicio", e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Montagem — término</Label>
+                  <Input type="time" value={form.montagem_hora_fim} onChange={(e) => set("montagem_hora_fim", e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Desmontagem — início</Label>
+                  <Input type="time" value={form.desmontagem_hora_inicio} onChange={(e) => set("desmontagem_hora_inicio", e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Desmontagem — término</Label>
+                  <Input type="time" value={form.desmontagem_hora_fim} onChange={(e) => set("desmontagem_hora_fim", e.target.value)} />
+                </div>
+              </div>
+            )}
+          </div>
         </Card>
+
 
         <Card className="p-5 space-y-4">
           <div>
