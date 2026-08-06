@@ -316,6 +316,17 @@ function SolicitarContratoPublico() {
       e.parcelas_soma = `A soma das parcelas (${fmtMoeda(somaParcelas)}) deve ser igual ao valor total (${fmtMoeda(valorTotal)})`;
     }
 
+    req("montagem_inicio", form.montagem_inicio);
+    req("montagem_fim", form.montagem_fim);
+    req("desmontagem_inicio", form.desmontagem_inicio);
+    req("desmontagem_fim", form.desmontagem_fim);
+    if (form.montagem_inicio && form.montagem_fim && form.montagem_fim < form.montagem_inicio)
+      e.montagem_fim = "O término não pode ser anterior ao início";
+    if (form.desmontagem_inicio && form.desmontagem_fim && form.desmontagem_fim < form.desmontagem_inicio)
+      e.desmontagem_fim = "O término não pode ser anterior ao início";
+    if (form.montagem_inicio && form.desmontagem_inicio && form.desmontagem_inicio < form.montagem_inicio)
+      e.desmontagem_inicio = "A desmontagem não pode começar antes da montagem";
+
     if (!proposta) e.proposta = "Anexo obrigatório";
     if (!docEmpresa) e.doc_empresa = "Anexo obrigatório";
     return e;
