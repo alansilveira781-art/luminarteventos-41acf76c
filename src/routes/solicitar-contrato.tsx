@@ -318,6 +318,8 @@ function SolicitarContratoPublico() {
       })),
       data_fechamento: form.data_fechamento || "",
       observacoes: form.observacoes.trim(),
+      solicitante_email: user?.email ?? "",
+
     };
 
     const fd = new FormData();
