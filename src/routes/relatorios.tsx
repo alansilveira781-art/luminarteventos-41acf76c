@@ -284,72 +284,9 @@ function RelatoriosPage() {
             <Input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} disabled={!meta.needsPeriod} />
           </FormField>
           <FormField label="Item" wide>
-            <Popover open={itemPopoverOpen} onOpenChange={setItemPopoverOpen}>
-              <PopoverTrigger asChild>
-                <Button type="button" variant="outline" className="w-full justify-between font-normal">
-                  <span className="truncate">{labelItens}</span>
-                  <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                <div className="p-2 border-b">
-                  <Input
-                    placeholder="Buscar por nome ou código…"
-                    value={buscaItem}
-                    onChange={(e) => setBuscaItem(e.target.value)}
-                    className="h-8"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setItemIds([])}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted/50 border-b"
-                >
-                  {itemIds.length === 0 ? <Check className="h-4 w-4" /> : <span className="w-4" />}
-                  Todos os itens
-                </button>
-                <ScrollArea className="h-64">
-                  {itensFiltrados.length === 0 ? (
-                    <p className="px-3 py-4 text-sm text-muted-foreground">Nenhum item encontrado.</p>
-                  ) : (
-                    itensFiltrados.map((i) => (
-                      <button
-                        key={i.id}
-                        type="button"
-                        onClick={() => toggleItem(i.id)}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-left hover:bg-muted/50"
-                      >
-                        <Checkbox checked={itemIds.includes(i.id)} className="pointer-events-none" />
-                        <span className="truncate">{i.codigo ? `${i.codigo} — ` : ""}{i.nome}</span>
-                      </button>
-                    ))
-                  )}
-                </ScrollArea>
-                {itemIds.length > 0 && (
-                  <div className="p-2 border-t">
-                    <Button type="button" variant="ghost" size="sm" className="w-full" onClick={() => setItemIds([])}>
-                      Limpar seleção
-                    </Button>
-                  </div>
-                )}
-              </PopoverContent>
-            </Popover>
-            {itemIds.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {itensSelecionados.slice(0, 6).map((i) => (
-                  <Badge key={i.id} variant="secondary" className="gap-1">
-                    <span className="truncate max-w-[160px]">{i.codigo ? `${i.codigo} — ` : ""}{i.nome}</span>
-                    <button type="button" onClick={() => toggleItem(i.id)} aria-label={`Remover ${i.nome}`}>
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-                {itensSelecionados.length > 6 && (
-                  <Badge variant="outline">+{itensSelecionados.length - 6}</Badge>
-                )}
-              </div>
-            )}
+            <ItensMultiSelect itens={itensLista} value={itemIds} onChange={setItemIds} />
           </FormField>
+
 
           {showEvento && (
             <FormField label="Evento/Projeto" wide>
