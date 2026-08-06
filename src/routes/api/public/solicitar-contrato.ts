@@ -70,6 +70,14 @@ const schema = z
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .optional()
       .or(z.literal("")),
+    montagem_inicio: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
+    montagem_fim: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
+    desmontagem_inicio: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
+    desmontagem_fim: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
+    montagem_hora_inicio: z.string().trim().regex(/^\d{2}:\d{2}$/).optional().or(z.literal("")),
+    montagem_hora_fim: z.string().trim().regex(/^\d{2}:\d{2}$/).optional().or(z.literal("")),
+    desmontagem_hora_inicio: z.string().trim().regex(/^\d{2}:\d{2}$/).optional().or(z.literal("")),
+    desmontagem_hora_fim: z.string().trim().regex(/^\d{2}:\d{2}$/).optional().or(z.literal("")),
     observacoes: z.string().trim().max(4000).optional().or(z.literal("")),
   })
   .superRefine((d, ctx) => {
