@@ -124,6 +124,25 @@ function blocoAssinaturas(c: ContratoDados, empresa?: EmpresaContratada | null):
   return partes.join("");
 }
 
+
+const fmtHora = (h?: string | null) => (h ? String(h).slice(0, 5) : "");
+
+/** Texto pronto de um período: "10/09/2026 a 12/09/2026, das 08h00 às 18h00". */
+export function periodoTexto(
+  inicio?: string | null,
+  fim?: string | null,
+  horaInicio?: string | null,
+  horaFim?: string | null,
+): string {
+  if (!inicio && !fim) return "";
+  const datas = inicio && fim && inicio !== fim ? `${fmtData(inicio)} a ${fmtData(fim)}` : fmtData(inicio || fim);
+  const hi = fmtHora(horaInicio);
+  const hf = fmtHora(horaFim);
+  if (hi && hf) return `${datas}, das ${hi.replace(":", "h")} às ${hf.replace(":", "h")}`;
+  if (hi) return `${datas}, a partir das ${hi.replace(":", "h")}`;
+  return datas;
+}
+
 /** Campos que o sistema preenche sozinho a partir do card do contrato. */
 export function variaveisDoContrato(
   c: ContratoDados,
@@ -188,6 +207,17 @@ export function variaveisDoContrato(
     parcelas: texto,
     parcelas_detalhe: texto,
     data_fechamento: fmtData(c.data_fechamento),
+    montagem_inicio: fmtData(c.montagem_inicio),
+    montagem_fim: fmtData(c.montagem_fim),
+    montagem_periodo: periodoTexto(c.montagem_inicio, c.montagem_fim, c.montagem_hora_inicio, c.montagem_hora_fim),
+    desmontagem_inicio: fmtData(c.desmontagem_inicio),
+    desmontagem_fim: fmtData(c.desmontagem_fim),
+    desmontagem_periodo: periodoTexto(
+      c.desmontagem_inicio,
+      c.desmontagem_fim,
+      c.desmontagem_hora_inicio,
+      c.desmontagem_hora_fim,
+    ),
     data_assinatura: fmtData(c.data_assinatura),
     data_hoje: hoje.toLocaleDateString("pt-BR"),
     data_extenso: porExtenso(hoje),
@@ -224,6 +254,12 @@ export const CAMPOS_SUGERIDOS: { campo: string; label: string }[] = [
   { campo: "forma_pagamento", label: "Forma de pagamento" },
   { campo: "parcelas", label: "Parcelas (detalhe)" },
   { campo: "qtd_parcelas", label: "Qtd. de parcelas" },
+  { campo: "montagem_periodo", label: "Período de montagem" },
+  { campo: "montagem_inicio", label: "Início da montagem" },
+  { campo: "montagem_fim", label: "Fim da montagem" },
+  { campo: "desmontagem_periodo", label: "Período de desmontagem" },
+  { campo: "desmontagem_inicio", label: "Início da desmontagem" },
+  { campo: "desmontagem_fim", label: "Fim da desmontagem" },
   { campo: "data_hoje", label: "Data de hoje" },
   { campo: "data_extenso", label: "Data por extenso" },
   { campo: "data_criacao", label: "Data de criação" },
