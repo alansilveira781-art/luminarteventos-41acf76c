@@ -1,0 +1,1 @@
+ALTER TABLE public.juridico_contratos ADD COLUMN IF NOT EXISTS solicitante_email text;
