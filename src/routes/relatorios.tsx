@@ -96,33 +96,18 @@ function RelatoriosPage() {
   const showSolicitante = ["saidas", "devolucoes", "saidas_evento"].includes(reportId);
   const showFornecedor = ["entradas", "gastos_mes", "gastos_categoria"].includes(reportId);
 
-
-
-
-  const itensFiltrados = useMemo(() => {
-    const b = buscaItem.trim().toLowerCase();
-    if (!b) return itensLista;
-    return itensLista.filter((i) =>
-      `${i.nome} ${i.codigo ?? ""}`.toLowerCase().includes(b),
-    );
-  }, [itensLista, buscaItem]);
-
   const itensSelecionados = useMemo(
     () => itensLista.filter((i) => itemIds.includes(i.id)),
     [itensLista, itemIds],
   );
 
-  const toggleItem = (id: string) =>
-    setItemIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-
   const labelItens =
     itemIds.length === 0
       ? "Todos os itens"
       : itemIds.length === 1
-        ? (itensSelecionados[0]
-            ? `${itensSelecionados[0].codigo ? `${itensSelecionados[0].codigo} — ` : ""}${itensSelecionados[0].nome}`
-            : "1 item selecionado")
+        ? (itensSelecionados[0] ? itemLabel(itensSelecionados[0]) : "1 item selecionado")
         : `${itemIds.length} itens selecionados`;
+
 
   const meta = REPORTS.find((r) => r.id === reportId)!;
 
