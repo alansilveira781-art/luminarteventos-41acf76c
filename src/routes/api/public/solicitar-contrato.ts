@@ -45,6 +45,21 @@ const schema = z
     resp_legal_email: z.string().trim().max(160).optional().or(z.literal("")),
     resp_legal_telefone: z.string().trim().max(40).optional().or(z.literal("")),
     resp_legal_endereco: enderecoSchema.nullable().optional(),
+    resp_legal2_nome: z.string().trim().max(160).optional().or(z.literal("")),
+    resp_legal2_documento: z.string().trim().max(40).optional().or(z.literal("")),
+    resp_legal2_email: z.string().trim().max(160).optional().or(z.literal("")),
+    resp_legal2_telefone: z.string().trim().max(40).optional().or(z.literal("")),
+    resp_legal2_endereco: enderecoSchema.nullable().optional(),
+    testemunhas: z
+      .array(
+        z.object({
+          nome: z.string().trim().min(2).max(160),
+          documento: z.string().trim().max(40).optional().or(z.literal("")),
+          email: z.string().trim().max(160).optional().or(z.literal("")),
+        }),
+      )
+      .max(2)
+      .optional(),
     valor: z.number().nonnegative().max(100_000_000),
     pagamento_forma: z.enum(["pix", "boleto"]),
     pagamento_modo: z.enum(["igual", "diferente"]),
