@@ -51,3 +51,17 @@ export const PRAZO_DOT_CLASS: Record<PrazoStatus, string> = {
   proximo: "bg-amber-500",
   ok: "bg-emerald-500",
 };
+
+/**
+ * Prazo que está valendo para o card de compra.
+ * A partir da aprovação, o prazo de execução (prazo_aprovacao) substitui
+ * o prazo da fase de solicitação/aprovação.
+ */
+export function prazoVigente(c?: {
+  prazo?: string | null;
+  prazo_aprovacao?: string | null;
+} | null): string | null {
+  if (!c) return null;
+  return c.prazo_aprovacao ?? c.prazo ?? null;
+}
+

@@ -41,7 +41,9 @@ import {
 } from "@dnd-kit/core";
 import { toast } from "sonner";
 import { AvancarCardDialog } from "@/components/AvancarCardDialog";
+import { PrazoAprovacaoDialog } from "@/components/compras/PrazoAprovacaoDialog";
 import { PrazoDot } from "@/components/PrazoDot";
+import { prazoVigente } from "@/lib/prazo";
 
 import { notifyResponsavel } from "@/lib/notify";
 
@@ -65,6 +67,7 @@ type Compra = {
   data_servico: string | null;
   valor_total: number | null;
   prazo?: string | null;
+  prazo_aprovacao?: string | null;
 
   responsavel_id: string | null;
   responsavel_nome: string | null;
@@ -101,7 +104,7 @@ function ComprasKanban() {
     queryFn: async () => {
       const { data, error } = await sb
         .from("compras")
-        .select("id,numero,status,titulo,solicitante,solicitante_id,fornecedor,comprador,data_solicitacao,data_compra,data_servico,prazo,valor_total,responsavel_id,responsavel_nome,tipo_compra,numero_nf,numeros_nf,tem_nf,empresa_faturada,created_by")
+        .select("id,numero,status,titulo,solicitante,solicitante_id,fornecedor,comprador,data_solicitacao,data_compra,data_servico,prazo,prazo_aprovacao,valor_total,responsavel_id,responsavel_nome,tipo_compra,numero_nf,numeros_nf,tem_nf,empresa_faturada,created_by")
 
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -199,16 +202,18 @@ function ComprasKanban() {
     return m;
   }, [filteredCompras]);
 
-  const [pendingMove, setPendingMove] = useState<{ id: string; status: CompraStatus; titulo: string } | null>(null);
+  const [pendingMove, setPendingMove] = useState<{ id: string; status: CompraStatus; titulo: string; prazo?: string } | null>(null);
+  const [pendingPrazo, setPendingPrazo] = useState<{ compra: Compra; status: CompraStatus; opts?: { force?: boolean; toastMsg?: string } } | null>(null);
 
   const moveStatus = useMutation({
-    mutationFn: async (vars: { id: string; status: CompraStatus; responsavelId?: string; responsavelNome?: string }) => {
+    mutationFn: async (vars: { id: string; status: CompraStatus; responsavelId?: string; responsavelNome?: string; prazo?: string }) => {
       const { error } = await sb.rpc("move_compra_status", {
         p_id: vars.id,
         p_status: vars.status,
         p_responsavel_id: vars.responsavelId ?? null,
         p_responsavel_nome: vars.responsavelNome ?? null,
-      });
+        p_prazo: vars.prazo ?? null,
+      } as any);
       if (error) throw error;
     },
     onMutate: async ({ id, status }) => {
@@ -234,7 +239,7 @@ function ComprasKanban() {
   async function advanceToStatus(
     compra: Compra,
     status: CompraStatus,
-    opts?: { force?: boolean; toastMsg?: string },
+    opts?: { force?: boolean; toastMsg?: string; prazo?: string },
   ) {
     if (compra.status === status) return;
 
@@ -271,6 +276,12 @@ function ComprasKanban() {
       }
     }
 
+    // Ao aprovar, o prazo anterior deixa de valer: exigir um novo prazo até finalizar.
+    if (compra.status === "pendente_aprovacao" && status === "aprovada" && !opts?.prazo) {
+      setPendingPrazo({ compra, status, opts });
+      return;
+    }
+
     const oldIdx = COMPRA_STATUSES.findIndex((s) => s.key === compra.status);
     const newIdx = COMPRA_STATUSES.findIndex((s) => s.key === status);
     const isAdvance = newIdx > oldIdx;
@@ -287,6 +298,7 @@ function ComprasKanban() {
             status,
             responsavelId: def.responsavel_id,
             responsavelNome: def.responsavel_nome ?? undefined,
+            prazo: opts?.prazo,
           });
         } catch {
           return;
@@ -303,16 +315,16 @@ function ComprasKanban() {
       }
       if (opts?.force) {
         try {
-          await moveStatus.mutateAsync({ id, status });
+          await moveStatus.mutateAsync({ id, status, prazo: opts?.prazo });
         } catch {
           return;
         }
         toast.success(opts.toastMsg ?? "Card movido.");
         return;
       }
-      setPendingMove({ id, status, titulo });
+      setPendingMove({ id, status, titulo, prazo: opts?.prazo });
     } else {
-      moveStatus.mutate({ id, status });
+      moveStatus.mutate({ id, status, prazo: opts?.prazo });
     }
   }
 
@@ -471,10 +483,10 @@ function ComprasKanban() {
         statusLabel={pendingMove ? (COMPRA_STATUSES.find((s) => s.key === pendingMove.status)?.label || "") : ""}
         onConfirm={async ({ responsavelId, responsavelNome, observacao }) => {
           if (!pendingMove) return;
-          const { id, status, titulo } = pendingMove;
+          const { id, status, titulo, prazo } = pendingMove;
           const statusLabel = COMPRA_STATUSES.find((s) => s.key === status)?.label || status;
           try {
-            await moveStatus.mutateAsync({ id, status, responsavelId, responsavelNome });
+            await moveStatus.mutateAsync({ id, status, responsavelId, responsavelNome, prazo });
           } catch {
             return;
           }
@@ -487,6 +499,19 @@ function ComprasKanban() {
           }).catch(() => {});
           toast.success(`Card movido. ${responsavelNome} foi notificado.`);
           setPendingMove(null);
+        }}
+      />
+
+      <PrazoAprovacaoDialog
+        open={!!pendingPrazo}
+        onOpenChange={(v) => { if (!v) setPendingPrazo(null); }}
+        titulo={pendingPrazo?.compra.titulo ?? pendingPrazo?.compra.fornecedor}
+        prazoAnterior={pendingPrazo?.compra.prazo}
+        onConfirm={async (prazo) => {
+          if (!pendingPrazo) return;
+          const { compra, status, opts } = pendingPrazo;
+          setPendingPrazo(null);
+          await advanceToStatus(compra, status, { ...opts, prazo });
         }}
       />
 
@@ -559,7 +584,7 @@ function Card({
         <div className="flex-1 text-left min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="font-medium text-sm truncate text-foreground flex-1 min-w-0 flex items-center gap-1.5">
-              <PrazoDot prazo={compra.prazo} />
+              <PrazoDot prazo={prazoVigente(compra)} />
               <span className="truncate">{compra.titulo || compra.fornecedor || "Compra sem título"}</span>
             </div>
 
