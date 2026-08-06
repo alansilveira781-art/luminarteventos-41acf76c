@@ -58,8 +58,8 @@ function RelatoriosPage() {
   const [dataIni, setDataIni] = useState(format(startOfMonth(subMonths(hoje, 2)), "yyyy-MM-dd"));
   const [dataFim, setDataFim] = useState(format(endOfMonth(hoje), "yyyy-MM-dd"));
   const [itemIds, setItemIds] = useState<string[]>([]);
-  const [buscaItem, setBuscaItem] = useState("");
-  const [itemPopoverOpen, setItemPopoverOpen] = useState(false);
+  const [aba, setAba] = useState<"relatorios" | "projecao">("relatorios");
+
   const [eventoProjeto, setEventoProjeto] = useState<string | null>(null);
   const [saidaTipo, setSaidaTipo] = useState<string>("__all__");
   const [solicitanteId, setSolicitanteId] = useState<string>("__all__");
