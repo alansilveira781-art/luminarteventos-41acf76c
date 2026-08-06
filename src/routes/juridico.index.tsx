@@ -761,6 +761,118 @@ function ContratoDetalhesDialog({
                 }
               />
 
+              <div className="rounded-md border border-border p-3 space-y-2">
+                <div className="text-xs font-semibold text-muted-foreground">2º Responsável legal (opcional)</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">Nome</Label>
+                    <Input value={(form as any).resp_legal2_nome ?? ""} onChange={(e) => setForm({ ...form, resp_legal2_nome: e.target.value } as any)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">CPF</Label>
+                    <Input value={(form as any).resp_legal2_documento ?? ""} onChange={(e) => setForm({ ...form, resp_legal2_documento: e.target.value } as any)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">E-mail</Label>
+                    <Input value={(form as any).resp_legal2_email ?? ""} onChange={(e) => setForm({ ...form, resp_legal2_email: e.target.value } as any)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Telefone</Label>
+                    <Input value={(form as any).resp_legal2_telefone ?? ""} onChange={(e) => setForm({ ...form, resp_legal2_telefone: e.target.value } as any)} />
+                  </div>
+                </div>
+              </div>
+
+              <EnderecoEditor
+                titulo="Endereço do 2º responsável legal"
+                valor={{
+                  cep: (form as any).resp_legal2_cep,
+                  logradouro: (form as any).resp_legal2_logradouro,
+                  numero: (form as any).resp_legal2_numero,
+                  complemento: (form as any).resp_legal2_complemento,
+                  bairro: (form as any).resp_legal2_bairro,
+                  cidade: (form as any).resp_legal2_cidade,
+                  uf: (form as any).resp_legal2_uf,
+                }}
+                onChange={(patch) =>
+                  setForm((f: any) => ({
+                    ...f,
+                    ...(patch.cep !== undefined ? { resp_legal2_cep: patch.cep } : {}),
+                    ...(patch.logradouro !== undefined ? { resp_legal2_logradouro: patch.logradouro } : {}),
+                    ...(patch.numero !== undefined ? { resp_legal2_numero: patch.numero } : {}),
+                    ...(patch.complemento !== undefined ? { resp_legal2_complemento: patch.complemento } : {}),
+                    ...(patch.bairro !== undefined ? { resp_legal2_bairro: patch.bairro } : {}),
+                    ...(patch.cidade !== undefined ? { resp_legal2_cidade: patch.cidade } : {}),
+                    ...(patch.uf !== undefined ? { resp_legal2_uf: patch.uf } : {}),
+                  }))
+                }
+              />
+
+              <div className="rounded-md border border-border p-3 space-y-2">
+                <div className="text-xs font-semibold text-muted-foreground">Testemunhas (até 2)</div>
+                {(((form as any).testemunhas ?? []) as any[]).map((t, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
+                    <div>
+                      <Label className="text-xs">Nome</Label>
+                      <Input
+                        value={t?.nome ?? ""}
+                        onChange={(e) =>
+                          setForm((f: any) => ({
+                            ...f,
+                            testemunhas: (f.testemunhas ?? []).map((x: any, j: number) => (j === i ? { ...x, nome: e.target.value } : x)),
+                          }))
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">CPF</Label>
+                      <Input
+                        value={t?.documento ?? ""}
+                        onChange={(e) =>
+                          setForm((f: any) => ({
+                            ...f,
+                            testemunhas: (f.testemunhas ?? []).map((x: any, j: number) => (j === i ? { ...x, documento: e.target.value } : x)),
+                          }))
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">E-mail</Label>
+                      <Input
+                        value={t?.email ?? ""}
+                        onChange={(e) =>
+                          setForm((f: any) => ({
+                            ...f,
+                            testemunhas: (f.testemunhas ?? []).map((x: any, j: number) => (j === i ? { ...x, email: e.target.value } : x)),
+                          }))
+                        }
+                      />
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        setForm((f: any) => ({ ...f, testemunhas: (f.testemunhas ?? []).filter((_: any, j: number) => j !== i) }))
+                      }
+                    >
+                      Remover
+                    </Button>
+                  </div>
+                ))}
+                {(((form as any).testemunhas ?? []) as any[]).length < 2 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setForm((f: any) => ({ ...f, testemunhas: [...(f.testemunhas ?? []), { nome: "", documento: "", email: "" }] }))
+                    }
+                  >
+                    Adicionar testemunha
+                  </Button>
+                )}
+              </div>
+
+
               <PagamentoEditor
                 forma={form.pagamento_forma ?? null}
                 modo={form.pagamento_modo ?? null}
