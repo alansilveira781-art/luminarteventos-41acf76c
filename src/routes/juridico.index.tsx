@@ -52,6 +52,8 @@ type Contrato = {
   resp_legal_email: string | null;
   resp_legal_telefone: string | null;
   cliente_tipo?: string | null;
+  solicitante_email?: string | null;
+
   cliente_cep?: string | null;
   cliente_logradouro?: string | null;
   cliente_numero?: string | null;
