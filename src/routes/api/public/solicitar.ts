@@ -248,6 +248,8 @@ export const Route = createFileRoute("/api/public/solicitar")({
               observacoes,
               valor_total: valorTotal,
               data_solicitacao: dataSolicitacao,
+              prazo: d.prazo || null,
+
               tipo_compra: d.subtipo || null,
               solicitante_email: solicitanteEmail,
               solicitante_id: solicitanteId,
