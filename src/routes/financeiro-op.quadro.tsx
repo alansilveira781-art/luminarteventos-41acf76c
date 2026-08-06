@@ -298,9 +298,11 @@ function CardItem({
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <div className="font-medium text-sm truncate text-foreground flex-1 min-w-0">
-              {card.titulo ?? "(sem título)"}
+            <div className="font-medium text-sm truncate text-foreground flex-1 min-w-0 flex items-center gap-1.5">
+              <PrazoDot prazo={card.prazo} />
+              <span className="truncate">{card.titulo ?? "(sem título)"}</span>
             </div>
+
             <span
               className={cn(
                 "inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium border shrink-0",
