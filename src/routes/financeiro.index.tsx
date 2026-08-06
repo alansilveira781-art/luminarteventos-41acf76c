@@ -436,9 +436,11 @@ function Card({
         >⋮⋮</button>
         <button type="button" onClick={onOpen} className="flex-1 text-left min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <div className="font-medium text-sm truncate text-foreground flex-1 min-w-0">
-              {demanda.titulo || demanda.fornecedor || "Demanda sem título"}
+            <div className="font-medium text-sm truncate text-foreground flex-1 min-w-0 flex items-center gap-1.5">
+              <PrazoDot prazo={(demanda as any).prazo} />
+              <span className="truncate">{demanda.titulo || demanda.fornecedor || "Demanda sem título"}</span>
             </div>
+
             {demanda.numero != null && (
               <span className="text-[10px] text-muted-foreground font-mono shrink-0 mt-0.5">
                 DEMANDA-{demanda.numero}
