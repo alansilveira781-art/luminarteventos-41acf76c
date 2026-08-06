@@ -410,10 +410,31 @@ async function fetchPaged(build: (from: number, to: number) => any): Promise<any
   return all;
 }
 
-async function loadReport(id: ReportId, dataIni: string, dataFim: string, itemIds: string[] = []): Promise<any[]> {
+type ReportExtras = {
+  eventoProjeto?: string | null;
+  saidaTipo?: string | null;
+  solicitanteId?: string | null;
+  fornecedorId?: string | null;
+};
+
+async function loadReport(
+  id: ReportId,
+  dataIni: string,
+  dataFim: string,
+  itemIds: string[] = [],
+  extras: ReportExtras = {},
+): Promise<any[]> {
   const ini = new Date(dataIni).toISOString();
   const fim = new Date(`${dataFim}T23:59:59`).toISOString();
   const filtroItem = itemIds.length > 0 ? itemIds : null;
+  const applyExtras = (q: any) => {
+    if (extras.eventoProjeto) q = q.eq("evento_projeto", extras.eventoProjeto);
+    if (extras.saidaTipo) q = q.eq("saida_tipo", extras.saidaTipo);
+    if (extras.solicitanteId) q = q.eq("solicitante_id", extras.solicitanteId);
+    if (extras.fornecedorId) q = q.eq("fornecedor_id", extras.fornecedorId);
+    return q;
+  };
+
 
   if (id === "saidas") {
     const rows = await fetchPaged((f, t) => {
