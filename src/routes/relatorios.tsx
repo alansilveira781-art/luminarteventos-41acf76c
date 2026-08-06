@@ -160,7 +160,12 @@ function RelatoriosPage() {
 
 
   const exportCsv = () => {
-    const linhas = [headers, ...body, ...(totals ? [totals] : [])];
+    const linhas = [
+      ...(filtrosResumo.length > 0 ? [[`Filtros: ${filtrosResumo.join(" | ")}`]] : []),
+      headers,
+      ...body,
+      ...(totals ? [totals] : []),
+    ];
     const csv = linhas.map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
