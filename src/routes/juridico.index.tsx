@@ -603,6 +603,24 @@ function ContratoDetalhesDialog({
                 <Label>Telefone</Label>
                 <Input value={form.cliente_telefone ?? ""} onChange={(e) => setForm({ ...form, cliente_telefone: e.target.value })} />
               </div>
+              {contrato.cliente_tipo && (
+                <div className="col-span-2 rounded-md border p-3 space-y-1">
+                  <div className="text-xs font-semibold text-muted-foreground">
+                    {contrato.cliente_tipo === "pj" ? "Pessoa Jurídica" : "Pessoa Física"} — endereço
+                  </div>
+                  <div className="text-sm">
+                    {[
+                      [contrato.cliente_logradouro, contrato.cliente_numero].filter(Boolean).join(", "),
+                      contrato.cliente_complemento,
+                      contrato.cliente_bairro,
+                      [contrato.cliente_cidade, contrato.cliente_uf].filter(Boolean).join("/"),
+                      contrato.cliente_cep ? `CEP ${contrato.cliente_cep}` : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" — ") || "—"}
+                  </div>
+                </div>
+              )}
               {(contrato.resp_legal_nome || contrato.resp_legal_documento || contrato.resp_legal_email || contrato.resp_legal_telefone) && (
                 <div className="col-span-2 rounded-md border p-3 space-y-1">
                   <div className="text-xs font-semibold text-muted-foreground">Responsável Legal</div>
@@ -612,8 +630,45 @@ function ContratoDetalhesDialog({
                     <div>E-mail: {contrato.resp_legal_email || "—"}</div>
                     <div>Telefone: {contrato.resp_legal_telefone || "—"}</div>
                   </div>
+                  {contrato.resp_legal_logradouro && (
+                    <div className="text-sm">
+                      Endereço:{" "}
+                      {[
+                        [contrato.resp_legal_logradouro, contrato.resp_legal_numero].filter(Boolean).join(", "),
+                        contrato.resp_legal_complemento,
+                        contrato.resp_legal_bairro,
+                        [contrato.resp_legal_cidade, contrato.resp_legal_uf].filter(Boolean).join("/"),
+                        contrato.resp_legal_cep ? `CEP ${contrato.resp_legal_cep}` : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" — ")}
+                    </div>
+                  )}
                 </div>
               )}
+              {contrato.pagamento_parcelas && contrato.pagamento_parcelas.length > 0 && (
+                <div className="col-span-2 rounded-md border p-3 space-y-2">
+                  <div className="text-xs font-semibold text-muted-foreground">
+                    Pagamento — {contrato.pagamento_forma === "boleto" ? "Boleto" : "Pix"} ·{" "}
+                    {contrato.pagamento_parcelas.length}x{" "}
+                    {contrato.pagamento_modo === "diferente" ? "(valores diferentes)" : "(parcelas iguais)"}
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    {contrato.pagamento_parcelas.map((p) => (
+                      <div key={p.n} className="flex justify-between border-b last:border-0 py-1">
+                        <span>{p.n}ª parcela</span>
+                        <span className="text-muted-foreground">
+                          {p.vencimento?.split("-").reverse().join("/")}
+                        </span>
+                        <span className="font-medium">
+                          {Number(p.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
 
               <div>
                 <Label>Responsável</Label>
