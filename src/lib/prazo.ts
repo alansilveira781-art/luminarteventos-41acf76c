@@ -65,3 +65,20 @@ export function prazoVigente(c?: {
   return c.prazo_aprovacao ?? c.prazo ?? null;
 }
 
+/**
+ * Semáforo do prazo considerando o status da compra:
+ * verde só quando o card chega em "finalizado". Entre a aprovação e o
+ * fim, mostra vermelho (vencido) ou amarelo.
+ */
+export function prazoStatusCompra(prazo?: string | null, status?: string | null): PrazoStatus | null {
+  const base = prazoStatus(prazo);
+  if (!base) return null;
+  const s = String(status ?? "");
+  if (s === "finalizado") return "ok";
+  if (["aprovada", "em_andamento", "a_receber"].includes(s)) {
+    return base === "vencido" ? "vencido" : "proximo";
+  }
+  return base;
+}
+
+

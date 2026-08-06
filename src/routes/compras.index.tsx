@@ -41,7 +41,6 @@ import {
 } from "@dnd-kit/core";
 import { toast } from "sonner";
 import { AvancarCardDialog } from "@/components/AvancarCardDialog";
-import { PrazoAprovacaoDialog } from "@/components/compras/PrazoAprovacaoDialog";
 import { PrazoDot } from "@/components/PrazoDot";
 import { prazoVigente } from "@/lib/prazo";
 
@@ -203,7 +202,6 @@ function ComprasKanban() {
   }, [filteredCompras]);
 
   const [pendingMove, setPendingMove] = useState<{ id: string; status: CompraStatus; titulo: string; prazo?: string } | null>(null);
-  const [pendingPrazo, setPendingPrazo] = useState<{ compra: Compra; status: CompraStatus; opts?: { force?: boolean; toastMsg?: string } } | null>(null);
 
   const moveStatus = useMutation({
     mutationFn: async (vars: { id: string; status: CompraStatus; responsavelId?: string; responsavelNome?: string; prazo?: string }) => {
@@ -274,12 +272,6 @@ function ComprasKanban() {
         toast.error("Informe a empresa faturada antes de mover para Compras a Receber.");
         return;
       }
-    }
-
-    // Ao aprovar, o prazo anterior deixa de valer: exigir um novo prazo até finalizar.
-    if (compra.status === "pendente_aprovacao" && status === "aprovada" && !opts?.prazo) {
-      setPendingPrazo({ compra, status, opts });
-      return;
     }
 
     const oldIdx = COMPRA_STATUSES.findIndex((s) => s.key === compra.status);
@@ -502,19 +494,6 @@ function ComprasKanban() {
         }}
       />
 
-      <PrazoAprovacaoDialog
-        open={!!pendingPrazo}
-        onOpenChange={(v) => { if (!v) setPendingPrazo(null); }}
-        titulo={pendingPrazo?.compra.titulo ?? pendingPrazo?.compra.fornecedor}
-        prazoAnterior={pendingPrazo?.compra.prazo}
-        onConfirm={async (prazo) => {
-          if (!pendingPrazo) return;
-          const { compra, status, opts } = pendingPrazo;
-          setPendingPrazo(null);
-          await advanceToStatus(compra, status, { ...opts, prazo });
-        }}
-      />
-
       <MigrarCompraDialog
         compra={migrarCompra}
         onClose={() => setMigrarCompra(null)}
@@ -584,7 +563,7 @@ function Card({
         <div className="flex-1 text-left min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="font-medium text-sm truncate text-foreground flex-1 min-w-0 flex items-center gap-1.5">
-              <PrazoDot prazo={prazoVigente(compra)} />
+              <PrazoDot prazo={prazoVigente(compra)} status={compra.status} />
               <span className="truncate">{compra.titulo || compra.fornecedor || "Compra sem título"}</span>
             </div>
 
