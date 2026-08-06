@@ -564,10 +564,33 @@ function ContratoDetalhesDialog({
       responsavel: form.responsavel || null,
       valor: form.valor ? Number(form.valor) : null,
       status: form.status ?? contrato!.status,
+      categoria: (form as any).categoria || null,
       observacoes: form.observacoes || null,
       data_fechamento: form.data_fechamento || null,
       data_assinatura: form.data_assinatura || null,
+      cliente_cep: form.cliente_cep || null,
+      cliente_logradouro: form.cliente_logradouro || null,
+      cliente_numero: form.cliente_numero || null,
+      cliente_complemento: form.cliente_complemento || null,
+      cliente_bairro: form.cliente_bairro || null,
+      cliente_cidade: form.cliente_cidade || null,
+      cliente_uf: form.cliente_uf || null,
+      resp_legal_nome: form.resp_legal_nome || null,
+      resp_legal_documento: form.resp_legal_documento || null,
+      resp_legal_email: form.resp_legal_email || null,
+      resp_legal_telefone: form.resp_legal_telefone || null,
+      resp_legal_cep: form.resp_legal_cep || null,
+      resp_legal_logradouro: form.resp_legal_logradouro || null,
+      resp_legal_numero: form.resp_legal_numero || null,
+      resp_legal_complemento: form.resp_legal_complemento || null,
+      resp_legal_bairro: form.resp_legal_bairro || null,
+      resp_legal_cidade: form.resp_legal_cidade || null,
+      resp_legal_uf: form.resp_legal_uf || null,
+      pagamento_forma: form.pagamento_forma || null,
+      pagamento_modo: form.pagamento_modo || null,
+      pagamento_parcelas: form.pagamento_parcelas ?? null,
     };
+
     const { error } = await sb.from("juridico_contratos").update(payload).eq("id", contrato!.id);
     setSaving(false);
     if (error) return toast.error(error.message);
