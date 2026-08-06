@@ -337,7 +337,76 @@ function RelatoriosPage() {
             )}
           </FormField>
 
+          {showEvento && (
+            <FormField label="Evento/Projeto" wide>
+              <EventoSheetCombobox
+                value={eventoProjeto}
+                onChange={setEventoProjeto}
+                placeholder="Todos os eventos"
+              />
+            </FormField>
+          )}
+          {showSaidaTipo && (
+            <FormField label="Tipo de saída">
+              <Select value={saidaTipo} onValueChange={setSaidaTipo}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todos os tipos</SelectItem>
+                  {Object.entries(saidaTipoLabels).map(([v, l]) => (
+                    <SelectItem key={v} value={v}>{l}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+          )}
+          {showSolicitante && (
+            <FormField label="Solicitante">
+              <Select value={solicitanteId} onValueChange={setSolicitanteId}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todos os solicitantes</SelectItem>
+                  {solicitantesLista.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+          )}
+          {showFornecedor && (
+            <FormField label="Fornecedor">
+              <Select value={fornecedorId} onValueChange={setFornecedorId}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todos os fornecedores</SelectItem>
+                  {fornecedoresLista.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+          )}
+
         </FormSection>
+        {filtrosResumo.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1 mt-3">
+            {filtrosResumo.map((f) => (
+              <Badge key={f} variant="secondary">{f}</Badge>
+            ))}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setEventoProjeto(null);
+                setSaidaTipo("__all__");
+                setSolicitanteId("__all__");
+                setFornecedorId("__all__");
+              }}
+            >
+              Limpar filtros
+            </Button>
+          </div>
+        )}
         <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
           <FileText className="h-3 w-3" /> {meta.description}
         </p>
@@ -351,9 +420,11 @@ function RelatoriosPage() {
               {meta.needsPeriod ? `${format(new Date(dataIni), "dd/MM/yyyy")} → ${format(new Date(dataFim), "dd/MM/yyyy")} · ` : ""}
               {body.length} registro{body.length !== 1 ? "s" : ""}
               {itemIds.length > 0 ? ` · ${itemIds.length} item${itemIds.length !== 1 ? "ns" : ""} selecionado${itemIds.length !== 1 ? "s" : ""}` : ""}
+              {filtrosResumo.length > 0 ? ` · ${filtrosResumo.join(" · ")}` : ""}
             </p>
           </div>
         </div>
+
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-muted/50">
