@@ -1,11 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ArrowLeft, RefreshCw } from "lucide-react";
@@ -88,46 +86,21 @@ function ItemHistorico() {
     },
   });
 
-  const [fTipo, setFTipo] = useState<string>("__all__");
-  const [fEvento, setFEvento] = useState<string | null>(null);
-  const [fSaidaTipo, setFSaidaTipo] = useState<string>("__all__");
-  const [fSolicitante, setFSolicitante] = useState<string>("__all__");
-  const [fFornecedor, setFFornecedor] = useState<string>("__all__");
-  const [fIni, setFIni] = useState("");
-  const [fFim, setFFim] = useState("");
-
-  const eventosDisponiveis = useMemo(
-    () => [...new Set((movs ?? []).map((m: any) => m.evento_projeto).filter(Boolean))].sort() as string[],
-    [movs],
-  );
-  const solicitantesDisponiveis = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const m of movs ?? []) if (m.solicitante_id && m.solicitante?.nome) map.set(m.solicitante_id, m.solicitante.nome);
-    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1], "pt-BR"));
-  }, [movs]);
-  const fornecedoresDisponiveis = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const m of movs ?? []) if (m.fornecedor_id && m.fornecedor?.nome) map.set(m.fornecedor_id, m.fornecedor.nome);
-    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1], "pt-BR"));
-  }, [movs]);
-
-  const movsFiltrados = useMemo(() => {
-    return (movs ?? []).filter((m: any) => {
-      if (fTipo !== "__all__" && m.tipo !== fTipo) return false;
-      if (fEvento && m.evento_projeto !== fEvento) return false;
-      if (fSaidaTipo !== "__all__" && m.saida_tipo !== fSaidaTipo) return false;
-      if (fSolicitante !== "__all__" && m.solicitante_id !== fSolicitante) return false;
-      if (fFornecedor !== "__all__" && m.fornecedor_id !== fFornecedor) return false;
-      const d = new Date(m.data_movimento);
-      if (fIni && d < new Date(fIni)) return false;
-      if (fFim && d > new Date(`${fFim}T23:59:59`)) return false;
-      return true;
+  const movsComSaldo = useMemo(() => {
+    const lista = movs ?? [];
+    const delta = (m: any) => {
+      const q = Number(m.quantidade) || 0;
+      if (m.tipo === "saida") return -q;
+      if (m.tipo === "devolucao") return m.condicao === "perdido" ? 0 : q;
+      return q; // entrada / ajuste
+    };
+    let saldo = Number(item?.quantidade_atual ?? 0);
+    return lista.map((m: any) => {
+      const row = { ...m, saldo };
+      saldo = saldo - delta(m);
+      return row;
     });
-  }, [movs, fTipo, fEvento, fSaidaTipo, fSolicitante, fFornecedor, fIni, fFim]);
-
-  const showSaidaTipoFiltro = fTipo === "__all__" || fTipo === "saida";
-  const showFornecedorFiltro = fTipo === "__all__" || fTipo === "entrada";
-
+  }, [movs, item?.quantidade_atual]);
 
   if (!item) return <div className="text-muted-foreground">Carregando…</div>;
 
@@ -177,83 +150,6 @@ function ItemHistorico() {
           <CardTitle>Histórico de movimentações</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6 mb-4">
-            <div className="space-y-1">
-              <label className="text-[11px] uppercase text-muted-foreground">Movimento</label>
-              <Select value={fTipo} onValueChange={setFTipo}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">Todos</SelectItem>
-                  <SelectItem value="entrada">Entrada</SelectItem>
-                  <SelectItem value="saida">Saída</SelectItem>
-                  <SelectItem value="devolucao">Devolução</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-[11px] uppercase text-muted-foreground">Evento/Projeto</label>
-              <Select value={fEvento ?? "__all__"} onValueChange={(v) => setFEvento(v === "__all__" ? null : v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">Todos</SelectItem>
-                  {eventosDisponiveis.map((e) => (
-                    <SelectItem key={e} value={e}>{e}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {showSaidaTipoFiltro && (
-              <div className="space-y-1">
-                <label className="text-[11px] uppercase text-muted-foreground">Tipo de saída</label>
-                <Select value={fSaidaTipo} onValueChange={setFSaidaTipo}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">Todos</SelectItem>
-                    {Object.entries(saidaTipoLabels).map(([v, l]) => (
-                      <SelectItem key={v} value={v}>{l}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            <div className="space-y-1">
-              <label className="text-[11px] uppercase text-muted-foreground">Solicitante</label>
-              <Select value={fSolicitante} onValueChange={setFSolicitante}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">Todos</SelectItem>
-                  {solicitantesDisponiveis.map(([id, nome]) => (
-                    <SelectItem key={id} value={id}>{nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {showFornecedorFiltro && (
-              <div className="space-y-1">
-                <label className="text-[11px] uppercase text-muted-foreground">Fornecedor</label>
-                <Select value={fFornecedor} onValueChange={setFFornecedor}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">Todos</SelectItem>
-                    {fornecedoresDisponiveis.map(([id, nome]) => (
-                      <SelectItem key={id} value={id}>{nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            <div className="space-y-1">
-              <label className="text-[11px] uppercase text-muted-foreground">De</label>
-              <Input type="date" value={fIni} onChange={(e) => setFIni(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[11px] uppercase text-muted-foreground">Até</label>
-              <Input type="date" value={fFim} onChange={(e) => setFFim(e.target.value)} />
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground mb-2">
-            {movsFiltrados.length} de {movs?.length ?? 0} movimentações
-          </p>
           <div className="overflow-x-auto">
 
             <table className="min-w-full text-sm">
@@ -263,6 +159,7 @@ function ItemHistorico() {
                   <th className="py-2 pr-4">Tipo</th>
                   <th className="py-2 pr-4">Subtipo</th>
                   <th className="py-2 pr-4 text-right">Qtd</th>
+                  <th className="py-2 pr-4 text-right">Saldo</th>
                   <th className="py-2 pr-4">Requisição</th>
                   <th className="py-2 pr-4">Evento/Projeto</th>
                   <th className="py-2 pr-4">Origem</th>
@@ -271,7 +168,7 @@ function ItemHistorico() {
                 </tr>
               </thead>
               <tbody>
-                {movsFiltrados.length ? movsFiltrados.map((m: any) => (
+                {movsComSaldo.length ? movsComSaldo.map((m: any) => (
                   <tr key={m.id} className="border-b border-border/50">
                     <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">{format(new Date(m.data_movimento), "dd/MM/yyyy HH:mm")}</td>
                     <td className="py-2.5 pr-4">{movementKindLabels[m.tipo]}</td>
@@ -285,6 +182,7 @@ function ItemHistorico() {
                         {m.tipo === "saida" ? "-" : "+"}{Number(m.quantidade)}
                       </span>
                     </td>
+                    <td className="py-2.5 pr-4 text-right tabular-nums font-medium">{Number(m.saldo)}</td>
                     <td className="py-2.5 pr-4 tabular-nums text-muted-foreground">
                       {m.requisicao_numero ? `REQ-${m.requisicao_numero}` : "—"}
                     </td>
@@ -294,7 +192,7 @@ function ItemHistorico() {
                     <td className="py-2.5 text-muted-foreground truncate max-w-[200px]">{m.observacoes ?? ""}</td>
                   </tr>
                 )) : (
-                  <tr><td colSpan={9} className="text-center py-8 text-muted-foreground">Sem movimentações para os filtros aplicados.</td></tr>
+                  <tr><td colSpan={10} className="text-center py-8 text-muted-foreground">Sem movimentações registradas.</td></tr>
                 )}
 
               </tbody>
