@@ -41,6 +41,8 @@ import {
 } from "@dnd-kit/core";
 import { toast } from "sonner";
 import { AvancarCardDialog } from "@/components/AvancarCardDialog";
+import { PrazoDot } from "@/components/PrazoDot";
+
 import { notifyResponsavel } from "@/lib/notify";
 
 const sb = supabase as any;
