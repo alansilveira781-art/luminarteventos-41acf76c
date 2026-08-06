@@ -388,6 +388,9 @@ function SolicitarContratoPublico() {
       setForm({ ...vazio });
       setEndCliente({ ...enderecoVazio });
       setEndResp({ ...enderecoVazio });
+      setEndResp2({ ...enderecoVazio });
+      setResp2Ativo(false);
+      setTestemunhas([]);
       setParcelas([{ vencimento: "", valor: "" }]);
       setQtdParcelas(1);
       setProposta(null);
