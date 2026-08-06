@@ -237,18 +237,32 @@ function RelatoriosPage() {
         title="Relatórios"
         description="Escolha um relatório, defina o período e visualize antes de exportar"
         actions={
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" size="lg" variant="outline" onClick={exportCsv} disabled={!body.length}>
-              <Download className="h-4 w-4 mr-1" /> Exportar CSV
-            </Button>
-            <Button type="button" size="lg" onClick={exportPdf} disabled={!body.length}>
-              <Printer className="h-4 w-4 mr-1" /> Exportar PDF
-            </Button>
-          </div>
+          aba === "relatorios" ? (
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" size="lg" variant="outline" onClick={exportCsv} disabled={!body.length}>
+                <Download className="h-4 w-4 mr-1" /> Exportar CSV
+              </Button>
+              <Button type="button" size="lg" onClick={exportPdf} disabled={!body.length}>
+                <Printer className="h-4 w-4 mr-1" /> Exportar PDF
+              </Button>
+            </div>
+          ) : null
         }
       />
 
+      <Tabs value={aba} onValueChange={(v: any) => setAba(v)}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
+          <TabsTrigger value="projecao">Projeção</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="projecao">
+          <ProjecaoMateriais itensLista={itensLista} />
+        </TabsContent>
+
+        <TabsContent value="relatorios">
       <Card className="p-4 mb-4">
+
         <FormSection>
           <FormField label="Tipo de relatório" wide>
             <Select value={reportId} onValueChange={(v: any) => setReportId(v)}>
