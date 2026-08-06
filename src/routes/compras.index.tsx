@@ -43,6 +43,7 @@ import { toast } from "sonner";
 import { AvancarCardDialog } from "@/components/AvancarCardDialog";
 import { PrazoAprovacaoDialog } from "@/components/compras/PrazoAprovacaoDialog";
 import { PrazoDot } from "@/components/PrazoDot";
+import { prazoVigente } from "@/lib/prazo";
 
 import { notifyResponsavel } from "@/lib/notify";
 
