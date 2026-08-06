@@ -47,6 +47,8 @@ type FormState = {
   condicao_pagamento: string;
   data_compra: string;
   data_solicitacao: string;
+  prazo: string;
+
   is_reembolso: boolean;
   reembolsar_para: string;
 };
