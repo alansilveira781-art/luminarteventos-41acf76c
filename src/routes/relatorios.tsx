@@ -7,16 +7,16 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FormField, FormSection } from "@/components/FormSection";
-import { Check, ChevronsUpDown, Download, FileText, Printer, X } from "lucide-react";
+import { Download, FileText, Printer } from "lucide-react";
 import { isAjusteMovimentacao } from "@/lib/utils";
 import { fetchAllRows } from "@/lib/fetch-all";
 import { saidaTipoLabels } from "@/lib/labels";
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
+import { ItensMultiSelect, itemLabel } from "@/components/estoque/ItensMultiSelect";
+import { ProjecaoMateriais } from "@/components/estoque/ProjecaoMateriais";
 
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 
