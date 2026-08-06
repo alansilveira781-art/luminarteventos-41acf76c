@@ -93,7 +93,7 @@ export async function gerarRelatorioVendasPdf(params: RelatorioVendasParams) {
     brl(l.valorComissao),
   ]);
 
-  const totalStyle = { fontStyle: "bold" as const, halign: "right" as const, fillColor: [55, 55, 55], textColor: 255 };
+  const totalStyle = { fontStyle: "bold" as const, halign: "right" as const, fillColor: [55, 55, 55] as [number, number, number], textColor: 255 };
   body.push([
     { content: `TOTAL (${linhas.length} ${linhas.length === 1 ? "venda" : "vendas"})`, colSpan: 6, styles: totalStyle },
     { content: brl(tot.proposta), styles: totalStyle },
@@ -153,7 +153,7 @@ export async function gerarRelatorioVendasPdf(params: RelatorioVendasParams) {
   autoTable(doc, {
     startY: cursorY + 3,
     head: [["Consultor", "Vendas", "Valor final", "Comissão", "% médio"]],
-    body: [
+    body: ([
       ...resumo.map(([nome, r]) => [
         nome,
         String(r.qtd),
@@ -171,7 +171,7 @@ export async function gerarRelatorioVendasPdf(params: RelatorioVendasParams) {
           styles: totalStyle,
         },
       ],
-    ],
+    ] as any),
     theme: "grid",
     styles: { fontSize: 8, cellPadding: 1.6 },
     headStyles: { fillColor: [55, 55, 55], textColor: 255, fontSize: 8, fontStyle: "bold" },
