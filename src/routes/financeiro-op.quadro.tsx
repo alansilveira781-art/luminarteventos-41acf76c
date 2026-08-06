@@ -474,7 +474,9 @@ function CardDetalheDialog({ card, onClose }: { card: Card | null; onClose: () =
     push("Tipo de despesa", full?.tipo_demanda);
     push("Evento / Projeto", full?.evento_projeto);
   }
+  push("Prazo", (full?.prazo ?? card.prazo) ? prazoLabel(full?.prazo ?? card.prazo) : null);
   push("Valor total", fmtBRL(full?.valor_total ?? card.valor_total));
+
 
   return (
     <Dialog open={!!card} onOpenChange={(o) => !o && onClose()}>
