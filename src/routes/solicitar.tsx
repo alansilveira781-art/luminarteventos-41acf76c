@@ -248,9 +248,9 @@ function SolicitarPage() {
 
   async function submit() {
     if (!form.tipo) return;
-    // Validação: se for compra, todos os itens listados devem estar completos.
-    if (form.tipo === "compra") {
-      if (form.itens.length === 0 || form.itens.some((it) => itemInvalido(it))) {
+    if (usaItens) {
+      const preenchidos = itensPreenchidos();
+      if (preenchidos.length === 0 || preenchidos.some((it) => itemInvalido(it))) {
         setShowItemErrors(true);
         toast.error("Preencha a descrição e a quantidade de todos os itens (ou remova as linhas em branco).");
         return;
@@ -258,15 +258,22 @@ function SolicitarPage() {
     }
     setSending(true);
     try {
-      const itensValidos =
-        form.tipo === "compra"
-          ? form.itens.map((it) => ({
-              descricao: it.descricao.trim(),
-              quantidade: Number(it.quantidade),
-              unidade: it.unidade.trim(),
-              valor_unitario: it.valor_unitario ? Number(it.valor_unitario) : null,
-            }))
-          : undefined;
+      const itensValidos = usaItens
+        ? itensPreenchidos().map((it) => ({
+            descricao: it.descricao.trim(),
+            quantidade: Number(it.quantidade),
+            unidade: it.unidade.trim(),
+            valor_unitario: it.valor_unitario
+              ? Number(String(it.valor_unitario).replace(",", "."))
+              : null,
+          }))
+        : undefined;
+
+      const total = usaItens
+        ? somaItens() || null
+        : form.tipo === "demanda" && Number(form.valor_total) > 0
+          ? Number(form.valor_total)
+          : null;
 
       const payload = {
         tipo: form.tipo,
@@ -277,7 +284,7 @@ function SolicitarPage() {
         solicitante_email: form.solicitante_email.trim(),
         solicitante_telefone: form.solicitante_telefone.trim(),
         descricao: form.descricao.trim(),
-        valor_total: null,
+        valor_total: total,
         itens: itensValidos,
         pago: form.tipo === "demanda" && !form.is_reembolso ? form.pago : null,
         parcelamento: form.is_reembolso ? "" : (form.parcelamento || ""),
