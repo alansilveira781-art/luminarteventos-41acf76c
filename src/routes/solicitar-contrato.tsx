@@ -329,7 +329,18 @@ function SolicitarContratoPublico() {
 
     setEnviando(true);
     try {
-      const res = await fetch("/api/public/solicitar-contrato", { method: "POST", body: fd });
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) {
+        toast.error("Sua sessão expirou. Entre novamente para enviar.");
+        return;
+      }
+      const res = await fetch("/api/public/solicitar-contrato", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
         toast.error(data?.error ?? "Não foi possível enviar a solicitação");
