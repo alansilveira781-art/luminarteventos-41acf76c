@@ -62,6 +62,10 @@ function RelatoriosPage() {
   const [itemIds, setItemIds] = useState<string[]>([]);
   const [buscaItem, setBuscaItem] = useState("");
   const [itemPopoverOpen, setItemPopoverOpen] = useState(false);
+  const [eventoProjeto, setEventoProjeto] = useState<string | null>(null);
+  const [saidaTipo, setSaidaTipo] = useState<string>("__all__");
+  const [solicitanteId, setSolicitanteId] = useState<string>("__all__");
+  const [fornecedorId, setFornecedorId] = useState<string>("__all__");
 
   const { data: itensLista = [] } = useQuery({
     queryKey: ["relatorios-itens-select"],
@@ -72,6 +76,29 @@ function RelatoriosPage() {
         { orderBy: { column: "nome" } },
       )),
   });
+
+  const { data: solicitantesLista = [] } = useQuery({
+    queryKey: ["relatorios-solicitantes-select"],
+    queryFn: async () =>
+      await fetchAllRows<{ id: string; nome: string }>("solicitantes", "id,nome", {
+        orderBy: { column: "nome" },
+      }),
+  });
+
+  const { data: fornecedoresLista = [] } = useQuery({
+    queryKey: ["relatorios-fornecedores-select"],
+    queryFn: async () =>
+      await fetchAllRows<{ id: string; nome: string }>("fornecedores", "id,nome", {
+        orderBy: { column: "nome" },
+      }),
+  });
+
+  const showEvento = ["saidas", "saidas_evento", "devolucoes"].includes(reportId);
+  const showSaidaTipo = ["saidas", "saidas_evento"].includes(reportId);
+  const showSolicitante = ["saidas", "devolucoes", "saidas_evento"].includes(reportId);
+  const showFornecedor = ["entradas", "gastos_mes", "gastos_categoria"].includes(reportId);
+
+
 
 
   const itensFiltrados = useMemo(() => {
