@@ -295,6 +295,8 @@ function SolicitarPage() {
         condicao_pagamento: form.is_reembolso ? "" : (form.condicao_pagamento || ""),
         data_compra: form.is_reembolso ? "" : (form.data_compra || ""),
         data_solicitacao: form.data_solicitacao || "",
+        prazo: form.prazo || "",
+
         is_reembolso: form.tipo === "demanda" ? form.is_reembolso : false,
         reembolsar_para: form.is_reembolso ? form.reembolsar_para.trim() : "",
       };
