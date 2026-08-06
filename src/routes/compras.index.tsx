@@ -41,6 +41,8 @@ import {
 } from "@dnd-kit/core";
 import { toast } from "sonner";
 import { AvancarCardDialog } from "@/components/AvancarCardDialog";
+import { PrazoDot } from "@/components/PrazoDot";
+
 import { notifyResponsavel } from "@/lib/notify";
 
 const sb = supabase as any;
@@ -62,6 +64,8 @@ type Compra = {
   data_compra: string | null;
   data_servico: string | null;
   valor_total: number | null;
+  prazo?: string | null;
+
   responsavel_id: string | null;
   responsavel_nome: string | null;
   tipo_compra: string | null;
@@ -97,7 +101,7 @@ function ComprasKanban() {
     queryFn: async () => {
       const { data, error } = await sb
         .from("compras")
-        .select("id,numero,status,titulo,solicitante,solicitante_id,fornecedor,comprador,data_solicitacao,data_compra,data_servico,valor_total,responsavel_id,responsavel_nome,tipo_compra,numero_nf,numeros_nf,tem_nf,empresa_faturada,created_by")
+        .select("id,numero,status,titulo,solicitante,solicitante_id,fornecedor,comprador,data_solicitacao,data_compra,data_servico,prazo,valor_total,responsavel_id,responsavel_nome,tipo_compra,numero_nf,numeros_nf,tem_nf,empresa_faturada,created_by")
 
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -554,9 +558,11 @@ function Card({
         >⋮⋮</span>
         <div className="flex-1 text-left min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <div className="font-medium text-sm truncate text-foreground flex-1 min-w-0">
-              {compra.titulo || compra.fornecedor || "Compra sem título"}
+            <div className="font-medium text-sm truncate text-foreground flex-1 min-w-0 flex items-center gap-1.5">
+              <PrazoDot prazo={compra.prazo} />
+              <span className="truncate">{compra.titulo || compra.fornecedor || "Compra sem título"}</span>
             </div>
+
             {compra.numero != null && (
               <span className="text-[10px] text-muted-foreground font-mono shrink-0 mt-0.5">
                 COMPRA-{compra.numero}

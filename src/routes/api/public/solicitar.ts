@@ -36,6 +36,13 @@ const baseSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional()
     .or(z.literal("")),
+  prazo: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .or(z.literal("")),
+
   is_reembolso: z.boolean().optional(),
   reembolsar_para: z.string().trim().max(160).optional().or(z.literal("")),
 });
@@ -241,6 +248,8 @@ export const Route = createFileRoute("/api/public/solicitar")({
               observacoes,
               valor_total: valorTotal,
               data_solicitacao: dataSolicitacao,
+              prazo: d.prazo || null,
+
               tipo_compra: d.subtipo || null,
               solicitante_email: solicitanteEmail,
               solicitante_id: solicitanteId,
@@ -308,6 +317,8 @@ export const Route = createFileRoute("/api/public/solicitar")({
           observacoes,
           valor_total: valorTotalDemanda,
           data_solicitacao: dataSolicitacao,
+          prazo: d.prazo || null,
+
           tipo_demanda: d.is_reembolso ? "reembolso" : (d.subtipo || null),
           solicitante_email: solicitanteEmail,
           solicitante_id: solicitanteId,

@@ -47,6 +47,8 @@ type FormState = {
   condicao_pagamento: string;
   data_compra: string;
   data_solicitacao: string;
+  prazo: string;
+
   is_reembolso: boolean;
   reembolsar_para: string;
 };
@@ -73,6 +75,8 @@ const initial: FormState = {
   condicao_pagamento: "",
   data_compra: "",
   data_solicitacao: hojeISO(),
+  prazo: "",
+
   is_reembolso: false,
   reembolsar_para: "",
 };
@@ -291,6 +295,8 @@ function SolicitarPage() {
         condicao_pagamento: form.is_reembolso ? "" : (form.condicao_pagamento || ""),
         data_compra: form.is_reembolso ? "" : (form.data_compra || ""),
         data_solicitacao: form.data_solicitacao || "",
+        prazo: form.prazo || "",
+
         is_reembolso: form.tipo === "demanda" ? form.is_reembolso : false,
         reembolsar_para: form.is_reembolso ? form.reembolsar_para.trim() : "",
       };
@@ -443,6 +449,17 @@ function SolicitarPage() {
                 Você pode alterar caso esteja registrando com atraso.
               </p>
             </Field>
+            <Field label="Prazo">
+              <Input
+                type="date"
+                value={form.prazo}
+                onChange={(e) => update({ prazo: e.target.value })}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Data limite para atendimento desta solicitação (opcional).
+              </p>
+            </Field>
+
 
             {!isCompra && (
               <div className="space-y-3 rounded-lg border border-border p-3 bg-muted/20">

@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Plus, Search, ChevronRight } from "lucide-react";
 import { DemandaDialog } from "@/components/DemandaDialog";
 import { AvancarCardDialog } from "@/components/AvancarCardDialog";
+import { PrazoDot } from "@/components/PrazoDot";
+
 import { notifyResponsavel } from "@/lib/notify";
 import { DEMANDA_STATUSES, TIPOS_QUE_VAO_PARA_RECEBIMENTO, proximoStatusDemanda, type DemandaStatus } from "@/lib/demandas";
 import { KanbanFilters, applyKanbanFilters, type FieldDef, type Filters } from "@/components/KanbanFilters";
@@ -86,7 +88,7 @@ function DemandasKanban() {
     queryFn: async () => {
       const { data, error } = await sb
         .from("demandas")
-        .select("id,numero,status,titulo,solicitante,fornecedor,comprador,data_solicitacao,data_compra,valor_total,tipo_demanda,responsavel_id,responsavel_nome")
+        .select("id,numero,status,titulo,solicitante,fornecedor,comprador,data_solicitacao,data_compra,prazo,valor_total,tipo_demanda,responsavel_id,responsavel_nome")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Demanda[];
@@ -436,9 +438,11 @@ function Card({
         >⋮⋮</button>
         <button type="button" onClick={onOpen} className="flex-1 text-left min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <div className="font-medium text-sm truncate text-foreground flex-1 min-w-0">
-              {demanda.titulo || demanda.fornecedor || "Demanda sem título"}
+            <div className="font-medium text-sm truncate text-foreground flex-1 min-w-0 flex items-center gap-1.5">
+              <PrazoDot prazo={(demanda as any).prazo} />
+              <span className="truncate">{demanda.titulo || demanda.fornecedor || "Demanda sem título"}</span>
             </div>
+
             {demanda.numero != null && (
               <span className="text-[10px] text-muted-foreground font-mono shrink-0 mt-0.5">
                 DEMANDA-{demanda.numero}

@@ -33,6 +33,10 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { FINANCEIRO_STATUSES, type FinanceiroStatus } from "@/lib/financeiro-quadro";
+import { PrazoDot } from "@/components/PrazoDot";
+import { prazoLabel } from "@/lib/prazo";
+
+
 
 export const Route = createFileRoute("/financeiro-op/quadro")({
   component: QuadroFinanceiro,
@@ -50,6 +54,7 @@ type Card = {
   fornecedor: string | null;
   solicitante: string | null;
   valor_total: number | null;
+  prazo: string | null;
   status_financeiro: FinanceiroStatus;
   financeiro_ordem: number | null;
 };
@@ -72,7 +77,7 @@ function QuadroFinanceiro() {
       const { data, error } = await sb
         .from("compras")
         .select(
-          "id,numero,titulo,fornecedor,solicitante,valor_total,status_financeiro,financeiro_ordem",
+          "id,numero,titulo,fornecedor,solicitante,valor_total,prazo,status_financeiro,financeiro_ordem",
         )
         .not("status_financeiro", "is", null);
       if (error) throw error;
@@ -85,6 +90,7 @@ function QuadroFinanceiro() {
           fornecedor: r.fornecedor,
           solicitante: r.solicitante,
           valor_total: r.valor_total,
+          prazo: r.prazo ?? null,
           status_financeiro: r.status_financeiro,
           financeiro_ordem: r.financeiro_ordem,
         }),
@@ -98,7 +104,7 @@ function QuadroFinanceiro() {
       const { data, error } = await sb
         .from("demandas")
         .select(
-          "id,numero,titulo,fornecedor,solicitante,valor_total,status_financeiro,financeiro_ordem",
+          "id,numero,titulo,fornecedor,solicitante,valor_total,prazo,status_financeiro,financeiro_ordem",
         )
         .not("status_financeiro", "is", null);
       if (error) throw error;
@@ -111,12 +117,14 @@ function QuadroFinanceiro() {
           fornecedor: r.fornecedor,
           solicitante: r.solicitante,
           valor_total: r.valor_total,
+          prazo: r.prazo ?? null,
           status_financeiro: r.status_financeiro,
           financeiro_ordem: r.financeiro_ordem,
         }),
       );
     },
   });
+
 
   const cards = useMemo(() => [...compras, ...demandas], [compras, demandas]);
 
@@ -294,9 +302,11 @@ function CardItem({
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <div className="font-medium text-sm truncate text-foreground flex-1 min-w-0">
-              {card.titulo ?? "(sem título)"}
+            <div className="font-medium text-sm truncate text-foreground flex-1 min-w-0 flex items-center gap-1.5">
+              <PrazoDot prazo={card.prazo} />
+              <span className="truncate">{card.titulo ?? "(sem título)"}</span>
             </div>
+
             <span
               className={cn(
                 "inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium border shrink-0",
@@ -466,7 +476,9 @@ function CardDetalheDialog({ card, onClose }: { card: Card | null; onClose: () =
     push("Tipo de despesa", full?.tipo_demanda);
     push("Evento / Projeto", full?.evento_projeto);
   }
+  push("Prazo", (full?.prazo ?? card.prazo) ? prazoLabel(full?.prazo ?? card.prazo) : null);
   push("Valor total", fmtBRL(full?.valor_total ?? card.valor_total));
+
 
   return (
     <Dialog open={!!card} onOpenChange={(o) => !o && onClose()}>
