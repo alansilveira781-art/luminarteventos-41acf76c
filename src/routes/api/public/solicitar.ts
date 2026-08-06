@@ -289,6 +289,16 @@ export const Route = createFileRoute("/api/public/solicitar")({
         }
 
         // Demanda
+        const itensDemanda = d.itens ?? [];
+        const somaItensDemanda = itensDemanda.reduce(
+          (acc, it) => acc + (it.valor_unitario ?? 0) * it.quantidade,
+          0,
+        );
+        const valorTotalDemanda =
+          itensDemanda.length > 0
+            ? (somaItensDemanda > 0 ? somaItensDemanda : (d.valor_total ?? null))
+            : (d.valor_total ?? null);
+
         const demandaInsert: any = {
           status: "solicitacao",
           titulo: d.titulo,
@@ -296,7 +306,7 @@ export const Route = createFileRoute("/api/public/solicitar")({
           fornecedor: d.fornecedor || null,
           descritivo: d.descricao || null,
           observacoes,
-          valor_total: d.valor_total ?? null,
+          valor_total: valorTotalDemanda,
           data_solicitacao: dataSolicitacao,
           tipo_demanda: d.is_reembolso ? "reembolso" : (d.subtipo || null),
           solicitante_email: solicitanteEmail,
