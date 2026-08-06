@@ -25,6 +25,7 @@ import { listEventos } from "@/lib/sheets.functions";
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { PagamentosGrid } from "@/components/PagamentosGrid";
 import { PrazoDot } from "@/components/PrazoDot";
+import { prazoVigente } from "@/lib/prazo";
 import { EventoInfoCard } from "@/components/compras/EventoInfoCard";
 import { agruparPagamentos, expandirPagamentos, pagamentosBatem, resumoPagamentos, validarPagamentos, type PagamentoLinha } from "@/lib/pagamentos";
 
