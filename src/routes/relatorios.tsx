@@ -15,6 +15,8 @@ import { FormField, FormSection } from "@/components/FormSection";
 import { Check, ChevronsUpDown, Download, FileText, Printer, X } from "lucide-react";
 import { isAjusteMovimentacao } from "@/lib/utils";
 import { fetchAllRows } from "@/lib/fetch-all";
+import { saidaTipoLabels } from "@/lib/labels";
+import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 
