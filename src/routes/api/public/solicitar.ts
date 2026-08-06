@@ -317,6 +317,8 @@ export const Route = createFileRoute("/api/public/solicitar")({
           observacoes,
           valor_total: valorTotalDemanda,
           data_solicitacao: dataSolicitacao,
+          prazo: d.prazo || null,
+
           tipo_demanda: d.is_reembolso ? "reembolso" : (d.subtipo || null),
           solicitante_email: solicitanteEmail,
           solicitante_id: solicitanteId,
