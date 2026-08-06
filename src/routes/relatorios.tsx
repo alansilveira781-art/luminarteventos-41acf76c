@@ -545,6 +545,7 @@ async function loadReport(
         .eq("tipo", tipo)
         .gte("data_movimento", ini).lte("data_movimento", fim);
       if (filtroItem) q = q.in("item_id", filtroItem);
+      q = applyExtras(q);
       return q.order("data_movimento", { ascending: false }).range(f, t);
     });
     return rows.filter((m: any) => !isAjusteMovimentacao(m));
