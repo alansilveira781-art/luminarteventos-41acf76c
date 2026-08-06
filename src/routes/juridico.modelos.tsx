@@ -12,15 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import DOMPurify from "dompurify";
-
-const SANITIZE_OPTS = {
-  ALLOWED_TAGS: ["p", "br", "strong", "em", "u", "h1", "h2", "h3", "ul", "ol", "li", "a", "span", "div", "blockquote"],
-  ALLOWED_ATTR: ["href", "target", "rel", "class", "style"],
-  FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "form", "input"],
-  FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover", "onfocus", "onblur"],
-};
-const sanitizeHtml = (html: string) => DOMPurify.sanitize(html ?? "", SANITIZE_OPTS);
+import { CAMPOS_SUGERIDOS, extrairCampos, sanitizeHtml } from "@/lib/juridico/modelo-render";
 
 export const Route = createFileRoute("/juridico/modelos")({ component: ModelosPage });
 
@@ -33,13 +25,8 @@ const TIPOS = [
 
 type Modelo = { id: string; tipo: string; nome: string; corpo_html: string; variaveis: string[]; ativo: boolean };
 
-function extractVars(html: string): string[] {
-  const set = new Set<string>();
-  const re = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html))) set.add(m[1]);
-  return Array.from(set);
-}
+const extractVars = extrairCampos;
+
 
 function ModelosPage() {
   const qc = useQueryClient();
