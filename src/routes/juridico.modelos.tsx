@@ -116,7 +116,7 @@ function ModeloDialog({ open, onOpenChange, editing, onSave }: {
   const [f, setF] = useState<any>({});
   const ref = useRef<HTMLDivElement>(null);
   useMemo(() => {
-    const init = editing ?? { tipo: "corporativo", nome: "", corpo_html: "<p>Escreva o contrato aqui. Use <strong>{{cliente_nome}}</strong>, {{valor}}, {{cnpj}} para campos dinâmicos.</p>" };
+    const init = editing ?? { tipo: "corporativo", nome: "", corpo_html: "<p>Cole ou escreva o contrato aqui. Use <strong>[cliente_nome]</strong>, [cliente_documento], [valor_total] nos trechos a preencher.</p>" };
     setF(init);
     setTimeout(() => { if (ref.current) ref.current.innerHTML = sanitizeHtml(init.corpo_html ?? ""); }, 50);
   }, [editing, open]);
