@@ -21,6 +21,9 @@ import { MentionInput, renderCommentText } from "@/components/MentionInput";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { EMPRESAS } from "@/lib/empresas";
+import { DefinirCategoriaDialog, CATEGORIAS_CONTRATO } from "@/components/juridico/DefinirCategoriaDialog";
+import { EnderecoEditor } from "@/components/juridico/EnderecoEditor";
+import { PagamentoEditor } from "@/components/juridico/PagamentoEditor";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/juridico/")({ component: QuadroContratos });
