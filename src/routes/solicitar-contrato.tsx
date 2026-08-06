@@ -76,6 +76,14 @@ const vazio = {
   resp_legal2_telefone: "",
   valor: "",
   data_fechamento: "",
+  montagem_inicio: "",
+  montagem_fim: "",
+  desmontagem_inicio: "",
+  desmontagem_fim: "",
+  montagem_hora_inicio: "",
+  montagem_hora_fim: "",
+  desmontagem_hora_inicio: "",
+  desmontagem_hora_fim: "",
   observacoes: "",
 };
 
