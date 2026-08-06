@@ -3363,6 +3363,7 @@ export type Database = {
       }
       juridico_contratos: {
         Row: {
+          categoria: string | null
           cliente_bairro: string | null
           cliente_cep: string | null
           cliente_cidade: string | null
@@ -3413,6 +3414,7 @@ export type Database = {
           variaveis_valores: Json | null
         }
         Insert: {
+          categoria?: string | null
           cliente_bairro?: string | null
           cliente_cep?: string | null
           cliente_cidade?: string | null
@@ -3463,6 +3465,7 @@ export type Database = {
           variaveis_valores?: Json | null
         }
         Update: {
+          categoria?: string | null
           cliente_bairro?: string | null
           cliente_cep?: string | null
           cliente_cidade?: string | null
