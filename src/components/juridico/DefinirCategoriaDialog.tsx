@@ -44,6 +44,7 @@ export function DefinirCategoriaDialog({
   const [categoria, setCategoria] = useState<string>("");
   const [modeloId, setModeloId] = useState<string>("");
   const [modelos, setModelos] = useState<any[]>([]);
+  const [empresas, setEmpresas] = useState<any[]>([]);
   const [manuais, setManuais] = useState<Record<string, string>>({});
   const [salvando, setSalvando] = useState(false);
 
@@ -57,6 +58,9 @@ export function DefinirCategoriaDialog({
       .eq("ativo", true)
       .order("nome")
       .then(({ data }: any) => setModelos(data ?? []));
+    sb.from("admin_empresas")
+      .select("razao_social,nome_fantasia,cnpj,endereco,representante_nome,representante_documento")
+      .then(({ data }: any) => setEmpresas(data ?? []));
   }, [open, contrato?.id]);
 
   const modelosDaCategoria = useMemo(
@@ -64,10 +68,22 @@ export function DefinirCategoriaDialog({
     [modelos, categoria],
   );
 
+  const empresa = useMemo(() => {
+    const alvo = (contrato?.empresa ?? "").trim().toLowerCase();
+    if (!alvo) return null;
+    return (
+      empresas.find(
+        (e) =>
+          (e.razao_social ?? "").trim().toLowerCase() === alvo ||
+          (e.nome_fantasia ?? "").trim().toLowerCase() === alvo,
+      ) ?? null
+    );
+  }, [empresas, contrato?.empresa]);
+
   const modelo = modelos.find((m) => m.id === modeloId) ?? null;
   const auto = useMemo(
-    () => (contrato ? variaveisDoContrato({ ...contrato, categoria }) : {}),
-    [contrato, categoria],
+    () => (contrato ? variaveisDoContrato({ ...contrato, categoria }, empresa) : {}),
+    [contrato, categoria, empresa],
   );
   const campos = useMemo(() => extrairCampos(modelo?.corpo_html ?? ""), [modelo]);
   const pendentes = campos.filter((c) => !(auto as any)[c]);
