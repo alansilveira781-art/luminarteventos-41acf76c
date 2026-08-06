@@ -585,8 +585,125 @@ function SolicitarContratoPublico() {
               <div className="text-xs font-medium text-muted-foreground mb-2">Endereço completo</div>
               <EnderecoFields valor={endResp} onChange={setEndResp} erros={erros} prefixo="resp_legal" />
             </div>
+
+            {!resp2Ativo ? (
+              <Button type="button" variant="outline" size="sm" onClick={() => setResp2Ativo(true)}>
+                Adicionar segundo responsável legal
+              </Button>
+            ) : (
+              <div className="border-t pt-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold">2º Responsável Legal</div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setResp2Ativo(false);
+                      setEndResp2({ ...enderecoVazio });
+                      set("resp_legal2_nome", "");
+                      set("resp_legal2_documento", "");
+                      set("resp_legal2_email", "");
+                      set("resp_legal2_telefone", "");
+                    }}
+                  >
+                    Remover
+                  </Button>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>Nome *</Label>
+                    <Input value={form.resp_legal2_nome} onChange={(e) => set("resp_legal2_nome", e.target.value)} placeholder="Nome completo" />
+                    <Erro msg={erros.resp_legal2_nome} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>CPF *</Label>
+                    <Input inputMode="numeric" value={form.resp_legal2_documento} onChange={(e) => set("resp_legal2_documento", e.target.value)} />
+                    <Erro msg={erros.resp_legal2_documento} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>E-mail</Label>
+                    <Input type="email" value={form.resp_legal2_email} onChange={(e) => set("resp_legal2_email", e.target.value)} />
+                    <Erro msg={erros.resp_legal2_email} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Telefone</Label>
+                    <Input value={form.resp_legal2_telefone} onChange={(e) => set("resp_legal2_telefone", e.target.value)} />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground mb-2">Endereço completo</div>
+                  <EnderecoFields valor={endResp2} onChange={setEndResp2} erros={erros} prefixo="resp_legal2" />
+                </div>
+              </div>
+            )}
           </Card>
         )}
+
+        <Card className="p-5 space-y-4">
+          <div>
+            <div className="text-sm font-semibold">Testemunhas (opcional)</div>
+            <p className="text-xs text-muted-foreground">
+              Até 2 testemunhas que assinarão o contrato.
+            </p>
+          </div>
+          {testemunhas.map((t, i) => (
+            <div key={i} className="grid gap-4 sm:grid-cols-[1fr_1fr_1fr_auto] items-start">
+              <div className="space-y-1.5">
+                <Label>Nome *</Label>
+                <Input
+                  value={t.nome}
+                  onChange={(e) =>
+                    setTestemunhas((p) => p.map((x, j) => (j === i ? { ...x, nome: e.target.value } : x)))
+                  }
+                />
+                <Erro msg={erros[`testemunha_${i}_nome`]} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>CPF *</Label>
+                <Input
+                  inputMode="numeric"
+                  value={t.documento}
+                  onChange={(e) =>
+                    setTestemunhas((p) => p.map((x, j) => (j === i ? { ...x, documento: e.target.value } : x)))
+                  }
+                />
+                <Erro msg={erros[`testemunha_${i}_documento`]} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>E-mail</Label>
+                <Input
+                  type="email"
+                  value={t.email}
+                  onChange={(e) =>
+                    setTestemunhas((p) => p.map((x, j) => (j === i ? { ...x, email: e.target.value } : x)))
+                  }
+                />
+                <Erro msg={erros[`testemunha_${i}_email`]} />
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="mt-6"
+                onClick={() => setTestemunhas((p) => p.filter((_, j) => j !== i))}
+              >
+                Remover
+              </Button>
+            </div>
+          ))}
+          {testemunhas.length < 2 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setTestemunhas((p) => [...p, { ...testemunhaVazia }])}
+            >
+              Adicionar testemunha
+            </Button>
+          )}
+        </Card>
+
 
         <Card className="p-5 space-y-4">
           <div>
