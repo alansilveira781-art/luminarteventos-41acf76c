@@ -577,22 +577,26 @@ function SolicitarContratoPublico() {
               Informar horários (opcional)
             </label>
             {horariosAtivos && (
-              <div className="grid gap-4 sm:grid-cols-4">
-                <div className="space-y-1.5">
-                  <Label>Montagem — início</Label>
-                  <Input type="time" value={form.montagem_hora_inicio} onChange={(e) => set("montagem_hora_inicio", e.target.value)} />
+              <div className="space-y-4 rounded-lg border p-4 bg-muted/20">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Montagem — início</Label>
+                    <Input type="time" value={form.montagem_hora_inicio} onChange={(e) => set("montagem_hora_inicio", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Montagem — término</Label>
+                    <Input type="time" value={form.montagem_hora_fim} onChange={(e) => set("montagem_hora_fim", e.target.value)} />
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Montagem — término</Label>
-                  <Input type="time" value={form.montagem_hora_fim} onChange={(e) => set("montagem_hora_fim", e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Desmontagem — início</Label>
-                  <Input type="time" value={form.desmontagem_hora_inicio} onChange={(e) => set("desmontagem_hora_inicio", e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Desmontagem — término</Label>
-                  <Input type="time" value={form.desmontagem_hora_fim} onChange={(e) => set("desmontagem_hora_fim", e.target.value)} />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Desmontagem — início</Label>
+                    <Input type="time" value={form.desmontagem_hora_inicio} onChange={(e) => set("desmontagem_hora_inicio", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Desmontagem — término</Label>
+                    <Input type="time" value={form.desmontagem_hora_fim} onChange={(e) => set("desmontagem_hora_fim", e.target.value)} />
+                  </div>
                 </div>
               </div>
             )}
