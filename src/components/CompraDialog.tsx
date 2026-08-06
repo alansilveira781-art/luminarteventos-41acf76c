@@ -542,6 +542,12 @@ export function CompraDialog({
               <FormField label="Data da solicitação">
                 <Input type="date" value={form.data_solicitacao ?? ""} onChange={(e) => setForm({ ...form, data_solicitacao: e.target.value })} />
               </FormField>
+              <FormField label="Prazo">
+                <div className="flex items-center gap-2">
+                  <Input type="date" value={(form as any).prazo ?? ""} onChange={(e) => setForm({ ...form, prazo: e.target.value || null } as any)} />
+                  <PrazoDot prazo={(form as any).prazo} />
+                </div>
+              </FormField>
               {form.tipo_compra === "servico" ? (
                 <FormField label="Data do serviço">
                   <Input type="date" value={form.data_servico ?? ""} onChange={(e) => setForm({ ...form, data_servico: e.target.value })} />
@@ -552,6 +558,9 @@ export function CompraDialog({
                 </FormField>
               )}
             </FormSection>
+
+            <EventoInfoCard eventos={itens.map((it) => it.evento_projeto ?? "")} />
+
 
             <div className="mt-6 space-y-4">
               <PagamentosGrid
