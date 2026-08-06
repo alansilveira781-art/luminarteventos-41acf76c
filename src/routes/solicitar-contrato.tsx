@@ -335,6 +335,14 @@ function SolicitarContratoPublico() {
       resp_legal_email: isPJ ? form.resp_legal_email.trim() : "",
       resp_legal_telefone: isPJ ? form.resp_legal_telefone.trim() : "",
       resp_legal_endereco: isPJ ? endResp : null,
+      resp_legal2_nome: isPJ && resp2Ativo ? form.resp_legal2_nome.trim() : "",
+      resp_legal2_documento: isPJ && resp2Ativo ? form.resp_legal2_documento.trim() : "",
+      resp_legal2_email: isPJ && resp2Ativo ? form.resp_legal2_email.trim() : "",
+      resp_legal2_telefone: isPJ && resp2Ativo ? form.resp_legal2_telefone.trim() : "",
+      resp_legal2_endereco: isPJ && resp2Ativo ? endResp2 : null,
+      testemunhas: testemunhas
+        .filter((t) => t.nome.trim())
+        .map((t) => ({ nome: t.nome.trim(), documento: t.documento.trim(), email: t.email.trim() })),
       valor: valorTotal,
       pagamento_forma: pagForma,
       pagamento_modo: qtdParcelas > 1 ? pagModo : "igual",
