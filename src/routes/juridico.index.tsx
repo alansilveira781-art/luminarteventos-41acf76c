@@ -211,6 +211,14 @@ function QuadroContratos() {
         onSaved={(created) => { load(); setEditing(created); }}
       />
 
+      <DefinirCategoriaDialog
+        contrato={criacaoCard}
+        open={!!criacaoCard}
+        onOpenChange={(v) => !v && setCriacaoCard(null)}
+        onConfirm={aplicarCriacao}
+      />
+
+
       <ContratoDetalhesDialog
         contrato={editing}
         onClose={() => setEditing(null)}
