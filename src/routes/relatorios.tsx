@@ -444,6 +444,7 @@ async function loadReport(
         .eq("tipo", "saida")
         .gte("data_movimento", ini).lte("data_movimento", fim);
       if (filtroItem) q = q.in("item_id", filtroItem);
+      q = applyExtras(q);
       return q.order("data_movimento", { ascending: false }).range(f, t);
     });
     return rows.filter((m: any) => !isAjusteMovimentacao(m));
@@ -456,6 +457,7 @@ async function loadReport(
         .eq("tipo", "entrada")
         .gte("data_movimento", ini).lte("data_movimento", fim);
       if (filtroItem) q = q.in("item_id", filtroItem);
+      q = applyExtras(q);
       return q.order("data_movimento", { ascending: false }).range(f, t);
     });
     return rows.filter((m: any) => !isAjusteMovimentacao(m));
@@ -464,13 +466,15 @@ async function loadReport(
     return fetchPaged((f, t) => {
       let q: any = supabase
         .from("movimentacoes")
-        .select(sel("data_movimento,quantidade,responsavel_recebimento, item:itens(nome,codigo,unidade), solicitante:solicitantes(nome)"))
+        .select(sel("data_movimento,quantidade,responsavel_recebimento,evento_projeto, item:itens(nome,codigo,unidade), solicitante:solicitantes(nome)"))
         .eq("tipo", "devolucao")
         .gte("data_movimento", ini).lte("data_movimento", fim);
       if (filtroItem) q = q.in("item_id", filtroItem);
+      q = applyExtras(q);
       return q.order("data_movimento", { ascending: false }).range(f, t);
     });
   }
+
   if (id === "ajustes") {
     const rows = await fetchPaged((f, t) => {
       let q: any = supabase
