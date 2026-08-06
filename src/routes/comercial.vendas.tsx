@@ -13,6 +13,10 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/PageHeader";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 import { MoneyInput } from "@/components/MoneyInput";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -465,11 +469,22 @@ function VendasPage() {
     delMut.mutate([r.id]);
   }
 
+  function filtrosDescricao(): string[] {
+    const f: string[] = [];
+    const d = (x: Date | null) => (x ? x.toLocaleDateString("pt-BR") : "—");
+    if (periodo.from || periodo.to) f.push(`Período: ${d(periodo.from)} a ${d(periodo.to)}`);
+    if (empresa !== "Todos") f.push(`Empresa: ${empresa}`);
+    if (consultor !== "Todos") f.push(`Consultor: ${consultor}`);
+    if (classificacao !== "Todos") f.push(`Classificação: ${classificacao}`);
+    if (busca.trim()) f.push(`Busca: ${busca.trim()}`);
+    return f;
+  }
+
   function exportCsv() {
     const headers = [
       "Data do Evento", "Data de Registro", "Tipo", "Nome do Evento", "Local", "Cidade", "Estado",
       "Classificação", "Consultor", "Cerimonial", "Decorador", "Empresa",
-      "Valor da Proposta", "Desconto", "Valor Final", "Valor BV",
+      "Valor da Proposta", "Desconto", "Valor Final", "Valor BV", "Valor Comissão",
     ];
     const esc = (v: string | number | null) => {
       const s = v === null || v === undefined ? "" : String(v);
@@ -482,7 +497,7 @@ function VendasPage() {
         r.dataRegistro ?? "", r.tipo ?? "", r.nomeEvento ?? "",
         r.local ?? "", r.cidade ?? "", r.estado ?? "",
         r.classificacao ?? "", r.consultor ?? "", r.cerimonial ?? "", r.decorador ?? "", r.empresa ?? "",
-        r.valorProposta, r.desconto, r.valorFinal, r.valorBV,
+        r.valorProposta, r.desconto, r.valorFinal, r.valorBV, r.valorComissao ?? 0,
       ].map(esc).join(";"));
     }
 
@@ -494,6 +509,35 @@ function VendasPage() {
     a.click();
     URL.revokeObjectURL(url);
   }
+
+  async function exportPdf() {
+    try {
+      const { gerarRelatorioVendasPdf } = await import("@/lib/comercial/vendas-relatorio");
+      await gerarRelatorioVendasPdf({
+        filtros: filtrosDescricao(),
+        linhas: sorted.map((r) => ({
+          dataEvento: r.dataEvento ?? null,
+          dataRegistro: r.dataRegistro ?? null,
+          nomeEvento: r.nomeEvento ?? null,
+          local: r.local ?? null,
+          cidade: r.cidade ?? null,
+          estado: r.estado ?? null,
+          empresa: r.empresa ?? null,
+          classificacao: r.classificacao ?? null,
+          consultor: r.consultor ?? null,
+          cerimonial: r.cerimonial ?? null,
+          valorProposta: Number(r.valorProposta || 0),
+          desconto: Number(r.desconto || 0),
+          valorFinal: Number(r.valorFinal || 0),
+          valorBV: Number(r.valorBV || 0),
+          valorComissao: Number(r.valorComissao || 0),
+        })),
+      });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao gerar o relatório");
+    }
+  }
+
 
   function resetFiltros() {
     setEmpresa("Todos"); setConsultor("Todos"); setClassificacao("Todos");
@@ -567,9 +611,18 @@ function VendasPage() {
         description="Cadastro e gestão de vendas"
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={exportCsv} disabled={!sorted.length}>
-              <Download className="h-4 w-4 mr-2" /> Exportar CSV
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={!sorted.length}>
+                  <Download className="h-4 w-4 mr-2" /> Exportar relatório
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => { void exportPdf(); }}>PDF</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportCsv()}>CSV</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <Button
               variant="outline"
               size="sm"

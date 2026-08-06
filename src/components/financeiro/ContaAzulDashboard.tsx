@@ -15,6 +15,8 @@ import { useDreEstrutura } from "@/hooks/useDreEstrutura";
 import { agruparParcelamentos, type GroupedLancRow } from "@/lib/conta-azul/agrupar-parcelas";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { IndicadoresEventos } from "@/components/financeiro/IndicadoresEventos";
+
 
 
 
@@ -112,14 +114,17 @@ export function ContaAzulDashboard() {
       <TabsList className="mb-4 print:hidden">
         <TabsTrigger value="painel">Painel Financeiro</TabsTrigger>
         <TabsTrigger value="analise">Análise Detalhada</TabsTrigger>
+        <TabsTrigger value="indicadores">Indicadores</TabsTrigger>
         <TabsTrigger value="fluxo">Fluxo de Caixa</TabsTrigger>
       </TabsList>
       <TabsContent value="painel"><PainelFinanceiro /></TabsContent>
       <TabsContent value="analise"><AnaliseDetalhada /></TabsContent>
+      <TabsContent value="indicadores"><IndicadoresEventos /></TabsContent>
       <TabsContent value="fluxo"><FluxoCaixa /></TabsContent>
     </Tabs>
   );
 }
+
 
 function buildPeriodo(ano: number, mes: number) {
   const pad = (n: number) => String(n).padStart(2, "0");
