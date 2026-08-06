@@ -278,7 +278,24 @@ function SolicitarContratoPublico() {
       if (!e.resp_legal_documento && digitos(form.resp_legal_documento).length !== 11)
         e.resp_legal_documento = "Informe um CPF válido (11 dígitos)";
       validarEndereco(endResp, "resp_legal");
+
+      if (resp2Ativo) {
+        req("resp_legal2_nome", form.resp_legal2_nome);
+        req("resp_legal2_documento", form.resp_legal2_documento);
+        if (!e.resp_legal2_documento && digitos(form.resp_legal2_documento).length !== 11)
+          e.resp_legal2_documento = "Informe um CPF válido (11 dígitos)";
+        if (form.resp_legal2_email && !emailOk(form.resp_legal2_email))
+          e.resp_legal2_email = "E-mail inválido";
+        validarEndereco(endResp2, "resp_legal2");
+      }
     }
+
+    testemunhas.forEach((t, i) => {
+      if (!t.nome.trim() && !t.documento.trim()) return;
+      if (!t.nome.trim()) e[`testemunha_${i}_nome`] = "Informe o nome";
+      if (digitos(t.documento).length !== 11) e[`testemunha_${i}_documento`] = "CPF inválido";
+      if (t.email && !emailOk(t.email)) e[`testemunha_${i}_email`] = "E-mail inválido";
+    });
 
     if (valorTotal <= 0) e.valor = "Informe o valor do contrato";
     parcelas.forEach((p, i) => {
