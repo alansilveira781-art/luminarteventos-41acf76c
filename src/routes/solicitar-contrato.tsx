@@ -9,6 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { EMPRESAS } from "@/lib/empresas";
 import { CheckCircle2, Loader2, Building2, User } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+
 
 export const Route = createFileRoute("/solicitar-contrato")({
   head: () => ({
