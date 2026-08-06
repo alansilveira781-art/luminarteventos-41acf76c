@@ -3387,10 +3387,18 @@ export type Database = {
           created_by: string | null
           data_assinatura: string | null
           data_fechamento: string | null
+          desmontagem_fim: string | null
+          desmontagem_hora_fim: string | null
+          desmontagem_hora_inicio: string | null
+          desmontagem_inicio: string | null
           empresa: string | null
           forma_pagamento: string | null
           id: string
           modelo_id: string | null
+          montagem_fim: string | null
+          montagem_hora_fim: string | null
+          montagem_hora_inicio: string | null
+          montagem_inicio: string | null
           numero: number | null
           observacoes: string | null
           ordem: number
@@ -3450,10 +3458,18 @@ export type Database = {
           created_by?: string | null
           data_assinatura?: string | null
           data_fechamento?: string | null
+          desmontagem_fim?: string | null
+          desmontagem_hora_fim?: string | null
+          desmontagem_hora_inicio?: string | null
+          desmontagem_inicio?: string | null
           empresa?: string | null
           forma_pagamento?: string | null
           id?: string
           modelo_id?: string | null
+          montagem_fim?: string | null
+          montagem_hora_fim?: string | null
+          montagem_hora_inicio?: string | null
+          montagem_inicio?: string | null
           numero?: number | null
           observacoes?: string | null
           ordem?: number
@@ -3513,10 +3529,18 @@ export type Database = {
           created_by?: string | null
           data_assinatura?: string | null
           data_fechamento?: string | null
+          desmontagem_fim?: string | null
+          desmontagem_hora_fim?: string | null
+          desmontagem_hora_inicio?: string | null
+          desmontagem_inicio?: string | null
           empresa?: string | null
           forma_pagamento?: string | null
           id?: string
           modelo_id?: string | null
+          montagem_fim?: string | null
+          montagem_hora_fim?: string | null
+          montagem_hora_inicio?: string | null
+          montagem_inicio?: string | null
           numero?: number | null
           observacoes?: string | null
           ordem?: number

@@ -83,6 +83,14 @@ type Contrato = {
   ordem: number;
   data_fechamento: string | null;
   data_assinatura: string | null;
+  montagem_inicio?: string | null;
+  montagem_fim?: string | null;
+  desmontagem_inicio?: string | null;
+  desmontagem_fim?: string | null;
+  montagem_hora_inicio?: string | null;
+  montagem_hora_fim?: string | null;
+  desmontagem_hora_inicio?: string | null;
+  desmontagem_hora_fim?: string | null;
   observacoes: string | null;
   proposta_numero: number | null;
   proposta_ref: string | null;
@@ -571,6 +579,14 @@ function ContratoDetalhesDialog({
       observacoes: form.observacoes || null,
       data_fechamento: form.data_fechamento || null,
       data_assinatura: form.data_assinatura || null,
+      montagem_inicio: form.montagem_inicio || null,
+      montagem_fim: form.montagem_fim || null,
+      desmontagem_inicio: form.desmontagem_inicio || null,
+      desmontagem_fim: form.desmontagem_fim || null,
+      montagem_hora_inicio: form.montagem_hora_inicio || null,
+      montagem_hora_fim: form.montagem_hora_fim || null,
+      desmontagem_hora_inicio: form.desmontagem_hora_inicio || null,
+      desmontagem_hora_fim: form.desmontagem_hora_fim || null,
       cliente_cep: form.cliente_cep || null,
       cliente_logradouro: form.cliente_logradouro || null,
       cliente_numero: form.cliente_numero || null,
@@ -899,6 +915,41 @@ function ContratoDetalhesDialog({
               <div>
                 <Label>Data de assinatura</Label>
                 <Input type="date" value={form.data_assinatura ?? ""} onChange={(e) => setForm({ ...form, data_assinatura: e.target.value })} />
+              </div>
+              <div className="col-span-2 grid grid-cols-2 gap-3 rounded-md border p-3">
+                <div className="col-span-2 text-sm font-semibold">Montagem e desmontagem</div>
+                <div>
+                  <Label>Início da montagem</Label>
+                  <Input type="date" value={form.montagem_inicio ?? ""} onChange={(e) => setForm({ ...form, montagem_inicio: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Término da montagem</Label>
+                  <Input type="date" value={form.montagem_fim ?? ""} onChange={(e) => setForm({ ...form, montagem_fim: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Horário — montagem (início)</Label>
+                  <Input type="time" value={(form.montagem_hora_inicio ?? "").slice(0, 5)} onChange={(e) => setForm({ ...form, montagem_hora_inicio: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Horário — montagem (término)</Label>
+                  <Input type="time" value={(form.montagem_hora_fim ?? "").slice(0, 5)} onChange={(e) => setForm({ ...form, montagem_hora_fim: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Início da desmontagem</Label>
+                  <Input type="date" value={form.desmontagem_inicio ?? ""} onChange={(e) => setForm({ ...form, desmontagem_inicio: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Término da desmontagem</Label>
+                  <Input type="date" value={form.desmontagem_fim ?? ""} onChange={(e) => setForm({ ...form, desmontagem_fim: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Horário — desmontagem (início)</Label>
+                  <Input type="time" value={(form.desmontagem_hora_inicio ?? "").slice(0, 5)} onChange={(e) => setForm({ ...form, desmontagem_hora_inicio: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Horário — desmontagem (término)</Label>
+                  <Input type="time" value={(form.desmontagem_hora_fim ?? "").slice(0, 5)} onChange={(e) => setForm({ ...form, desmontagem_hora_fim: e.target.value })} />
+                </div>
               </div>
               <div className="col-span-2">
                 <Label>Observações</Label>

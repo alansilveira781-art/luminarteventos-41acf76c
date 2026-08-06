@@ -76,6 +76,14 @@ const vazio = {
   resp_legal2_telefone: "",
   valor: "",
   data_fechamento: "",
+  montagem_inicio: "",
+  montagem_fim: "",
+  desmontagem_inicio: "",
+  desmontagem_fim: "",
+  montagem_hora_inicio: "",
+  montagem_hora_fim: "",
+  desmontagem_hora_inicio: "",
+  desmontagem_hora_fim: "",
   observacoes: "",
 };
 
@@ -206,6 +214,7 @@ function SolicitarContratoPublico() {
   const [docEmpresa, setDocEmpresa] = useState<File | null>(null);
   const [erros, setErros] = useState<Record<string, string>>({});
   const [enviando, setEnviando] = useState(false);
+  const [horariosAtivos, setHorariosAtivos] = useState(false);
   const [enviado, setEnviado] = useState<{ tipo: string; numero: number | null } | null>(null);
 
   const isPJ = tipoPessoa === "pj";
@@ -307,6 +316,17 @@ function SolicitarContratoPublico() {
       e.parcelas_soma = `A soma das parcelas (${fmtMoeda(somaParcelas)}) deve ser igual ao valor total (${fmtMoeda(valorTotal)})`;
     }
 
+    req("montagem_inicio", form.montagem_inicio);
+    req("montagem_fim", form.montagem_fim);
+    req("desmontagem_inicio", form.desmontagem_inicio);
+    req("desmontagem_fim", form.desmontagem_fim);
+    if (form.montagem_inicio && form.montagem_fim && form.montagem_fim < form.montagem_inicio)
+      e.montagem_fim = "O término não pode ser anterior ao início";
+    if (form.desmontagem_inicio && form.desmontagem_fim && form.desmontagem_fim < form.desmontagem_inicio)
+      e.desmontagem_fim = "O término não pode ser anterior ao início";
+    if (form.montagem_inicio && form.desmontagem_inicio && form.desmontagem_inicio < form.montagem_inicio)
+      e.desmontagem_inicio = "A desmontagem não pode começar antes da montagem";
+
     if (!proposta) e.proposta = "Anexo obrigatório";
     if (!docEmpresa) e.doc_empresa = "Anexo obrigatório";
     return e;
@@ -352,6 +372,14 @@ function SolicitarContratoPublico() {
         valor: Number(valoresCalculados[i]?.toFixed(2) ?? 0),
       })),
       data_fechamento: form.data_fechamento || "",
+      montagem_inicio: form.montagem_inicio,
+      montagem_fim: form.montagem_fim,
+      desmontagem_inicio: form.desmontagem_inicio,
+      desmontagem_fim: form.desmontagem_fim,
+      montagem_hora_inicio: horariosAtivos ? form.montagem_hora_inicio : "",
+      montagem_hora_fim: horariosAtivos ? form.montagem_hora_fim : "",
+      desmontagem_hora_inicio: horariosAtivos ? form.desmontagem_hora_inicio : "",
+      desmontagem_hora_fim: horariosAtivos ? form.desmontagem_hora_fim : "",
       observacoes: form.observacoes.trim(),
       solicitante_email: user?.email ?? "",
 
@@ -388,6 +416,7 @@ function SolicitarContratoPublico() {
       setEndResp2({ ...enderecoVazio });
       setResp2Ativo(false);
       setTestemunhas([]);
+      setHorariosAtivos(false);
       setParcelas([{ vencimento: "", valor: "" }]);
       setQtdParcelas(1);
       setProposta(null);
@@ -508,7 +537,68 @@ function SolicitarContratoPublico() {
               <Input type="date" value={form.data_fechamento} onChange={(e) => set("data_fechamento", e.target.value)} />
             </div>
           </div>
+
+          <div className="space-y-3 border-t pt-4">
+            <div>
+              <div className="text-sm font-semibold">Período de montagem e desmontagem</div>
+              <p className="text-xs text-muted-foreground">
+                Informe as datas do período de montagem e do período de desmontagem. Os horários são opcionais.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Início da montagem *</Label>
+                <Input type="date" value={form.montagem_inicio} onChange={(e) => set("montagem_inicio", e.target.value)} />
+                <Erro msg={erros.montagem_inicio} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Término da montagem *</Label>
+                <Input type="date" value={form.montagem_fim} onChange={(e) => set("montagem_fim", e.target.value)} />
+                <Erro msg={erros.montagem_fim} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Início da desmontagem *</Label>
+                <Input type="date" value={form.desmontagem_inicio} onChange={(e) => set("desmontagem_inicio", e.target.value)} />
+                <Erro msg={erros.desmontagem_inicio} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Término da desmontagem *</Label>
+                <Input type="date" value={form.desmontagem_fim} onChange={(e) => set("desmontagem_fim", e.target.value)} />
+                <Erro msg={erros.desmontagem_fim} />
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-primary"
+                checked={horariosAtivos}
+                onChange={(e) => setHorariosAtivos(e.target.checked)}
+              />
+              Informar horários (opcional)
+            </label>
+            {horariosAtivos && (
+              <div className="grid gap-4 sm:grid-cols-4">
+                <div className="space-y-1.5">
+                  <Label>Montagem — início</Label>
+                  <Input type="time" value={form.montagem_hora_inicio} onChange={(e) => set("montagem_hora_inicio", e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Montagem — término</Label>
+                  <Input type="time" value={form.montagem_hora_fim} onChange={(e) => set("montagem_hora_fim", e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Desmontagem — início</Label>
+                  <Input type="time" value={form.desmontagem_hora_inicio} onChange={(e) => set("desmontagem_hora_inicio", e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Desmontagem — término</Label>
+                  <Input type="time" value={form.desmontagem_hora_fim} onChange={(e) => set("desmontagem_hora_fim", e.target.value)} />
+                </div>
+              </div>
+            )}
+          </div>
         </Card>
+
 
         <Card className="p-5 space-y-4">
           <div>
