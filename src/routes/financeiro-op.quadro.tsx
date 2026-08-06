@@ -77,7 +77,7 @@ function QuadroFinanceiro() {
       const { data, error } = await sb
         .from("compras")
         .select(
-          "id,numero,titulo,fornecedor,solicitante,valor_total,prazo,status_financeiro,financeiro_ordem",
+          "id,numero,titulo,fornecedor,solicitante,valor_total,prazo,prazo_aprovacao,status_financeiro,financeiro_ordem",
         )
         .not("status_financeiro", "is", null);
       if (error) throw error;
@@ -90,7 +90,7 @@ function QuadroFinanceiro() {
           fornecedor: r.fornecedor,
           solicitante: r.solicitante,
           valor_total: r.valor_total,
-          prazo: r.prazo ?? null,
+          prazo: r.prazo_aprovacao ?? r.prazo ?? null,
           status_financeiro: r.status_financeiro,
           financeiro_ordem: r.financeiro_ordem,
         }),
