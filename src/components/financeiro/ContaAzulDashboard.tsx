@@ -15,6 +15,8 @@ import { useDreEstrutura } from "@/hooks/useDreEstrutura";
 import { agruparParcelamentos, type GroupedLancRow } from "@/lib/conta-azul/agrupar-parcelas";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { IndicadoresEventos } from "@/components/financeiro/IndicadoresEventos";
+
 
 
 
