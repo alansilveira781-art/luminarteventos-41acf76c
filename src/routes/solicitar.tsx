@@ -151,28 +151,71 @@ function SolicitarPage() {
   const removeItem = (idx: number) =>
     setForm((f) => ({ ...f, itens: f.itens.length > 1 ? f.itens.filter((_, i) => i !== idx) : f.itens }));
 
+  const usaItens =
+    form.tipo === "compra" ||
+    (form.tipo === "demanda" && TIPOS_COM_ITENS.includes(form.subtipo));
+
+  function itemVazio(it: ItemRow): boolean {
+    return (
+      it.descricao.trim().length === 0 &&
+      !(Number(String(it.valor_unitario).replace(",", ".")) > 0)
+    );
+  }
+
   function itemInvalido(it: ItemRow): boolean {
+    if (itemVazio(it)) return false;
     return it.descricao.trim().length === 0 || !(Number(it.quantidade) > 0);
   }
 
-  function canAdvance(): boolean {
-    if (step === 0) return !!form.tipo;
+  function itensPreenchidos(): ItemRow[] {
+    return form.itens.filter((it) => !itemVazio(it));
+  }
+
+  function somaItens(): number {
+    return itensPreenchidos().reduce(
+      (acc, it) =>
+        acc +
+        (Number(String(it.valor_unitario).replace(",", ".")) || 0) *
+          (Number(it.quantidade) || 0),
+      0,
+    );
+  }
+
+  /** Retorna a mensagem do que falta na etapa atual, ou null se estiver ok. */
+  function validarEtapa(): string | null {
+    if (step === 0) return form.tipo ? null : "Escolha o tipo da solicitação.";
     if (step === 1) {
-      if (form.titulo.trim().length === 0) return false;
-      if (!form.data_solicitacao) return false;
-      if (form.tipo === "demanda" && form.is_reembolso && form.reembolsar_para.trim().length === 0) return false;
-      return true;
+      if (form.titulo.trim().length === 0) return "Informe o título / resumo da solicitação.";
+      if (!form.data_solicitacao) return "Informe a data da solicitação.";
+      if (form.tipo === "demanda" && form.is_reembolso && form.reembolsar_para.trim().length === 0)
+        return "Informe o nome de quem será reembolsado.";
+      return null;
     }
     if (step === 2) {
-      if (form.solicitante_nome.trim().length === 0) return false;
-      if (form.tipo === "compra") {
-        // Todos os itens listados devem estar completos (descricao + qtd > 0)
-        if (form.itens.length === 0) return false;
-        return form.itens.every((it) => !itemInvalido(it));
+      if (form.solicitante_nome.trim().length === 0) return "Informe o seu nome.";
+      if (usaItens) {
+        const preenchidos = itensPreenchidos();
+        if (preenchidos.length === 0) return "Adicione ao menos um item com descrição.";
+        if (preenchidos.some((it) => itemInvalido(it)))
+          return "Preencha a descrição e a quantidade de todos os itens (ou remova as linhas em branco).";
+        return null;
       }
-      return form.descricao.trim().length > 0;
+      if (form.tipo === "demanda" && !(Number(form.valor_total) > 0))
+        return "Informe o valor total da despesa.";
+      return form.descricao.trim().length > 0 ? null : "Descreva a sua despesa.";
     }
-    return true;
+    return null;
+  }
+
+  function avancar() {
+    const erro = validarEtapa();
+    if (erro) {
+      setShowItemErrors(true);
+      toast.error(erro);
+      return;
+    }
+    setShowItemErrors(false);
+    setStep((s) => s + 1);
   }
 
   function addFiles(files: FileList | null) {
