@@ -653,77 +653,108 @@ function ContratoDetalhesDialog({
                 <Label>Telefone</Label>
                 <Input value={form.cliente_telefone ?? ""} onChange={(e) => setForm({ ...form, cliente_telefone: e.target.value })} />
               </div>
-              {contrato.cliente_tipo && (
-                <div className="col-span-2 rounded-md border p-3 space-y-1">
-                  <div className="text-xs font-semibold text-muted-foreground">
-                    {contrato.cliente_tipo === "pj" ? "Pessoa Jurídica" : "Pessoa Física"} — endereço
-                  </div>
-                  <div className="text-sm">
-                    {[
-                      [contrato.cliente_logradouro, contrato.cliente_numero].filter(Boolean).join(", "),
-                      contrato.cliente_complemento,
-                      contrato.cliente_bairro,
-                      [contrato.cliente_cidade, contrato.cliente_uf].filter(Boolean).join("/"),
-                      contrato.cliente_cep ? `CEP ${contrato.cliente_cep}` : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" — ") || "—"}
-                  </div>
-                </div>
-              )}
+              <div className="col-span-2">
+                <Label>Tipo do contrato</Label>
+                <Select
+                  value={(form as any).categoria ?? ""}
+                  onValueChange={(v) => setForm({ ...form, categoria: v } as any)}
+                >
+                  <SelectTrigger><SelectValue placeholder="Não definido" /></SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIAS_CONTRATO.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <EnderecoEditor
+                titulo={`${contrato.cliente_tipo === "pj" ? "Pessoa Jurídica" : "Pessoa Física"} — endereço do cliente`}
+                valor={{
+                  cep: form.cliente_cep,
+                  logradouro: form.cliente_logradouro,
+                  numero: form.cliente_numero,
+                  complemento: form.cliente_complemento,
+                  bairro: form.cliente_bairro,
+                  cidade: form.cliente_cidade,
+                  uf: form.cliente_uf,
+                }}
+                onChange={(patch) =>
+                  setForm((f) => ({
+                    ...f,
+                    ...(patch.cep !== undefined ? { cliente_cep: patch.cep } : {}),
+                    ...(patch.logradouro !== undefined ? { cliente_logradouro: patch.logradouro } : {}),
+                    ...(patch.numero !== undefined ? { cliente_numero: patch.numero } : {}),
+                    ...(patch.complemento !== undefined ? { cliente_complemento: patch.complemento } : {}),
+                    ...(patch.bairro !== undefined ? { cliente_bairro: patch.bairro } : {}),
+                    ...(patch.cidade !== undefined ? { cliente_cidade: patch.cidade } : {}),
+                    ...(patch.uf !== undefined ? { cliente_uf: patch.uf } : {}),
+                  }))
+                }
+              />
+
               {contrato.solicitante_email && (
                 <div className="col-span-2 text-xs text-muted-foreground">
                   Enviado por: {contrato.solicitante_email}
                 </div>
               )}
-              {(contrato.resp_legal_nome || contrato.resp_legal_documento || contrato.resp_legal_email || contrato.resp_legal_telefone) && (
-                <div className="col-span-2 rounded-md border p-3 space-y-1">
 
-                  <div className="text-xs font-semibold text-muted-foreground">Responsável Legal</div>
-                  <div className="grid grid-cols-2 gap-1 text-sm">
-                    <div>Nome: {contrato.resp_legal_nome || "—"}</div>
-                    <div>CNPJ/CPF: {contrato.resp_legal_documento || "—"}</div>
-                    <div>E-mail: {contrato.resp_legal_email || "—"}</div>
-                    <div>Telefone: {contrato.resp_legal_telefone || "—"}</div>
+              <div className="col-span-2 rounded-md border p-3 space-y-2">
+                <div className="text-xs font-semibold text-muted-foreground">Responsável Legal</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">Nome</Label>
+                    <Input value={form.resp_legal_nome ?? ""} onChange={(e) => setForm({ ...form, resp_legal_nome: e.target.value })} />
                   </div>
-                  {contrato.resp_legal_logradouro && (
-                    <div className="text-sm">
-                      Endereço:{" "}
-                      {[
-                        [contrato.resp_legal_logradouro, contrato.resp_legal_numero].filter(Boolean).join(", "),
-                        contrato.resp_legal_complemento,
-                        contrato.resp_legal_bairro,
-                        [contrato.resp_legal_cidade, contrato.resp_legal_uf].filter(Boolean).join("/"),
-                        contrato.resp_legal_cep ? `CEP ${contrato.resp_legal_cep}` : "",
-                      ]
-                        .filter(Boolean)
-                        .join(" — ")}
-                    </div>
-                  )}
-                </div>
-              )}
-              {contrato.pagamento_parcelas && contrato.pagamento_parcelas.length > 0 && (
-                <div className="col-span-2 rounded-md border p-3 space-y-2">
-                  <div className="text-xs font-semibold text-muted-foreground">
-                    Pagamento — {contrato.pagamento_forma === "boleto" ? "Boleto" : "Pix"} ·{" "}
-                    {contrato.pagamento_parcelas.length}x{" "}
-                    {contrato.pagamento_modo === "diferente" ? "(valores diferentes)" : "(parcelas iguais)"}
+                  <div>
+                    <Label className="text-xs">CPF/CNPJ</Label>
+                    <Input value={form.resp_legal_documento ?? ""} onChange={(e) => setForm({ ...form, resp_legal_documento: e.target.value })} />
                   </div>
-                  <div className="space-y-1 text-sm">
-                    {contrato.pagamento_parcelas.map((p) => (
-                      <div key={p.n} className="flex justify-between border-b last:border-0 py-1">
-                        <span>{p.n}ª parcela</span>
-                        <span className="text-muted-foreground">
-                          {p.vencimento?.split("-").reverse().join("/")}
-                        </span>
-                        <span className="font-medium">
-                          {Number(p.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                        </span>
-                      </div>
-                    ))}
+                  <div>
+                    <Label className="text-xs">E-mail</Label>
+                    <Input value={form.resp_legal_email ?? ""} onChange={(e) => setForm({ ...form, resp_legal_email: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Telefone</Label>
+                    <Input value={form.resp_legal_telefone ?? ""} onChange={(e) => setForm({ ...form, resp_legal_telefone: e.target.value })} />
                   </div>
                 </div>
-              )}
+              </div>
+
+              <EnderecoEditor
+                titulo="Endereço do responsável legal"
+                valor={{
+                  cep: form.resp_legal_cep,
+                  logradouro: form.resp_legal_logradouro,
+                  numero: form.resp_legal_numero,
+                  complemento: form.resp_legal_complemento,
+                  bairro: form.resp_legal_bairro,
+                  cidade: form.resp_legal_cidade,
+                  uf: form.resp_legal_uf,
+                }}
+                onChange={(patch) =>
+                  setForm((f) => ({
+                    ...f,
+                    ...(patch.cep !== undefined ? { resp_legal_cep: patch.cep } : {}),
+                    ...(patch.logradouro !== undefined ? { resp_legal_logradouro: patch.logradouro } : {}),
+                    ...(patch.numero !== undefined ? { resp_legal_numero: patch.numero } : {}),
+                    ...(patch.complemento !== undefined ? { resp_legal_complemento: patch.complemento } : {}),
+                    ...(patch.bairro !== undefined ? { resp_legal_bairro: patch.bairro } : {}),
+                    ...(patch.cidade !== undefined ? { resp_legal_cidade: patch.cidade } : {}),
+                    ...(patch.uf !== undefined ? { resp_legal_uf: patch.uf } : {}),
+                  }))
+                }
+              />
+
+              <PagamentoEditor
+                forma={form.pagamento_forma ?? null}
+                modo={form.pagamento_modo ?? null}
+                parcelas={(form.pagamento_parcelas ?? []) as any}
+                total={Number(form.valor || 0)}
+                onChange={(patch) => setForm((f) => ({ ...f, ...patch } as any))}
+              />
+
+
 
 
               <div>
