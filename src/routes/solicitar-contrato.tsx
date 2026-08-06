@@ -70,10 +70,17 @@ const vazio = {
   resp_legal_documento: "",
   resp_legal_email: "",
   resp_legal_telefone: "",
+  resp_legal2_nome: "",
+  resp_legal2_documento: "",
+  resp_legal2_email: "",
+  resp_legal2_telefone: "",
   valor: "",
   data_fechamento: "",
   observacoes: "",
 };
+
+type Testemunha = { nome: string; documento: string; email: string };
+const testemunhaVazia: Testemunha = { nome: "", documento: "", email: "" };
 
 type Campo = keyof typeof vazio;
 
