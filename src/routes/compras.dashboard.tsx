@@ -14,6 +14,10 @@ import {
 import { COMPRA_STATUSES } from "@/lib/compras";
 import { EMPRESAS } from "@/lib/empresas";
 import { AlertaEstoqueCard } from "@/components/compras/AlertaEstoqueCard";
+import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
+import { useEventosInfo, acharEvento, classificarData, periodoEvento, formatBRDate } from "@/lib/eventos-info";
+import { normalize } from "@/lib/utils";
+
 
 const sb = supabase as any;
 const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#06b6d4", "#8b5cf6", "#ec4899", "#84cc16"];
