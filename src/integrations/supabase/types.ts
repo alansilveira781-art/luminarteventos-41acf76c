@@ -25,6 +25,8 @@ export type Database = {
           inscricao_municipal: string | null
           nome_fantasia: string | null
           razao_social: string
+          representante_documento: string | null
+          representante_nome: string | null
           updated_at: string
         }
         Insert: {
@@ -37,6 +39,8 @@ export type Database = {
           inscricao_municipal?: string | null
           nome_fantasia?: string | null
           razao_social: string
+          representante_documento?: string | null
+          representante_nome?: string | null
           updated_at?: string
         }
         Update: {
@@ -49,6 +53,8 @@ export type Database = {
           inscricao_municipal?: string | null
           nome_fantasia?: string | null
           razao_social?: string
+          representante_documento?: string | null
+          representante_nome?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -3404,9 +3410,21 @@ export type Database = {
           resp_legal_numero: string | null
           resp_legal_telefone: string | null
           resp_legal_uf: string | null
+          resp_legal2_bairro: string | null
+          resp_legal2_cep: string | null
+          resp_legal2_cidade: string | null
+          resp_legal2_complemento: string | null
+          resp_legal2_documento: string | null
+          resp_legal2_email: string | null
+          resp_legal2_logradouro: string | null
+          resp_legal2_nome: string | null
+          resp_legal2_numero: string | null
+          resp_legal2_telefone: string | null
+          resp_legal2_uf: string | null
           responsavel: string | null
           solicitante_email: string | null
           status: string
+          testemunhas: Json
           tipo: string
           titulo: string
           updated_at: string
@@ -3455,9 +3473,21 @@ export type Database = {
           resp_legal_numero?: string | null
           resp_legal_telefone?: string | null
           resp_legal_uf?: string | null
+          resp_legal2_bairro?: string | null
+          resp_legal2_cep?: string | null
+          resp_legal2_cidade?: string | null
+          resp_legal2_complemento?: string | null
+          resp_legal2_documento?: string | null
+          resp_legal2_email?: string | null
+          resp_legal2_logradouro?: string | null
+          resp_legal2_nome?: string | null
+          resp_legal2_numero?: string | null
+          resp_legal2_telefone?: string | null
+          resp_legal2_uf?: string | null
           responsavel?: string | null
           solicitante_email?: string | null
           status?: string
+          testemunhas?: Json
           tipo?: string
           titulo: string
           updated_at?: string
@@ -3506,9 +3536,21 @@ export type Database = {
           resp_legal_numero?: string | null
           resp_legal_telefone?: string | null
           resp_legal_uf?: string | null
+          resp_legal2_bairro?: string | null
+          resp_legal2_cep?: string | null
+          resp_legal2_cidade?: string | null
+          resp_legal2_complemento?: string | null
+          resp_legal2_documento?: string | null
+          resp_legal2_email?: string | null
+          resp_legal2_logradouro?: string | null
+          resp_legal2_nome?: string | null
+          resp_legal2_numero?: string | null
+          resp_legal2_telefone?: string | null
+          resp_legal2_uf?: string | null
           responsavel?: string | null
           solicitante_email?: string | null
           status?: string
+          testemunhas?: Json
           tipo?: string
           titulo?: string
           updated_at?: string
