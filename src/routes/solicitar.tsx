@@ -776,22 +776,26 @@ function SolicitarPage() {
             {form.solicitante_email && <Row k="E-mail" v={form.solicitante_email} />}
             {form.solicitante_telefone && <Row k="Telefone" v={form.solicitante_telefone} />}
 
-            {isCompra ? (
+            {usaItens ? (
               <div className="p-3">
                 <div className="text-xs text-muted-foreground mb-2">Itens</div>
                 <ul className="space-y-1">
-                  {form.itens
-                    .filter((it) => it.descricao.trim() && Number(it.quantidade) > 0)
-                    .map((it, idx) => (
-                      <li key={idx} className="flex justify-between gap-3 text-sm">
-                        <span className="break-words">{it.descricao}</span>
-                        <span className="text-muted-foreground whitespace-nowrap">
-                          {it.quantidade} {it.unidade}
-                          {it.valor_unitario ? ` · R$ ${Number(it.valor_unitario).toFixed(2)}` : ""}
-                        </span>
-                      </li>
-                    ))}
+                  {itensPreenchidos().map((it, idx) => (
+                    <li key={idx} className="flex justify-between gap-3 text-sm">
+                      <span className="break-words">{it.descricao}</span>
+                      <span className="text-muted-foreground whitespace-nowrap">
+                        {it.quantidade} {it.unidade}
+                        {it.valor_unitario
+                          ? ` · R$ ${Number(String(it.valor_unitario).replace(",", ".")).toFixed(2)}`
+                          : ""}
+                      </span>
+                    </li>
+                  ))}
                 </ul>
+                <div className="flex justify-between gap-3 text-sm font-semibold mt-2 pt-2 border-t border-border">
+                  <span>Total</span>
+                  <span>{somaItens().toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                </div>
                 {form.descricao && (
                   <>
                     <div className="text-xs text-muted-foreground mt-3 mb-1">Observações</div>
@@ -819,7 +823,7 @@ function SolicitarPage() {
           <ChevronLeft className="h-4 w-4 mr-1" /> Voltar
         </Button>
         {step < 3 ? (
-          <Button onClick={() => setStep((s) => s + 1)} disabled={!canAdvance()}>
+          <Button onClick={avancar}>
             Avançar <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         ) : (
