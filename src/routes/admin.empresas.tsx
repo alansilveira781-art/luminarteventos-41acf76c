@@ -191,6 +191,8 @@ function EmpresaDialog({
       inscricao_municipal: form.inscricao_municipal?.trim() || null,
       inscricao_estadual: form.inscricao_estadual?.trim() || null,
       endereco: form.endereco?.trim() || null,
+      representante_nome: (form as any).representante_nome?.trim() || null,
+      representante_documento: (form as any).representante_documento?.trim() || null,
       ativo: form.ativo ?? true,
     };
 
@@ -248,6 +250,23 @@ function EmpresaDialog({
             <Label>Endereço</Label>
             <Input value={form.endereco ?? ""} onChange={(e) => setForm({ ...form, endereco: e.target.value })} />
           </div>
+          <div>
+            <Label>Representante legal (assina os contratos)</Label>
+            <Input
+              value={(form as any).representante_nome ?? ""}
+              onChange={(e) => setForm({ ...form, representante_nome: e.target.value } as any)}
+              placeholder="Nome completo"
+            />
+          </div>
+          <div>
+            <Label>CPF do representante</Label>
+            <Input
+              value={(form as any).representante_documento ?? ""}
+              onChange={(e) => setForm({ ...form, representante_documento: e.target.value } as any)}
+              placeholder="000.000.000-00"
+            />
+          </div>
+
           <div className="col-span-2 flex items-center gap-2">
             <Switch
               checked={form.ativo ?? true}
