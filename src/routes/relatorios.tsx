@@ -35,7 +35,6 @@ type ReportId =
   | "gastos_mes"
   | "gastos_categoria"
   | "saidas_evento"
-  | "projecao_materiais"
   | "ajustes";
 
 const REPORTS: { id: ReportId; label: string; description: string; needsPeriod: boolean }[] = [
