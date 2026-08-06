@@ -607,9 +607,18 @@ function VendasPage() {
         description="Cadastro e gestão de vendas"
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={exportCsv} disabled={!sorted.length}>
-              <Download className="h-4 w-4 mr-2" /> Exportar CSV
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={!sorted.length}>
+                  <Download className="h-4 w-4 mr-2" /> Exportar relatório
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => { void exportPdf(); }}>PDF</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportCsv()}>CSV</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <Button
               variant="outline"
               size="sm"
