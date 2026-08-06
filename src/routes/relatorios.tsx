@@ -408,7 +408,10 @@ function RelatoriosPage() {
           )}
         </div>
       </Card>
+        </TabsContent>
+      </Tabs>
     </>
+
   );
 }
 
