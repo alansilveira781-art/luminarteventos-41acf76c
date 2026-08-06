@@ -443,6 +443,17 @@ function SolicitarPage() {
                 Você pode alterar caso esteja registrando com atraso.
               </p>
             </Field>
+            <Field label="Prazo">
+              <Input
+                type="date"
+                value={form.prazo}
+                onChange={(e) => update({ prazo: e.target.value })}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Data limite para atendimento desta solicitação (opcional).
+              </p>
+            </Field>
+
 
             {!isCompra && (
               <div className="space-y-3 rounded-lg border border-border p-3 bg-muted/20">
