@@ -1552,6 +1552,7 @@ export type Database = {
           ordem: number
           origem: string
           parcelamento: string | null
+          prazo: string | null
           responsavel_id: string | null
           responsavel_nome: string | null
           solicitante: string | null
@@ -1592,6 +1593,7 @@ export type Database = {
           ordem?: number
           origem?: string
           parcelamento?: string | null
+          prazo?: string | null
           responsavel_id?: string | null
           responsavel_nome?: string | null
           solicitante?: string | null
@@ -1632,6 +1634,7 @@ export type Database = {
           ordem?: number
           origem?: string
           parcelamento?: string | null
+          prazo?: string | null
           responsavel_id?: string | null
           responsavel_nome?: string | null
           solicitante?: string | null
@@ -2404,6 +2407,7 @@ export type Database = {
           ordem: number
           origem: string
           parcelamento: string | null
+          prazo: string | null
           responsavel_id: string | null
           responsavel_nome: string | null
           solicitante: string | null
@@ -2446,6 +2450,7 @@ export type Database = {
           ordem?: number
           origem?: string
           parcelamento?: string | null
+          prazo?: string | null
           responsavel_id?: string | null
           responsavel_nome?: string | null
           solicitante?: string | null
@@ -2488,6 +2493,7 @@ export type Database = {
           ordem?: number
           origem?: string
           parcelamento?: string | null
+          prazo?: string | null
           responsavel_id?: string | null
           responsavel_nome?: string | null
           solicitante?: string | null
