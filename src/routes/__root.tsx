@@ -117,7 +117,13 @@ function AppShell() {
   }
 
   // Public routes (não exigem login)
-  if (pathname === "/auth" || pathname === "/solicitar" || pathname === "/calendario-publico") return <Outlet />;
+  if (
+    pathname === "/auth" ||
+    pathname === "/solicitar" ||
+    pathname === "/solicitar-contrato" ||
+    pathname === "/calendario-publico"
+  )
+    return <Outlet />;
 
   if (!session) {
     const dest = typeof window !== "undefined"
@@ -128,7 +134,8 @@ function AppShell() {
   }
 
   // Rotas autenticadas com layout próprio (sem sidebar)
-  if (pathname === "/.lovable/oauth/consent" || pathname === "/solicitar-contrato") return <Outlet />;
+  if (pathname === "/.lovable/oauth/consent") return <Outlet />;
+
 
 
   return (
