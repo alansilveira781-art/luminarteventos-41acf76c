@@ -75,6 +75,8 @@ const initial: FormState = {
   condicao_pagamento: "",
   data_compra: "",
   data_solicitacao: hojeISO(),
+  prazo: "",
+
   is_reembolso: false,
   reembolsar_para: "",
 };
