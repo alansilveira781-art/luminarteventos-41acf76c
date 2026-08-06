@@ -366,15 +366,12 @@ function SolicitarContratoPublico() {
     try {
       const { data: sess } = await supabase.auth.getSession();
       const token = sess.session?.access_token;
-      if (!token) {
-        toast.error("Sua sessão expirou. Entre novamente para enviar.");
-        return;
-      }
       const res = await fetch("/api/public/solicitar-contrato", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         body: fd,
       });
+
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
