@@ -237,11 +237,13 @@ export function renderizarModelo(
   html: string,
   valores: Record<string, string>,
 ): string {
+  // Campos gerados pelo sistema que já contêm HTML (quebras de linha, blocos).
+  const CAMPOS_HTML = new Set(["parcelas", "parcelas_detalhe", "assinaturas"]);
   const troca = (raw: string) => {
     const k = normalizarCampo(raw);
     const v = (valores[k] ?? "").toString().trim();
     if (!v) return `<mark class="modelo-campo-vazio">[${k}]</mark>`;
-    return v.replace(/[<>]/g, "");
+    return CAMPOS_HTML.has(k) ? v : v.replace(/[<>]/g, "");
   };
   const out = (html ?? "")
     .replace(RE_COLCHETE, (_m, g1) => troca(g1))
