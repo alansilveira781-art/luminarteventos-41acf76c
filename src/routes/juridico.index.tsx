@@ -134,12 +134,23 @@ function QuadroContratos() {
     const status = overId as Status;
     const card = rows.find((r) => r.id === id);
     if (!card || card.status === status) return;
+    if (status === "criacao") { setCriacaoCard(card); return; }
     const patch: any = { status };
     if (status === "assinatura" && !card.data_assinatura) patch.data_assinatura = new Date().toISOString().slice(0, 10);
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
     const { error } = await sb.from("juridico_contratos").update(patch).eq("id", id);
     if (error) { toast.error(error.message); load(); }
   }
+
+  async function aplicarCriacao(patch: Record<string, any>) {
+    const id = criacaoCard!.id;
+    const { error } = await sb.from("juridico_contratos").update(patch).eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Contrato gerado e movido para Criação");
+    setCriacaoCard(null);
+    await load();
+  }
+
 
   async function onDelete(id: string) {
     if (!confirm("Remover este contrato?")) return;
