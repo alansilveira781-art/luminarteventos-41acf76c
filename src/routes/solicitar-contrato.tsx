@@ -416,6 +416,7 @@ function SolicitarContratoPublico() {
       setEndResp2({ ...enderecoVazio });
       setResp2Ativo(false);
       setTestemunhas([]);
+      setHorariosAtivos(false);
       setParcelas([{ vencimento: "", valor: "" }]);
       setQtdParcelas(1);
       setProposta(null);
