@@ -167,12 +167,13 @@ function PatrimonioRelatorios() {
       <PageHeader
         title="Relatórios de Patrimônio"
         description={`${totais.count} itens · ${totais.qtd.toLocaleString("pt-BR")} un · ${brl(totais.valor)}`}
-      >
-        <Button onClick={exportar} disabled={gerando || isLoading}>
-          {gerando ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <FileDown className="h-4 w-4 mr-1" />}
-          Exportar PDF
-        </Button>
-      </PageHeader>
+        actions={
+          <Button onClick={exportar} disabled={gerando || isLoading}>
+            {gerando ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <FileDown className="h-4 w-4 mr-1" />}
+            Exportar PDF
+          </Button>
+        }
+      />
 
       <Card className="p-4 grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-3">
         <div className="space-y-1.5 xl:col-span-2">
