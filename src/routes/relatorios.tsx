@@ -130,12 +130,34 @@ function RelatoriosPage() {
 
   const itemIdsKey = useMemo(() => [...itemIds].sort().join(","), [itemIds]);
 
+  const extras = {
+    eventoProjeto: showEvento ? eventoProjeto || null : null,
+    saidaTipo: showSaidaTipo && saidaTipo !== "__all__" ? saidaTipo : null,
+    solicitanteId: showSolicitante && solicitanteId !== "__all__" ? solicitanteId : null,
+    fornecedorId: showFornecedor && fornecedorId !== "__all__" ? fornecedorId : null,
+  };
+
   const { data: rows, isLoading } = useQuery({
-    queryKey: ["report", reportId, dataIni, dataFim, itemIdsKey],
-    queryFn: async () => loadReport(reportId, dataIni, dataFim, itemIds),
+    queryKey: [
+      "report", reportId, dataIni, dataFim, itemIdsKey,
+      extras.eventoProjeto, extras.saidaTipo, extras.solicitanteId, extras.fornecedorId,
+    ],
+    queryFn: async () => loadReport(reportId, dataIni, dataFim, itemIds, extras),
   });
 
+  const filtrosResumo = [
+    extras.eventoProjeto ? `Evento: ${extras.eventoProjeto}` : null,
+    extras.saidaTipo ? `Tipo: ${saidaTipoLabels[extras.saidaTipo] ?? extras.saidaTipo}` : null,
+    extras.solicitanteId
+      ? `Solicitante: ${solicitantesLista.find((s) => s.id === extras.solicitanteId)?.nome ?? ""}`
+      : null,
+    extras.fornecedorId
+      ? `Fornecedor: ${fornecedoresLista.find((f) => f.id === extras.fornecedorId)?.nome ?? ""}`
+      : null,
+  ].filter(Boolean) as string[];
+
   const { headers, body, totals } = useMemo(() => formatReport(reportId, rows ?? []), [reportId, rows]);
+
 
   const exportCsv = () => {
     const linhas = [headers, ...body, ...(totals ? [totals] : [])];
