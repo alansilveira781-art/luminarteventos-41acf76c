@@ -9,6 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { EMPRESAS } from "@/lib/empresas";
 import { CheckCircle2, Loader2, Building2, User } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+
 
 export const Route = createFileRoute("/solicitar-contrato")({
   head: () => ({
@@ -179,8 +182,10 @@ function EnderecoFields({
 }
 
 function SolicitarContratoPublico() {
+  const { user } = useAuth();
   const [tipoPessoa, setTipoPessoa] = useState<TipoPessoa | null>(null);
   const [form, setForm] = useState({ ...vazio });
+
   const [endCliente, setEndCliente] = useState<Endereco>({ ...enderecoVazio });
   const [endResp, setEndResp] = useState<Endereco>({ ...enderecoVazio });
   const [pagForma, setPagForma] = useState<"pix" | "boleto">("pix");
@@ -313,6 +318,8 @@ function SolicitarContratoPublico() {
       })),
       data_fechamento: form.data_fechamento || "",
       observacoes: form.observacoes.trim(),
+      solicitante_email: user?.email ?? "",
+
     };
 
     const fd = new FormData();
@@ -322,7 +329,18 @@ function SolicitarContratoPublico() {
 
     setEnviando(true);
     try {
-      const res = await fetch("/api/public/solicitar-contrato", { method: "POST", body: fd });
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) {
+        toast.error("Sua sessão expirou. Entre novamente para enviar.");
+        return;
+      }
+      const res = await fetch("/api/public/solicitar-contrato", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
         toast.error(data?.error ?? "Não foi possível enviar a solicitação");

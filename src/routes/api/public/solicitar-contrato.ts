@@ -4,7 +4,7 @@ import { z } from "zod";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
 const json = (body: unknown, status = 200) =>
@@ -125,6 +125,22 @@ export const Route = createFileRoute("/api/public/solicitar-contrato")({
           return json({ error: "Muitas solicitações. Aguarde alguns instantes e tente novamente." }, 429);
         }
 
+        // Exige usuário autenticado (qualquer usuário do sistema)
+        const authHeader =
+          request.headers.get("authorization") || request.headers.get("Authorization") || "";
+        if (!authHeader.startsWith("Bearer ")) {
+          return json({ error: "Faça login para enviar a solicitação" }, 401);
+        }
+        const { supabaseAdmin: sbAuth } = await import("@/integrations/supabase/client.server");
+        const { data: userRes, error: userErr } = await (sbAuth as any).auth.getUser(
+          authHeader.slice(7),
+        );
+        if (userErr || !userRes?.user) {
+          return json({ error: "Sessão inválida. Entre novamente." }, 401);
+        }
+        const solicitanteId: string = userRes.user.id;
+        const solicitanteEmail: string = userRes.user.email ?? "";
+
         let body: unknown;
         const anexos: { file: File; tipo: string }[] = [];
         try {
@@ -217,7 +233,8 @@ export const Route = createFileRoute("/api/public/solicitar-contrato")({
             pagamento_parcelas: d.pagamento_parcelas,
             data_fechamento: d.data_fechamento || null,
             observacoes,
-            created_by: null,
+            solicitante_email: solicitanteEmail || null,
+            created_by: solicitanteId,
           })
           .select("id, tipo, numero")
           .single();

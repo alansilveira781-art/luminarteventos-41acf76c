@@ -3404,6 +3404,7 @@ export type Database = {
           resp_legal_telefone: string | null
           resp_legal_uf: string | null
           responsavel: string | null
+          solicitante_email: string | null
           status: string
           tipo: string
           titulo: string
@@ -3453,6 +3454,7 @@ export type Database = {
           resp_legal_telefone?: string | null
           resp_legal_uf?: string | null
           responsavel?: string | null
+          solicitante_email?: string | null
           status?: string
           tipo?: string
           titulo: string
@@ -3502,6 +3504,7 @@ export type Database = {
           resp_legal_telefone?: string | null
           resp_legal_uf?: string | null
           responsavel?: string | null
+          solicitante_email?: string | null
           status?: string
           tipo?: string
           titulo?: string
