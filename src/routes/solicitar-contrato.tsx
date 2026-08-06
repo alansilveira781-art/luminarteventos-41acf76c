@@ -179,8 +179,10 @@ function EnderecoFields({
 }
 
 function SolicitarContratoPublico() {
+  const { user } = useAuth();
   const [tipoPessoa, setTipoPessoa] = useState<TipoPessoa | null>(null);
   const [form, setForm] = useState({ ...vazio });
+
   const [endCliente, setEndCliente] = useState<Endereco>({ ...enderecoVazio });
   const [endResp, setEndResp] = useState<Endereco>({ ...enderecoVazio });
   const [pagForma, setPagForma] = useState<"pix" | "boleto">("pix");
