@@ -103,6 +103,8 @@ function QuadroContratos() {
   const [editing, setEditing] = useState<Contrato | null>(null);
   const [novoOpen, setNovoOpen] = useState(false);
   const [defaultStatus, setDefaultStatus] = useState<Status>("entrada");
+  const [criacaoCard, setCriacaoCard] = useState<Contrato | null>(null);
+
 
   const load = async () => {
     setLoading(true);
