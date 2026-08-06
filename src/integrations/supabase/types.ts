@@ -3363,10 +3363,18 @@ export type Database = {
       }
       juridico_contratos: {
         Row: {
+          cliente_bairro: string | null
+          cliente_cep: string | null
+          cliente_cidade: string | null
+          cliente_complemento: string | null
           cliente_documento: string | null
           cliente_email: string | null
+          cliente_logradouro: string | null
           cliente_nome: string | null
+          cliente_numero: string | null
           cliente_telefone: string | null
+          cliente_tipo: string | null
+          cliente_uf: string | null
           corpo_html: string | null
           created_at: string
           created_by: string | null
@@ -3379,12 +3387,22 @@ export type Database = {
           numero: number | null
           observacoes: string | null
           ordem: number
+          pagamento_forma: string | null
+          pagamento_modo: string | null
+          pagamento_parcelas: Json | null
           proposta_numero: number | null
           proposta_ref: string | null
+          resp_legal_bairro: string | null
+          resp_legal_cep: string | null
+          resp_legal_cidade: string | null
+          resp_legal_complemento: string | null
           resp_legal_documento: string | null
           resp_legal_email: string | null
+          resp_legal_logradouro: string | null
           resp_legal_nome: string | null
+          resp_legal_numero: string | null
           resp_legal_telefone: string | null
+          resp_legal_uf: string | null
           responsavel: string | null
           status: string
           tipo: string
@@ -3394,10 +3412,18 @@ export type Database = {
           variaveis_valores: Json | null
         }
         Insert: {
+          cliente_bairro?: string | null
+          cliente_cep?: string | null
+          cliente_cidade?: string | null
+          cliente_complemento?: string | null
           cliente_documento?: string | null
           cliente_email?: string | null
+          cliente_logradouro?: string | null
           cliente_nome?: string | null
+          cliente_numero?: string | null
           cliente_telefone?: string | null
+          cliente_tipo?: string | null
+          cliente_uf?: string | null
           corpo_html?: string | null
           created_at?: string
           created_by?: string | null
@@ -3410,12 +3436,22 @@ export type Database = {
           numero?: number | null
           observacoes?: string | null
           ordem?: number
+          pagamento_forma?: string | null
+          pagamento_modo?: string | null
+          pagamento_parcelas?: Json | null
           proposta_numero?: number | null
           proposta_ref?: string | null
+          resp_legal_bairro?: string | null
+          resp_legal_cep?: string | null
+          resp_legal_cidade?: string | null
+          resp_legal_complemento?: string | null
           resp_legal_documento?: string | null
           resp_legal_email?: string | null
+          resp_legal_logradouro?: string | null
           resp_legal_nome?: string | null
+          resp_legal_numero?: string | null
           resp_legal_telefone?: string | null
+          resp_legal_uf?: string | null
           responsavel?: string | null
           status?: string
           tipo?: string
@@ -3425,10 +3461,18 @@ export type Database = {
           variaveis_valores?: Json | null
         }
         Update: {
+          cliente_bairro?: string | null
+          cliente_cep?: string | null
+          cliente_cidade?: string | null
+          cliente_complemento?: string | null
           cliente_documento?: string | null
           cliente_email?: string | null
+          cliente_logradouro?: string | null
           cliente_nome?: string | null
+          cliente_numero?: string | null
           cliente_telefone?: string | null
+          cliente_tipo?: string | null
+          cliente_uf?: string | null
           corpo_html?: string | null
           created_at?: string
           created_by?: string | null
@@ -3441,12 +3485,22 @@ export type Database = {
           numero?: number | null
           observacoes?: string | null
           ordem?: number
+          pagamento_forma?: string | null
+          pagamento_modo?: string | null
+          pagamento_parcelas?: Json | null
           proposta_numero?: number | null
           proposta_ref?: string | null
+          resp_legal_bairro?: string | null
+          resp_legal_cep?: string | null
+          resp_legal_cidade?: string | null
+          resp_legal_complemento?: string | null
           resp_legal_documento?: string | null
           resp_legal_email?: string | null
+          resp_legal_logradouro?: string | null
           resp_legal_nome?: string | null
+          resp_legal_numero?: string | null
           resp_legal_telefone?: string | null
+          resp_legal_uf?: string | null
           responsavel?: string | null
           status?: string
           tipo?: string
