@@ -62,6 +62,7 @@ export type Compra = {
   data_compra?: string | null;
   data_servico?: string | null;
   prazo?: string | null;
+  prazo_aprovacao?: string | null;
 
   parcelamento?: string | null;
   condicao_pagamento?: string | null;
