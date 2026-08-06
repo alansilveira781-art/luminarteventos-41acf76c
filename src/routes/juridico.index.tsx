@@ -51,6 +51,26 @@ type Contrato = {
   resp_legal_documento: string | null;
   resp_legal_email: string | null;
   resp_legal_telefone: string | null;
+  cliente_tipo?: string | null;
+  cliente_cep?: string | null;
+  cliente_logradouro?: string | null;
+  cliente_numero?: string | null;
+  cliente_complemento?: string | null;
+  cliente_bairro?: string | null;
+  cliente_cidade?: string | null;
+  cliente_uf?: string | null;
+  resp_legal_cep?: string | null;
+  resp_legal_logradouro?: string | null;
+  resp_legal_numero?: string | null;
+  resp_legal_complemento?: string | null;
+  resp_legal_bairro?: string | null;
+  resp_legal_cidade?: string | null;
+  resp_legal_uf?: string | null;
+  pagamento_forma?: string | null;
+  pagamento_modo?: string | null;
+  pagamento_parcelas?: { n: number; vencimento: string; valor: number }[] | null;
+
+
 
   responsavel: string | null;
   valor: number | null;
