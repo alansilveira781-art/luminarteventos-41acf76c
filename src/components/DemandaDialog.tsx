@@ -412,6 +412,13 @@ export function DemandaDialog({
               <FormField label="Data da compra/serviço">
                 <Input type="date" value={form.data_compra ?? ""} onChange={(e) => setForm({ ...form, data_compra: e.target.value })} />
               </FormField>
+              <FormField label="Prazo">
+                <div className="flex items-center gap-2">
+                  <Input type="date" value={(form as any).prazo ?? ""} onChange={(e) => setForm({ ...form, prazo: e.target.value || null } as any)} />
+                  <PrazoDot prazo={(form as any).prazo} />
+                </div>
+              </FormField>
+
 
               <FormField label="Tem Nota Fiscal (NF)?">
                 <label className="flex items-center gap-2 h-10 text-sm">
