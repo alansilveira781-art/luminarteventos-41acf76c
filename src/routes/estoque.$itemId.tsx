@@ -53,7 +53,7 @@ function ItemHistorico() {
       const { data: diretas, error: e1 } = await supabase
         .from("movimentacoes")
         .select(
-          "id,tipo,data_movimento,quantidade,entrada_tipo,saida_tipo,condicao,observacoes,responsavel_lancamento,requisicao_numero,fornecedor:fornecedores(nome),solicitante:solicitantes(nome)"
+          "id,tipo,data_movimento,quantidade,entrada_tipo,saida_tipo,condicao,observacoes,responsavel_lancamento,requisicao_numero,evento_projeto,fornecedor_id,solicitante_id,fornecedor:fornecedores(nome),solicitante:solicitantes(nome)"
         )
         .eq("item_id", itemId)
         .order("data_movimento", { ascending: false });
@@ -63,7 +63,7 @@ function ItemHistorico() {
       const { data: filhos, error: e2 } = await supabase
         .from("movimentacao_itens")
         .select(
-          "quantidade,movimentacao:movimentacoes(id,tipo,data_movimento,entrada_tipo,saida_tipo,condicao,observacoes,responsavel_lancamento,requisicao_numero,fornecedor:fornecedores(nome),solicitante:solicitantes(nome))"
+          "quantidade,movimentacao:movimentacoes(id,tipo,data_movimento,entrada_tipo,saida_tipo,condicao,observacoes,responsavel_lancamento,requisicao_numero,evento_projeto,fornecedor_id,solicitante_id,fornecedor:fornecedores(nome),solicitante:solicitantes(nome))"
         )
         .eq("item_id", itemId);
       if (e2) throw e2;
@@ -84,6 +84,47 @@ function ItemHistorico() {
       return all;
     },
   });
+
+  const [fTipo, setFTipo] = useState<string>("__all__");
+  const [fEvento, setFEvento] = useState<string | null>(null);
+  const [fSaidaTipo, setFSaidaTipo] = useState<string>("__all__");
+  const [fSolicitante, setFSolicitante] = useState<string>("__all__");
+  const [fFornecedor, setFFornecedor] = useState<string>("__all__");
+  const [fIni, setFIni] = useState("");
+  const [fFim, setFFim] = useState("");
+
+  const eventosDisponiveis = useMemo(
+    () => [...new Set((movs ?? []).map((m: any) => m.evento_projeto).filter(Boolean))].sort() as string[],
+    [movs],
+  );
+  const solicitantesDisponiveis = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of movs ?? []) if (m.solicitante_id && m.solicitante?.nome) map.set(m.solicitante_id, m.solicitante.nome);
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1], "pt-BR"));
+  }, [movs]);
+  const fornecedoresDisponiveis = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of movs ?? []) if (m.fornecedor_id && m.fornecedor?.nome) map.set(m.fornecedor_id, m.fornecedor.nome);
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1], "pt-BR"));
+  }, [movs]);
+
+  const movsFiltrados = useMemo(() => {
+    return (movs ?? []).filter((m: any) => {
+      if (fTipo !== "__all__" && m.tipo !== fTipo) return false;
+      if (fEvento && m.evento_projeto !== fEvento) return false;
+      if (fSaidaTipo !== "__all__" && m.saida_tipo !== fSaidaTipo) return false;
+      if (fSolicitante !== "__all__" && m.solicitante_id !== fSolicitante) return false;
+      if (fFornecedor !== "__all__" && m.fornecedor_id !== fFornecedor) return false;
+      const d = new Date(m.data_movimento);
+      if (fIni && d < new Date(fIni)) return false;
+      if (fFim && d > new Date(`${fFim}T23:59:59`)) return false;
+      return true;
+    });
+  }, [movs, fTipo, fEvento, fSaidaTipo, fSolicitante, fFornecedor, fIni, fFim]);
+
+  const showSaidaTipoFiltro = fTipo === "__all__" || fTipo === "saida";
+  const showFornecedorFiltro = fTipo === "__all__" || fTipo === "entrada";
+
 
   if (!item) return <div className="text-muted-foreground">Carregando…</div>;
 
