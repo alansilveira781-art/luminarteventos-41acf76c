@@ -330,6 +330,19 @@ export const Route = createFileRoute("/api/public/solicitar")({
           );
         }
 
+        if (itensDemanda.length > 0) {
+          await (supabaseAdmin as any).from("demanda_itens").insert(
+            itensDemanda.map((it) => ({
+              demanda_id: (demanda as any).id,
+              descricao: it.descricao,
+              quantidade: it.quantidade,
+              unidade: it.unidade || null,
+              valor_unitario: it.valor_unitario ?? null,
+            })),
+          );
+        }
+
+
         let anexosFalhadosDemanda = 0;
         if (uploadedFiles.length > 0) {
           anexosFalhadosDemanda = await uploadAnexos(
