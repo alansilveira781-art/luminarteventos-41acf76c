@@ -210,6 +210,7 @@ export const Route = createFileRoute("/api/public/solicitar-contrato")({
 
         const ec = d.cliente_endereco;
         const er = d.resp_legal_endereco ?? null;
+        const er2 = d.resp_legal2_endereco ?? null;
 
         const { data: criado, error } = await sb
           .from("juridico_contratos")
