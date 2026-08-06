@@ -594,11 +594,11 @@ function SolicitarPage() {
               </Field>
             </div>
 
-            {isCompra ? (
+            {usaItens ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-medium text-muted-foreground">
-                    Itens da compra *
+                    {isCompra ? "Itens da compra *" : "Itens da despesa *"}
                   </Label>
                   <Button type="button" size="sm" variant="outline" onClick={addItem}>
                     <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar item
@@ -606,8 +606,9 @@ function SolicitarPage() {
                 </div>
                 <div className="space-y-3">
                   {form.itens.map((it, idx) => {
-                    const descInvalido = showItemErrors && it.descricao.trim().length === 0;
-                    const qtdInvalido = showItemErrors && !(Number(it.quantidade) > 0);
+                    const vazio = itemVazio(it);
+                    const descInvalido = showItemErrors && !vazio && it.descricao.trim().length === 0;
+                    const qtdInvalido = showItemErrors && !vazio && !(Number(it.quantidade) > 0);
                     return (
                       <div
                         key={idx}
@@ -649,34 +650,50 @@ function SolicitarPage() {
                               />
                             </div>
                           </div>
-                          {form.itens.length > 1 && (
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => removeItem(idx)}
-                              className="text-muted-foreground hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => removeItem(idx)}
+                            disabled={form.itens.length === 1}
+                            className="text-muted-foreground hover:text-destructive"
+                            aria-label="Remover item"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                     );
                   })}
                 </div>
+                <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2 bg-muted/30">
+                  <span className="text-xs text-muted-foreground">Valor total (soma dos itens)</span>
+                  <span className="text-sm font-semibold">
+                    {somaItens().toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Linhas em branco são ignoradas automaticamente.
+                </p>
                 <Field label="Observações (opcional)">
                   <Textarea
                     rows={3}
                     value={form.descricao}
                     maxLength={4000}
                     onChange={(e) => update({ descricao: e.target.value })}
-                    placeholder="Algum detalhe adicional sobre a compra…"
+                    placeholder={isCompra ? "Algum detalhe adicional sobre a compra…" : "Algum detalhe adicional sobre a despesa…"}
                   />
                 </Field>
               </div>
             ) : (
               <>
+                <Field label="Valor total *">
+                  <MoneyInput
+                    value={Number(form.valor_total) || 0}
+                    onChange={(n) => update({ valor_total: String(n) })}
+                    placeholder="0,00"
+                  />
+                </Field>
                 <Field label="Descreva sua despesa *">
                   <Textarea
                     rows={6}
