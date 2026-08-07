@@ -145,6 +145,12 @@ export function canMoveCompra(
     const isRespDestino = !!statusResponsavelId && !!userId && userId === statusResponsavelId;
     const isRespOrigem = !!currentStatusResponsavelId && !!userId && userId === currentStatusResponsavelId;
 
+    // Retornos permitidos (Análise → Solicitação, A Receber → Em Andamento)
+    if (isCompraBackMove(currentStatus, targetStatus)) {
+      return isRespOrigem || isRespDestino;
+    }
+
+
     if (currentStatus === "pendente_aprovacao") {
       return (targetStatus === "aprovada" || targetStatus === "negada") && isRespOrigem;
     }
