@@ -75,10 +75,13 @@ function montarResultado(
   valorHora: number,
   extraManual: number,
   refeicoes = 0,
+  diariaMinima = true,
 ): CalcResult {
   const horasTrab = minutosTrab / 60;
   const diariaCheia = valorHora * 8;
-  const diaria = horasTrab <= 8 ? diariaCheia : diariaCheia + (horasTrab - 8) * valorHora;
+  const diaria = diariaMinima
+    ? (horasTrab <= 8 ? diariaCheia : diariaCheia + (horasTrab - 8) * valorHora)
+    : horasTrab * valorHora;
   const extra = Number(extraManual) || 0;
   const ref = Number(refeicoes) || 0;
   return {
@@ -93,6 +96,10 @@ function montarResultado(
   };
 }
 
+export function usaDiariaMinima(a: ApontamentoInput): boolean {
+  return a.diaria_minima == null ? true : !!a.diaria_minima;
+}
+
 export function calcularApontamento(a: ApontamentoInput, t: DiaristaTarifa): CalcResult {
   const bruto = minutosEntre(a.hora_inicial, a.hora_final);
   const minutosTrab = Math.max(0, bruto - (Number(a.intervalo_minutos) || 0));
@@ -101,6 +108,7 @@ export function calcularApontamento(a: ApontamentoInput, t: DiaristaTarifa): Cal
     valorHoraDoLocal(a.local, t),
     a.extra_manual ?? 0,
     valorRefeicoes(a, t),
+    usaDiariaMinima(a),
   );
 }
 
