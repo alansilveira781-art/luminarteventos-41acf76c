@@ -38,6 +38,8 @@ import {
   type ModoDivisao,
 } from "@/lib/diaristas-calc";
 import { useDiaristaAcesso } from "@/lib/diaristas-acesso";
+import { useDiaristaConfig } from "@/lib/diaristas-config";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export const Route = createFileRoute("/financeiro-op/diaristas/")({
   component: DiaristasIndex,
@@ -68,6 +70,8 @@ type Apontamento = {
   extra_manual: number;
   created_by: string | null;
   modo_divisao: ModoDivisao | null;
+  almoco: boolean | null;
+  janta: boolean | null;
 };
 
 type EventoLinha = {
@@ -96,6 +100,8 @@ type ApontamentoForm = {
   extra_manual: number;
   modo_divisao: ModoDivisao;
   eventos: EventoLinha[];
+  almoco: boolean;
+  janta: boolean;
 };
 
 const emptyEvento = (): EventoLinha => ({
@@ -117,6 +123,8 @@ const emptyApontamento = (): ApontamentoForm => ({
   extra_manual: 0,
   modo_divisao: "unico",
   eventos: [],
+  almoco: false,
+  janta: false,
 });
 
 function fmtBRL(v: number) {
@@ -258,6 +266,12 @@ function ApontamentoTab() {
   const { data: diaristas = [] } = useDiaristas();
   const { data: apontamentos = [], isLoading } = useApontamentos();
   const { data: eventosMap } = useApontamentoEventos();
+  const { data: cfgRefeicao } = useDiaristaConfig();
+  const tarifaDe = (d: Diarista) => ({
+    ...d,
+    valor_almoco: cfgRefeicao?.valor_almoco ?? 0,
+    valor_janta: cfgRefeicao?.valor_janta ?? 0,
+  });
 
   const diaristasAtivos = useMemo(() => diaristas.filter((d) => d.ativo), [diaristas]);
   const diaristasMap = useMemo(
@@ -305,6 +319,8 @@ function ApontamentoTab() {
         obs: payload.obs.trim() || null,
         extra_manual: Number(payload.extra_manual) || 0,
         modo_divisao: payload.modo_divisao,
+        almoco: !!payload.almoco,
+        janta: !!payload.janta,
       };
 
       let apontamentoId = payload.id;
@@ -381,13 +397,13 @@ function ApontamentoTab() {
     const d = diaristasMap.get(a.diarista_id);
     if (!d) return null;
     const evs = eventosMap?.get(a.id) ?? [];
-    return calcularApontamentoComEventos(a, d, (a.modo_divisao ?? "unico") as ModoDivisao, evs);
+    return calcularApontamentoComEventos(a, tarifaDe(d), (a.modo_divisao ?? "unico") as ModoDivisao, evs);
   };
 
   // preview em tempo real no formulário
   const previewDiarista = diaristasMap.get(editing.diarista_id);
   const preview = previewDiarista
-    ? calcularApontamentoComEventos(editing, previewDiarista, editing.modo_divisao, editing.eventos)
+    ? calcularApontamentoComEventos(editing, tarifaDe(previewDiarista), editing.modo_divisao, editing.eventos)
     : null;
 
   const setEvento = (i: number, patch: Partial<EventoLinha>) =>
@@ -548,6 +564,8 @@ function ApontamentoTab() {
                                   obs: a.obs ?? "",
                                   extra_manual: Number(a.extra_manual) || 0,
                                   modo_divisao: (a.modo_divisao ?? "unico") as ModoDivisao,
+                                  almoco: !!a.almoco,
+                                  janta: !!a.janta,
                                   eventos: evs.map((e) => ({
                                     evento_nome: e.evento_nome,
                                     hora_inicial: e.hora_inicial || "08:00",
@@ -714,6 +732,36 @@ function ApontamentoTab() {
                     onChange={(v) => setEditing({ ...editing, extra_manual: v })} />
                 </div>
               )}
+              <div className="space-y-2 sm:col-span-2">
+                <Label>Refeições</Label>
+                <div className="flex flex-wrap items-center gap-6">
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={editing.almoco}
+                      onCheckedChange={(v) => setEditing({ ...editing, almoco: v === true })}
+                    />
+                    Almoço
+                    {verValores && (cfgRefeicao?.valor_almoco ?? 0) > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        ({fmtBRL(cfgRefeicao?.valor_almoco ?? 0)})
+                      </span>
+                    )}
+                  </label>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={editing.janta}
+                      onCheckedChange={(v) => setEditing({ ...editing, janta: v === true })}
+                    />
+                    Janta
+                    {verValores && (cfgRefeicao?.valor_janta ?? 0) > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        ({fmtBRL(cfgRefeicao?.valor_janta ?? 0)})
+                      </span>
+                    )}
+                  </label>
+                </div>
+              </div>
+
               <div className="space-y-1.5 sm:col-span-2">
                 <Label>Observações</Label>
                 <Textarea rows={2} value={editing.obs}
@@ -808,6 +856,10 @@ function ApontamentoTab() {
                         <div>
                           <div className="text-muted-foreground text-xs">Extra</div>
                           <div className="tabular-nums">{fmtBRL(preview.extra)}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground text-xs">Refeições</div>
+                          <div className="tabular-nums">{fmtBRL(preview.refeicoes)}</div>
                         </div>
                         <div>
                           <div className="text-muted-foreground text-xs">Total</div>
