@@ -75,26 +75,43 @@ function useDadosFiscais() {
   });
 
   const faturamento = useQuery({
-    queryKey: ["fiscal-faturamento"],
+    queryKey: ["fiscal-faturamento", "com-apuracao"],
     queryFn: async () => {
-      const { data, error } = await sb
-        .from("fiscal_faturamento")
-        .select("empresa_id,competencia,receita_bruta,folha_bruta")
-        .order("competencia", { ascending: true });
+      const [{ data, error }, notas] = await Promise.all([
+        sb
+          .from("fiscal_faturamento")
+          .select("empresa_id,competencia,receita_bruta,folha_bruta")
+          .order("competencia", { ascending: true }),
+        carregarNotasPorCompetencia(),
+      ]);
       if (error) throw error;
-      const map: Record<string, FaturamentoMes[]> = {};
+      const manual: Record<string, FaturamentoMes[]> = {};
       for (const r of (data ?? []) as any[]) {
-        (map[r.empresa_id] ??= []).push({
+        (manual[r.empresa_id] ??= []).push({
           competencia: r.competencia,
           receita_bruta: Number(r.receita_bruta) || 0,
           folha_bruta: Number(r.folha_bruta) || 0,
         });
       }
-      return map;
+      return { manual, notas };
     },
   });
 
-  return { empresas, faixas, faturamento };
+  const faturamentoPorEmpresa = useMemo(() => {
+    const map: Record<string, FaturamentoMes[]> = {};
+    const manual = faturamento.data?.manual ?? {};
+    const notas = faturamento.data?.notas ?? {};
+    for (const e of empresas.data ?? []) {
+      const ref = e.empresa_ref ?? e.nome;
+      map[e.id] = mesclarFaturamento(manual[e.id] ?? [], notas[ref]).serie;
+    }
+    for (const [id, linhas] of Object.entries(manual)) {
+      if (!map[id]) map[id] = linhas;
+    }
+    return map;
+  }, [empresas.data, faturamento.data]);
+
+  return { empresas, faixas, faturamento, faturamentoPorEmpresa };
 }
 
 const SEV_CLASS: Record<Severidade, string> = {
