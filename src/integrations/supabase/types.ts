@@ -3204,6 +3204,191 @@ export type Database = {
         }
         Relationships: []
       }
+      fiscal_empresas: {
+        Row: {
+          adicional_irpj_ativo: boolean
+          anexo: number | null
+          atividades: string[]
+          ativo: boolean
+          cnaes: string[]
+          cnpj: string | null
+          created_at: string
+          id: string
+          inicio_atividade: string | null
+          iss_aliquota: number
+          nome: string
+          presuncao_csll: number
+          presuncao_irpj: number
+          rat: number
+          regime: string
+          updated_at: string
+        }
+        Insert: {
+          adicional_irpj_ativo?: boolean
+          anexo?: number | null
+          atividades?: string[]
+          ativo?: boolean
+          cnaes?: string[]
+          cnpj?: string | null
+          created_at?: string
+          id?: string
+          inicio_atividade?: string | null
+          iss_aliquota?: number
+          nome: string
+          presuncao_csll?: number
+          presuncao_irpj?: number
+          rat?: number
+          regime?: string
+          updated_at?: string
+        }
+        Update: {
+          adicional_irpj_ativo?: boolean
+          anexo?: number | null
+          atividades?: string[]
+          ativo?: boolean
+          cnaes?: string[]
+          cnpj?: string | null
+          created_at?: string
+          id?: string
+          inicio_atividade?: string | null
+          iss_aliquota?: number
+          nome?: string
+          presuncao_csll?: number
+          presuncao_irpj?: number
+          rat?: number
+          regime?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      fiscal_faixas_simples: {
+        Row: {
+          aliquota_nominal: number
+          anexo: number
+          created_at: string
+          faixa: number
+          id: string
+          limite_max: number
+          limite_min: number
+          parcela_deduzir: number
+          rep_cofins: number | null
+          rep_cpp: number | null
+          rep_csll: number | null
+          rep_icms: number | null
+          rep_irpj: number | null
+          rep_iss: number | null
+          rep_pis: number | null
+          updated_at: string
+        }
+        Insert: {
+          aliquota_nominal: number
+          anexo: number
+          created_at?: string
+          faixa: number
+          id?: string
+          limite_max: number
+          limite_min: number
+          parcela_deduzir?: number
+          rep_cofins?: number | null
+          rep_cpp?: number | null
+          rep_csll?: number | null
+          rep_icms?: number | null
+          rep_irpj?: number | null
+          rep_iss?: number | null
+          rep_pis?: number | null
+          updated_at?: string
+        }
+        Update: {
+          aliquota_nominal?: number
+          anexo?: number
+          created_at?: string
+          faixa?: number
+          id?: string
+          limite_max?: number
+          limite_min?: number
+          parcela_deduzir?: number
+          rep_cofins?: number | null
+          rep_cpp?: number | null
+          rep_csll?: number | null
+          rep_icms?: number | null
+          rep_irpj?: number | null
+          rep_iss?: number | null
+          rep_pis?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      fiscal_faturamento: {
+        Row: {
+          competencia: string
+          created_at: string
+          empresa_id: string
+          folha_bruta: number
+          id: string
+          receita_bruta: number
+          updated_at: string
+        }
+        Insert: {
+          competencia: string
+          created_at?: string
+          empresa_id: string
+          folha_bruta?: number
+          id?: string
+          receita_bruta?: number
+          updated_at?: string
+        }
+        Update: {
+          competencia?: string
+          created_at?: string
+          empresa_id?: string
+          folha_bruta?: number
+          id?: string
+          receita_bruta?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_faturamento_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_projecoes: {
+        Row: {
+          atividade: string | null
+          competencia: string | null
+          criado_em: string
+          criado_por: string | null
+          criado_por_nome: string | null
+          id: string
+          resultado: Json
+          valor_analisado: number
+        }
+        Insert: {
+          atividade?: string | null
+          competencia?: string | null
+          criado_em?: string
+          criado_por?: string | null
+          criado_por_nome?: string | null
+          id?: string
+          resultado?: Json
+          valor_analisado: number
+        }
+        Update: {
+          atividade?: string | null
+          competencia?: string | null
+          criado_em?: string
+          criado_por?: string | null
+          criado_por_nome?: string | null
+          id?: string
+          resultado?: Json
+          valor_analisado?: number
+        }
+        Relationships: []
+      }
       fornecedores: {
         Row: {
           contato_nome: string | null
