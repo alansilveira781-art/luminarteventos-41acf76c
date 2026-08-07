@@ -793,7 +793,11 @@ function MigrarCompraDialog({
           .from("compra-anexos")
           .download(a.path);
         if (dlErr || !blob) throw new Error(`Falha ao copiar anexo "${a.nome}"`);
-        const novoPath = `demandas/${novaDem.id}/${Date.now()}-${a.nome}`;
+        const safeName = (a.nome ?? "arquivo")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-zA-Z0-9._-]/g, "_");
+        const novoPath = `demandas/${novaDem.id}/${Date.now()}-${safeName}`;
         const { error: upErr } = await sb.storage
           .from("demanda-anexos")
           .upload(novoPath, blob, { contentType: a.mime_type ?? undefined, upsert: false });
