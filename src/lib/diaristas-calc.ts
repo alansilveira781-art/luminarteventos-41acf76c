@@ -16,6 +16,8 @@ export type ApontamentoInput = {
   extra_manual?: number | null;
   almoco?: boolean | null;
   janta?: boolean | null;
+  /** Garante a diária cheia de 8h mesmo com menos horas (padrão: true) */
+  diaria_minima?: boolean | null;
 };
 
 export type DiaristaTarifa = {
