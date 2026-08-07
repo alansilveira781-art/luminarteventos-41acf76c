@@ -227,8 +227,8 @@ function useApontamentos() {
       const { data, error } = await (supabase as any)
         .from("diarista_apontamentos")
         .select("*")
-        .order("data", { ascending: false })
-        .order("created_at", { ascending: false });
+        .order("data", { ascending: true })
+        .order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []) as Apontamento[];
     },
