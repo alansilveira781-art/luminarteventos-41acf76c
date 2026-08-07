@@ -2585,6 +2585,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           data: string
+          diaria_minima: boolean
           diarista_id: string | null
           empresa: string | null
           extra_manual: number
@@ -2606,6 +2607,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           data: string
+          diaria_minima?: boolean
           diarista_id?: string | null
           empresa?: string | null
           extra_manual?: number
@@ -2627,6 +2629,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           data?: string
+          diaria_minima?: boolean
           diarista_id?: string | null
           empresa?: string | null
           extra_manual?: number

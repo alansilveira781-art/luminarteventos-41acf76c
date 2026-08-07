@@ -40,6 +40,7 @@ import {
 import { useDiaristaAcesso } from "@/lib/diaristas-acesso";
 import { useDiaristaConfig } from "@/lib/diaristas-config";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 
 export const Route = createFileRoute("/financeiro-op/diaristas/")({
   component: DiaristasIndex,
@@ -81,6 +82,7 @@ type Apontamento = {
   modo_divisao: ModoDivisao | null;
   almoco: boolean | null;
   janta: boolean | null;
+  diaria_minima: boolean | null;
 };
 
 type EventoLinha = {
@@ -111,6 +113,7 @@ type ApontamentoForm = {
   eventos: EventoLinha[];
   almoco: boolean;
   janta: boolean;
+  diaria_minima: boolean;
 };
 
 const emptyEvento = (): EventoLinha => ({
@@ -134,6 +137,7 @@ const emptyApontamento = (): ApontamentoForm => ({
   eventos: [],
   almoco: false,
   janta: false,
+  diaria_minima: true,
 });
 
 function fmtBRL(v: number) {
@@ -330,6 +334,7 @@ function ApontamentoTab() {
         modo_divisao: payload.modo_divisao,
         almoco: !!payload.almoco,
         janta: !!payload.janta,
+        diaria_minima: !!payload.diaria_minima,
       };
 
       let apontamentoId = payload.id;
@@ -575,6 +580,7 @@ function ApontamentoTab() {
                                   modo_divisao: (a.modo_divisao ?? "unico") as ModoDivisao,
                                   almoco: !!a.almoco,
                                   janta: !!a.janta,
+                                  diaria_minima: a.diaria_minima !== false,
                                   eventos: evs.map((e) => ({
                                     evento_nome: e.evento_nome,
                                     hora_inicial: e.hora_inicial || "08:00",
@@ -741,6 +747,21 @@ function ApontamentoTab() {
                     onChange={(v) => setEditing({ ...editing, extra_manual: v })} />
                 </div>
               )}
+              <div className="sm:col-span-2 flex items-start justify-between gap-4 rounded-md border border-border p-3">
+                <div>
+                  <Label htmlFor="diaria-minima">Garantir diária de 8h</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {editing.diaria_minima
+                      ? "Menos de 8h paga a diária cheia; acima de 8h paga as horas extras."
+                      : "Paga estritamente as horas trabalhadas (valor/hora × horas)."}
+                  </p>
+                </div>
+                <Switch
+                  id="diaria-minima"
+                  checked={editing.diaria_minima}
+                  onCheckedChange={(v) => setEditing({ ...editing, diaria_minima: v })}
+                />
+              </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Refeições</Label>
                 <div className="flex flex-wrap items-center gap-6">

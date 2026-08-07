@@ -1,0 +1,1 @@
+ALTER TABLE public.diarista_apontamentos ADD COLUMN IF NOT EXISTS diaria_minima boolean NOT NULL DEFAULT true;
