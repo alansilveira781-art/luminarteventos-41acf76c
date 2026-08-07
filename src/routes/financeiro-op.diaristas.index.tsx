@@ -1009,6 +1009,8 @@ function FechamentoTab() {
         dias: l.dias,
         horasLabel: formatHoras(l.minutos),
         total: l.total,
+        valorHoraFortaleza: Number(l.diarista?.valor_hora_fortaleza) || 0,
+        valorHoraFora: Number(l.diarista?.valor_hora_fora) || 0,
         itens: l.itens.map((it) => {
           const evs = eventosMap?.get(it.ap.id) ?? [];
           const modo = it.ap.modo_divisao ?? "unico";
@@ -1186,7 +1188,22 @@ function FechamentoTab() {
                         <td className="py-2 pr-3">
                           {aberto ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </td>
-                        <td className="py-2 px-3 font-medium">{l.diarista?.nome ?? "—"}</td>
+                        <td className="py-2 px-3 font-medium">
+                          <div>{l.diarista?.nome ?? "—"}</div>
+                          {(() => {
+                            const vf = Number(l.diarista?.valor_hora_fortaleza) || 0;
+                            const vo = Number(l.diarista?.valor_hora_fora) || 0;
+                            const partes = [
+                              vf > 0 ? `Fortaleza ${fmtBRL(vf)}/h` : null,
+                              vo > 0 ? `Fora ${fmtBRL(vo)}/h` : null,
+                            ].filter(Boolean);
+                            return partes.length ? (
+                              <div className="text-[11px] font-normal text-muted-foreground">
+                                {partes.join(" · ")}
+                              </div>
+                            ) : null;
+                          })()}
+                        </td>
                         <td className="py-2 px-3 text-xs text-muted-foreground">{l.diarista?.chave_pix ?? "—"}</td>
                         <td className="py-2 px-3 text-right tabular-nums">{l.dias}</td>
                         <td className="py-2 px-3 text-right tabular-nums">{formatHoras(l.minutos)}</td>
