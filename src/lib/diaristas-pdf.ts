@@ -20,6 +20,8 @@ export type RelatorioGrupo = {
   dias: number;
   horasLabel: string;
   total: number;
+  valorHoraFortaleza?: number;
+  valorHoraFora?: number;
   itens: RelatorioItem[];
 };
 
