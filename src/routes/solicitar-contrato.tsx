@@ -811,23 +811,26 @@ function SolicitarContratoPublico() {
               )}
               <Erro msg={erros.proposta} />
             </div>
-            <div className="space-y-1.5">
-              <Label>{isPJ ? "Cartão CNPJ (PDF/imagem) *" : "Documento com foto — RG/CNH (PDF/imagem) *"}</Label>
-              <Input
-                type="file"
-                accept=".pdf,.png,.jpg,.jpeg,.webp"
-                onChange={(e) => {
-                  setDocEmpresa(e.target.files?.[0] ?? null);
-                  setErros((x) => ({ ...x, doc_empresa: "" }));
-                }}
-              />
-              {docEmpresa && (
-                <p className="text-[11px] text-muted-foreground">
-                  {docEmpresa.name} · {(docEmpresa.size / 1024).toFixed(1)} KB
-                </p>
-              )}
-              <Erro msg={erros.doc_empresa} />
-            </div>
+            {isPJ && (
+              <div className="space-y-1.5">
+                <Label>Cartão CNPJ (PDF/imagem) *</Label>
+                <Input
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg,.webp"
+                  onChange={(e) => {
+                    setDocEmpresa(e.target.files?.[0] ?? null);
+                    setErros((x) => ({ ...x, doc_empresa: "" }));
+                  }}
+                />
+                {docEmpresa && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {docEmpresa.name} · {(docEmpresa.size / 1024).toFixed(1)} KB
+                  </p>
+                )}
+                <Erro msg={erros.doc_empresa} />
+              </div>
+            )}
+
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Observações</Label>
               <Textarea rows={4} value={form.observacoes} onChange={(e) => set("observacoes", e.target.value)} placeholder="Condições, prazos, informações complementares…" />
