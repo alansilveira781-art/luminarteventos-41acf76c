@@ -797,7 +797,7 @@ function MigrarCompraDialog({
           .normalize("NFD")
           .replace(/[\u0300-\u036f]/g, "")
           .replace(/[^a-zA-Z0-9._-]/g, "_");
-        const novoPath = `demandas/${novaDem.id}/${Date.now()}-${safeName}`;
+        const novoPath = `${novaDem.id}/${Date.now()}_${safeName}`;
         const { error: upErr } = await sb.storage
           .from("demanda-anexos")
           .upload(novoPath, blob, { contentType: a.mime_type ?? undefined, upsert: false });
