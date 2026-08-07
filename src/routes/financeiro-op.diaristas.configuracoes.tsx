@@ -206,7 +206,9 @@ function DiaristasConfiguracoes() {
               <tbody>
                 {rows.map((d) => (
                   <tr key={d.id} className="border-b border-border/50 hover:bg-muted/40">
-                    <td className="py-2 pr-3 font-medium">{d.nome}</td>
+                    <td className="py-2 pr-3 font-medium">{d.apelido || "—"}</td>
+                    <td className="py-2 px-3">{d.nome}</td>
+
                     <td className="py-2 px-3 text-right tabular-nums">
                       {fmtBRL(Number(d.valor_hora_fortaleza))}
                     </td>
