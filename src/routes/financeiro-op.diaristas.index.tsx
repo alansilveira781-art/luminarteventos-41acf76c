@@ -81,6 +81,7 @@ type Apontamento = {
   modo_divisao: ModoDivisao | null;
   almoco: boolean | null;
   janta: boolean | null;
+  diaria_minima: boolean | null;
 };
 
 type EventoLinha = {
