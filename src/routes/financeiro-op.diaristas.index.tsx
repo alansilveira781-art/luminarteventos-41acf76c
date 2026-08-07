@@ -48,11 +48,20 @@ export const Route = createFileRoute("/financeiro-op/diaristas/")({
 type Diarista = {
   id: string;
   nome: string;
+  apelido?: string | null;
   valor_hora_fortaleza: number;
   valor_hora_fora: number;
   chave_pix: string | null;
   ativo: boolean;
 };
+
+/** Nome usado nas listagens: apelido quando houver, senão o nome completo. */
+function nomeExib(d?: Pick<Diarista, "nome" | "apelido"> | null) {
+  if (!d) return "—";
+  const ap = (d.apelido ?? "").trim();
+  return ap || d.nome;
+}
+
 
 type Apontamento = {
   id: string;
