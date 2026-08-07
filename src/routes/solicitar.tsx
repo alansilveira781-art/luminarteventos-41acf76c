@@ -316,7 +316,13 @@ function SolicitarPage() {
         throw new Error(json?.error || "Erro ao enviar");
       }
       if (json.anexos_falhados && json.anexos_falhados > 0) {
-        toast.warning(`${json.anexos_falhados} anexo(s) não puderam ser enviados.`);
+        const detalhe = Array.isArray(json.anexos_erros) ? json.anexos_erros.join(" | ") : "";
+        toast.warning(`${json.anexos_falhados} anexo(s) não puderam ser enviados.`, {
+          description: detalhe || "Tente anexar novamente pelo card após o envio.",
+          duration: 10000,
+        });
+      }
+
       }
       try {
         localStorage.removeItem(DRAFT_KEY);
