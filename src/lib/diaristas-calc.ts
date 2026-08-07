@@ -179,7 +179,7 @@ export function calcularApontamentoComEventos(
       ),
     );
     const totalMin = minutosPorEvento.reduce((acc, m) => acc + m, 0);
-    const base = montarResultado(totalMin, valorHora, a.extra_manual ?? 0);
+    const base = montarResultado(totalMin, valorHora, a.extra_manual ?? 0, valorRefeicoes(a, t));
     let acumulado = 0;
     const rateio = lista.map((e, i) => {
       const min = minutosPorEvento[i] ?? 0;
