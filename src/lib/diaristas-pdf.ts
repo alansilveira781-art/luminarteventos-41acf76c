@@ -1,12 +1,6 @@
 // Relatório de Diaristas em PDF (A4 retrato).
 // jspdf carregado sob demanda para não pesar no bundle.
 
-export type RelatorioItemEvento = {
-  evento_nome: string;
-  horasLabel: string;
-  valor: number;
-};
-
 export type RelatorioItem = {
   data: string; // ISO yyyy-mm-dd
   projeto: string;
@@ -18,7 +12,6 @@ export type RelatorioItem = {
   extra: number;
   refeicoes?: number;
   total: number;
-  eventos?: RelatorioItemEvento[];
 };
 
 export type RelatorioGrupo = {
@@ -128,19 +121,6 @@ export async function gerarRelatorioDiaristasPdf(params: RelatorioDiaristasParam
         brl(it.refeicoes ?? 0),
         brl(it.total),
       ]);
-      for (const ev of it.eventos ?? []) {
-        body.push([
-          "",
-          {
-            content: `↳ ${ev.evento_nome}`,
-            colSpan: 3,
-            styles: { textColor: [110, 110, 110], fontStyle: "italic" },
-          },
-          { content: ev.horasLabel, styles: { textColor: [110, 110, 110] } },
-          { content: "", colSpan: 3 },
-          { content: brl(ev.valor), styles: { textColor: [110, 110, 110] } },
-        ] as any);
-      }
     }
 
     autoTable(doc, {
