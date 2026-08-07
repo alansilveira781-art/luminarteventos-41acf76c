@@ -103,6 +103,8 @@ export async function gerarRelatorioDiaristasPdf(params: RelatorioDiaristasParam
       g.chavePix ? `Pix: ${g.chavePix}` : null,
       `${g.dias} ${g.dias === 1 ? "dia" : "dias"}`,
       `${g.horasLabel} trabalhadas`,
+      (g.valorHoraFortaleza ?? 0) > 0 ? `Fortaleza ${brl(g.valorHoraFortaleza!)}/h` : null,
+      (g.valorHoraFora ?? 0) > 0 ? `Fora ${brl(g.valorHoraFora!)}/h` : null,
     ]
       .filter(Boolean)
       .join("   |   ");
