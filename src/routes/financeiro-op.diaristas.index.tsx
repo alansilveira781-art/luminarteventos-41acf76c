@@ -1012,10 +1012,6 @@ function FechamentoTab() {
         itens: l.itens.map((it) => {
           const evs = eventosMap?.get(it.ap.id) ?? [];
           const modo = it.ap.modo_divisao ?? "unico";
-          const rateio =
-            l.diarista && modo !== "unico" && evs.length > 0
-              ? calcularApontamentoComEventos(it.ap, tarifaDe(l.diarista), modo, evs).rateio
-              : [];
           return {
             data: it.ap.data,
             projeto: it.ap.projeto ?? "",
@@ -1027,11 +1023,6 @@ function FechamentoTab() {
             extra: it.calc?.extra ?? 0,
             refeicoes: it.calc?.refeicoes ?? 0,
             total: it.calc?.total ?? 0,
-            eventos: rateio.map((r) => ({
-              evento_nome: r.evento_nome,
-              horasLabel: r.horasLabel,
-              valor: r.valor,
-            })),
           };
         }),
       })),
