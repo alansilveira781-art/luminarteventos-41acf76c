@@ -86,6 +86,7 @@ function DiaristasConfiguracoes() {
     mutationFn: async (payload: DiaristaForm) => {
       const row = {
         nome: payload.nome.trim(),
+        apelido: payload.apelido.trim() || null,
         valor_hora_fortaleza: Number(payload.valor_hora_fortaleza) || 0,
         valor_hora_fora: Number(payload.valor_hora_fora) || 0,
         chave_pix: payload.chave_pix.trim() || null,
@@ -237,6 +238,7 @@ function DiaristasConfiguracoes() {
                             setEditing({
                               id: d.id,
                               nome: d.nome,
+                              apelido: d.apelido ?? "",
                               valor_hora_fortaleza: Number(d.valor_hora_fortaleza) || 0,
                               valor_hora_fora: Number(d.valor_hora_fora) || 0,
                               chave_pix: d.chave_pix ?? "",
