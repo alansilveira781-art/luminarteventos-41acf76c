@@ -418,7 +418,10 @@ function ComprasKanban() {
             <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={byStatus[s.key]?.length ?? 0}>
               {(byStatus[s.key] ?? []).map((c) => {
                 const next = nextCompraStatus(c.status);
-                const canMove = canMoveCompra(c, user?.id, isAdmin, user?.email, next ?? undefined, c.status, responsavelDoStatus(next), responsavelDoStatus(c.status));
+                const back = compraBackStatus(c.status);
+                const canMove =
+                  canMoveCompra(c, user?.id, isAdmin, user?.email, next ?? undefined, c.status, responsavelDoStatus(next), responsavelDoStatus(c.status)) ||
+                  (!!back && canMoveCompra(c, user?.id, isAdmin, user?.email, back, c.status, responsavelDoStatus(back), responsavelDoStatus(c.status)));
                 const canMigrate =
                   (c.status === "solicitacao" || c.status === "a_receber") &&
                   canEditCompra(c, user?.id, isAdmin, user?.email, responsavelDoStatus(c.status));
