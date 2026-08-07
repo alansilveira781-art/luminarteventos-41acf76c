@@ -914,6 +914,14 @@ function FechamentoTab() {
   const { data: diaristas = [] } = useDiaristas();
   const { data: apontamentos = [], isLoading } = useApontamentos();
   const { data: eventosMap } = useApontamentoEventos();
+  const { data: cfgRefeicao } = useDiaristaConfig();
+  const tarifaDe = (d: Diarista) => ({
+    ...d,
+    valor_almoco: cfgRefeicao?.valor_almoco ?? 0,
+    valor_janta: cfgRefeicao?.valor_janta ?? 0,
+  });
+
+
 
 
   const diaristasMap = useMemo(
