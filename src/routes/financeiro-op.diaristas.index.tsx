@@ -1148,6 +1148,7 @@ function FechamentoTab() {
                                     <th className="py-1 pr-2">Data</th>
                                     <th className="py-1 px-2">Projeto</th>
                                     <th className="py-1 px-2">Local</th>
+                                    <th className="py-1 px-2">Horário</th>
                                     <th className="py-1 px-2 text-right">Horas</th>
                                     <th className="py-1 px-2 text-right">Diária</th>
                                     <th className="py-1 px-2 text-right">Extra</th>
@@ -1160,12 +1161,20 @@ function FechamentoTab() {
                                       <td className="py-1 pr-2 tabular-nums">{fmtDate(it.ap.data)}</td>
                                       <td className="py-1 px-2">{it.ap.projeto ?? "—"}</td>
                                       <td className="py-1 px-2">{it.ap.local}</td>
+                                      <td className="py-1 px-2 tabular-nums">
+                                        {intervaloExibicao(
+                                          it.ap,
+                                          eventosMap?.get(it.ap.id) ?? [],
+                                          (it.ap.modo_divisao ?? "unico") as ModoDivisao,
+                                        ).label}
+                                      </td>
                                       <td className="py-1 px-2 text-right tabular-nums">{it.calc?.horasLabel ?? "—"}</td>
                                       <td className="py-1 px-2 text-right tabular-nums">{fmtBRL(it.calc?.diaria ?? 0)}</td>
                                       <td className="py-1 px-2 text-right tabular-nums">{fmtBRL(it.calc?.extra ?? 0)}</td>
                                       <td className="py-1 pl-2 text-right tabular-nums font-medium">{fmtBRL(it.calc?.total ?? 0)}</td>
                                     </tr>
                                   ))}
+
                                 </tbody>
                               </table>
                             </div>
