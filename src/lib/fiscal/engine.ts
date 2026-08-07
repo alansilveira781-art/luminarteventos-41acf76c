@@ -35,6 +35,8 @@ export type EmpresaFiscal = {
   id: string;
   nome: string;
   cnpj: string | null;
+  /** Empresa correspondente na Apuração de Impostos (texto). */
+  empresa_ref?: string | null;
   regime: Regime;
   anexo: number | null;
   inicio_atividade: string | null;
