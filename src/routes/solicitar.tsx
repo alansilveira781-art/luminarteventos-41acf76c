@@ -323,7 +323,7 @@ function SolicitarPage() {
         });
       }
 
-      }
+
       try {
         localStorage.removeItem(DRAFT_KEY);
       } catch {}
