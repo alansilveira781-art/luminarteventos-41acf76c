@@ -420,8 +420,9 @@ function ComprasKanban() {
                 const next = nextCompraStatus(c.status);
                 const canMove = canMoveCompra(c, user?.id, isAdmin, user?.email, next ?? undefined, c.status, responsavelDoStatus(next), responsavelDoStatus(c.status));
                 const canMigrate =
-                  c.status === "solicitacao" &&
+                  (c.status === "solicitacao" || c.status === "a_receber") &&
                   canEditCompra(c, user?.id, isAdmin, user?.email, responsavelDoStatus(c.status));
+
                 return (
                   <Card
                     key={c.id}
