@@ -26,6 +26,7 @@ export const Route = createFileRoute("/financeiro-op/diaristas/configuracoes")({
 type Diarista = {
   id: string;
   nome: string;
+  apelido: string | null;
   valor_hora_fortaleza: number;
   valor_hora_fora: number;
   chave_pix: string | null;
@@ -35,6 +36,7 @@ type Diarista = {
 type DiaristaForm = {
   id?: string;
   nome: string;
+  apelido: string;
   valor_hora_fortaleza: number;
   valor_hora_fora: number;
   chave_pix: string;
@@ -43,6 +45,7 @@ type DiaristaForm = {
 
 const emptyForm: DiaristaForm = {
   nome: "",
+  apelido: "",
   valor_hora_fortaleza: 0,
   valor_hora_fora: 0,
   chave_pix: "",
