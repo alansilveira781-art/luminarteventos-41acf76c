@@ -746,6 +746,21 @@ function ApontamentoTab() {
                     onChange={(v) => setEditing({ ...editing, extra_manual: v })} />
                 </div>
               )}
+              <div className="sm:col-span-2 flex items-start justify-between gap-4 rounded-md border border-border p-3">
+                <div>
+                  <Label htmlFor="diaria-minima">Garantir diária de 8h</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {editing.diaria_minima
+                      ? "Menos de 8h paga a diária cheia; acima de 8h paga as horas extras."
+                      : "Paga estritamente as horas trabalhadas (valor/hora × horas)."}
+                  </p>
+                </div>
+                <Switch
+                  id="diaria-minima"
+                  checked={editing.diaria_minima}
+                  onCheckedChange={(v) => setEditing({ ...editing, diaria_minima: v })}
+                />
+              </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Refeições</Label>
                 <div className="flex flex-wrap items-center gap-6">
