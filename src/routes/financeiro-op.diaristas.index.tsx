@@ -957,12 +957,13 @@ function FechamentoTab() {
 
     for (const a of filtrados) {
       const d = diaristasMap.get(a.diarista_id);
+      const t = d ? tarifaDe(d) : null;
       const evs = eventosMap?.get(a.id) ?? [];
       const modo = (a.modo_divisao ?? "unico") as ModoDivisao;
-      const calc = d
+      const calc = t
         ? modo !== "unico" && evs.length > 0
-          ? calcularApontamentoComEventos(a, d, modo, evs)
-          : calcularApontamento(a, d)
+          ? calcularApontamentoComEventos(a, t, modo, evs)
+          : calcularApontamento(a, t)
         : null;
       const g = grupos.get(a.diarista_id) ?? {
         diarista: d, dias: 0, minutos: 0, total: 0, itens: [],
@@ -977,7 +978,7 @@ function FechamentoTab() {
     return [...grupos.entries()]
       .map(([id, g]) => ({ id, ...g }))
       .sort((a, b) => (a.diarista?.nome ?? "").localeCompare(b.diarista?.nome ?? "", "pt-BR"));
-  }, [apontamentos, de, ate, fLocal, fDiarista, diaristasMap, eventosMap]);
+  }, [apontamentos, de, ate, fLocal, fDiarista, diaristasMap, eventosMap, cfgRefeicao]);
 
   const totalGeral = linhas.reduce((acc, l) => acc + l.total, 0);
   const totalDias = linhas.reduce((acc, l) => acc + l.dias, 0);
@@ -1005,7 +1006,7 @@ function FechamentoTab() {
           const modo = it.ap.modo_divisao ?? "unico";
           const rateio =
             l.diarista && modo !== "unico" && evs.length > 0
-              ? calcularApontamentoComEventos(it.ap, l.diarista, modo, evs).rateio
+              ? calcularApontamentoComEventos(it.ap, tarifaDe(l.diarista), modo, evs).rateio
               : [];
           return {
             data: it.ap.data,
@@ -1016,6 +1017,7 @@ function FechamentoTab() {
 
             diaria: it.calc?.diaria ?? 0,
             extra: it.calc?.extra ?? 0,
+            refeicoes: it.calc?.refeicoes ?? 0,
             total: it.calc?.total ?? 0,
             eventos: rateio.map((r) => ({
               evento_nome: r.evento_nome,
