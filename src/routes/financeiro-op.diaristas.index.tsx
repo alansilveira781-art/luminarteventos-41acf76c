@@ -112,6 +112,7 @@ type ApontamentoForm = {
   eventos: EventoLinha[];
   almoco: boolean;
   janta: boolean;
+  diaria_minima: boolean;
 };
 
 const emptyEvento = (): EventoLinha => ({
