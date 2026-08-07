@@ -202,6 +202,13 @@ function ComprasKanban() {
   }, [filteredCompras]);
 
   const [pendingMove, setPendingMove] = useState<{ id: string; status: CompraStatus; titulo: string; prazo?: string } | null>(null);
+  const [prazoAsk, setPrazoAsk] = useState<{
+    compra: Compra;
+    status: CompraStatus;
+    opts?: { force?: boolean; toastMsg?: string; prazo?: string };
+    valor: string;
+  } | null>(null);
+
 
   const moveStatus = useMutation({
     mutationFn: async (vars: { id: string; status: CompraStatus; responsavelId?: string; responsavelNome?: string; prazo?: string }) => {
@@ -222,11 +229,13 @@ function ComprasKanban() {
       );
       return { prev };
     },
-    onError: (_e, _v, ctx) => {
+    onError: (e: any, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(["compras"], ctx.prev);
       qc.invalidateQueries({ queryKey: ["compras"] });
-      toast.error("Você não tem permissão para mover este card, ou a ação foi bloqueada.");
+      const msg = String(e?.message ?? "").trim();
+      toast.error(msg || "Você não tem permissão para mover este card, ou a ação foi bloqueada.");
     },
+
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["compras-receber"] });
     },
@@ -251,6 +260,14 @@ function ComprasKanban() {
           ? statusMoveBlockedMessage(status)
           : moveBlockedMessage(compra),
       );
+      return;
+    }
+
+    // Aprovação exige um novo prazo (regra do banco): pedir antes de mover.
+    if (compra.status === "pendente_aprovacao" && status === "aprovada" && !opts?.prazo) {
+      const base = new Date();
+      base.setDate(base.getDate() + 7);
+      setPrazoAsk({ compra, status, opts, valor: base.toISOString().slice(0, 10) });
       return;
     }
 
@@ -497,6 +514,38 @@ function ComprasKanban() {
           setPendingMove(null);
         }}
       />
+
+      <Dialog open={!!prazoAsk} onOpenChange={(v) => { if (!v) setPrazoAsk(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Aprovar compra</DialogTitle>
+            <DialogDescription>
+              Informe o novo prazo para conclusão da compra aprovada.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            type="date"
+            value={prazoAsk?.valor ?? ""}
+            onChange={(e) => setPrazoAsk((p) => (p ? { ...p, valor: e.target.value } : p))}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPrazoAsk(null)}>Cancelar</Button>
+            <Button
+              disabled={!prazoAsk?.valor}
+              onClick={async () => {
+                if (!prazoAsk?.valor) return;
+                const { compra, status, opts, valor } = prazoAsk;
+                setPrazoAsk(null);
+                await advanceToStatus(compra, status, { ...(opts ?? {}), prazo: valor });
+              }}
+            >
+              Aprovar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
 
       <MigrarCompraDialog
         compra={migrarCompra}
