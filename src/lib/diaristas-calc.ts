@@ -14,11 +14,16 @@ export type ApontamentoInput = {
   intervalo_minutos: number;
   local: Local | string;
   extra_manual?: number | null;
+  almoco?: boolean | null;
+  janta?: boolean | null;
 };
 
 export type DiaristaTarifa = {
   valor_hora_fortaleza: number;
   valor_hora_fora: number;
+  /** Valores gerais de refeição (configuração do módulo) */
+  valor_almoco?: number | null;
+  valor_janta?: number | null;
 };
 
 export type CalcResult = {
@@ -28,8 +33,10 @@ export type CalcResult = {
   valorHora: number;
   diaria: number;
   extra: number;
+  refeicoes: number;
   total: number;
 };
+
 
 function parseHM(s: string): number {
   if (!s) return 0;
@@ -55,11 +62,23 @@ export function valorHoraDoLocal(local: string, t: DiaristaTarifa): number {
   return local === "Fora" ? Number(t.valor_hora_fora) || 0 : Number(t.valor_hora_fortaleza) || 0;
 }
 
-function montarResultado(minutosTrab: number, valorHora: number, extraManual: number): CalcResult {
+export function valorRefeicoes(a: ApontamentoInput, t: DiaristaTarifa): number {
+  const almoco = a.almoco ? Number(t.valor_almoco) || 0 : 0;
+  const janta = a.janta ? Number(t.valor_janta) || 0 : 0;
+  return almoco + janta;
+}
+
+function montarResultado(
+  minutosTrab: number,
+  valorHora: number,
+  extraManual: number,
+  refeicoes = 0,
+): CalcResult {
   const horasTrab = minutosTrab / 60;
   const diariaCheia = valorHora * 8;
   const diaria = horasTrab <= 8 ? diariaCheia : diariaCheia + (horasTrab - 8) * valorHora;
   const extra = Number(extraManual) || 0;
+  const ref = Number(refeicoes) || 0;
   return {
     minutosTrabalhados: minutosTrab,
     horasTrabalhadas: horasTrab,
@@ -67,15 +86,22 @@ function montarResultado(minutosTrab: number, valorHora: number, extraManual: nu
     valorHora,
     diaria,
     extra,
-    total: diaria + extra,
+    refeicoes: ref,
+    total: diaria + extra + ref,
   };
 }
 
 export function calcularApontamento(a: ApontamentoInput, t: DiaristaTarifa): CalcResult {
   const bruto = minutosEntre(a.hora_inicial, a.hora_final);
   const minutosTrab = Math.max(0, bruto - (Number(a.intervalo_minutos) || 0));
-  return montarResultado(minutosTrab, valorHoraDoLocal(a.local, t), a.extra_manual ?? 0);
+  return montarResultado(
+    minutosTrab,
+    valorHoraDoLocal(a.local, t),
+    a.extra_manual ?? 0,
+    valorRefeicoes(a, t),
+  );
 }
+
 
 // ─────────────────────────────────────────────────────────────
 // Divisão do dia entre 2 ou mais eventos
@@ -153,7 +179,7 @@ export function calcularApontamentoComEventos(
       ),
     );
     const totalMin = minutosPorEvento.reduce((acc, m) => acc + m, 0);
-    const base = montarResultado(totalMin, valorHora, a.extra_manual ?? 0);
+    const base = montarResultado(totalMin, valorHora, a.extra_manual ?? 0, valorRefeicoes(a, t));
     let acumulado = 0;
     const rateio = lista.map((e, i) => {
       const min = minutosPorEvento[i] ?? 0;

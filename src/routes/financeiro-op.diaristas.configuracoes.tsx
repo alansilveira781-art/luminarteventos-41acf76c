@@ -15,6 +15,8 @@ import { Pencil, Plus, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { MoneyInput } from "@/components/MoneyInput";
 import { supabase } from "@/integrations/supabase/client";
+import { useDiaristaConfig, DIARISTA_CONFIG_KEY } from "@/lib/diaristas-config";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/financeiro-op/diaristas/configuracoes")({
@@ -154,6 +156,9 @@ function DiaristasConfiguracoes() {
       </div>
 
       {isFinAdmin && <LancadoresCard />}
+
+      {isFinAdmin && <RefeicoesCard />}
+
 
       <Card className="p-4">
         <div className="flex items-center justify-between mb-3">
@@ -349,7 +354,64 @@ function DiaristasConfiguracoes() {
 
 type PerfilRow = { id: string; email: string | null; display_name: string | null };
 
+function RefeicoesCard() {
+  const qc = useQueryClient();
+  const { data: config, isLoading } = useDiaristaConfig();
+  const [almoco, setAlmoco] = useState<number | null>(null);
+  const [janta, setJanta] = useState<number | null>(null);
+
+  const vAlmoco = almoco ?? config?.valor_almoco ?? 0;
+  const vJanta = janta ?? config?.valor_janta ?? 0;
+
+  const salvar = useMutation({
+    mutationFn: async () => {
+      const { error } = await (supabase as any)
+        .from("diarista_config")
+        .upsert(
+          { id: true, valor_almoco: vAlmoco, valor_janta: vJanta },
+          { onConflict: "id" },
+        );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Valores de refeição salvos");
+      qc.invalidateQueries({ queryKey: DIARISTA_CONFIG_KEY });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao salvar"),
+  });
+
+  return (
+    <Card className="p-4">
+      <h2 className="text-sm font-semibold mb-1">Valores de refeição</h2>
+      <p className="text-xs text-muted-foreground mb-3">
+        Valores gerais somados ao total do dia quando o almoço ou a janta forem marcados no apontamento.
+      </p>
+      {isLoading ? (
+        <div className="p-4 flex justify-center text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-3 items-end">
+          <div className="space-y-1">
+            <Label>Valor do almoço</Label>
+            <MoneyInput value={vAlmoco} onChange={(v) => setAlmoco(v)} />
+          </div>
+          <div className="space-y-1">
+            <Label>Valor da janta</Label>
+            <MoneyInput value={vJanta} onChange={(v) => setJanta(v)} />
+          </div>
+          <Button onClick={() => salvar.mutate()} disabled={salvar.isPending}>
+            {salvar.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+            Salvar valores
+          </Button>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function LancadoresCard() {
+
   const qc = useQueryClient();
   const [busca, setBusca] = useState("");
 

@@ -16,6 +16,7 @@ export type RelatorioItem = {
 
   diaria: number;
   extra: number;
+  refeicoes?: number;
   total: number;
   eventos?: RelatorioItemEvento[];
 };
@@ -124,6 +125,7 @@ export async function gerarRelatorioDiaristasPdf(params: RelatorioDiaristasParam
         it.horasLabel || "—",
         brl(it.diaria),
         brl(it.extra),
+        brl(it.refeicoes ?? 0),
         brl(it.total),
       ]);
       for (const ev of it.eventos ?? []) {
@@ -135,7 +137,7 @@ export async function gerarRelatorioDiaristasPdf(params: RelatorioDiaristasParam
             styles: { textColor: [110, 110, 110], fontStyle: "italic" },
           },
           { content: ev.horasLabel, styles: { textColor: [110, 110, 110] } },
-          { content: "", colSpan: 2 },
+          { content: "", colSpan: 3 },
           { content: brl(ev.valor), styles: { textColor: [110, 110, 110] } },
         ] as any);
       }
@@ -143,20 +145,21 @@ export async function gerarRelatorioDiaristasPdf(params: RelatorioDiaristasParam
 
     autoTable(doc, {
       startY: y,
-      head: [["Data", "Projeto / Evento", "Local", "Horário", "Horas", "Diária", "Extra", "Total"]],
+      head: [["Data", "Projeto / Evento", "Local", "Horário", "Horas", "Diária", "Extra", "Refeições", "Total"]],
       body: body as any,
       theme: "grid",
       styles: { fontSize: 8, cellPadding: 1.6, overflow: "linebreak" },
       headStyles: { fillColor: [55, 55, 55], textColor: 255, fontSize: 8, fontStyle: "bold" },
       columnStyles: {
-        0: { cellWidth: 20 },
-        1: { cellWidth: 44 },
-        2: { cellWidth: 16 },
-        3: { cellWidth: 22, halign: "center" },
-        4: { cellWidth: 16, halign: "right" },
-        5: { cellWidth: 22, halign: "right" },
-        6: { cellWidth: 19, halign: "right" },
-        7: { cellWidth: 23, halign: "right", fontStyle: "bold" },
+        0: { cellWidth: 19 },
+        1: { cellWidth: 38 },
+        2: { cellWidth: 15 },
+        3: { cellWidth: 21, halign: "center" },
+        4: { cellWidth: 14, halign: "right" },
+        5: { cellWidth: 20, halign: "right" },
+        6: { cellWidth: 17, halign: "right" },
+        7: { cellWidth: 20, halign: "right" },
+        8: { cellWidth: 22, halign: "right", fontStyle: "bold" },
       },
 
       margin: { left: marginX, right: marginX },
