@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { carregarNotasPorCompetencia, FATURAMENTO_AUTO_A_PARTIR_DE } from "@/lib/fiscal/faturamento";
 import { MoneyInput } from "@/components/MoneyInput";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -436,6 +437,17 @@ function FaturamentoCard({ empresas }: { empresas: EmpresaFiscal[] }) {
     },
   });
 
+  const empresaSel = empresas.find((e) => e.id === selecionada);
+  const refApuracao = (empresaSel as any)?.empresa_ref ?? empresaSel?.nome ?? "";
+
+  const { data: notasApuracao } = useQuery({
+    queryKey: ["fiscal-notas-apuracao"],
+    queryFn: carregarNotasPorCompetencia,
+    staleTime: 60_000,
+  });
+
+  const notasDaEmpresa = (notasApuracao ?? {})[refApuracao] ?? {};
+
   const mapa = useMemo(() => {
     const m: Record<string, { receita: number; folha: number }> = {};
     for (const l of linhas) {
@@ -449,7 +461,15 @@ function FaturamentoCard({ empresas }: { empresas: EmpresaFiscal[] }) {
 
   const [edicao, setEdicao] = useState<Record<string, { receita: number; folha: number }>>({});
 
-  const valorDe = (c: string) => edicao[c] ?? mapa[c] ?? { receita: 0, folha: 0 };
+  const autoDe = (c: string) =>
+    c >= FATURAMENTO_AUTO_A_PARTIR_DE && !mapa[c] ? notasDaEmpresa[c] : undefined;
+
+  const valorDe = (c: string) => {
+    if (edicao[c]) return edicao[c];
+    if (mapa[c]) return mapa[c];
+    const auto = autoDe(c);
+    return { receita: auto?.total ?? 0, folha: 0 };
+  };
 
   const salvar = useMutation({
     mutationFn: async () => {
@@ -502,7 +522,9 @@ function FaturamentoCard({ empresas }: { empresas: EmpresaFiscal[] }) {
         </div>
       </div>
       <p className="text-xs text-muted-foreground mb-3">
-        Receita bruta e folha (salários + pró-labore, sem encargos) por competência. Últimos 12 meses
+        Receita bruta e folha (salários + pró-labore, sem encargos) por competência. A partir de
+        {" "}{rotuloCompetencia(FATURAMENTO_AUTO_A_PARTIR_DE)} a receita é puxada das notas emitidas
+        na Apuração de Impostos; um lançamento manual sobrepõe esse valor. Últimos 12 meses
         lançados: <strong className="tabular-nums">{brl(total12)}</strong>.
       </p>
 
@@ -525,7 +547,14 @@ function FaturamentoCard({ empresas }: { empresas: EmpresaFiscal[] }) {
                 const v = valorDe(c);
                 return (
                   <tr key={c} className="border-b border-border/50">
-                    <td className="py-1.5 pr-3 tabular-nums">{rotuloCompetencia(c)}</td>
+                    <td className="py-1.5 pr-3 tabular-nums">
+                      {rotuloCompetencia(c)}
+                      <div className="text-[11px] text-muted-foreground">
+                        {autoDe(c)
+                          ? `Apuração (${autoDe(c)!.qtd} nota${autoDe(c)!.qtd > 1 ? "s" : ""})`
+                          : "Declaração/manual"}
+                      </div>
+                    </td>
                     <td className="py-1.5 px-3">
                       <MoneyInput
                         value={v.receita}

@@ -3213,6 +3213,7 @@ export type Database = {
           cnaes: string[]
           cnpj: string | null
           created_at: string
+          empresa_ref: string | null
           id: string
           inicio_atividade: string | null
           iss_aliquota: number
@@ -3231,6 +3232,7 @@ export type Database = {
           cnaes?: string[]
           cnpj?: string | null
           created_at?: string
+          empresa_ref?: string | null
           id?: string
           inicio_atividade?: string | null
           iss_aliquota?: number
@@ -3249,6 +3251,7 @@ export type Database = {
           cnaes?: string[]
           cnpj?: string | null
           created_at?: string
+          empresa_ref?: string | null
           id?: string
           inicio_atividade?: string | null
           iss_aliquota?: number

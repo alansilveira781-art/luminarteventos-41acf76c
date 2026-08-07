@@ -1,0 +1,1 @@
+ALTER TABLE public.fiscal_empresas ADD COLUMN IF NOT EXISTS empresa_ref text;
