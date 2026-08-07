@@ -222,11 +222,13 @@ function ComprasKanban() {
       );
       return { prev };
     },
-    onError: (_e, _v, ctx) => {
+    onError: (e: any, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(["compras"], ctx.prev);
       qc.invalidateQueries({ queryKey: ["compras"] });
-      toast.error("Você não tem permissão para mover este card, ou a ação foi bloqueada.");
+      const msg = String(e?.message ?? "").trim();
+      toast.error(msg || "Você não tem permissão para mover este card, ou a ação foi bloqueada.");
     },
+
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["compras-receber"] });
     },
