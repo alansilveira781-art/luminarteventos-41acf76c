@@ -26,6 +26,7 @@ import {
   type EmpresaFiscal, type FaturamentoMes, type FaixaSimples,
   type ResultadoAnalise, type ResultadoEmpresa, type Severidade,
 } from "@/lib/fiscal/engine";
+import { carregarNotasPorCompetencia, mesclarFaturamento } from "@/lib/fiscal/faturamento";
 
 const sb = supabase as any;
 
@@ -126,7 +127,7 @@ const SEV_CLASS: Record<Severidade, string> = {
 function ProjecaoTributaria() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const { empresas, faixas, faturamento } = useDadosFiscais();
+  const { empresas, faixas, faturamento, faturamentoPorEmpresa } = useDadosFiscais();
 
   const [valor, setValor] = useState(0);
   const [atividade, setAtividade] = useState<string>("__todas");
@@ -173,7 +174,7 @@ function ProjecaoTributaria() {
     }
     const res = analisar({
       empresas: empresas.data ?? [],
-      faturamentoPorEmpresa: faturamento.data ?? {},
+      faturamentoPorEmpresa,
       faixas: faixas.data ?? [],
       valor,
       competencia,
