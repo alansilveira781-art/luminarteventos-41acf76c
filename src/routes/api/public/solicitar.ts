@@ -78,8 +78,8 @@ async function uploadAnexos(
   parentField: "compra_id" | "demanda_id",
   parentId: string,
   files: File[],
-): Promise<number> {
-  let falhados = 0;
+): Promise<{ falhados: number; erros: string[] }> {
+  const erros: string[] = [];
   for (const file of files) {
     try {
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -92,8 +92,8 @@ async function uploadAnexos(
           upsert: false,
         });
       if (upErr) {
-        console.error("[solicitar] upload anexo falhou", file.name, upErr);
-        falhados++;
+        console.error(`[solicitar] upload anexo falhou (${parentField}=${parentId})`, file.name, upErr);
+        erros.push(`${file.name}: ${upErr.message ?? "falha no envio do arquivo"}`);
         continue;
       }
       const { error: insErr } = await (supabaseAdmin as any).from(table).insert({
@@ -105,16 +105,17 @@ async function uploadAnexos(
         uploaded_by: null,
       });
       if (insErr) {
-        console.error("[solicitar] insert anexo falhou", file.name, insErr);
-        falhados++;
+        console.error(`[solicitar] insert anexo falhou (${parentField}=${parentId})`, file.name, insErr);
+        erros.push(`${file.name}: ${insErr.message ?? "falha ao registrar o anexo"}`);
       }
-    } catch (err) {
-      console.error("[solicitar] anexo erro inesperado", err);
-      falhados++;
+    } catch (err: any) {
+      console.error(`[solicitar] anexo erro inesperado (${parentField}=${parentId})`, file.name, err);
+      erros.push(`${file.name}: ${err?.message ?? "erro inesperado"}`);
     }
   }
-  return falhados;
+  return { falhados: erros.length, erros };
 }
+
 
 export const Route = createFileRoute("/api/public/solicitar")({
   server: {
