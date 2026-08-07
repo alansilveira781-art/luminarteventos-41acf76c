@@ -2692,6 +2692,7 @@ export type Database = {
       }
       diaristas: {
         Row: {
+          apelido: string | null
           ativo: boolean
           chave_pix: string | null
           created_at: string
@@ -2702,6 +2703,7 @@ export type Database = {
           valor_hora_fortaleza: number
         }
         Insert: {
+          apelido?: string | null
           ativo?: boolean
           chave_pix?: string | null
           created_at?: string
@@ -2712,6 +2714,7 @@ export type Database = {
           valor_hora_fortaleza?: number
         }
         Update: {
+          apelido?: string | null
           ativo?: boolean
           chave_pix?: string | null
           created_at?: string
