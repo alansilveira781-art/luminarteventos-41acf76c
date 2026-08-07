@@ -420,8 +420,9 @@ function ComprasKanban() {
                 const next = nextCompraStatus(c.status);
                 const canMove = canMoveCompra(c, user?.id, isAdmin, user?.email, next ?? undefined, c.status, responsavelDoStatus(next), responsavelDoStatus(c.status));
                 const canMigrate =
-                  c.status === "solicitacao" &&
+                  (c.status === "solicitacao" || c.status === "a_receber") &&
                   canEditCompra(c, user?.id, isAdmin, user?.email, responsavelDoStatus(c.status));
+
                 return (
                   <Card
                     key={c.id}
@@ -699,12 +700,25 @@ function MigrarCompraDialog({
       const { data: full, error: fullErr } = await sb
         .from("compras")
         .select(
-          "titulo,fornecedor,fornecedor_id,solicitante,solicitante_id,valor_total,observacoes,data_solicitacao,responsavel_id,responsavel_nome,numero_nf,numeros_nf,tem_nf,parcelamento,condicao_pagamento,documento,created_by",
+          "titulo,fornecedor,fornecedor_id,solicitante,solicitante_id,valor_total,observacoes,data_solicitacao,data_compra,comprador,responsavel_id,responsavel_nome,numero_nf,numeros_nf,tem_nf,parcelamento,condicao_pagamento,documento,created_by,solicitante_email,prazo,origem,op_ordem_id,status_financeiro",
         )
         .eq("id", compra.id)
         .maybeSingle();
       if (fullErr) throw fullErr;
       if (!full) throw new Error("Compra não encontrada");
+
+      // 2b) Anexos, pagamentos e comentários da compra
+      const [anexosRes, pagsRes, comsRes] = await Promise.all([
+        sb.from("compra_anexos").select("*").eq("compra_id", compra.id),
+        sb.from("compra_pagamentos").select("*").eq("compra_id", compra.id),
+        sb.from("compra_comentarios").select("*").eq("compra_id", compra.id),
+      ]);
+      if (anexosRes.error) throw anexosRes.error;
+      if (pagsRes.error) throw pagsRes.error;
+      if (comsRes.error) throw comsRes.error;
+      const anexos = (anexosRes.data ?? []) as any[];
+      const pagamentos = (pagsRes.data ?? []) as any[];
+      const comentarios = (comsRes.data ?? []) as any[];
 
       const usaItens = TIPOS_COM_ITENS.includes(tipo);
       let observacoes: string | null = full.observacoes ?? null;
@@ -725,9 +739,12 @@ function MigrarCompraDialog({
         fornecedor_id: full.fornecedor_id,
         solicitante: full.solicitante,
         solicitante_id: full.solicitante_id,
+        solicitante_email: full.solicitante_email,
         valor_total: full.valor_total,
         observacoes,
         data_solicitacao: full.data_solicitacao,
+        data_compra: full.data_compra,
+        comprador: full.comprador,
         responsavel_id: full.responsavel_id,
         responsavel_nome: full.responsavel_nome,
         numero_nf: full.numero_nf,
@@ -737,8 +754,12 @@ function MigrarCompraDialog({
         condicao_pagamento: full.condicao_pagamento,
         documento: full.documento,
         created_by: full.created_by,
+        prazo: full.prazo,
+        origem: full.origem,
+        op_ordem_id: full.op_ordem_id,
+        status_financeiro: full.status_financeiro,
         tipo_demanda: tipo,
-        status: "solicitacao",
+        status: compra.status === "a_receber" ? "a_receber" : "solicitacao",
       };
 
       // 3) Criar demanda
@@ -762,10 +783,72 @@ function MigrarCompraDialog({
         if (insItErr) throw insItErr;
       }
 
-      // 5) Só agora excluir compra_itens e a compra
+      // 4b) Copiar anexos (download do bucket de compras → upload no de despesas)
+      const pathsAntigos: string[] = [];
+      for (const a of anexos) {
+        const { data: blob, error: dlErr } = await sb.storage
+          .from("compra-anexos")
+          .download(a.path);
+        if (dlErr || !blob) throw new Error(`Falha ao copiar anexo "${a.nome}"`);
+        const novoPath = `demandas/${novaDem.id}/${Date.now()}-${a.nome}`;
+        const { error: upErr } = await sb.storage
+          .from("demanda-anexos")
+          .upload(novoPath, blob, { contentType: a.mime_type ?? undefined, upsert: false });
+        if (upErr) throw new Error(`Falha ao enviar anexo "${a.nome}": ${upErr.message}`);
+        const { error: insAnErr } = await sb.from("demanda_anexos").insert({
+          demanda_id: novaDem.id,
+          nome: a.nome,
+          path: novoPath,
+          mime_type: a.mime_type,
+          tamanho: a.tamanho,
+          uploaded_by: a.uploaded_by,
+        });
+        if (insAnErr) throw insAnErr;
+        pathsAntigos.push(a.path);
+      }
+
+      // 4c) Copiar pagamentos
+      if (pagamentos.length) {
+        const rows = pagamentos.map((p) => ({
+          demanda_id: novaDem.id,
+          forma: p.forma,
+          parcelamento: p.parcelamento,
+          valor: p.valor,
+          ordem: p.ordem,
+          observacao: p.observacao,
+          data_pagamento: p.data_pagamento,
+          pago: p.pago,
+          pago_em: p.pago_em,
+        }));
+        const { error: pagErr } = await sb.from("demanda_pagamentos").insert(rows);
+        if (pagErr) throw pagErr;
+      }
+
+      // 4d) Copiar comentários
+      if (comentarios.length) {
+        const rows = comentarios.map((c) => ({
+          demanda_id: novaDem.id,
+          user_id: c.user_id,
+          user_nome: c.user_nome,
+          texto: c.texto,
+          mencoes: c.mencoes,
+          created_at: c.created_at,
+        }));
+        const { error: comErr } = await sb.from("demanda_comentarios").insert(rows);
+        if (comErr) throw comErr;
+      }
+
+      // 5) Só agora limpar os registros da compra
+      if (pathsAntigos.length) {
+        await sb.storage.from("compra-anexos").remove(pathsAntigos);
+      }
+      await sb.from("compra_anexos").delete().eq("compra_id", compra.id);
+      await sb.from("compra_pagamentos").delete().eq("compra_id", compra.id);
+      await sb.from("compra_comentarios").delete().eq("compra_id", compra.id);
       await sb.from("compra_itens").delete().eq("compra_id", compra.id);
       const { error: delErr } = await sb.from("compras").delete().eq("id", compra.id);
       if (delErr) throw delErr;
+
 
       toast.success("Compra migrada para Despesa");
       onDone();
