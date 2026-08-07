@@ -14,11 +14,16 @@ export type ApontamentoInput = {
   intervalo_minutos: number;
   local: Local | string;
   extra_manual?: number | null;
+  almoco?: boolean | null;
+  janta?: boolean | null;
 };
 
 export type DiaristaTarifa = {
   valor_hora_fortaleza: number;
   valor_hora_fora: number;
+  /** Valores gerais de refeição (configuração do módulo) */
+  valor_almoco?: number | null;
+  valor_janta?: number | null;
 };
 
 export type CalcResult = {
@@ -28,8 +33,10 @@ export type CalcResult = {
   valorHora: number;
   diaria: number;
   extra: number;
+  refeicoes: number;
   total: number;
 };
+
 
 function parseHM(s: string): number {
   if (!s) return 0;
