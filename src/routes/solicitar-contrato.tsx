@@ -390,7 +390,6 @@ function SolicitarContratoPublico() {
       setHorariosAtivos(false);
       setProposta(null);
 
-      setProposta(null);
       setDocEmpresa(null);
       setErros({});
       setTipoPessoa(null);
