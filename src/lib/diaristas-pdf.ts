@@ -11,7 +11,9 @@ export type RelatorioItem = {
   data: string; // ISO yyyy-mm-dd
   projeto: string;
   local: string;
+  horarioLabel?: string;
   horasLabel: string;
+
   diaria: number;
   extra: number;
   total: number;
@@ -118,6 +120,7 @@ export async function gerarRelatorioDiaristasPdf(params: RelatorioDiaristasParam
         fmtDate(it.data),
         it.projeto || "—",
         it.local || "—",
+        it.horarioLabel || "—",
         it.horasLabel || "—",
         brl(it.diaria),
         brl(it.extra),
@@ -128,7 +131,7 @@ export async function gerarRelatorioDiaristasPdf(params: RelatorioDiaristasParam
           "",
           {
             content: `↳ ${ev.evento_nome}`,
-            colSpan: 2,
+            colSpan: 3,
             styles: { textColor: [110, 110, 110], fontStyle: "italic" },
           },
           { content: ev.horasLabel, styles: { textColor: [110, 110, 110] } },
@@ -140,20 +143,22 @@ export async function gerarRelatorioDiaristasPdf(params: RelatorioDiaristasParam
 
     autoTable(doc, {
       startY: y,
-      head: [["Data", "Projeto / Evento", "Local", "Horas", "Diária", "Extra", "Total"]],
+      head: [["Data", "Projeto / Evento", "Local", "Horário", "Horas", "Diária", "Extra", "Total"]],
       body: body as any,
       theme: "grid",
       styles: { fontSize: 8, cellPadding: 1.6, overflow: "linebreak" },
       headStyles: { fillColor: [55, 55, 55], textColor: 255, fontSize: 8, fontStyle: "bold" },
       columnStyles: {
         0: { cellWidth: 20 },
-        1: { cellWidth: 62 },
-        2: { cellWidth: 20 },
-        3: { cellWidth: 16, halign: "right" },
-        4: { cellWidth: 22, halign: "right" },
-        5: { cellWidth: 19, halign: "right" },
-        6: { cellWidth: 23, halign: "right", fontStyle: "bold" },
+        1: { cellWidth: 44 },
+        2: { cellWidth: 16 },
+        3: { cellWidth: 22, halign: "center" },
+        4: { cellWidth: 16, halign: "right" },
+        5: { cellWidth: 22, halign: "right" },
+        6: { cellWidth: 19, halign: "right" },
+        7: { cellWidth: 23, halign: "right", fontStyle: "bold" },
       },
+
       margin: { left: marginX, right: marginX },
     });
 
