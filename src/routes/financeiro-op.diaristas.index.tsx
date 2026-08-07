@@ -1009,6 +1009,8 @@ function FechamentoTab() {
         dias: l.dias,
         horasLabel: formatHoras(l.minutos),
         total: l.total,
+        valorHoraFortaleza: Number(l.diarista?.valor_hora_fortaleza) || 0,
+        valorHoraFora: Number(l.diarista?.valor_hora_fora) || 0,
         itens: l.itens.map((it) => {
           const evs = eventosMap?.get(it.ap.id) ?? [];
           const modo = it.ap.modo_divisao ?? "unico";
