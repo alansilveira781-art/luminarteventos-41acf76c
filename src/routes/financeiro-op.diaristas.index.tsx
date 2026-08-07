@@ -959,7 +959,9 @@ function FechamentoTab() {
             data: it.ap.data,
             projeto: it.ap.projeto ?? "",
             local: it.ap.local,
+            horarioLabel: intervaloExibicao(it.ap, evs, modo as ModoDivisao).label,
             horasLabel: it.calc?.horasLabel ?? "",
+
             diaria: it.calc?.diaria ?? 0,
             extra: it.calc?.extra ?? 0,
             total: it.calc?.total ?? 0,
