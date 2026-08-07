@@ -1199,6 +1199,12 @@ function FechamentoTab() {
                         </td>
                         <td className="py-2 px-3 font-medium">
                           <div>{nomeExib(l.diarista)}</div>
+                          {(l.diarista?.apelido ?? "").trim() && (
+                            <div className="text-[11px] font-normal text-muted-foreground">
+                              {l.diarista?.nome}
+                            </div>
+                          )}
+
                           {(() => {
                             const vf = Number(l.diarista?.valor_hora_fortaleza) || 0;
                             const vo = Number(l.diarista?.valor_hora_fora) || 0;
