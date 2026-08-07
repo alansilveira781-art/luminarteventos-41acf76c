@@ -2579,6 +2579,7 @@ export type Database = {
       }
       diarista_apontamentos: {
         Row: {
+          almoco: boolean
           atividade: string | null
           comodos: string | null
           created_at: string
@@ -2591,6 +2592,7 @@ export type Database = {
           hora_inicial: string
           id: string
           intervalo_minutos: number
+          janta: boolean
           local: string
           modo_divisao: string
           obs: string | null
@@ -2598,6 +2600,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          almoco?: boolean
           atividade?: string | null
           comodos?: string | null
           created_at?: string
@@ -2610,6 +2613,7 @@ export type Database = {
           hora_inicial: string
           id?: string
           intervalo_minutos?: number
+          janta?: boolean
           local?: string
           modo_divisao?: string
           obs?: string | null
@@ -2617,6 +2621,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          almoco?: boolean
           atividade?: string | null
           comodos?: string | null
           created_at?: string
@@ -2629,6 +2634,7 @@ export type Database = {
           hora_inicial?: string
           id?: string
           intervalo_minutos?: number
+          janta?: boolean
           local?: string
           modo_divisao?: string
           obs?: string | null
@@ -2644,6 +2650,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      diarista_config: {
+        Row: {
+          created_at: string
+          id: boolean
+          updated_at: string
+          valor_almoco: number
+          valor_janta: number
+        }
+        Insert: {
+          created_at?: string
+          id?: boolean
+          updated_at?: string
+          valor_almoco?: number
+          valor_janta?: number
+        }
+        Update: {
+          created_at?: string
+          id?: boolean
+          updated_at?: string
+          valor_almoco?: number
+          valor_janta?: number
+        }
+        Relationships: []
       }
       diarista_lancadores: {
         Row: {
