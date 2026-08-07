@@ -32,6 +32,8 @@ import {
   calcularApontamento,
   calcularApontamentoComEventos,
   formatHoras,
+  intervaloExibicao,
+
   type Local,
   type ModoDivisao,
 } from "@/lib/diaristas-calc";
