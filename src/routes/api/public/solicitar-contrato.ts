@@ -61,9 +61,9 @@ const schema = z
       .max(2)
       .optional(),
     valor: z.number().nonnegative().max(100_000_000),
-    pagamento_forma: z.enum(["pix", "boleto"]),
-    pagamento_modo: z.enum(["igual", "diferente"]),
-    pagamento_parcelas: z.array(parcelaSchema).min(1).max(36),
+    pagamento_forma: z.enum(["pix", "boleto"]).optional(),
+    pagamento_modo: z.enum(["igual", "diferente"]).optional(),
+    pagamento_parcelas: z.array(parcelaSchema).max(36).optional(),
     data_fechamento: z
       .string()
       .trim()
@@ -109,14 +109,6 @@ const schema = z
     if (d.desmontagem_inicio < d.montagem_inicio)
       ctx.addIssue({ code: "custom", path: ["desmontagem_inicio"], message: "Desmontagem antes da montagem" });
 
-    const soma = d.pagamento_parcelas.reduce((a, p) => a + p.valor, 0);
-    if (Math.abs(soma - d.valor) > 0.01) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["pagamento_parcelas"],
-        message: "A soma das parcelas deve ser igual ao valor total",
-      });
-    }
   });
 
 // Rate limit por IP (best-effort, por instância)
@@ -195,8 +187,8 @@ export const Route = createFileRoute("/api/public/solicitar-contrato")({
           return json({ error: "Requisição inválida" }, 400);
         }
 
-        if (anexos.length < 2) {
-          return json({ error: "Envie a proposta e o documento obrigatório" }, 400);
+        if (!anexos.some((a) => a.tipo === "proposta")) {
+          return json({ error: "Envie a proposta" }, 400);
         }
         for (const a of anexos) {
           if (a.file.size > MAX_FILE_BYTES) {
@@ -213,13 +205,15 @@ export const Route = createFileRoute("/api/public/solicitar-contrato")({
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const sb = supabaseAdmin as any;
 
-        const resumoPagamento = [
-          `Pagamento: ${d.pagamento_forma === "pix" ? "Pix" : "Boleto"}`,
-          `${d.pagamento_parcelas.length}x (${d.pagamento_modo === "igual" ? "parcelas iguais" : "valores diferentes"})`,
-          ...d.pagamento_parcelas.map(
-            (p) => `  ${p.n}ª — ${p.vencimento} — R$ ${p.valor.toFixed(2)}`,
-          ),
-        ].join("\n");
+        const resumoPagamento = d.pagamento_forma
+          ? [
+              `Pagamento: ${d.pagamento_forma === "pix" ? "Pix" : "Boleto"}`,
+              `${(d.pagamento_parcelas ?? []).length}x (${d.pagamento_modo === "igual" ? "parcelas iguais" : "valores diferentes"})`,
+              ...(d.pagamento_parcelas ?? []).map(
+                (p) => `  ${p.n}ª — ${p.vencimento} — R$ ${p.valor.toFixed(2)}`,
+              ),
+            ].join("\n")
+          : "";
 
         const observacoes = [
           "[Solicitação enviada via formulário público]",
@@ -281,10 +275,10 @@ export const Route = createFileRoute("/api/public/solicitar-contrato")({
             resp_legal2_uf: er2?.uf ?? null,
             testemunhas: d.testemunhas ?? [],
             valor: d.valor ?? null,
-            forma_pagamento: d.pagamento_forma === "pix" ? "PIX" : "Boleto",
-            pagamento_forma: d.pagamento_forma,
-            pagamento_modo: d.pagamento_modo,
-            pagamento_parcelas: d.pagamento_parcelas,
+            forma_pagamento: d.pagamento_forma ? (d.pagamento_forma === "pix" ? "PIX" : "Boleto") : null,
+            pagamento_forma: d.pagamento_forma ?? null,
+            pagamento_modo: d.pagamento_modo ?? null,
+            pagamento_parcelas: d.pagamento_parcelas ?? [],
             data_fechamento: d.data_fechamento || null,
             montagem_inicio: d.montagem_inicio,
             montagem_fim: d.montagem_fim,
