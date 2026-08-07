@@ -433,7 +433,7 @@ function ApontamentoTab() {
               <SelectContent>
                 <SelectItem value="todos">Todos</SelectItem>
                 {diaristas.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
+                  <SelectItem key={d.id} value={d.id}>{nomeExib(d)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -523,7 +523,7 @@ function ApontamentoTab() {
                           )}
                         </td>
                         <td className="py-2 pr-3 tabular-nums">{fmtDate(a.data)}</td>
-                        <td className="py-2 px-3 font-medium">{d?.nome ?? "—"}</td>
+                        <td className="py-2 px-3 font-medium">{nomeExib(d)}</td>
                         <td className="py-2 px-3">
                           {a.projeto ?? "—"}
                           {dividido && (
@@ -652,7 +652,7 @@ function ApontamentoTab() {
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     {diaristasAtivos.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
+                      <SelectItem key={d.id} value={d.id}>{nomeExib(d)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -994,7 +994,7 @@ function FechamentoTab() {
 
     return [...grupos.entries()]
       .map(([id, g]) => ({ id, ...g }))
-      .sort((a, b) => (a.diarista?.nome ?? "").localeCompare(b.diarista?.nome ?? "", "pt-BR"));
+      .sort((a, b) => nomeExib(a.diarista).localeCompare(nomeExib(b.diarista), "pt-BR"));
   }, [apontamentos, de, ate, fLocal, fDiarista, diaristasMap, eventosMap, cfgRefeicao]);
 
   const totalGeral = linhas.reduce((acc, l) => acc + l.total, 0);
@@ -1006,14 +1006,14 @@ function FechamentoTab() {
     const filtros: string[] = [];
     if (fLocal !== "todos") filtros.push(`Local: ${fLocal}`);
     if (fDiarista !== "todos")
-      filtros.push(`Diarista: ${diaristasMap.get(fDiarista)?.nome ?? "—"}`);
+      filtros.push(`Diarista: ${nomeExib(diaristasMap.get(fDiarista))}`);
 
     await gerarRelatorioDiaristasPdf({
       de,
       ate,
       filtros,
       grupos: linhas.map((l) => ({
-        nome: l.diarista?.nome ?? "—",
+        nome: nomeExib(l.diarista),
         chavePix: l.diarista?.chave_pix ?? null,
         dias: l.dias,
         horasLabel: formatHoras(l.minutos),
@@ -1045,7 +1045,7 @@ function FechamentoTab() {
 
     const header = ["Diarista", "Chave Pix", "Qtde de dias", "Total de horas", "Total a pagar"];
     const body = linhas.map((l) => [
-      l.diarista?.nome ?? "—",
+      nomeExib(l.diarista),
       l.diarista?.chave_pix ?? "",
       l.dias,
       formatHoras(l.minutos),
@@ -1091,7 +1091,7 @@ function FechamentoTab() {
     for (const l of linhas) {
       for (const it of l.itens) {
         detBody.push([
-          l.diarista?.nome ?? "—",
+          nomeExib(l.diarista),
           fmtDate(it.ap.data),
           it.ap.projeto ?? "",
           it.ap.local,
@@ -1140,7 +1140,7 @@ function FechamentoTab() {
               <SelectContent>
                 <SelectItem value="todos">Todos</SelectItem>
                 {diaristas.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
+                  <SelectItem key={d.id} value={d.id}>{nomeExib(d)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -1198,7 +1198,7 @@ function FechamentoTab() {
                           {aberto ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </td>
                         <td className="py-2 px-3 font-medium">
-                          <div>{l.diarista?.nome ?? "—"}</div>
+                          <div>{nomeExib(l.diarista)}</div>
                           {(() => {
                             const vf = Number(l.diarista?.valor_hora_fortaleza) || 0;
                             const vo = Number(l.diarista?.valor_hora_fora) || 0;
