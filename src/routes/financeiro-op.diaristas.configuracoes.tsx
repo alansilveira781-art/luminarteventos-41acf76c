@@ -26,6 +26,7 @@ export const Route = createFileRoute("/financeiro-op/diaristas/configuracoes")({
 type Diarista = {
   id: string;
   nome: string;
+  apelido: string | null;
   valor_hora_fortaleza: number;
   valor_hora_fora: number;
   chave_pix: string | null;
@@ -35,6 +36,7 @@ type Diarista = {
 type DiaristaForm = {
   id?: string;
   nome: string;
+  apelido: string;
   valor_hora_fortaleza: number;
   valor_hora_fora: number;
   chave_pix: string;
@@ -43,6 +45,7 @@ type DiaristaForm = {
 
 const emptyForm: DiaristaForm = {
   nome: "",
+  apelido: "",
   valor_hora_fortaleza: 0,
   valor_hora_fora: 0,
   chave_pix: "",
@@ -83,6 +86,7 @@ function DiaristasConfiguracoes() {
     mutationFn: async (payload: DiaristaForm) => {
       const row = {
         nome: payload.nome.trim(),
+        apelido: payload.apelido.trim() || null,
         valor_hora_fortaleza: Number(payload.valor_hora_fortaleza) || 0,
         valor_hora_fora: Number(payload.valor_hora_fora) || 0,
         chave_pix: payload.chave_pix.trim() || null,
@@ -187,7 +191,9 @@ function DiaristasConfiguracoes() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left border-b border-border text-muted-foreground text-xs uppercase tracking-wide">
-                  <th className="py-2 pr-3">Nome</th>
+                  <th className="py-2 pr-3">Apelido</th>
+                  <th className="py-2 px-3">Nome</th>
+
                   <th className="py-2 px-3 text-right">R$/h Fortaleza</th>
                   <th className="py-2 px-3 text-right">Diária Fortaleza (8h)</th>
                   <th className="py-2 px-3 text-right">R$/h Fora</th>
@@ -200,7 +206,9 @@ function DiaristasConfiguracoes() {
               <tbody>
                 {rows.map((d) => (
                   <tr key={d.id} className="border-b border-border/50 hover:bg-muted/40">
-                    <td className="py-2 pr-3 font-medium">{d.nome}</td>
+                    <td className="py-2 pr-3 font-medium">{d.apelido || "—"}</td>
+                    <td className="py-2 px-3">{d.nome}</td>
+
                     <td className="py-2 px-3 text-right tabular-nums">
                       {fmtBRL(Number(d.valor_hora_fortaleza))}
                     </td>
@@ -234,6 +242,7 @@ function DiaristasConfiguracoes() {
                             setEditing({
                               id: d.id,
                               nome: d.nome,
+                              apelido: d.apelido ?? "",
                               valor_hora_fortaleza: Number(d.valor_hora_fortaleza) || 0,
                               valor_hora_fora: Number(d.valor_hora_fora) || 0,
                               chave_pix: d.chave_pix ?? "",
@@ -272,15 +281,26 @@ function DiaristasConfiguracoes() {
             <DialogTitle>{editing.id ? "Editar diarista" : "Novo diarista"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Nome</Label>
-              <Input
-                value={editing.nome}
-                onChange={(e) => setEditing({ ...editing, nome: e.target.value })}
-                placeholder="Nome do diarista"
-                autoFocus
-              />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Apelido</Label>
+                <Input
+                  value={editing.apelido}
+                  onChange={(e) => setEditing({ ...editing, apelido: e.target.value })}
+                  placeholder="Como é chamado (opcional)"
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nome do diarista</Label>
+                <Input
+                  value={editing.nome}
+                  onChange={(e) => setEditing({ ...editing, nome: e.target.value })}
+                  placeholder="Nome completo"
+                />
+              </div>
             </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Valor/Hora Fortaleza</Label>
