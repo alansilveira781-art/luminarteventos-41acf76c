@@ -11,7 +11,9 @@ export type RelatorioItem = {
   data: string; // ISO yyyy-mm-dd
   projeto: string;
   local: string;
+  horarioLabel?: string;
   horasLabel: string;
+
   diaria: number;
   extra: number;
   total: number;
