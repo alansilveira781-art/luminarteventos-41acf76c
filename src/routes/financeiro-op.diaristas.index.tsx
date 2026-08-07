@@ -136,6 +136,7 @@ const emptyApontamento = (): ApontamentoForm => ({
   eventos: [],
   almoco: false,
   janta: false,
+  diaria_minima: true,
 });
 
 function fmtBRL(v: number) {
@@ -332,6 +333,7 @@ function ApontamentoTab() {
         modo_divisao: payload.modo_divisao,
         almoco: !!payload.almoco,
         janta: !!payload.janta,
+        diaria_minima: !!payload.diaria_minima,
       };
 
       let apontamentoId = payload.id;
@@ -577,6 +579,7 @@ function ApontamentoTab() {
                                   modo_divisao: (a.modo_divisao ?? "unico") as ModoDivisao,
                                   almoco: !!a.almoco,
                                   janta: !!a.janta,
+                                  diaria_minima: a.diaria_minima !== false,
                                   eventos: evs.map((e) => ({
                                     evento_nome: e.evento_nome,
                                     hora_inicial: e.hora_inicial || "08:00",
