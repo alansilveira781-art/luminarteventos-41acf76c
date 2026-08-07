@@ -1013,7 +1013,9 @@ function FechamentoTab() {
       ate,
       filtros,
       grupos: linhas.map((l) => ({
-        nome: nomeExib(l.diarista),
+        nome: (l.diarista?.apelido ?? "").trim()
+          ? `${nomeExib(l.diarista)} (${l.diarista?.nome})`
+          : nomeExib(l.diarista),
         chavePix: l.diarista?.chave_pix ?? null,
         dias: l.dias,
         horasLabel: formatHoras(l.minutos),
