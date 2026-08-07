@@ -121,19 +121,6 @@ export async function gerarRelatorioDiaristasPdf(params: RelatorioDiaristasParam
         brl(it.refeicoes ?? 0),
         brl(it.total),
       ]);
-      for (const ev of it.eventos ?? []) {
-        body.push([
-          "",
-          {
-            content: `↳ ${ev.evento_nome}`,
-            colSpan: 3,
-            styles: { textColor: [110, 110, 110], fontStyle: "italic" },
-          },
-          { content: ev.horasLabel, styles: { textColor: [110, 110, 110] } },
-          { content: "", colSpan: 3 },
-          { content: brl(ev.valor), styles: { textColor: [110, 110, 110] } },
-        ] as any);
-      }
     }
 
     autoTable(doc, {
