@@ -507,8 +507,9 @@ function ApontamentoTab() {
                         </td>
                         <td className="py-2 px-3">{a.local}</td>
                         <td className="py-2 px-3 tabular-nums">
-                          {a.hora_inicial.slice(0, 5)}–{a.hora_final.slice(0, 5)}
+                          {intervaloExibicao(a, evs, (a.modo_divisao ?? "unico") as ModoDivisao).label}
                         </td>
+
                         <td className="py-2 px-3 text-right tabular-nums">{a.intervalo_minutos}min</td>
                         <td className="py-2 px-3 text-right tabular-nums">{calc?.horasLabel ?? "—"}</td>
                         {verValores && (
