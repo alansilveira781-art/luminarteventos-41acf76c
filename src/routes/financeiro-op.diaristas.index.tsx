@@ -40,6 +40,7 @@ import {
 import { useDiaristaAcesso } from "@/lib/diaristas-acesso";
 import { useDiaristaConfig } from "@/lib/diaristas-config";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 
 export const Route = createFileRoute("/financeiro-op/diaristas/")({
   component: DiaristasIndex,
