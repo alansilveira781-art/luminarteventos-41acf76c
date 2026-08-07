@@ -275,9 +275,9 @@ export const Route = createFileRoute("/api/public/solicitar")({
 
           await (supabaseAdmin as any).from("compra_itens").insert(itensPayload);
 
-          let anexosFalhados = 0;
+          let anexosResult = { falhados: 0, erros: [] as string[] };
           if (uploadedFiles.length > 0) {
-            anexosFalhados = await uploadAnexos(
+            anexosResult = await uploadAnexos(
               "compra-anexos",
               "compra_anexos",
               "compra_id",
@@ -292,8 +292,10 @@ export const Route = createFileRoute("/api/public/solicitar")({
               id: (compra as any).id,
               numero: (compra as any).numero,
               tipo: "compra",
-              anexos_falhados: anexosFalhados,
+              anexos_falhados: anexosResult.falhados,
+              anexos_erros: anexosResult.erros,
             }),
+
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
           );
         }
