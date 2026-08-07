@@ -100,6 +100,35 @@ export type RateioEvento = {
 export type CalcComEventos = CalcResult & { rateio: RateioEvento[] };
 
 /**
+ * Horário de exibição do dia: primeira entrada e última saída.
+ * Quando o apontamento é dividido por horários, considera os horários dos
+ * eventos; caso contrário usa o horário do próprio apontamento.
+ */
+export function intervaloExibicao(
+  a: { hora_inicial: string; hora_final: string },
+  eventos: EventoApontamento[] | undefined,
+  modo: ModoDivisao | null | undefined,
+): { inicio: string; fim: string; label: string } {
+  const hm = (s: string) => (s || "").slice(0, 5);
+  let inicio = hm(a.hora_inicial);
+  let fim = hm(a.hora_final);
+
+  const lista = (eventos ?? []).filter(
+    (e) => (e.hora_inicial ?? "") !== "" && (e.hora_final ?? "") !== "",
+  );
+
+  if (modo === "horarios" && lista.length > 0) {
+    const inicios = lista.map((e) => hm(e.hora_inicial as string)).sort();
+    const fins = lista.map((e) => hm(e.hora_final as string)).sort();
+    inicio = inicios[0] ?? inicio;
+    fim = fins[fins.length - 1] ?? fim;
+  }
+
+  return { inicio, fim, label: `${inicio}–${fim}` };
+}
+
+
+/**
  * Calcula o dia e o rateio por evento.
  * - "horarios": as horas de cada evento vêm dos horários informados; o valor do
  *   dia é rateado proporcionalmente às horas de cada evento.
