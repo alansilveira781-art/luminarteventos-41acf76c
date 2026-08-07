@@ -1,12 +1,6 @@
 // Relatório de Diaristas em PDF (A4 retrato).
 // jspdf carregado sob demanda para não pesar no bundle.
 
-export type RelatorioItemEvento = {
-  evento_nome: string;
-  horasLabel: string;
-  valor: number;
-};
-
 export type RelatorioItem = {
   data: string; // ISO yyyy-mm-dd
   projeto: string;
@@ -18,7 +12,6 @@ export type RelatorioItem = {
   extra: number;
   refeicoes?: number;
   total: number;
-  eventos?: RelatorioItemEvento[];
 };
 
 export type RelatorioGrupo = {
