@@ -277,15 +277,26 @@ function DiaristasConfiguracoes() {
             <DialogTitle>{editing.id ? "Editar diarista" : "Novo diarista"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Nome</Label>
-              <Input
-                value={editing.nome}
-                onChange={(e) => setEditing({ ...editing, nome: e.target.value })}
-                placeholder="Nome do diarista"
-                autoFocus
-              />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Apelido</Label>
+                <Input
+                  value={editing.apelido}
+                  onChange={(e) => setEditing({ ...editing, apelido: e.target.value })}
+                  placeholder="Como é chamado (opcional)"
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nome do diarista</Label>
+                <Input
+                  value={editing.nome}
+                  onChange={(e) => setEditing({ ...editing, nome: e.target.value })}
+                  placeholder="Nome completo"
+                />
+              </div>
             </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Valor/Hora Fortaleza</Label>
