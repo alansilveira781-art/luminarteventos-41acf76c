@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { EMPRESAS } from "@/lib/empresas";
 import { CheckCircle2, Loader2, Building2, User } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -56,12 +55,9 @@ const enderecoVazio: Endereco = {
   uf: "",
 };
 
-type Parcela = { vencimento: string; valor: string };
-
 const vazio = {
   tipo: "contrato" as "contrato" | "aditivo",
   titulo: "",
-  empresa: "" as string,
   cliente_nome: "",
   cliente_documento: "",
   cliente_email: "",
@@ -210,10 +206,6 @@ function SolicitarContratoPublico() {
   const [resp2Ativo, setResp2Ativo] = useState(false);
   const [endResp2, setEndResp2] = useState<Endereco>({ ...enderecoVazio });
   const [testemunhas, setTestemunhas] = useState<Testemunha[]>([]);
-  const [pagForma, setPagForma] = useState<"pix" | "boleto">("pix");
-  const [pagModo, setPagModo] = useState<"igual" | "diferente">("igual");
-  const [qtdParcelas, setQtdParcelas] = useState(1);
-  const [parcelas, setParcelas] = useState<Parcela[]>([{ vencimento: "", valor: "" }]);
   const [proposta, setProposta] = useState<File | null>(null);
   const [docEmpresa, setDocEmpresa] = useState<File | null>(null);
   const [erros, setErros] = useState<Record<string, string>>({});
@@ -223,27 +215,6 @@ function SolicitarContratoPublico() {
 
   const isPJ = tipoPessoa === "pj";
   const valorTotal = parseMoeda(form.valor);
-
-  useEffect(() => {
-    setParcelas((prev) => {
-      const next: Parcela[] = [];
-      for (let i = 0; i < qtdParcelas; i++) next.push(prev[i] ?? { vencimento: "", valor: "" });
-      return next;
-    });
-  }, [qtdParcelas]);
-
-  const valoresCalculados = useMemo(() => {
-    if (pagModo === "igual" || qtdParcelas === 1) {
-      const cent = Math.round(valorTotal * 100);
-      const base = Math.floor(cent / qtdParcelas);
-      return Array.from({ length: qtdParcelas }, (_, i) =>
-        (i === qtdParcelas - 1 ? base + (cent - base * qtdParcelas) : base) / 100,
-      );
-    }
-    return parcelas.map((p) => parseMoeda(p.valor));
-  }, [pagModo, qtdParcelas, valorTotal, parcelas]);
-
-  const somaParcelas = valoresCalculados.reduce((a, b) => a + b, 0);
 
   const set = (k: Campo, v: string) => {
     setForm((f) => ({ ...f, [k]: v }));
@@ -311,14 +282,6 @@ function SolicitarContratoPublico() {
     });
 
     if (valorTotal <= 0) e.valor = "Informe o valor do contrato";
-    parcelas.forEach((p, i) => {
-      if (!p.vencimento) e[`parcela_${i}_venc`] = "Informe a data";
-      if (pagModo === "diferente" && qtdParcelas > 1 && parseMoeda(p.valor) <= 0)
-        e[`parcela_${i}_valor`] = "Informe o valor";
-    });
-    if (pagModo === "diferente" && qtdParcelas > 1 && valorTotal > 0 && Math.abs(somaParcelas - valorTotal) > 0.01) {
-      e.parcelas_soma = `A soma das parcelas (${fmtMoeda(somaParcelas)}) deve ser igual ao valor total (${fmtMoeda(valorTotal)})`;
-    }
 
     req("evento_inicio", form.evento_inicio);
     req("evento_fim", form.evento_fim);
@@ -340,7 +303,7 @@ function SolicitarContratoPublico() {
       e.desmontagem_inicio = "A desmontagem não pode começar antes do término do evento";
 
     if (!proposta) e.proposta = "Anexo obrigatório";
-    if (!docEmpresa) e.doc_empresa = "Anexo obrigatório";
+    if (isPJ && !docEmpresa) e.doc_empresa = "Anexo obrigatório";
     return e;
   }
 
@@ -355,7 +318,6 @@ function SolicitarContratoPublico() {
     const payload = {
       tipo: form.tipo,
       titulo: form.titulo.trim(),
-      empresa: form.empresa || "",
       cliente_tipo: tipoPessoa,
       cliente_nome: form.cliente_nome.trim(),
       cliente_documento: form.cliente_documento.trim(),
@@ -376,13 +338,6 @@ function SolicitarContratoPublico() {
         .filter((t) => t.nome.trim())
         .map((t) => ({ nome: t.nome.trim(), documento: t.documento.trim(), email: t.email.trim() })),
       valor: valorTotal,
-      pagamento_forma: pagForma,
-      pagamento_modo: qtdParcelas > 1 ? pagModo : "igual",
-      pagamento_parcelas: parcelas.map((p, i) => ({
-        n: i + 1,
-        vencimento: p.vencimento,
-        valor: Number(valoresCalculados[i]?.toFixed(2) ?? 0),
-      })),
       data_fechamento: form.data_fechamento || "",
       evento_inicio: form.evento_inicio,
       evento_fim: form.evento_fim,
@@ -404,7 +359,7 @@ function SolicitarContratoPublico() {
     const fd = new FormData();
     fd.append("payload", JSON.stringify(payload));
     if (proposta) fd.append("proposta", proposta);
-    if (docEmpresa) fd.append(isPJ ? "cartao_cnpj" : "documento_foto", docEmpresa);
+    if (isPJ && docEmpresa) fd.append("cartao_cnpj", docEmpresa);
 
     setEnviando(true);
     try {
@@ -524,17 +479,6 @@ function SolicitarContratoPublico() {
                 <SelectContent>
                   <SelectItem value="contrato">Contrato</SelectItem>
                   <SelectItem value="aditivo">Aditivo</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Empresa do grupo</Label>
-              <Select value={form.empresa} onValueChange={(v) => set("empresa", v)}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {EMPRESAS.map((e) => (
-                    <SelectItem key={e} value={e}>{e}</SelectItem>
-                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -843,91 +787,6 @@ function SolicitarContratoPublico() {
         </Card>
 
 
-        <Card className="p-5 space-y-4">
-          <div>
-            <div className="text-sm font-semibold">Forma de pagamento</div>
-            <p className="text-xs text-muted-foreground">
-              Valor total informado: <span className="font-medium text-foreground">{fmtMoeda(valorTotal)}</span>
-            </p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-1.5">
-              <Label>Forma *</Label>
-              <Select value={pagForma} onValueChange={(v) => setPagForma(v as "pix" | "boleto")}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pix">Pix</SelectItem>
-                  <SelectItem value="boleto">Boleto</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Parcelas *</Label>
-              <Input
-                type="number"
-                min={1}
-                max={36}
-                value={qtdParcelas}
-                onChange={(e) => setQtdParcelas(Math.min(36, Math.max(1, Number(e.target.value) || 1)))}
-              />
-            </div>
-            {qtdParcelas > 1 && (
-              <div className="space-y-1.5">
-                <Label>Divisão *</Label>
-                <Select value={pagModo} onValueChange={(v) => setPagModo(v as "igual" | "diferente")}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="igual">Parcelas iguais</SelectItem>
-                    <SelectItem value="diferente">Valores diferentes</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            {parcelas.map((p, i) => (
-              <div key={i} className="grid gap-3 sm:grid-cols-[70px_1fr_1fr] items-start">
-                <div className="text-xs text-muted-foreground pt-2.5">{i + 1}ª parcela</div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Vencimento *</Label>
-                  <Input
-                    type="date"
-                    value={p.vencimento}
-                    onChange={(e) =>
-                      setParcelas((prev) => prev.map((x, j) => (j === i ? { ...x, vencimento: e.target.value } : x)))
-                    }
-                  />
-                  <Erro msg={erros[`parcela_${i}_venc`]} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Valor (R$)</Label>
-                  {pagModo === "diferente" && qtdParcelas > 1 ? (
-                    <>
-                      <Input
-                        inputMode="decimal"
-                        value={p.valor}
-                        onChange={(e) =>
-                          setParcelas((prev) => prev.map((x, j) => (j === i ? { ...x, valor: e.target.value } : x)))
-                        }
-                        placeholder="0,00"
-                      />
-                      <Erro msg={erros[`parcela_${i}_valor`]} />
-                    </>
-                  ) : (
-                    <Input readOnly value={fmtMoeda(valoresCalculados[i] ?? 0)} className="bg-muted/50" />
-                  )}
-                </div>
-              </div>
-            ))}
-            {erros.parcelas_soma && <Erro msg={erros.parcelas_soma} />}
-            {qtdParcelas > 1 && (
-              <p className="text-[11px] text-muted-foreground">
-                Soma das parcelas: <span className="font-medium">{fmtMoeda(somaParcelas)}</span>
-              </p>
-            )}
-          </div>
-        </Card>
 
         <Card className="p-5 space-y-4">
           <div>
