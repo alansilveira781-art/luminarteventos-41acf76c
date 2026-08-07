@@ -256,6 +256,14 @@ function ComprasKanban() {
       return;
     }
 
+    // Aprovação exige um novo prazo (regra do banco): pedir antes de mover.
+    if (compra.status === "pendente_aprovacao" && status === "aprovada" && !opts?.prazo) {
+      const base = new Date();
+      base.setDate(base.getDate() + 7);
+      setPrazoAsk({ compra, status, opts, valor: base.toISOString().slice(0, 10) });
+      return;
+    }
+
 
     if (status === "a_receber") {
       if (!compra.tipo_compra) {
