@@ -902,7 +902,13 @@ function FechamentoTab() {
 
     for (const a of filtrados) {
       const d = diaristasMap.get(a.diarista_id);
-      const calc = d ? calcularApontamento(a, d) : null;
+      const evs = eventosMap?.get(a.id) ?? [];
+      const modo = (a.modo_divisao ?? "unico") as ModoDivisao;
+      const calc = d
+        ? modo !== "unico" && evs.length > 0
+          ? calcularApontamentoComEventos(a, d, modo, evs)
+          : calcularApontamento(a, d)
+        : null;
       const g = grupos.get(a.diarista_id) ?? {
         diarista: d, dias: 0, minutos: 0, total: 0, itens: [],
       };
@@ -912,10 +918,11 @@ function FechamentoTab() {
       g.itens.push({ ap: a, calc });
       grupos.set(a.diarista_id, g);
     }
+
     return [...grupos.entries()]
       .map(([id, g]) => ({ id, ...g }))
       .sort((a, b) => (a.diarista?.nome ?? "").localeCompare(b.diarista?.nome ?? "", "pt-BR"));
-  }, [apontamentos, de, ate, fLocal, fDiarista, diaristasMap]);
+  }, [apontamentos, de, ate, fLocal, fDiarista, diaristasMap, eventosMap]);
 
   const totalGeral = linhas.reduce((acc, l) => acc + l.total, 0);
   const totalDias = linhas.reduce((acc, l) => acc + l.dias, 0);
