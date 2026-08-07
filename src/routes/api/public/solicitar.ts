@@ -357,9 +357,9 @@ export const Route = createFileRoute("/api/public/solicitar")({
         }
 
 
-        let anexosFalhadosDemanda = 0;
+        let anexosDemanda = { falhados: 0, erros: [] as string[] };
         if (uploadedFiles.length > 0) {
-          anexosFalhadosDemanda = await uploadAnexos(
+          anexosDemanda = await uploadAnexos(
             "demanda-anexos",
             "demanda_anexos",
             "demanda_id",
@@ -374,8 +374,10 @@ export const Route = createFileRoute("/api/public/solicitar")({
             id: (demanda as any).id,
             numero: (demanda as any).numero,
             tipo: "demanda",
-            anexos_falhados: anexosFalhadosDemanda,
+            anexos_falhados: anexosDemanda.falhados,
+            anexos_erros: anexosDemanda.erros,
           }),
+
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       },
