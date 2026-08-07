@@ -42,6 +42,23 @@ const PEDRO_ALLOWED_SOURCES: CompraStatus[] = PEDRO_ALLOWED_MOVES.map(([from]) =
 export const PEDRO_MOVE_BLOCKED_MSG =
   "Pedro só pode mover cards de Solicitação → Análise e de Análise → Pendente Aprovação.";
 
+// Retornos permitidos (voltar o card um passo), liberados para admin e para o
+// responsável configurado do status de origem ou destino.
+export const COMPRA_ALLOWED_BACK_MOVES: Array<[CompraStatus, CompraStatus]> = [
+  ["analise", "solicitacao"],
+  ["a_receber", "em_andamento"],
+];
+
+export function isCompraBackMove(from?: CompraStatus | null, to?: CompraStatus | null): boolean {
+  if (!from || !to) return false;
+  return COMPRA_ALLOWED_BACK_MOVES.some(([f, t]) => f === from && t === to);
+}
+
+export function compraBackStatus(status?: CompraStatus | null): CompraStatus | null {
+  if (!status) return null;
+  return COMPRA_ALLOWED_BACK_MOVES.find(([f]) => f === status)?.[1] ?? null;
+}
+
 export function nextCompraStatus(status?: CompraStatus | null): CompraStatus | null {
   if (!status) return null;
   const idx = COMPRA_STATUSES.findIndex((s) => s.key === status);
@@ -127,6 +144,12 @@ export function canMoveCompra(
   if (targetStatus) {
     const isRespDestino = !!statusResponsavelId && !!userId && userId === statusResponsavelId;
     const isRespOrigem = !!currentStatusResponsavelId && !!userId && userId === currentStatusResponsavelId;
+
+    // Retornos permitidos (Análise → Solicitação, A Receber → Em Andamento)
+    if (isCompraBackMove(currentStatus, targetStatus)) {
+      return isRespOrigem || isRespDestino;
+    }
+
 
     if (currentStatus === "pendente_aprovacao") {
       return (targetStatus === "aprovada" || targetStatus === "negada") && isRespOrigem;

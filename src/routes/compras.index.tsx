@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, ChevronRight, ArrowRightLeft } from "lucide-react";
 import { CompraDialog } from "@/components/CompraDialog";
-import { COMPRA_STATUSES, canEditCompra, canMoveCompra, moveBlockedMessage, nextCompraStatus, PEDRO_EMAIL, PEDRO_MOVE_BLOCKED_MSG, type CompraStatus } from "@/lib/compras";
+import { COMPRA_STATUSES, canEditCompra, canMoveCompra, compraBackStatus, moveBlockedMessage, nextCompraStatus, PEDRO_EMAIL, PEDRO_MOVE_BLOCKED_MSG, type CompraStatus } from "@/lib/compras";
 import { TIPO_DEMANDA_OPTIONS, TIPOS_COM_ITENS } from "@/lib/demandas";
 import { statusPagamentos, formatBRL, type PagamentoLinha, type StatusPagamentos } from "@/lib/pagamentos";
 import { KanbanFilters, applyKanbanFilters, type FieldDef, type Filters } from "@/components/KanbanFilters";
@@ -418,7 +418,10 @@ function ComprasKanban() {
             <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={byStatus[s.key]?.length ?? 0}>
               {(byStatus[s.key] ?? []).map((c) => {
                 const next = nextCompraStatus(c.status);
-                const canMove = canMoveCompra(c, user?.id, isAdmin, user?.email, next ?? undefined, c.status, responsavelDoStatus(next), responsavelDoStatus(c.status));
+                const back = compraBackStatus(c.status);
+                const canMove =
+                  canMoveCompra(c, user?.id, isAdmin, user?.email, next ?? undefined, c.status, responsavelDoStatus(next), responsavelDoStatus(c.status)) ||
+                  (!!back && canMoveCompra(c, user?.id, isAdmin, user?.email, back, c.status, responsavelDoStatus(back), responsavelDoStatus(c.status)));
                 const canMigrate =
                   (c.status === "solicitacao" || c.status === "a_receber") &&
                   canEditCompra(c, user?.id, isAdmin, user?.email, responsavelDoStatus(c.status));
