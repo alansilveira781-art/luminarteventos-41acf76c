@@ -78,8 +78,8 @@ async function uploadAnexos(
   parentField: "compra_id" | "demanda_id",
   parentId: string,
   files: File[],
-): Promise<number> {
-  let falhados = 0;
+): Promise<{ falhados: number; erros: string[] }> {
+  const erros: string[] = [];
   for (const file of files) {
     try {
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -92,8 +92,8 @@ async function uploadAnexos(
           upsert: false,
         });
       if (upErr) {
-        console.error("[solicitar] upload anexo falhou", file.name, upErr);
-        falhados++;
+        console.error(`[solicitar] upload anexo falhou (${parentField}=${parentId})`, file.name, upErr);
+        erros.push(`${file.name}: ${upErr.message ?? "falha no envio do arquivo"}`);
         continue;
       }
       const { error: insErr } = await (supabaseAdmin as any).from(table).insert({
@@ -105,16 +105,17 @@ async function uploadAnexos(
         uploaded_by: null,
       });
       if (insErr) {
-        console.error("[solicitar] insert anexo falhou", file.name, insErr);
-        falhados++;
+        console.error(`[solicitar] insert anexo falhou (${parentField}=${parentId})`, file.name, insErr);
+        erros.push(`${file.name}: ${insErr.message ?? "falha ao registrar o anexo"}`);
       }
-    } catch (err) {
-      console.error("[solicitar] anexo erro inesperado", err);
-      falhados++;
+    } catch (err: any) {
+      console.error(`[solicitar] anexo erro inesperado (${parentField}=${parentId})`, file.name, err);
+      erros.push(`${file.name}: ${err?.message ?? "erro inesperado"}`);
     }
   }
-  return falhados;
+  return { falhados: erros.length, erros };
 }
+
 
 export const Route = createFileRoute("/api/public/solicitar")({
   server: {
@@ -274,9 +275,9 @@ export const Route = createFileRoute("/api/public/solicitar")({
 
           await (supabaseAdmin as any).from("compra_itens").insert(itensPayload);
 
-          let anexosFalhados = 0;
+          let anexosResult = { falhados: 0, erros: [] as string[] };
           if (uploadedFiles.length > 0) {
-            anexosFalhados = await uploadAnexos(
+            anexosResult = await uploadAnexos(
               "compra-anexos",
               "compra_anexos",
               "compra_id",
@@ -291,8 +292,10 @@ export const Route = createFileRoute("/api/public/solicitar")({
               id: (compra as any).id,
               numero: (compra as any).numero,
               tipo: "compra",
-              anexos_falhados: anexosFalhados,
+              anexos_falhados: anexosResult.falhados,
+              anexos_erros: anexosResult.erros,
             }),
+
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
           );
         }
@@ -354,9 +357,9 @@ export const Route = createFileRoute("/api/public/solicitar")({
         }
 
 
-        let anexosFalhadosDemanda = 0;
+        let anexosDemanda = { falhados: 0, erros: [] as string[] };
         if (uploadedFiles.length > 0) {
-          anexosFalhadosDemanda = await uploadAnexos(
+          anexosDemanda = await uploadAnexos(
             "demanda-anexos",
             "demanda_anexos",
             "demanda_id",
@@ -371,8 +374,10 @@ export const Route = createFileRoute("/api/public/solicitar")({
             id: (demanda as any).id,
             numero: (demanda as any).numero,
             tipo: "demanda",
-            anexos_falhados: anexosFalhadosDemanda,
+            anexos_falhados: anexosDemanda.falhados,
+            anexos_erros: anexosDemanda.erros,
           }),
+
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       },
