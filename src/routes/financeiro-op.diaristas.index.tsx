@@ -1216,6 +1216,7 @@ function FechamentoTab() {
                                     <th className="py-1 px-2 text-right">Horas</th>
                                     <th className="py-1 px-2 text-right">Diária</th>
                                     <th className="py-1 px-2 text-right">Extra</th>
+                                    <th className="py-1 px-2 text-right">Refeições</th>
                                     <th className="py-1 pl-2 text-right">Total</th>
                                   </tr>
                                 </thead>
@@ -1235,6 +1236,7 @@ function FechamentoTab() {
                                       <td className="py-1 px-2 text-right tabular-nums">{it.calc?.horasLabel ?? "—"}</td>
                                       <td className="py-1 px-2 text-right tabular-nums">{fmtBRL(it.calc?.diaria ?? 0)}</td>
                                       <td className="py-1 px-2 text-right tabular-nums">{fmtBRL(it.calc?.extra ?? 0)}</td>
+                                      <td className="py-1 px-2 text-right tabular-nums">{fmtBRL(it.calc?.refeicoes ?? 0)}</td>
                                       <td className="py-1 pl-2 text-right tabular-nums font-medium">{fmtBRL(it.calc?.total ?? 0)}</td>
                                     </tr>
                                   ))}
