@@ -24,6 +24,7 @@ import { PeriodoFilter, filterByPeriodo, periodoFromPreset, type Periodo, type P
 import { TablePagination } from "@/components/TablePagination";
 import { useSignedPhotoUrl } from "@/lib/storage-url";
 import { parseCods } from "@/lib/patrimonio/cods";
+import { prefixoCategoria } from "@/lib/patrimonio/prefixos";
 
 export const Route = createFileRoute("/patrimonio/")({ component: PatrimonioInventario });
 
@@ -138,7 +139,7 @@ function PatrimonioInventario() {
         let nextSeq = 0;
         let prefix = "";
         if (rest.categoria) {
-          prefix = String(rest.categoria).slice(0, 3).toUpperCase();
+          prefix = prefixoCategoria(rest.categoria);
           const { data } = await supabase
             .from("pat_itens")
             .select("id_item")
@@ -173,7 +174,7 @@ function PatrimonioInventario() {
       } else {
         // gera id_item se categoria informada
         if (!rest.id_item && rest.categoria) {
-          const prefix = rest.categoria.slice(0, 3).toUpperCase();
+          const prefix = prefixoCategoria(rest.categoria);
           const { data } = await supabase
             .from("pat_itens")
             .select("id_item")

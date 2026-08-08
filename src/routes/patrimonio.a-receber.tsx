@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { NumberInput } from "@/components/comercial/NumberInput";
 import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 import { parseCods } from "@/lib/patrimonio/cods";
+import { prefixoCategoria } from "@/lib/patrimonio/prefixos";
 
 const sb = supabase as any;
 
@@ -345,15 +346,24 @@ function ValidarRecebimentoDialog({ demanda, onClose }: { demanda: DemandaRow; o
         }
       }
 
-      // 3. Buscar último id_item UMA VEZ
-      const { data: lastItems } = await sb
-        .from("pat_itens")
-        .select("id_item")
-        .ilike("id_item", "IMO-%")
-        .order("id_item", { ascending: false })
-        .limit(1);
-      const last = lastItems?.[0]?.id_item ?? "IMO-0000";
-      let counter = parseInt(String(last).split("-")[1] || "0", 10);
+      // 3. Contador sequencial por prefixo de categoria
+      const counters = new Map<string, number>();
+      async function proximoId(categoria: string) {
+        const prefix = prefixoCategoria(categoria) || "IMO";
+        if (!counters.has(prefix)) {
+          const { data: lastItems } = await sb
+            .from("pat_itens")
+            .select("id_item")
+            .ilike("id_item", `${prefix}-%`)
+            .order("id_item", { ascending: false })
+            .limit(1);
+          const last = lastItems?.[0]?.id_item ?? `${prefix}-0000`;
+          counters.set(prefix, parseInt(String(last).split("-")[1] || "0", 10));
+        }
+        const n = (counters.get(prefix) ?? 0) + 1;
+        counters.set(prefix, n);
+        return `${prefix}-${String(n).padStart(4, "0")}`;
+      }
 
       const processedItemIds: string[] = [];
 
@@ -362,8 +372,7 @@ function ValidarRecebimentoDialog({ demanda, onClose }: { demanda: DemandaRow; o
         const totalLancamentos = Math.max(Number(l.quantidade) || 1, cods.length, 1);
 
         for (let n = 0; n < totalLancamentos; n++) {
-          counter += 1;
-          const id_item = `IMO-${String(counter).padStart(4, "0")}`;
+          const id_item = await proximoId(l.categoria || "IMOBILIZADO");
 
           const { data: novoPat, error: patErr } = await sb
             .from("pat_itens")
