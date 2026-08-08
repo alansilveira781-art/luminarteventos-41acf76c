@@ -550,11 +550,17 @@ function ValidarRecebimentoDialog({ demanda, onClose }: { demanda: DemandaRow; o
                   <Input value={l.nome} onChange={(e) => setLinha(idx, { nome: e.target.value })} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Código</Label>
-                  <NumberInput
-                    value={l.cod ?? 0}
-                    onChange={(nv) => setLinha(idx, { cod: nv > 0 ? Math.trunc(nv) : null })}
+                  <Label>Códigos (lançamento em massa)</Label>
+                  <Input
+                    value={l.codsText}
+                    onChange={(e) => setLinha(idx, { codsText: e.target.value })}
+                    placeholder="Ex: 101-105, 120, 131-133"
                   />
+                  {(() => {
+                    const cods = parseCods(l.codsText || "");
+                    if (cods.length === 0) return <p className="text-[11px] text-muted-foreground">Separe por vírgula ou use intervalos. Opcional.</p>;
+                    return <p className="text-[11px] text-muted-foreground">{cods.length} código(s): {cods.slice(0, 12).join(", ")}{cods.length > 12 ? "…" : ""}</p>;
+                  })()}
                 </div>
                 <div className="space-y-1.5">
                   <Label>Especificação</Label>
@@ -565,8 +571,12 @@ function ValidarRecebimentoDialog({ demanda, onClose }: { demanda: DemandaRow; o
                   <Input value={l.dimensoes} onChange={(e) => setLinha(idx, { dimensoes: e.target.value })} placeholder="Ex: 90x60cm" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Quantidade</Label>
+                  <Label>Quantidade (nº de lançamentos)</Label>
                   <NumberInput value={l.quantidade} onChange={(nv) => setLinha(idx, { quantidade: nv })} />
+                  {(() => {
+                    const n = Math.max(Number(l.quantidade) || 1, parseCods(l.codsText || "").length, 1);
+                    return <p className="text-[11px] text-muted-foreground">Serão criados {n} lançamento(s), 1 unidade cada.</p>;
+                  })()}
                 </div>
                 <div className="space-y-1.5">
                   <Label>Unidade</Label>
