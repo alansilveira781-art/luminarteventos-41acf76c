@@ -120,7 +120,43 @@ function PatrimonioInventario() {
 
   const saveMut = useMutation({
     mutationFn: async (payload: any) => {
-      const { id, ...rest } = payload;
+      const { id, __cods, ...rest } = payload;
+
+      // ---- Criação em massa (vários CODs, mesmos dados) ----
+      if (Array.isArray(__cods) && __cods.length > 0) {
+        const { data: dups } = await supabase
+          .from("pat_itens")
+          .select("cod")
+          .in("cod", __cods);
+        if (dups && dups.length) {
+          const list = dups.map((d: any) => d.cod).sort((a: number, b: number) => a - b);
+          throw new Error(
+            `Já existem itens com o(s) COD: ${list.slice(0, 20).join(", ")}${list.length > 20 ? "…" : ""}.`,
+          );
+        }
+        let nextSeq = 0;
+        let prefix = "";
+        if (rest.categoria) {
+          prefix = String(rest.categoria).slice(0, 3).toUpperCase();
+          const { data } = await supabase
+            .from("pat_itens")
+            .select("id_item")
+            .ilike("id_item", `${prefix}-%`)
+            .order("id_item", { ascending: false })
+            .limit(1);
+          const last = data?.[0]?.id_item ?? `${prefix}-0000`;
+          nextSeq = parseInt(String(last).split("-")[1] || "0", 10);
+        }
+        const rows = __cods.map((cod: number) => ({
+          ...rest,
+          cod,
+          id_item: prefix ? `${prefix}-${String(++nextSeq).padStart(4, "0")}` : null,
+        }));
+        const { error } = await supabase.from("pat_itens").insert(rows);
+        if (error) throw error;
+        return { bulk: rows.length };
+      }
+
       // Validar COD único
       if (rest.cod != null && rest.cod !== "") {
         const codNum = Number(rest.cod);
@@ -129,6 +165,7 @@ function PatrimonioInventario() {
         const { data: dup } = await q.limit(1);
         if (dup && dup.length) throw new Error(`Já existe um item com o COD ${codNum}.`);
       }
+
       if (id) {
         const { error } = await supabase.from("pat_itens").update(rest).eq("id", id);
         if (error) throw error;
@@ -150,11 +187,12 @@ function PatrimonioInventario() {
         if (error) throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: (res: any) => {
       qc.invalidateQueries({ queryKey: ["pat_itens"] });
-      toast.success("Salvo");
+      toast.success(res?.bulk ? `${res.bulk} itens criados` : "Salvo");
       setOpen(false); setEditing(null);
     },
+
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -426,6 +464,23 @@ function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function parseCods(text: string): number[] {
+  const out = new Set<number>();
+  for (const part of String(text).split(/[,;\n\s]+/).filter(Boolean)) {
+    const m = part.match(/^(\d+)\s*[-–a]\s*(\d+)$/i);
+    if (m) {
+      let a = Number(m[1]);
+      let b = Number(m[2]);
+      if (a > b) [a, b] = [b, a];
+      if (b - a > 2000) continue;
+      for (let i = a; i <= b; i++) out.add(i);
+    } else if (/^\d+$/.test(part)) {
+      out.add(Number(part));
+    }
+  }
+  return Array.from(out).sort((x, y) => x - y);
+}
+
 function ItemDialog({ open, onOpenChange, editing, itens, onSave }: {
   open: boolean; onOpenChange: (v: boolean) => void; editing: Pat | null; itens: Pat[]; onSave: (p: any) => void;
 }) {
@@ -433,8 +488,16 @@ function ItemDialog({ open, onOpenChange, editing, itens, onSave }: {
   const [extraSubs, setExtraSubs] = useState<string[]>([]);
   const [addingSub, setAddingSub] = useState(false);
   const [newSub, setNewSub] = useState("");
-  useMemo(() => { setF(editing ?? { estado: "BOM", unidade: "UNIDADE", quantidade: 1, valor: 0 }); }, [editing, open]);
+  const [bulk, setBulk] = useState(false);
+  const [codsText, setCodsText] = useState("");
+  useMemo(() => {
+    setF(editing ?? { estado: "BOM", unidade: "UNIDADE", quantidade: 1, valor: 0 });
+    setBulk(false);
+    setCodsText("");
+  }, [editing, open]);
   const set = (k: string, v: any) => setF((p: any) => ({ ...p, [k]: v }));
+
+  const cods = useMemo(() => (bulk ? parseCods(codsText) : []), [bulk, codsText]);
 
   const subcategorias = useMemo(() => {
     const set = new Set<string>();
@@ -447,10 +510,39 @@ function ItemDialog({ open, onOpenChange, editing, itens, onSave }: {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
-        <DialogHeader><DialogTitle>{editing ? "Editar item" : "Novo item"}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle className="flex items-center justify-between gap-2 pr-6">
+            <span>{editing ? "Editar item" : bulk ? "Novo item — lançamento em massa" : "Novo item"}</span>
+            {!editing && (
+              <Button type="button" size="sm" variant={bulk ? "default" : "outline"} onClick={() => setBulk((v) => !v)}>
+                <Plus className="h-4 w-4 mr-1" /> {bulk ? "Lançamento único" : "Lançar em massa"}
+              </Button>
+            )}
+          </DialogTitle>
+        </DialogHeader>
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>COD</Label><Input type="number" value={f.cod ?? ""} onChange={(e) => set("cod", e.target.value === "" ? null : Number(e.target.value))} /></div>
-          <div><Label>ID</Label><Input value={f.id_item ?? ""} disabled placeholder="Gerado automaticamente" /></div>
+          {bulk ? (
+            <div className="col-span-2">
+              <Label>Códigos (COD) *</Label>
+              <Textarea
+                rows={2}
+                value={codsText}
+                onChange={(e) => setCodsText(e.target.value)}
+                placeholder="Ex.: 101-105, 120, 131-133"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {cods.length > 0
+                  ? `Serão criados ${cods.length} itens (COD ${cods[0]} a ${cods[cods.length - 1]}).`
+                  : "Separe por vírgula ou use intervalos com hífen."}
+              </p>
+            </div>
+          ) : (
+            <div><Label>COD</Label><Input type="number" value={f.cod ?? ""} onChange={(e) => set("cod", e.target.value === "" ? null : Number(e.target.value))} /></div>
+          )}
+          {!bulk && (
+            <div><Label>ID</Label><Input value={f.id_item ?? ""} disabled placeholder="Gerado automaticamente" /></div>
+          )}
+
           <div className="col-span-2"><Label>Nome *</Label><Input value={f.nome ?? ""} onChange={(e) => set("nome", e.target.value)} /></div>
           <div><Label>Categoria</Label>
             <Select value={f.categoria ?? ""} onValueChange={(v) => set("categoria", v)}>
@@ -521,7 +613,16 @@ function ItemDialog({ open, onOpenChange, editing, itens, onSave }: {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={() => { if (!f.nome) return toast.error("Informe o nome"); onSave(f); }}>{editing ? "Salvar" : "Criar"}</Button>
+          <Button onClick={() => {
+            if (!f.nome) return toast.error("Informe o nome");
+            if (bulk) {
+              if (cods.length === 0) return toast.error("Informe ao menos um código (COD)");
+              const { cod, id_item, ...rest } = f;
+              return onSave({ ...rest, __cods: cods });
+            }
+            onSave(f);
+          }}>{editing ? "Salvar" : bulk ? `Criar ${cods.length || ""} itens`.trim() : "Criar"}</Button>
+
         </DialogFooter>
       </DialogContent>
     </Dialog>
