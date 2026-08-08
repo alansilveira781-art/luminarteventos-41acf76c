@@ -330,6 +330,21 @@ function ValidarRecebimentoDialog({ demanda, onClose }: { demanda: DemandaRow; o
         throw new Error("Este imobilizado já foi registrado no patrimônio. Atualize a tela.");
       }
 
+      // 2.1 Validar códigos informados (duplicidade interna e no banco)
+      const todosCods: number[] = [];
+      for (const l of linhas) todosCods.push(...parseCods(l.codsText || ""));
+      const dupInternas = todosCods.filter((c, i) => todosCods.indexOf(c) !== i);
+      if (dupInternas.length > 0) {
+        throw new Error(`Códigos repetidos entre os itens: ${Array.from(new Set(dupInternas)).join(", ")}`);
+      }
+      if (todosCods.length > 0) {
+        const { data: existentes } = await sb.from("pat_itens").select("cod").in("cod", todosCods);
+        const jaUsados = (existentes ?? []).map((r: any) => r.cod).filter((c: any) => c != null);
+        if (jaUsados.length > 0) {
+          throw new Error(`Códigos já cadastrados no patrimônio: ${Array.from(new Set(jaUsados)).join(", ")}`);
+        }
+      }
+
       // 3. Buscar último id_item UMA VEZ
       const { data: lastItems } = await sb
         .from("pat_itens")
@@ -343,48 +358,53 @@ function ValidarRecebimentoDialog({ demanda, onClose }: { demanda: DemandaRow; o
       const processedItemIds: string[] = [];
 
       for (const l of linhas) {
-        counter += 1;
-        const id_item = `IMO-${String(counter).padStart(4, "0")}`;
+        const cods = parseCods(l.codsText || "");
+        const totalLancamentos = Math.max(Number(l.quantidade) || 1, cods.length, 1);
 
-        const { data: novoPat, error: patErr } = await sb
-          .from("pat_itens")
-          .insert({
-            nome: l.nome.trim(),
-            id_item,
-            cod: l.cod ?? null,
-            categoria: l.categoria || "IMOBILIZADO",
-            subcategoria: l.subcategoria || null,
-            especificacao: l.especificacao || null,
-            dimensoes: l.dimensoes || null,
-            quantidade: Number(l.quantidade) || 1,
-            unidade: l.unidade || "UNIDADE",
-            valor: Number(l.valor) || 0,
-            estado: l.estado || "BOM",
-            data_compra: l.data_compra || null,
-            localizacao: l.localizacao || null,
-            observacoes: l.observacoes || null,
-          })
-          .select("id")
-          .single();
-        if (patErr) throw patErr;
+        for (let n = 0; n < totalLancamentos; n++) {
+          counter += 1;
+          const id_item = `IMO-${String(counter).padStart(4, "0")}`;
 
-        const { error: movErr } = await sb.from("pat_movimentacoes").insert({
-          tipo: "entrada",
-          item_id: novoPat.id,
-          quantidade: Number(l.quantidade) || 1,
-          data_movimento: new Date().toISOString(),
-          finalidade: "Aquisição",
-          observacoes: `Recebimento de imobilizado — Despesa ${demanda.numero != null ? `#${demanda.numero}` : demanda.id.slice(0, 8)}`,
-          created_by: user?.id ?? null,
-        });
-        if (movErr) throw movErr;
+          const { data: novoPat, error: patErr } = await sb
+            .from("pat_itens")
+            .insert({
+              nome: l.nome.trim(),
+              id_item,
+              cod: cods[n] ?? null,
+              categoria: l.categoria || "IMOBILIZADO",
+              subcategoria: l.subcategoria || null,
+              especificacao: l.especificacao || null,
+              dimensoes: l.dimensoes || null,
+              quantidade: 1,
+              unidade: l.unidade || "UNIDADE",
+              valor: Number(l.valor) || 0,
+              estado: l.estado || "BOM",
+              data_compra: l.data_compra || null,
+              localizacao: l.localizacao || null,
+              observacoes: l.observacoes || null,
+            })
+            .select("id")
+            .single();
+          if (patErr) throw patErr;
 
-        const { error: regErr } = await sb.from("demanda_patrimonio_registros").insert({
-          demanda_id: demanda.id,
-          pat_item_id: novoPat.id,
-          registrado_por: user?.id ?? null,
-        });
-        if (regErr) throw regErr;
+          const { error: movErr } = await sb.from("pat_movimentacoes").insert({
+            tipo: "entrada",
+            item_id: novoPat.id,
+            quantidade: 1,
+            data_movimento: new Date().toISOString(),
+            finalidade: "Aquisição",
+            observacoes: `Recebimento de imobilizado — Despesa ${demanda.numero != null ? `#${demanda.numero}` : demanda.id.slice(0, 8)}`,
+            created_by: user?.id ?? null,
+          });
+          if (movErr) throw movErr;
+
+          const { error: regErr } = await sb.from("demanda_patrimonio_registros").insert({
+            demanda_id: demanda.id,
+            pat_item_id: novoPat.id,
+            registrado_por: user?.id ?? null,
+          });
+          if (regErr) throw regErr;
+        }
 
         if (l.demanda_item_id) processedItemIds.push(l.demanda_item_id);
       }
