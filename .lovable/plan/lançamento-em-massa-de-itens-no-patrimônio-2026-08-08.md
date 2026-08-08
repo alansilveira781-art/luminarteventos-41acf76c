@@ -17,8 +17,9 @@ Hoje o botão "Novo item" cria um item por vez. A ideia é permitir criar vário
 
 - Códigos repetidos na própria lista são ignorados (contam uma vez só).
 - Antes de gravar, o sistema verifica quais códigos já existem no inventário; se houver conflito, mostra a lista dos códigos duplicados e não grava nada.
-- O **ID** de cada item continua sendo gerado automaticamente pela categoria (ex.: `IMO-0042`, `IMO-0043`, …), em sequência.
+- O **ID** de cada item continua sendo gerado automaticamente pela categoria (ex.: `IMO-0042`, `IMO-0043`, …), em sequência — **um ID diferente para cada código/lançamento**.
 - Nome continua obrigatório; se o campo de códigos estiver vazio, o sistema avisa.
+- No modo em massa, cada item criado tem **quantidade 1**; o campo Quantidade fica oculto/desabilitado com o aviso "1 por código".
 - Ao final, mensagem de confirmação com a quantidade criada e a lista atualiza automaticamente.
 
 ## Detalhes técnicos
