@@ -589,7 +589,12 @@ function ItemDialog({ open, onOpenChange, editing, itens, onSave }: {
           </div>
           <div><Label>Especificação</Label><Input value={f.especificacao ?? ""} onChange={(e) => set("especificacao", e.target.value)} /></div>
           <div><Label>Dimensões</Label><Input value={f.dimensoes ?? ""} onChange={(e) => set("dimensoes", e.target.value)} /></div>
-          <div><Label>Quantidade</Label><NumberInput step="0.01" value={Number(f.quantidade ?? 1)} onChange={(n) => set("quantidade", n)} /></div>
+          {bulk ? (
+            <div><Label>Quantidade</Label><Input value="1 por código" disabled /></div>
+          ) : (
+            <div><Label>Quantidade</Label><NumberInput step="0.01" value={Number(f.quantidade ?? 1)} onChange={(n) => set("quantidade", n)} /></div>
+          )}
+
           <div><Label>Unidade</Label>
             <Select value={f.unidade ?? "UNIDADE"} onValueChange={(v) => set("unidade", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
