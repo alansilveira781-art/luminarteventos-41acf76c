@@ -464,6 +464,23 @@ function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function parseCods(text: string): number[] {
+  const out = new Set<number>();
+  for (const part of String(text).split(/[,;\n\s]+/).filter(Boolean)) {
+    const m = part.match(/^(\d+)\s*[-–a]\s*(\d+)$/i);
+    if (m) {
+      let a = Number(m[1]);
+      let b = Number(m[2]);
+      if (a > b) [a, b] = [b, a];
+      if (b - a > 2000) continue;
+      for (let i = a; i <= b; i++) out.add(i);
+    } else if (/^\d+$/.test(part)) {
+      out.add(Number(part));
+    }
+  }
+  return Array.from(out).sort((x, y) => x - y);
+}
+
 function ItemDialog({ open, onOpenChange, editing, itens, onSave }: {
   open: boolean; onOpenChange: (v: boolean) => void; editing: Pat | null; itens: Pat[]; onSave: (p: any) => void;
 }) {
@@ -471,8 +488,16 @@ function ItemDialog({ open, onOpenChange, editing, itens, onSave }: {
   const [extraSubs, setExtraSubs] = useState<string[]>([]);
   const [addingSub, setAddingSub] = useState(false);
   const [newSub, setNewSub] = useState("");
-  useMemo(() => { setF(editing ?? { estado: "BOM", unidade: "UNIDADE", quantidade: 1, valor: 0 }); }, [editing, open]);
+  const [bulk, setBulk] = useState(false);
+  const [codsText, setCodsText] = useState("");
+  useMemo(() => {
+    setF(editing ?? { estado: "BOM", unidade: "UNIDADE", quantidade: 1, valor: 0 });
+    setBulk(false);
+    setCodsText("");
+  }, [editing, open]);
   const set = (k: string, v: any) => setF((p: any) => ({ ...p, [k]: v }));
+
+  const cods = useMemo(() => (bulk ? parseCods(codsText) : []), [bulk, codsText]);
 
   const subcategorias = useMemo(() => {
     const set = new Set<string>();
@@ -485,10 +510,39 @@ function ItemDialog({ open, onOpenChange, editing, itens, onSave }: {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
-        <DialogHeader><DialogTitle>{editing ? "Editar item" : "Novo item"}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle className="flex items-center justify-between gap-2 pr-6">
+            <span>{editing ? "Editar item" : bulk ? "Novo item — lançamento em massa" : "Novo item"}</span>
+            {!editing && (
+              <Button type="button" size="sm" variant={bulk ? "default" : "outline"} onClick={() => setBulk((v) => !v)}>
+                <Plus className="h-4 w-4 mr-1" /> {bulk ? "Lançamento único" : "Lançar em massa"}
+              </Button>
+            )}
+          </DialogTitle>
+        </DialogHeader>
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>COD</Label><Input type="number" value={f.cod ?? ""} onChange={(e) => set("cod", e.target.value === "" ? null : Number(e.target.value))} /></div>
-          <div><Label>ID</Label><Input value={f.id_item ?? ""} disabled placeholder="Gerado automaticamente" /></div>
+          {bulk ? (
+            <div className="col-span-2">
+              <Label>Códigos (COD) *</Label>
+              <Textarea
+                rows={2}
+                value={codsText}
+                onChange={(e) => setCodsText(e.target.value)}
+                placeholder="Ex.: 101-105, 120, 131-133"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {cods.length > 0
+                  ? `Serão criados ${cods.length} itens (COD ${cods[0]} a ${cods[cods.length - 1]}).`
+                  : "Separe por vírgula ou use intervalos com hífen."}
+              </p>
+            </div>
+          ) : (
+            <div><Label>COD</Label><Input type="number" value={f.cod ?? ""} onChange={(e) => set("cod", e.target.value === "" ? null : Number(e.target.value))} /></div>
+          )}
+          {!bulk && (
+            <div><Label>ID</Label><Input value={f.id_item ?? ""} disabled placeholder="Gerado automaticamente" /></div>
+          )}
+
           <div className="col-span-2"><Label>Nome *</Label><Input value={f.nome ?? ""} onChange={(e) => set("nome", e.target.value)} /></div>
           <div><Label>Categoria</Label>
             <Select value={f.categoria ?? ""} onValueChange={(v) => set("categoria", v)}>
