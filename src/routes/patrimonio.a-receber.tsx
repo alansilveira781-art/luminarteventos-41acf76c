@@ -201,7 +201,7 @@ function PatrimonioAReceberPage() {
 type LinhaPat = {
   demanda_item_id: string | null;
   nome: string;
-  cod: number | null;
+  codsText: string;
   categoria: string;
   quantidade: number;
   unidade: string;
@@ -222,7 +222,7 @@ function buildInitialLinhas(demanda: DemandaRow): LinhaPat[] {
       {
         demanda_item_id: null,
         nome: demanda.titulo || demanda.fornecedor || "",
-        cod: null,
+        codsText: "",
         categoria: "IMOBILIZADO",
         quantidade: 1,
         unidade: "UNIDADE",
@@ -249,7 +249,7 @@ function buildInitialLinhas(demanda: DemandaRow): LinhaPat[] {
     return {
       demanda_item_id: it.id,
       nome: it.descricao || demanda.titulo || "",
-      cod: null,
+      codsText: "",
       categoria: "IMOBILIZADO",
       quantidade: q > 0 ? q : 1,
       unidade: it.unidade || "UNIDADE",
