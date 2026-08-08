@@ -623,7 +623,7 @@ function ItemDialog({ open, onOpenChange, editing, itens, onSave }: {
             if (bulk) {
               if (cods.length === 0) return toast.error("Informe ao menos um código (COD)");
               const { cod, id_item, ...rest } = f;
-              return onSave({ ...rest, __cods: cods });
+              return onSave({ ...rest, quantidade: 1, __cods: cods });
             }
             onSave(f);
           }}>{editing ? "Salvar" : bulk ? `Criar ${cods.length || ""} itens`.trim() : "Criar"}</Button>
