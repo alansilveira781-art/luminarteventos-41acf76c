@@ -187,11 +187,12 @@ function PatrimonioInventario() {
         if (error) throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: (res: any) => {
       qc.invalidateQueries({ queryKey: ["pat_itens"] });
-      toast.success("Salvo");
+      toast.success(res?.bulk ? `${res.bulk} itens criados` : "Salvo");
       setOpen(false); setEditing(null);
     },
+
     onError: (e: any) => toast.error(e.message),
   });
 
