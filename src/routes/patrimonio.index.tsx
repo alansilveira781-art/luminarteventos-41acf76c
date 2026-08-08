@@ -120,7 +120,43 @@ function PatrimonioInventario() {
 
   const saveMut = useMutation({
     mutationFn: async (payload: any) => {
-      const { id, ...rest } = payload;
+      const { id, __cods, ...rest } = payload;
+
+      // ---- Criação em massa (vários CODs, mesmos dados) ----
+      if (Array.isArray(__cods) && __cods.length > 0) {
+        const { data: dups } = await supabase
+          .from("pat_itens")
+          .select("cod")
+          .in("cod", __cods);
+        if (dups && dups.length) {
+          const list = dups.map((d: any) => d.cod).sort((a: number, b: number) => a - b);
+          throw new Error(
+            `Já existem itens com o(s) COD: ${list.slice(0, 20).join(", ")}${list.length > 20 ? "…" : ""}.`,
+          );
+        }
+        let nextSeq = 0;
+        let prefix = "";
+        if (rest.categoria) {
+          prefix = String(rest.categoria).slice(0, 3).toUpperCase();
+          const { data } = await supabase
+            .from("pat_itens")
+            .select("id_item")
+            .ilike("id_item", `${prefix}-%`)
+            .order("id_item", { ascending: false })
+            .limit(1);
+          const last = data?.[0]?.id_item ?? `${prefix}-0000`;
+          nextSeq = parseInt(String(last).split("-")[1] || "0", 10);
+        }
+        const rows = __cods.map((cod: number) => ({
+          ...rest,
+          cod,
+          id_item: prefix ? `${prefix}-${String(++nextSeq).padStart(4, "0")}` : null,
+        }));
+        const { error } = await supabase.from("pat_itens").insert(rows);
+        if (error) throw error;
+        return { bulk: rows.length };
+      }
+
       // Validar COD único
       if (rest.cod != null && rest.cod !== "") {
         const codNum = Number(rest.cod);
@@ -129,6 +165,7 @@ function PatrimonioInventario() {
         const { data: dup } = await q.limit(1);
         if (dup && dup.length) throw new Error(`Já existe um item com o COD ${codNum}.`);
       }
+
       if (id) {
         const { error } = await supabase.from("pat_itens").update(rest).eq("id", id);
         if (error) throw error;
