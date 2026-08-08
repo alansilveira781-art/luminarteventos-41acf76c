@@ -15,6 +15,7 @@ import { PackageCheck, Paperclip, FileIcon, Download, Trash2, Plus, X } from "lu
 import { toast } from "sonner";
 import { NumberInput } from "@/components/comercial/NumberInput";
 import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
+import { parseCods } from "@/lib/patrimonio/cods";
 
 const sb = supabase as any;
 
