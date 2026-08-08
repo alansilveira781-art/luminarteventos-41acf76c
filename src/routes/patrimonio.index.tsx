@@ -23,6 +23,7 @@ import { NumberInput } from "@/components/comercial/NumberInput";
 import { PeriodoFilter, filterByPeriodo, periodoFromPreset, type Periodo, type PeriodoPreset } from "@/components/PeriodoFilter";
 import { TablePagination } from "@/components/TablePagination";
 import { useSignedPhotoUrl } from "@/lib/storage-url";
+import { parseCods } from "@/lib/patrimonio/cods";
 
 export const Route = createFileRoute("/patrimonio/")({ component: PatrimonioInventario });
 
@@ -464,22 +465,8 @@ function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function parseCods(text: string): number[] {
-  const out = new Set<number>();
-  for (const part of String(text).split(/[,;\n\s]+/).filter(Boolean)) {
-    const m = part.match(/^(\d+)\s*[-–a]\s*(\d+)$/i);
-    if (m) {
-      let a = Number(m[1]);
-      let b = Number(m[2]);
-      if (a > b) [a, b] = [b, a];
-      if (b - a > 2000) continue;
-      for (let i = a; i <= b; i++) out.add(i);
-    } else if (/^\d+$/.test(part)) {
-      out.add(Number(part));
-    }
-  }
-  return Array.from(out).sort((x, y) => x - y);
-}
+
+
 
 function ItemDialog({ open, onOpenChange, editing, itens, onSave }: {
   open: boolean; onOpenChange: (v: boolean) => void; editing: Pat | null; itens: Pat[]; onSave: (p: any) => void;
