@@ -24,6 +24,7 @@ import { PeriodoFilter, filterByPeriodo, periodoFromPreset, type Periodo, type P
 import { TablePagination } from "@/components/TablePagination";
 import { useSignedPhotoUrl } from "@/lib/storage-url";
 import { parseCods } from "@/lib/patrimonio/cods";
+import { prefixoCategoria } from "@/lib/patrimonio/prefixos";
 
 export const Route = createFileRoute("/patrimonio/")({ component: PatrimonioInventario });
 

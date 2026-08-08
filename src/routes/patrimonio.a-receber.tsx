@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { NumberInput } from "@/components/comercial/NumberInput";
 import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 import { parseCods } from "@/lib/patrimonio/cods";
+import { prefixoCategoria } from "@/lib/patrimonio/prefixos";
 
 const sb = supabase as any;
 
