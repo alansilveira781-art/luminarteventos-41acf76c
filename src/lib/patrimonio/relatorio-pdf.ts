@@ -5,6 +5,7 @@ export type RelatorioPatItem = {
   cod: number | null;
   id_item: string | null;
   nome: string | null;
+  especificacao?: string | null;
   categoria: string | null;
   subcategoria: string | null;
   localizacao: string | null;
@@ -104,7 +105,7 @@ export async function gerarRelatorioPatrimonioPdf(params: RelatorioPatrimonioPar
       subValor += total;
       body.push([
         it.cod != null ? String(it.cod) : (it.id_item ?? "—"),
-        it.nome ?? "—",
+        [it.nome ?? "—", it.especificacao].filter(Boolean).join(" · "),
         it.categoria ?? "—",
         it.subcategoria ?? "—",
         it.localizacao ?? "—",

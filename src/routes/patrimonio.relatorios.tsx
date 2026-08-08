@@ -35,6 +35,7 @@ type Pat = {
   categoria: string | null;
   subcategoria: string | null;
   nome: string;
+  especificacao: string | null;
   quantidade: number;
   valor: number;
   estado: string;
@@ -63,7 +64,7 @@ function PatrimonioRelatorios() {
       while (true) {
         const { data, error } = await supabase
           .from("pat_itens")
-          .select("id,cod,id_item,categoria,subcategoria,nome,quantidade,valor,estado,unidade,localizacao")
+          .select("id,cod,id_item,categoria,subcategoria,nome,especificacao,quantidade,valor,estado,unidade,localizacao")
           .order("cod", { ascending: true, nullsFirst: false })
           .range(from, from + pageSize - 1);
         if (error) throw error;
@@ -110,7 +111,7 @@ function PatrimonioRelatorios() {
       if (estado !== "__all" && i.estado !== estado) return false;
       if (loc !== "__all" && i.localizacao !== loc) return false;
       if (!nq) return true;
-      return [i.nome, i.id_item, i.subcategoria, i.localizacao, i.cod != null ? String(i.cod) : ""]
+      return [i.nome, i.especificacao, i.id_item, i.subcategoria, i.localizacao, i.cod != null ? String(i.cod) : ""]
         .some((v) => normalize(String(v ?? "")).includes(nq));
     });
   }, [itens, cat, sub, estado, loc, qd]);
@@ -145,6 +146,7 @@ function PatrimonioRelatorios() {
           cod: i.cod,
           id_item: i.id_item,
           nome: i.nome,
+          especificacao: i.especificacao,
           categoria: i.categoria,
           subcategoria: i.subcategoria,
           localizacao: i.localizacao,
@@ -259,7 +261,7 @@ function PatrimonioRelatorios() {
             ) : filtrados.slice(0, 300).map((i) => (
               <tr key={i.id} className="border-t border-border">
                 <td className="px-2 py-1.5 font-mono text-xs">{i.cod ?? i.id_item ?? "—"}</td>
-                <td className="px-2 py-1.5">{i.nome}</td>
+                <td className="px-2 py-1.5">{i.nome}{i.especificacao && <span className="text-muted-foreground"> · {i.especificacao}</span>}</td>
                 <td className="px-2 py-1.5">{i.categoria ?? "—"}</td>
                 <td className="px-2 py-1.5">{i.subcategoria ?? "—"}</td>
                 <td className="px-2 py-1.5">{i.localizacao ?? "—"}</td>
