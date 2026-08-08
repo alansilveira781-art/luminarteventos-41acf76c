@@ -23,6 +23,7 @@ import { NumberInput } from "@/components/comercial/NumberInput";
 import { PeriodoFilter, filterByPeriodo, periodoFromPreset, type Periodo, type PeriodoPreset } from "@/components/PeriodoFilter";
 import { TablePagination } from "@/components/TablePagination";
 import { useSignedPhotoUrl } from "@/lib/storage-url";
+import { parseCods } from "@/lib/patrimonio/cods";
 
 export const Route = createFileRoute("/patrimonio/")({ component: PatrimonioInventario });
 
