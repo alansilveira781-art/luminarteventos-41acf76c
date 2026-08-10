@@ -2228,6 +2228,7 @@ export type Database = {
           demanda_id: string
           desconto: number
           descricao: string | null
+          evento_projeto: string | null
           frete: number
           id: string
           ipi: number
@@ -2245,6 +2246,7 @@ export type Database = {
           demanda_id: string
           desconto?: number
           descricao?: string | null
+          evento_projeto?: string | null
           frete?: number
           id?: string
           ipi?: number
@@ -2262,6 +2264,7 @@ export type Database = {
           demanda_id?: string
           desconto?: number
           descricao?: string | null
+          evento_projeto?: string | null
           frete?: number
           id?: string
           ipi?: number
