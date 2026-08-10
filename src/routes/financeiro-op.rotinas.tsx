@@ -421,6 +421,24 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
   });
   const [files, setFiles] = useState<File[]>([]);
   const { data: atividades = [] } = useAtividades();
+  const rotinaAtividades = useRotinaAtividadesMap();
+  const [atividadeIds, setAtividadeIds] = useState<string[]>([]);
+  const [atividadesCarregadas, setAtividadesCarregadas] = useState(false);
+
+  useEffect(() => {
+    if (atividadesCarregadas) return;
+    if (!rotina.id) {
+      setAtividadesCarregadas(true);
+      return;
+    }
+    const vinc = rotinaAtividades.get(rotina.id);
+    if (vinc) {
+      setAtividadeIds(vinc);
+      setAtividadesCarregadas(true);
+    } else if (rotina.atividade_id) {
+      setAtividadeIds([rotina.atividade_id]);
+    }
+  }, [rotina.id, rotina.atividade_id, rotinaAtividades, atividadesCarregadas]);
 
   const { data: existingAnexos = [] } = useQuery({
     queryKey: ["rotina-anexos", rotina.id],
