@@ -515,35 +515,6 @@ function ComprasKanban() {
         }}
       />
 
-      <Dialog open={!!prazoAsk} onOpenChange={(v) => { if (!v) setPrazoAsk(null); }}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Aprovar compra</DialogTitle>
-            <DialogDescription>
-              Informe o novo prazo para conclusão da compra aprovada.
-            </DialogDescription>
-          </DialogHeader>
-          <Input
-            type="date"
-            value={prazoAsk?.valor ?? ""}
-            onChange={(e) => setPrazoAsk((p) => (p ? { ...p, valor: e.target.value } : p))}
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPrazoAsk(null)}>Cancelar</Button>
-            <Button
-              disabled={!prazoAsk?.valor}
-              onClick={async () => {
-                if (!prazoAsk?.valor) return;
-                const { compra, status, opts, valor } = prazoAsk;
-                setPrazoAsk(null);
-                await advanceToStatus(compra, status, { ...(opts ?? {}), prazo: valor });
-              }}
-            >
-              Aprovar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
 
 
