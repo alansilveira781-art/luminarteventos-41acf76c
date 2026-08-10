@@ -1215,25 +1215,44 @@ function FechamentoView({
     XLSX.utils.book_append_sheet(wb, ws, "Resumo");
 
     // Detalhe
-    const detHeader = ["Diarista", "Data", "Projeto", "Local", "Horas", "Diária", "Extra", "Total"];
-    const detBody: any[][] = [];
-    for (const l of linhas) {
-      for (const it of l.itens) {
-        detBody.push([
-          nomeExib(l.diarista),
-          fmtDate(it.ap.data),
-          it.ap.projeto ?? "",
-          it.ap.local,
-          it.calc?.horasLabel ?? "",
-          Number((it.calc?.diaria ?? 0).toFixed(2)),
-          Number((it.calc?.extra ?? 0).toFixed(2)),
-          Number((it.calc?.total ?? 0).toFixed(2)),
-        ]);
+    if (agruparPorEvento) {
+      const evHeader = ["Diarista", "Evento / Projeto", "Dias", "Horas", "Total"];
+      const evBody: any[][] = [];
+      for (const l of linhas) {
+        for (const e of l.eventos) {
+          evBody.push([
+            nomeExib(l.diarista),
+            e.nome,
+            e.dias,
+            formatHoras(e.minutos),
+            Number(e.total.toFixed(2)),
+          ]);
+        }
       }
+      const wsEv = XLSX.utils.aoa_to_sheet([evHeader, ...evBody]);
+      wsEv["!cols"] = [{ wch: 24 }, { wch: 40 }, { wch: 8 }, { wch: 12 }, { wch: 14 }];
+      XLSX.utils.book_append_sheet(wb, wsEv, "Por evento");
+    } else {
+      const detHeader = ["Diarista", "Data", "Projeto", "Local", "Horas", "Diária", "Extra", "Total"];
+      const detBody: any[][] = [];
+      for (const l of linhas) {
+        for (const it of l.itens) {
+          detBody.push([
+            nomeExib(l.diarista),
+            fmtDate(it.ap.data),
+            it.ap.projeto ?? "",
+            it.ap.local,
+            it.calc?.horasLabel ?? "",
+            Number((it.calc?.diaria ?? 0).toFixed(2)),
+            Number((it.calc?.extra ?? 0).toFixed(2)),
+            Number((it.calc?.total ?? 0).toFixed(2)),
+          ]);
+        }
+      }
+      const ws2 = XLSX.utils.aoa_to_sheet([detHeader, ...detBody]);
+      ws2["!cols"] = [{ wch: 24 }, { wch: 12 }, { wch: 28 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
+      XLSX.utils.book_append_sheet(wb, ws2, "Detalhe");
     }
-    const ws2 = XLSX.utils.aoa_to_sheet([detHeader, ...detBody]);
-    ws2["!cols"] = [{ wch: 24 }, { wch: 12 }, { wch: 28 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
-    XLSX.utils.book_append_sheet(wb, ws2, "Detalhe");
 
     XLSX.writeFile(wb, `${filePrefix}-${de}_a_${ate}.xlsx`);
   };
