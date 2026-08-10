@@ -526,6 +526,7 @@ function VendasPage() {
           classificacao: r.classificacao ?? null,
           consultor: r.consultor ?? null,
           cerimonial: r.cerimonial ?? null,
+          decorador: r.decorador ?? null,
           valorProposta: Number(r.valorProposta || 0),
           desconto: Number(r.desconto || 0),
           valorFinal: Number(r.valorFinal || 0),
