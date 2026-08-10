@@ -478,7 +478,7 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
         data_fim: form.data_fim || null,
         responsavel_nome: form.responsavel_nome || null,
         status: form.status,
-        atividade_id: form.atividade_id || null,
+        atividade_id: atividadeIds[0] ?? null,
         max_ocorrencias: maxOcorr,
       };
       const { data: { user } } = await supabase.auth.getUser();
