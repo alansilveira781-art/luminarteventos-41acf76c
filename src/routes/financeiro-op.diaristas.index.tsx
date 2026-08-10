@@ -1045,7 +1045,7 @@ function FechamentoTab() {
     return [...grupos.entries()]
       .map(([id, g]) => ({ id, ...g }))
       .sort((a, b) => nomeExib(a.diarista).localeCompare(nomeExib(b.diarista), "pt-BR"));
-  }, [apontamentos, de, ate, fLocal, fDiarista, diaristasMap, eventosMap, cfgRefeicao]);
+  }, [apontamentos, de, ate, fLocal, fDiarista, fDepto, diaristasMap, eventosMap, cfgRefeicao]);
 
   const totalGeral = linhas.reduce((acc, l) => acc + l.total, 0);
   const totalDias = linhas.reduce((acc, l) => acc + l.dias, 0);
