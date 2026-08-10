@@ -14,6 +14,13 @@ export type RelatorioItem = {
   total: number;
 };
 
+export type RelatorioEventoItem = {
+  evento: string;
+  dias: number;
+  horasLabel: string;
+  total: number;
+};
+
 export type RelatorioGrupo = {
   nome: string;
   chavePix: string | null;
@@ -23,6 +30,8 @@ export type RelatorioGrupo = {
   valorHoraFortaleza?: number;
   valorHoraFora?: number;
   itens: RelatorioItem[];
+  /** Usado quando o relatório é agrupado por evento */
+  eventos?: RelatorioEventoItem[];
 };
 
 export type RelatorioDiaristasParams = {
@@ -31,6 +40,8 @@ export type RelatorioDiaristasParams = {
   filtros?: string[];
   grupos: RelatorioGrupo[];
   totais: { dias: number; horasLabel: string; valor: number };
+  /** Detalha por evento (somando os dias) em vez de listar dia a dia */
+  porEvento?: boolean;
 };
 
 const brl = (v: number) =>
