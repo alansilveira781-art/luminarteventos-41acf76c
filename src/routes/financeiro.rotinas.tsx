@@ -248,12 +248,10 @@ function TabelaRotinas({
                 <td className="px-4 py-2">
                   <div className="font-medium flex items-center gap-2">
                     {r.titulo}
-                    {r.atividade_id && (
-                      <Badge variant="secondary" className="text-[10px]">
-                        <ListChecks className="h-3 w-3 mr-1" />
-                        {atividades.find((a) => a.id === r.atividade_id)?.titulo ?? "Atividade"}
-                      </Badge>
-                    )}
+                    <AtividadesBadges
+                      ids={rotinaAtividades.get(r.id) ?? (r.atividade_id ? [r.atividade_id] : [])}
+                      atividades={atividades}
+                    />
                   </div>
                   {r.descricao && <div className="text-xs text-muted-foreground">{r.descricao}</div>}
                 </td>
