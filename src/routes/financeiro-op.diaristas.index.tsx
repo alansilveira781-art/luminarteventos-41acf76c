@@ -203,12 +203,16 @@ function DiaristasIndex() {
           <TabsList>
             <TabsTrigger value="apontamento">Apontamento</TabsTrigger>
             <TabsTrigger value="fechamento">Fechamento</TabsTrigger>
+            <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
           </TabsList>
           <TabsContent value="apontamento" className="mt-4">
             <ApontamentoTab />
           </TabsContent>
           <TabsContent value="fechamento" className="mt-4">
             <FechamentoTab />
+          </TabsContent>
+          <TabsContent value="relatorios" className="mt-4">
+            <RelatoriosTab />
           </TabsContent>
         </Tabs>
       ) : (
@@ -968,6 +972,37 @@ function ApontamentoTab() {
 // ─────────────────────────────────────────────────────────────
 
 function FechamentoTab() {
+  const hoje = new Date();
+  const ini = subDays(startOfWeek(hoje, { weekStartsOn: 1 }), 7);
+  return (
+    <FechamentoView
+      deInicial={format(ini, "yyyy-MM-dd")}
+      ateInicial={format(endOfWeek(ini, { weekStartsOn: 1 }), "yyyy-MM-dd")}
+      filePrefix="fechamento-diaristas"
+    />
+  );
+}
+
+function RelatoriosTab() {
+  const hoje = new Date();
+  return (
+    <FechamentoView
+      deInicial={format(startOfMonth(hoje), "yyyy-MM-dd")}
+      ateInicial={format(endOfMonth(hoje), "yyyy-MM-dd")}
+      filePrefix="relatorio-diaristas"
+    />
+  );
+}
+
+function FechamentoView({
+  deInicial,
+  ateInicial,
+  filePrefix,
+}: {
+  deInicial: string;
+  ateInicial: string;
+  filePrefix: string;
+}) {
   const { data: diaristas = [] } = useDiaristas();
   const { data: apontamentos = [], isLoading } = useApontamentos();
   const { data: eventosMap } = useApontamentoEventos();
@@ -986,11 +1021,8 @@ function FechamentoTab() {
     [diaristas],
   );
 
-  const hoje = new Date();
-  const inicioSemanaAnterior = subDays(startOfWeek(hoje, { weekStartsOn: 1 }), 7);
-  const fimSemanaAnterior = endOfWeek(inicioSemanaAnterior, { weekStartsOn: 1 });
-  const [de, setDe] = useState<string>(format(inicioSemanaAnterior, "yyyy-MM-dd"));
-  const [ate, setAte] = useState<string>(format(fimSemanaAnterior, "yyyy-MM-dd"));
+  const [de, setDe] = useState<string>(deInicial);
+  const [ate, setAte] = useState<string>(ateInicial);
   const [fLocal, setFLocal] = useState<string>("todos");
   const [fDiarista, setFDiarista] = useState<string>("todos");
   const [fDepto, setFDepto] = useState<string>("todos");
@@ -1123,7 +1155,7 @@ function FechamentoTab() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `fechamento-diaristas-${de}_a_${ate}.csv`;
+      a.download = `${filePrefix}-${de}_a_${ate}.csv`;
       a.click();
       URL.revokeObjectURL(url);
       return;
@@ -1164,7 +1196,7 @@ function FechamentoTab() {
     ws2["!cols"] = [{ wch: 24 }, { wch: 12 }, { wch: 28 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
     XLSX.utils.book_append_sheet(wb, ws2, "Detalhe");
 
-    XLSX.writeFile(wb, `fechamento-diaristas-${de}_a_${ate}.xlsx`);
+    XLSX.writeFile(wb, `${filePrefix}-${de}_a_${ate}.xlsx`);
   };
 
   return (
