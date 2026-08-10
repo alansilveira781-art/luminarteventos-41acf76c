@@ -149,6 +149,7 @@ function TabelaRotinas({
 }) {
   const qc = useQueryClient();
   const { data: atividades = [] } = useAtividades();
+  const rotinaAtividades = useRotinaAtividadesMap();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("__all");
   const [freqFilter, setFreqFilter] = useState<string>("__all");
