@@ -13,6 +13,7 @@ const itemSchema = z.object({
   quantidade: z.number().positive().max(1_000_000),
   unidade: z.string().trim().max(20).optional().or(z.literal("")),
   valor_unitario: z.number().nonnegative().max(10_000_000).optional().nullable(),
+  evento_projeto: z.string().trim().max(200).optional().nullable(),
 });
 
 const baseSchema = z.object({
