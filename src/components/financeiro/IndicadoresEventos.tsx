@@ -295,11 +295,14 @@ export function IndicadoresEventos() {
     ant ? `${(((atual - ant) / Math.abs(ant)) * 100).toFixed(1).replace(".", ",")}%` : "—";
 
   const eventoNome = eventoSel
-    ? centrosComCategoria.find((c) => c.external_id === eventoSel)?.nome ?? ""
+    ? eventosCalendarioOpcoes.find((e) => e.external_id === eventoSel)?.nome
+      ?? centrosComCategoria.find((c) => c.external_id === eventoSel)?.nome ?? ""
     : "";
   const eventoCategoria = eventoSel
-    ? centrosComCategoria.find((c) => c.external_id === eventoSel)?.categoria ?? "Sem categoria"
+    ? eventosCalendarioOpcoes.find((e) => e.external_id === eventoSel)?.categoria
+      ?? centrosComCategoria.find((c) => c.external_id === eventoSel)?.categoria ?? "Sem categoria"
     : "";
+
 
   const anos = [2024, 2025, 2026, 2027];
 
