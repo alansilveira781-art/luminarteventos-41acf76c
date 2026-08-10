@@ -202,12 +202,6 @@ function ComprasKanban() {
   }, [filteredCompras]);
 
   const [pendingMove, setPendingMove] = useState<{ id: string; status: CompraStatus; titulo: string; prazo?: string } | null>(null);
-  const [prazoAsk, setPrazoAsk] = useState<{
-    compra: Compra;
-    status: CompraStatus;
-    opts?: { force?: boolean; toastMsg?: string; prazo?: string };
-    valor: string;
-  } | null>(null);
 
 
   const moveStatus = useMutation({
@@ -263,13 +257,8 @@ function ComprasKanban() {
       return;
     }
 
-    // Aprovação exige um novo prazo (regra do banco): pedir antes de mover.
-    if (compra.status === "pendente_aprovacao" && status === "aprovada" && !opts?.prazo) {
-      const base = new Date();
-      base.setDate(base.getDate() + 7);
-      setPrazoAsk({ compra, status, opts, valor: base.toISOString().slice(0, 10) });
-      return;
-    }
+
+
 
 
     if (status === "a_receber") {
@@ -515,35 +504,6 @@ function ComprasKanban() {
         }}
       />
 
-      <Dialog open={!!prazoAsk} onOpenChange={(v) => { if (!v) setPrazoAsk(null); }}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Aprovar compra</DialogTitle>
-            <DialogDescription>
-              Informe o novo prazo para conclusão da compra aprovada.
-            </DialogDescription>
-          </DialogHeader>
-          <Input
-            type="date"
-            value={prazoAsk?.valor ?? ""}
-            onChange={(e) => setPrazoAsk((p) => (p ? { ...p, valor: e.target.value } : p))}
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPrazoAsk(null)}>Cancelar</Button>
-            <Button
-              disabled={!prazoAsk?.valor}
-              onClick={async () => {
-                if (!prazoAsk?.valor) return;
-                const { compra, status, opts, valor } = prazoAsk;
-                setPrazoAsk(null);
-                await advanceToStatus(compra, status, { ...(opts ?? {}), prazo: valor });
-              }}
-            >
-              Aprovar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
 
 
