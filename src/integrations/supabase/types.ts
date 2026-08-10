@@ -2973,6 +2973,36 @@ export type Database = {
         }
         Relationships: []
       }
+      financeiro_atividades: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          id: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          id?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          id?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       financeiro_rotina_anexos: {
         Row: {
           created_at: string
@@ -3116,6 +3146,7 @@ export type Database = {
       }
       financeiro_rotinas: {
         Row: {
+          atividade_id: string | null
           created_at: string
           created_by: string | null
           data_fim: string | null
@@ -3137,6 +3168,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          atividade_id?: string | null
           created_at?: string
           created_by?: string | null
           data_fim?: string | null
@@ -3158,6 +3190,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          atividade_id?: string | null
           created_at?: string
           created_by?: string | null
           data_fim?: string | null
@@ -3178,7 +3211,15 @@ export type Database = {
           titulo?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_rotinas_atividade_id_fkey"
+            columns: ["atividade_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_atividades"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       financeiro_status_defaults: {
         Row: {

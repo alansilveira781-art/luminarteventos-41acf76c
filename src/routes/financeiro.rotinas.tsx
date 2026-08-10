@@ -9,12 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FormField, FormSection, FormActions } from "@/components/FormSection";
-import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Pause, Play, Clock, CheckCircle2, Paperclip, ShieldCheck, X, Share2 } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Pause, Play, Clock, CheckCircle2, Paperclip, X, Share2, ListChecks } from "lucide-react";
 import { AnexoViewer } from "@/components/AnexoViewer";
 import { CopiarLinkButton } from "@/components/CopiarLinkButton";
 import { toast } from "sonner";
@@ -27,7 +26,8 @@ type Rotina = {
   id: string;
   titulo: string;
   descricao: string | null;
-  frequencia: "diaria" | "semanal" | "quinzenal" | "mensal" | "custom";
+  frequencia: "diaria" | "semanal" | "quinzenal" | "mensal" | "custom" | "esporadica";
+  atividade_id: string | null;
   dias_semana: number[] | null;
   hora: string | null;
   data_inicio: string;
@@ -49,7 +49,29 @@ const FREQ_LABELS: Record<Rotina["frequencia"], string> = {
   quinzenal: "Quinzenal",
   mensal: "Mensal",
   custom: "Personalizada",
+  esporadica: "Esporádica (sob demanda)",
 };
+
+type Atividade = {
+  id: string;
+  titulo: string;
+  descricao: string | null;
+  ativo: boolean;
+};
+
+function useAtividades() {
+  return useQuery({
+    queryKey: ["financeiro-atividades"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("financeiro_atividades" as any)
+        .select("*")
+        .order("titulo", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as Atividade[];
+    },
+  });
+}
 
 function RotinasPage() {
   const { isAdmin, modulos } = useAuth();
@@ -79,18 +101,6 @@ function RotinasPage() {
     }
   }, [rotinas]);
 
-  const { data: pendentesCount = 0 } = useQuery({
-    queryKey: ["financeiro-rotinas-validacoes-count"],
-    queryFn: async () => {
-      const { count } = await supabase
-        .from("financeiro_rotina_execucoes" as any)
-        .select("id", { count: "exact", head: true })
-        .eq("validacao_status", "pendente");
-      return count ?? 0;
-    },
-    enabled: isFinAdmin,
-  });
-
   return (
     <>
       <PageHeader
@@ -108,11 +118,7 @@ function RotinasPage() {
           <TabsTrigger value="tabela">Tabela</TabsTrigger>
           <TabsTrigger value="calendario">Calendário</TabsTrigger>
           <TabsTrigger value="execucao">Execução</TabsTrigger>
-          {isFinAdmin && (
-            <TabsTrigger value="validacoes">
-              Validações{pendentesCount > 0 ? ` (${pendentesCount})` : ""}
-            </TabsTrigger>
-          )}
+          <TabsTrigger value="atividades">Atividades</TabsTrigger>
         </TabsList>
 
         <TabsContent value="tabela">
@@ -127,11 +133,9 @@ function RotinasPage() {
           <ExecucaoRotinas rotinas={rotinas.filter((r) => r.status === "ativa" && !r.encerrada)} />
         </TabsContent>
 
-        {isFinAdmin && (
-          <TabsContent value="validacoes">
-            <ValidacoesPanel />
-          </TabsContent>
-        )}
+        <TabsContent value="atividades">
+          <AtividadesPanel canEdit={isFinAdmin} />
+        </TabsContent>
       </Tabs>
 
       {editing && (
@@ -156,6 +160,7 @@ function TabelaRotinas({
   onEdit: (r: Rotina) => void;
 }) {
   const qc = useQueryClient();
+  const { data: atividades = [] } = useAtividades();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("__all");
   const [freqFilter, setFreqFilter] = useState<string>("__all");
@@ -251,9 +256,10 @@ function TabelaRotinas({
                 <td className="px-4 py-2">
                   <div className="font-medium flex items-center gap-2">
                     {r.titulo}
-                    {r.exige_validacao && (
+                    {r.atividade_id && (
                       <Badge variant="secondary" className="text-[10px]">
-                        <ShieldCheck className="h-3 w-3 mr-1" /> Requer validação
+                        <ListChecks className="h-3 w-3 mr-1" />
+                        {atividades.find((a) => a.id === r.atividade_id)?.titulo ?? "Atividade"}
                       </Badge>
                     )}
                   </div>
@@ -267,7 +273,7 @@ function TabelaRotinas({
                     </div>
                   )}
                 </td>
-                <td className="px-4 py-2 tabular-nums">{r.hora?.slice(0, 5)}</td>
+                <td className="px-4 py-2 tabular-nums">{r.frequencia === "esporadica" ? "—" : r.hora?.slice(0, 5)}</td>
                 <td className="px-4 py-2 text-xs">
                   {fmtDate(r.data_inicio)}
                   {r.data_fim && <> → {fmtDate(r.data_fim)}</>}
@@ -456,10 +462,11 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
     data_fim: rotina.data_fim ?? "",
     responsavel_nome: rotina.responsavel_nome ?? "",
     status: (rotina.status ?? "ativa") as Rotina["status"],
-    exige_validacao: rotina.exige_validacao ?? false,
+    atividade_id: rotina.atividade_id ?? "",
     max_ocorrencias: rotina.max_ocorrencias != null ? String(rotina.max_ocorrencias) : "",
   });
   const [files, setFiles] = useState<File[]>([]);
+  const { data: atividades = [] } = useAtividades();
 
   const { data: existingAnexos = [] } = useQuery({
     queryKey: ["rotina-anexos", rotina.id],
@@ -517,7 +524,7 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
         data_fim: form.data_fim || null,
         responsavel_nome: form.responsavel_nome || null,
         status: form.status,
-        exige_validacao: form.exige_validacao,
+        atividade_id: form.atividade_id || null,
         max_ocorrencias: maxOcorr,
       };
       const { data: { user } } = await supabase.auth.getUser();
@@ -529,7 +536,7 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
         const { data, error } = await supabase.from("financeiro_rotinas" as any).insert({
           ...payload,
           created_by: user?.id ?? null,
-          proxima_data: form.data_inicio,
+          proxima_data: form.frequencia === "esporadica" ? null : form.data_inicio,
           ocorrencias_realizadas: 0,
           encerrada: false,
         }).select("id").single();
@@ -567,6 +574,29 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
             <FormField label="Descrição" wide>
               <Textarea rows={2} value={form.descricao} onChange={(e) => set("descricao", e.target.value)} />
             </FormField>
+            <FormField label="Atividade" wide>
+              <Select
+                value={form.atividade_id || "__none"}
+                onValueChange={(v) => set("atividade_id", v === "__none" ? "" : v)}
+              >
+                <SelectTrigger><SelectValue placeholder="Selecione uma atividade" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">Sem atividade</SelectItem>
+                  {atividades.filter((a) => a.ativo || a.id === form.atividade_id).map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{a.titulo}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {(() => {
+                const at = atividades.find((a) => a.id === form.atividade_id);
+                if (!at) return null;
+                return (
+                  <div className="mt-2 rounded border bg-muted/40 p-2 text-xs whitespace-pre-wrap text-muted-foreground">
+                    {at.descricao?.trim() || "Esta atividade ainda não tem descritivo."}
+                  </div>
+                );
+              })()}
+            </FormField>
             <FormField label="Frequência*">
               <Select value={form.frequencia} onValueChange={(v) => set("frequencia", v as Rotina["frequencia"])}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -577,9 +607,11 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
                 </SelectContent>
               </Select>
             </FormField>
-            <FormField label="Hora*">
-              <Input required type="time" value={form.hora} onChange={(e) => set("hora", e.target.value)} />
-            </FormField>
+            {form.frequencia !== "esporadica" && (
+              <FormField label="Hora*">
+                <Input required type="time" value={form.hora} onChange={(e) => set("hora", e.target.value)} />
+              </FormField>
+            )}
             {(form.frequencia === "semanal" || form.frequencia === "custom") && (
               <FormField label="Dias da semana*" wide>
                 <div className="flex gap-1 flex-wrap">
@@ -604,23 +636,34 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
             <FormField label="Data de início*">
               <Input required type="date" value={form.data_inicio} onChange={(e) => set("data_inicio", e.target.value)} />
             </FormField>
-            <FormField label="Repetir até (data de término)">
-              <Input type="date" value={form.data_fim} onChange={(e) => set("data_fim", e.target.value)} />
-            </FormField>
-            <FormField label="Nº máximo de ocorrências">
-              <Input
-                type="number"
-                min={1}
-                value={form.max_ocorrencias}
-                onChange={(e) => set("max_ocorrencias", e.target.value)}
-                placeholder="Sem limite"
-              />
-            </FormField>
-            <FormField label="" wide>
-              <p className="text-xs text-muted-foreground">
-                A rotina encerra quando atingir a data de término OU o nº de ocorrências, o que vier primeiro. Deixe ambos em branco para recorrência sem fim.
-              </p>
-            </FormField>
+            {form.frequencia !== "esporadica" && (
+              <>
+                <FormField label="Repetir até (data de término)">
+                  <Input type="date" value={form.data_fim} onChange={(e) => set("data_fim", e.target.value)} />
+                </FormField>
+                <FormField label="Nº máximo de ocorrências">
+                  <Input
+                    type="number"
+                    min={1}
+                    value={form.max_ocorrencias}
+                    onChange={(e) => set("max_ocorrencias", e.target.value)}
+                    placeholder="Sem limite"
+                  />
+                </FormField>
+                <FormField label="" wide>
+                  <p className="text-xs text-muted-foreground">
+                    A rotina encerra quando atingir a data de término OU o nº de ocorrências, o que vier primeiro. Deixe ambos em branco para recorrência sem fim.
+                  </p>
+                </FormField>
+              </>
+            )}
+            {form.frequencia === "esporadica" && (
+              <FormField label="" wide>
+                <p className="text-xs text-muted-foreground">
+                  Rotina esporádica: não entra no calendário e pode ser registrada a qualquer momento, na aba Execução, conforme a demanda.
+                </p>
+              </FormField>
+            )}
             <FormField label="Responsável">
               <Input value={form.responsavel_nome} onChange={(e) => set("responsavel_nome", e.target.value)} placeholder="Nome do responsável" />
             </FormField>
@@ -632,15 +675,6 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
                   <SelectItem value="pausada">Pausada</SelectItem>
                 </SelectContent>
               </Select>
-            </FormField>
-            <FormField label="Validação" wide>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <Checkbox
-                  checked={form.exige_validacao}
-                  onCheckedChange={(v) => set("exige_validacao", !!v)}
-                />
-                Exige validação do gestor
-              </label>
             </FormField>
             <FormField label="Anexos" wide>
               {existingAnexos.length > 0 && (
@@ -765,6 +799,8 @@ function occursOn(r: Rotina, date: Date): boolean {
       return diffDays >= 0 && diffDays % 14 === 0;
     case "mensal":
       return date.getDate() === start.getDate();
+    case "esporadica":
+      return false;
     default:
       return false;
   }
@@ -885,6 +921,11 @@ function ExecucaoRotinas({ rotinas }: { rotinas: Rotina[] }) {
     });
   }, [rotinas, from, to, execDatasByRotina, respFilter, hojeISO]);
 
+  const esporadicas = useMemo(
+    () => rotinas.filter((r) => r.frequencia === "esporadica" && (respFilter === "__all" || (r.responsavel_nome ?? "") === respFilter)),
+    [rotinas, respFilter],
+  );
+
   // Agrupa por data
   const grupos = useMemo(() => {
     const map = new Map<string, Ocorrencia[]>();
@@ -927,6 +968,29 @@ function ExecucaoRotinas({ rotinas }: { rotinas: Rotina[] }) {
         <div className="ml-auto text-xs text-muted-foreground">{ocorrencias.length} ocorrência(s)</div>
       </Card>
 
+      {esporadicas.length > 0 && (
+        <Card className="p-3 mb-4">
+          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+            Sob demanda
+          </div>
+          <div className="space-y-1.5">
+            {esporadicas.map((r) => (
+              <div key={r.id} className="flex items-center gap-3 p-2 rounded border bg-background">
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm">{r.titulo}</div>
+                  {r.responsavel_nome && (
+                    <div className="text-xs text-muted-foreground">Resp.: {r.responsavel_nome}</div>
+                  )}
+                </div>
+                <Button size="sm" variant="outline" onClick={() => setRegistrar({ rotina: r, date: hojeISO })}>
+                  <CheckCircle2 className="h-4 w-4 mr-1" /> Registrar execução
+                </Button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       <Card className="p-0 overflow-hidden">
         {grupos.length === 0 ? (
           <div className="px-4 py-8 text-center text-muted-foreground text-sm">
@@ -949,11 +1013,6 @@ function ExecucaoRotinas({ rotinas }: { rotinas: Rotina[] }) {
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-sm flex items-center gap-2 flex-wrap">
                             {r.titulo}
-                            {r.exige_validacao && (
-                              <Badge variant="secondary" className="text-[10px]">
-                                <ShieldCheck className="h-3 w-3 mr-1" /> Validação
-                              </Badge>
-                            )}
                             {o.atrasada && <Badge variant="destructive" className="text-[10px]">Atrasada</Badge>}
                             {o.isFeita && <Badge variant="default" className="text-[10px]">Feita</Badge>}
                             {!o.isFeita && !o.atrasada && o.date === hojeISO && (
@@ -999,13 +1058,12 @@ function ExecucaoRotinas({ rotinas }: { rotinas: Rotina[] }) {
                   <th className="px-4 py-2 text-left">Data ref.</th>
                   <th className="px-4 py-2 text-left">Executada por</th>
                   <th className="px-4 py-2 text-left">Anexos</th>
-                  <th className="px-4 py-2 text-left">Validação</th>
                   <th className="px-4 py-2 text-left">Observações</th>
                 </tr>
               </thead>
               <tbody>
                 {execucoes.length === 0 && (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Nenhuma execução registrada</td></tr>
+                  <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Nenhuma execução registrada</td></tr>
                 )}
                 {execucoes.slice(0, 50).map((e) => {
                   const r = rotinas.find((x) => x.id === e.rotina_id);
@@ -1015,7 +1073,6 @@ function ExecucaoRotinas({ rotinas }: { rotinas: Rotina[] }) {
                       <td className="px-4 py-2 text-xs">{fmtDate(e.data_referencia)}</td>
                       <td className="px-4 py-2 text-xs">{e.executada_por_nome ?? "—"}</td>
                       <td className="px-4 py-2"><AnexosLinks execucaoId={e.id} /></td>
-                      <td className="px-4 py-2"><ValidacaoBadge status={e.validacao_status} /></td>
                       <td className="px-4 py-2 text-xs text-muted-foreground">{e.observacoes ?? "—"}</td>
                     </tr>
                   );
@@ -1031,13 +1088,6 @@ function ExecucaoRotinas({ rotinas }: { rotinas: Rotina[] }) {
       )}
     </>
   );
-}
-
-function ValidacaoBadge({ status }: { status: Execucao["validacao_status"] }) {
-  if (status === "nao_requer") return <span className="text-xs text-muted-foreground">—</span>;
-  if (status === "pendente") return <Badge variant="outline">Aguardando validação</Badge>;
-  if (status === "aprovada") return <Badge variant="default">Aprovada</Badge>;
-  return <Badge variant="destructive">Rejeitada</Badge>;
 }
 
 function AnexosLinks({ execucaoId }: { execucaoId: string }) {
@@ -1098,7 +1148,7 @@ function RegistrarExecucaoDialog({ rotina, dataInicial, onClose }: { rotina: Rot
 
     // Optimistic update: insere execução no cache imediatamente
     const tempId = `temp-${Date.now()}`;
-    const validacaoStatus: Execucao["validacao_status"] = rotina.exige_validacao ? "pendente" : "nao_requer";
+    const validacaoStatus: Execucao["validacao_status"] = "nao_requer";
     const optimistic: Execucao = {
       id: tempId,
       rotina_id: rotina.id,
@@ -1117,7 +1167,7 @@ function RegistrarExecucaoDialog({ rotina, dataInicial, onClose }: { rotina: Rot
 
     // Fecha o dialog imediatamente
     onClose();
-    toast.success(rotina.exige_validacao ? "Execução registrada — aguardando validação" : "Execução registrada");
+    toast.success("Execução registrada");
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -1145,7 +1195,6 @@ function RegistrarExecucaoDialog({ rotina, dataInicial, onClose }: { rotina: Rot
       // Reconcilia
       qc.invalidateQueries({ queryKey: ["rotina-execucoes"] });
       qc.invalidateQueries({ queryKey: ["financeiro-rotinas"] });
-      qc.invalidateQueries({ queryKey: ["financeiro-rotinas-validacoes-count"] });
     } catch (err: any) {
       // Reverte cache otimista
       qc.setQueryData<Execucao[]>(["rotina-execucoes"], prev);
@@ -1169,16 +1218,15 @@ function RegistrarExecucaoDialog({ rotina, dataInicial, onClose }: { rotina: Rot
         </DialogHeader>
         <form onSubmit={handleSave}>
           <FormSection>
+            {rotina.frequencia === "esporadica" && (
+              <FormField label="Data da execução*">
+                <Input type="date" required value={dataRef} onChange={(e) => setDataRef(e.target.value)} />
+              </FormField>
+            )}
             <FormField label="Observações" wide>
               <Textarea rows={3} value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Opcional" />
             </FormField>
           </FormSection>
-          {rotina.exige_validacao && (
-            <div className="text-xs text-muted-foreground bg-muted/40 rounded p-2 mt-2">
-              <ShieldCheck className="h-3 w-3 inline mr-1" />
-              Esta rotina exige validação do gestor após a execução.
-            </div>
-          )}
           <FormActions>
             <Button type="button" variant="ghost" onClick={onClose}>Cancelar</Button>
             <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Registrar"}</Button>
@@ -1190,161 +1238,162 @@ function RegistrarExecucaoDialog({ rotina, dataInicial, onClose }: { rotina: Rot
 }
 
 // ============================================================================
-// VALIDAÇÕES (painel do gestor)
+// ATIVIDADES
 // ============================================================================
 
-function ValidacoesPanel() {
+function AtividadesPanel({ canEdit }: { canEdit: boolean }) {
   const qc = useQueryClient();
-  const [acting, setActing] = useState<{ exec: Execucao; action: "aprovar" | "rejeitar" } | null>(null);
+  const { data: atividades = [] } = useAtividades();
+  const [q, setQ] = useState("");
+  const [editing, setEditing] = useState<Partial<Atividade> | null>(null);
 
-  const { data: pendentes = [] } = useQuery({
-    queryKey: ["rotina-execucoes-pendentes"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("financeiro_rotina_execucoes" as any)
-        .select("*")
-        .eq("validacao_status", "pendente")
-        .order("executada_em", { ascending: true });
+  const filtered = useMemo(() => {
+    if (!q.trim()) return atividades;
+    const t = q.toLowerCase();
+    return atividades.filter((a) => `${a.titulo} ${a.descricao ?? ""}`.toLowerCase().includes(t));
+  }, [atividades, q]);
+
+  const deleteMut = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("financeiro_atividades" as any).delete().eq("id", id);
       if (error) throw error;
-      return (data ?? []) as unknown as Execucao[];
     },
-  });
-
-  const { data: rotinas = [] } = useQuery({
-    queryKey: ["financeiro-rotinas-nomes"],
-    queryFn: async () => {
-      const { data } = await supabase.from("financeiro_rotinas" as any).select("id,titulo");
-      return (data ?? []) as unknown as { id: string; titulo: string }[];
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["financeiro-atividades"] });
+      qc.invalidateQueries({ queryKey: ["financeiro-rotinas"] });
+      toast.success("Atividade excluída");
     },
+    onError: (e: any) => toast.error(e.message),
   });
 
   return (
     <>
       <Card className="p-0 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 text-left">Rotina</th>
-                <th className="px-4 py-2 text-left">Data ref.</th>
-                <th className="px-4 py-2 text-left">Executada por</th>
-                <th className="px-4 py-2 text-left">Anexos</th>
-                <th className="px-4 py-2 text-left">Observações</th>
-                <th className="px-4 py-2 w-48"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {pendentes.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Nenhuma execução aguardando validação</td></tr>
+        <div className="p-3 flex flex-wrap gap-2 items-center border-b">
+          <Input
+            placeholder="Buscar atividade…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="max-w-sm"
+          />
+          <div className="text-xs text-muted-foreground">{filtered.length} atividade(s)</div>
+          {canEdit && (
+            <Button size="sm" className="ml-auto" onClick={() => setEditing({})}>
+              <Plus className="h-4 w-4 mr-1" /> Nova atividade
+            </Button>
+          )}
+        </div>
+
+        <div className="divide-y">
+          {filtered.length === 0 && (
+            <div className="px-4 py-8 text-center text-muted-foreground text-sm">
+              Nenhuma atividade cadastrada. Descreva aqui como executar cada atividade.
+            </div>
+          )}
+          {filtered.map((a) => (
+            <div key={a.id} className="p-3 flex gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-sm flex items-center gap-2">
+                  {a.titulo}
+                  {!a.ativo && <Badge variant="outline" className="text-[10px]">Inativa</Badge>}
+                </div>
+                <div className="text-xs text-muted-foreground whitespace-pre-wrap mt-1">
+                  {a.descricao?.trim() || "Sem descritivo"}
+                </div>
+              </div>
+              {canEdit && (
+                <div className="flex gap-1 shrink-0">
+                  <Button size="icon" variant="ghost" onClick={() => setEditing(a)} title="Editar">
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    title="Excluir"
+                    onClick={() => confirm(`Excluir "${a.titulo}"?`) && deleteMut.mutate(a.id)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               )}
-              {pendentes.map((e) => {
-                const r = rotinas.find((x) => x.id === e.rotina_id);
-                return (
-                  <tr key={e.id} className="border-t hover:bg-muted/20 align-top">
-                    <td className="px-4 py-2 font-medium">{r?.titulo ?? "—"}</td>
-                    <td className="px-4 py-2 text-xs">{fmtDate(e.data_referencia)}</td>
-                    <td className="px-4 py-2 text-xs">{e.executada_por_nome ?? "—"}</td>
-                    <td className="px-4 py-2"><AnexosLinks execucaoId={e.id} /></td>
-                    <td className="px-4 py-2 text-xs text-muted-foreground">{e.observacoes ?? "—"}</td>
-                    <td className="px-4 py-2">
-                      <div className="flex gap-1 justify-end">
-                        <Button size="sm" variant="outline" onClick={() => setActing({ exec: e, action: "aprovar" })}>
-                          Aprovar
-                        </Button>
-                        <Button size="sm" variant="destructive" onClick={() => setActing({ exec: e, action: "rejeitar" })}>
-                          Rejeitar
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+            </div>
+          ))}
         </div>
       </Card>
 
-      {acting && (
-        <ValidarDialog
-          exec={acting.exec}
-          action={acting.action}
-          onClose={() => setActing(null)}
-          onDone={() => {
-            qc.invalidateQueries({ queryKey: ["rotina-execucoes-pendentes"] });
-            qc.invalidateQueries({ queryKey: ["rotina-execucoes"] });
-            qc.invalidateQueries({ queryKey: ["financeiro-rotinas-validacoes-count"] });
-            setActing(null);
-          }}
-        />
-      )}
+      {editing && <AtividadeDialog atividade={editing} onClose={() => setEditing(null)} />}
     </>
   );
 }
 
-function ValidarDialog({
-  exec, action, onClose, onDone,
-}: {
-  exec: Execucao;
-  action: "aprovar" | "rejeitar";
-  onClose: () => void;
-  onDone: () => void;
-}) {
-  const [obs, setObs] = useState("");
-  const [saving, setSaving] = useState(false);
-  const isReject = action === "rejeitar";
+function AtividadeDialog({ atividade, onClose }: { atividade: Partial<Atividade>; onClose: () => void }) {
+  const qc = useQueryClient();
+  const isEdit = !!atividade.id;
+  const [titulo, setTitulo] = useState(atividade.titulo ?? "");
+  const [descricao, setDescricao] = useState(atividade.descricao ?? "");
+  const [ativo, setAtivo] = useState(atividade.ativo ?? true);
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    if (isReject && !obs.trim()) {
-      toast.error("Observação obrigatória ao rejeitar");
-      return;
-    }
-    setSaving(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      let nome: string | null = null;
-      if (user?.id) {
-        const { data: prof } = await supabase.from("profiles").select("display_name,email").eq("id", user.id).maybeSingle();
-        nome = prof?.display_name || prof?.email || user.email || null;
+  const saveMut = useMutation({
+    mutationFn: async () => {
+      const payload: any = { titulo, descricao: descricao || null, ativo };
+      if (isEdit) {
+        const { error } = await supabase.from("financeiro_atividades" as any).update(payload).eq("id", atividade.id!);
+        if (error) throw error;
+      } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        const { error } = await supabase
+          .from("financeiro_atividades" as any)
+          .insert({ ...payload, created_by: user?.id ?? null });
+        if (error) throw error;
       }
-      const { error } = await supabase.from("financeiro_rotina_execucoes" as any).update({
-        validacao_status: isReject ? "rejeitada" : "aprovada",
-        validado_por: user?.id ?? null,
-        validado_por_nome: nome,
-        validado_em: new Date().toISOString(),
-        validacao_observacao: obs || null,
-      }).eq("id", exec.id);
-      if (error) throw error;
-      toast.success(isReject ? "Execução rejeitada" : "Execução aprovada");
-      onDone();
-    } catch (err: any) {
-      toast.error(err.message ?? "Erro ao validar");
-    } finally {
-      setSaving(false);
-    }
-  }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["financeiro-atividades"] });
+      toast.success(isEdit ? "Atividade atualizada" : "Atividade criada");
+      onClose();
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{isReject ? "Rejeitar execução" : "Aprovar execução"}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSave}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader><DialogTitle>{isEdit ? "Editar atividade" : "Nova atividade"}</DialogTitle></DialogHeader>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!titulo.trim()) return toast.error("Título obrigatório");
+            saveMut.mutate();
+          }}
+        >
           <FormSection>
-            <FormField label={isReject ? "Motivo*" : "Observação (opcional)"} wide>
-              <Textarea rows={3} value={obs} onChange={(e) => setObs(e.target.value)} required={isReject} />
+            <FormField label="Título*" wide>
+              <Input required value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Ex: Conciliação bancária" />
+            </FormField>
+            <FormField label="Como fazer (descritivo)" wide>
+              <Textarea
+                rows={8}
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+                placeholder="Descreva o passo a passo da atividade…"
+              />
+            </FormField>
+            <FormField label="Status">
+              <Select value={ativo ? "ativo" : "inativo"} onValueChange={(v) => setAtivo(v === "ativo")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ativo">Ativa</SelectItem>
+                  <SelectItem value="inativo">Inativa</SelectItem>
+                </SelectContent>
+              </Select>
             </FormField>
           </FormSection>
           <FormActions>
             <Button type="button" variant="ghost" onClick={onClose}>Cancelar</Button>
-            <Button type="submit" variant={isReject ? "destructive" : "default"} disabled={saving}>
-              {saving ? "Salvando…" : isReject ? "Rejeitar" : "Aprovar"}
-            </Button>
+            <Button type="submit" disabled={saveMut.isPending}>{saveMut.isPending ? "Salvando…" : "Salvar"}</Button>
           </FormActions>
         </form>
       </DialogContent>
     </Dialog>
   );
 }
-
