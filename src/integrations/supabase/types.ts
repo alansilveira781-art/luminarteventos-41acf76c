@@ -2698,7 +2698,9 @@ export type Database = {
           apelido: string | null
           ativo: boolean
           chave_pix: string | null
+          colaborador_id: string | null
           created_at: string
+          departamento: string | null
           id: string
           nome: string
           updated_at: string
@@ -2709,7 +2711,9 @@ export type Database = {
           apelido?: string | null
           ativo?: boolean
           chave_pix?: string | null
+          colaborador_id?: string | null
           created_at?: string
+          departamento?: string | null
           id?: string
           nome: string
           updated_at?: string
@@ -2720,14 +2724,24 @@ export type Database = {
           apelido?: string | null
           ativo?: boolean
           chave_pix?: string | null
+          colaborador_id?: string | null
           created_at?: string
+          departamento?: string | null
           id?: string
           nome?: string
           updated_at?: string
           valor_hora_fora?: number
           valor_hora_fortaleza?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "diaristas_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "rh_colaboradores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       eventos: {
         Row: {

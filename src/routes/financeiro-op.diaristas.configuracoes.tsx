@@ -9,6 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Pencil, Plus, Trash2, Loader2 } from "lucide-react";
@@ -27,6 +30,8 @@ type Diarista = {
   id: string;
   nome: string;
   apelido: string | null;
+  departamento: string | null;
+  colaborador_id: string | null;
   valor_hora_fortaleza: number;
   valor_hora_fora: number;
   chave_pix: string | null;
@@ -37,15 +42,30 @@ type DiaristaForm = {
   id?: string;
   nome: string;
   apelido: string;
+  departamento: string;
+  colaborador_id: string | null;
   valor_hora_fortaleza: number;
   valor_hora_fora: number;
   chave_pix: string;
   ativo: boolean;
 };
 
+const DEPARTAMENTOS = ["Marcenaria", "Estrutura"];
+const SEM_DEPTO = "__sem";
+const SEM_COLAB = "__nenhum";
+
+type Colaborador = {
+  id: string;
+  nome: string;
+  apelido: string | null;
+  departamento: string | null;
+};
+
 const emptyForm: DiaristaForm = {
   nome: "",
   apelido: "",
+  departamento: "",
+  colaborador_id: null,
   valor_hora_fortaleza: 0,
   valor_hora_fora: 0,
   chave_pix: "",
@@ -59,6 +79,22 @@ function fmtBRL(v: number) {
     maximumFractionDigits: 2,
   });
 }
+
+function useColaboradores() {
+  return useQuery({
+    queryKey: ["rh-colaboradores-diaristas"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("rh_colaboradores")
+        .select("id,nome,apelido,departamento")
+        .eq("ativo", true)
+        .order("nome", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as Colaborador[];
+    },
+  });
+}
+
 
 function useDiaristas() {
   return useQuery({
@@ -79,6 +115,7 @@ function DiaristasConfiguracoes() {
 
   const qc = useQueryClient();
   const { data = [], isLoading } = useDiaristas();
+  const { data: colaboradores = [] } = useColaboradores();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<DiaristaForm>(emptyForm);
 
@@ -87,6 +124,8 @@ function DiaristasConfiguracoes() {
       const row = {
         nome: payload.nome.trim(),
         apelido: payload.apelido.trim() || null,
+        departamento: payload.departamento.trim() || null,
+        colaborador_id: payload.colaborador_id || null,
         valor_hora_fortaleza: Number(payload.valor_hora_fortaleza) || 0,
         valor_hora_fora: Number(payload.valor_hora_fora) || 0,
         chave_pix: payload.chave_pix.trim() || null,
@@ -193,8 +232,9 @@ function DiaristasConfiguracoes() {
                 <tr className="text-left border-b border-border text-muted-foreground text-xs uppercase tracking-wide">
                   <th className="py-2 pr-3">Apelido</th>
                   <th className="py-2 px-3">Nome</th>
-
+                  <th className="py-2 px-3">Departamento</th>
                   <th className="py-2 px-3 text-right">R$/h Fortaleza</th>
+
                   <th className="py-2 px-3 text-right">Diária Fortaleza (8h)</th>
                   <th className="py-2 px-3 text-right">R$/h Fora</th>
                   <th className="py-2 px-3 text-right">Diária Fora (8h)</th>
@@ -208,6 +248,8 @@ function DiaristasConfiguracoes() {
                   <tr key={d.id} className="border-b border-border/50 hover:bg-muted/40">
                     <td className="py-2 pr-3 font-medium">{d.apelido || "—"}</td>
                     <td className="py-2 px-3">{d.nome}</td>
+                    <td className="py-2 px-3 text-xs text-muted-foreground">{d.departamento || "—"}</td>
+
 
                     <td className="py-2 px-3 text-right tabular-nums">
                       {fmtBRL(Number(d.valor_hora_fortaleza))}
@@ -243,6 +285,8 @@ function DiaristasConfiguracoes() {
                               id: d.id,
                               nome: d.nome,
                               apelido: d.apelido ?? "",
+                              departamento: d.departamento ?? "",
+                              colaborador_id: d.colaborador_id ?? null,
                               valor_hora_fortaleza: Number(d.valor_hora_fortaleza) || 0,
                               valor_hora_fora: Number(d.valor_hora_fora) || 0,
                               chave_pix: d.chave_pix ?? "",
@@ -298,6 +342,59 @@ function DiaristasConfiguracoes() {
                   onChange={(e) => setEditing({ ...editing, nome: e.target.value })}
                   placeholder="Nome completo"
                 />
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Colaborador (RH)</Label>
+                <Select
+                  value={editing.colaborador_id ?? SEM_COLAB}
+                  onValueChange={(v) => {
+                    if (v === SEM_COLAB) {
+                      setEditing({ ...editing, colaborador_id: null });
+                      return;
+                    }
+                    const c = colaboradores.find((x) => x.id === v);
+                    setEditing({
+                      ...editing,
+                      colaborador_id: v,
+                      nome: c?.nome ?? editing.nome,
+                      apelido: editing.apelido || (c?.apelido ?? ""),
+                      departamento: c?.departamento ?? editing.departamento,
+                    });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Nenhum (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={SEM_COLAB}>Nenhum (opcional)</SelectItem>
+                    {colaboradores.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="text-[11px] text-muted-foreground">
+                  Ao escolher, o nome é preenchido pelo cadastro do RH.
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Departamento</Label>
+                <Select
+                  value={editing.departamento || SEM_DEPTO}
+                  onValueChange={(v) =>
+                    setEditing({ ...editing, departamento: v === SEM_DEPTO ? "" : v })
+                  }
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={SEM_DEPTO}>Sem departamento</SelectItem>
+                    {DEPARTAMENTOS.map((dep) => (
+                      <SelectItem key={dep} value={dep}>{dep}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

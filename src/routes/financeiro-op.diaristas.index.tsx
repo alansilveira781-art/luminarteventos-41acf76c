@@ -50,11 +50,14 @@ type Diarista = {
   id: string;
   nome: string;
   apelido?: string | null;
+  departamento?: string | null;
   valor_hora_fortaleza: number;
   valor_hora_fora: number;
   chave_pix: string | null;
   ativo: boolean;
 };
+
+export const DEPARTAMENTOS_DIARISTA = ["Marcenaria", "Estrutura"] as const;
 
 /** Nome usado nas listagens: apelido quando houver, senão o nome completo. */
 function nomeExib(d?: Pick<Diarista, "nome" | "apelido"> | null) {
@@ -62,6 +65,15 @@ function nomeExib(d?: Pick<Diarista, "nome" | "apelido"> | null) {
   const ap = (d.apelido ?? "").trim();
   return ap || d.nome;
 }
+
+/** true quando o diarista atende ao filtro de departamento selecionado. */
+function matchDepto(d: Diarista | undefined, filtro: string) {
+  if (filtro === "todos") return true;
+  const dep = (d?.departamento ?? "").trim();
+  if (filtro === "__sem") return !dep;
+  return dep === filtro;
+}
+
 
 
 type Apontamento = {
@@ -294,6 +306,7 @@ function ApontamentoTab() {
 
   // filtros
   const [fDiarista, setFDiarista] = useState<string>("todos");
+  const [fDepto, setFDepto] = useState<string>("todos");
   const [fLocal, setFLocal] = useState<string>("todos");
   const [fProjeto, setFProjeto] = useState<string>("");
   const [fDe, setFDe] = useState<string>("");
@@ -399,13 +412,14 @@ function ApontamentoTab() {
     return apontamentos.filter((a) => {
       if (somenteProprios && a.created_by !== user?.id) return false;
       if (fDiarista !== "todos" && a.diarista_id !== fDiarista) return false;
+      if (!matchDepto(diaristasMap.get(a.diarista_id), fDepto)) return false;
       if (fLocal !== "todos" && a.local !== fLocal) return false;
       if (fProjeto && !(a.projeto ?? "").toLowerCase().includes(fProjeto.toLowerCase())) return false;
       if (fDe && a.data < fDe) return false;
       if (fAte && a.data > fAte) return false;
       return true;
     });
-  }, [apontamentos, fDiarista, fLocal, fProjeto, fDe, fAte, somenteProprios, user?.id]);
+  }, [apontamentos, fDiarista, fDepto, diaristasMap, fLocal, fProjeto, fDe, fAte, somenteProprios, user?.id]);
 
   const calcDe = (a: Apontamento) => {
     const d = diaristasMap.get(a.diarista_id);
@@ -430,16 +444,29 @@ function ApontamentoTab() {
     <div className="space-y-4">
       {/* Filtros */}
       <Card className="p-4">
-        <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6 items-end">
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-7 items-end">
           <div className="space-y-1">
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Diarista</Label>
             <Select value={fDiarista} onValueChange={setFDiarista}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos</SelectItem>
-                {diaristas.map((d) => (
+                {diaristas.filter((d) => matchDepto(d, fDepto)).map((d) => (
                   <SelectItem key={d.id} value={d.id}>{nomeExib(d)}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Departamento</Label>
+            <Select value={fDepto} onValueChange={setFDepto}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                {DEPARTAMENTOS_DIARISTA.map((dep) => (
+                  <SelectItem key={dep} value={dep}>{dep}</SelectItem>
+                ))}
+                <SelectItem value="__sem">Sem departamento</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -966,6 +993,7 @@ function FechamentoTab() {
   const [ate, setAte] = useState<string>(format(fimSemanaAnterior, "yyyy-MM-dd"));
   const [fLocal, setFLocal] = useState<string>("todos");
   const [fDiarista, setFDiarista] = useState<string>("todos");
+  const [fDepto, setFDepto] = useState<string>("todos");
   const [expandido, setExpandido] = useState<Set<string>>(new Set());
 
   const toggleExp = (id: string) => {
@@ -982,6 +1010,7 @@ function FechamentoTab() {
       if (ate && a.data > ate) return false;
       if (fLocal !== "todos" && a.local !== fLocal) return false;
       if (fDiarista !== "todos" && a.diarista_id !== fDiarista) return false;
+      if (!matchDepto(diaristasMap.get(a.diarista_id), fDepto)) return false;
       return true;
     });
 
@@ -1016,7 +1045,7 @@ function FechamentoTab() {
     return [...grupos.entries()]
       .map(([id, g]) => ({ id, ...g }))
       .sort((a, b) => nomeExib(a.diarista).localeCompare(nomeExib(b.diarista), "pt-BR"));
-  }, [apontamentos, de, ate, fLocal, fDiarista, diaristasMap, eventosMap, cfgRefeicao]);
+  }, [apontamentos, de, ate, fLocal, fDiarista, fDepto, diaristasMap, eventosMap, cfgRefeicao]);
 
   const totalGeral = linhas.reduce((acc, l) => acc + l.total, 0);
   const totalDias = linhas.reduce((acc, l) => acc + l.dias, 0);
@@ -1026,6 +1055,8 @@ function FechamentoTab() {
     const { gerarRelatorioDiaristasPdf } = await import("@/lib/diaristas-pdf");
     const filtros: string[] = [];
     if (fLocal !== "todos") filtros.push(`Local: ${fLocal}`);
+    if (fDepto !== "todos")
+      filtros.push(`Departamento: ${fDepto === "__sem" ? "Sem departamento" : fDepto}`);
     if (fDiarista !== "todos")
       filtros.push(`Diarista: ${nomeExib(diaristasMap.get(fDiarista))}`);
 
@@ -1034,9 +1065,13 @@ function FechamentoTab() {
       ate,
       filtros,
       grupos: linhas.map((l) => ({
-        nome: (l.diarista?.apelido ?? "").trim()
-          ? `${nomeExib(l.diarista)} (${l.diarista?.nome})`
-          : nomeExib(l.diarista),
+        nome:
+          ((l.diarista?.apelido ?? "").trim()
+            ? `${nomeExib(l.diarista)} (${l.diarista?.nome})`
+            : nomeExib(l.diarista)) +
+          ((l.diarista?.departamento ?? "").trim()
+            ? ` · ${l.diarista?.departamento}`
+            : ""),
         chavePix: l.diarista?.chave_pix ?? null,
         dias: l.dias,
         horasLabel: formatHoras(l.minutos),
@@ -1136,7 +1171,7 @@ function FechamentoTab() {
     <div className="space-y-4">
       {/* Filtros */}
       <Card className="p-4">
-        <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-5 items-end">
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6 items-end">
           <div className="space-y-1">
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">De</Label>
             <Input type="date" value={de} onChange={(e) => setDe(e.target.value)} />
@@ -1157,12 +1192,25 @@ function FechamentoTab() {
             </Select>
           </div>
           <div className="space-y-1">
+            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Departamento</Label>
+            <Select value={fDepto} onValueChange={setFDepto}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                {DEPARTAMENTOS_DIARISTA.map((dep) => (
+                  <SelectItem key={dep} value={dep}>{dep}</SelectItem>
+                ))}
+                <SelectItem value="__sem">Sem departamento</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Diarista</Label>
             <Select value={fDiarista} onValueChange={setFDiarista}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos</SelectItem>
-                {diaristas.map((d) => (
+                {diaristas.filter((d) => matchDepto(d, fDepto)).map((d) => (
                   <SelectItem key={d.id} value={d.id}>{nomeExib(d)}</SelectItem>
                 ))}
               </SelectContent>
