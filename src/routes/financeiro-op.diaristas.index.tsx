@@ -993,6 +993,7 @@ function FechamentoTab() {
   const [ate, setAte] = useState<string>(format(fimSemanaAnterior, "yyyy-MM-dd"));
   const [fLocal, setFLocal] = useState<string>("todos");
   const [fDiarista, setFDiarista] = useState<string>("todos");
+  const [fDepto, setFDepto] = useState<string>("todos");
   const [expandido, setExpandido] = useState<Set<string>>(new Set());
 
   const toggleExp = (id: string) => {
