@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { MoneyInput } from "@/components/MoneyInput";
+import { EventoPublicCombobox } from "@/components/EventoPublicCombobox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TIPO_COMPRA_OPTIONS } from "@/lib/compras";
@@ -29,6 +30,8 @@ type ItemRow = {
   quantidade: string;
   unidade: string;
   valor_unitario: string;
+  evento_projeto: string;
+  evento_livre: boolean;
 };
 
 type FormState = {
@@ -53,7 +56,14 @@ type FormState = {
   reembolsar_para: string;
 };
 
-const emptyItem = (): ItemRow => ({ descricao: "", quantidade: "1", unidade: "un", valor_unitario: "" });
+const emptyItem = (): ItemRow => ({
+  descricao: "",
+  quantidade: "1",
+  unidade: "un",
+  valor_unitario: "",
+  evento_projeto: "",
+  evento_livre: false,
+});
 
 function hojeISO() {
   return new Date().toISOString().slice(0, 10);
@@ -106,7 +116,10 @@ function SolicitarPage() {
       return {
         ...initial,
         ...parsed,
-        itens: Array.isArray(parsed?.itens) && parsed.itens.length > 0 ? parsed.itens : initial.itens,
+        itens:
+          Array.isArray(parsed?.itens) && parsed.itens.length > 0
+            ? parsed.itens.map((it: any) => ({ ...emptyItem(), ...it }))
+            : initial.itens,
         data_solicitacao: parsed?.data_solicitacao || hojeISO(),
       } as FormState;
     } catch {
@@ -270,6 +283,7 @@ function SolicitarPage() {
             valor_unitario: it.valor_unitario
               ? Number(String(it.valor_unitario).replace(",", "."))
               : null,
+            evento_projeto: it.evento_projeto?.trim() || null,
           }))
         : undefined;
 
@@ -671,6 +685,43 @@ function SolicitarPage() {
                                 onChange={(n) => updateItem(idx, { valor_unitario: String(n) })}
                                 placeholder="Vlr unit."
                               />
+                            </div>
+                            <div className="space-y-2 pt-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <Label className="text-[11px] font-medium text-muted-foreground">
+                                  Evento / Projeto
+                                </Label>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[11px] text-muted-foreground">É para um evento?</span>
+                                  <Select
+                                    value={it.evento_livre ? "nao" : "sim"}
+                                    onValueChange={(v) =>
+                                      updateItem(idx, { evento_livre: v === "nao", evento_projeto: "" })
+                                    }
+                                  >
+                                    <SelectTrigger className="h-7 w-20 text-xs">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="sim">Sim</SelectItem>
+                                      <SelectItem value="nao">Não</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                              {it.evento_livre ? (
+                                <Input
+                                  value={it.evento_projeto}
+                                  maxLength={200}
+                                  onChange={(e) => updateItem(idx, { evento_projeto: e.target.value })}
+                                  placeholder="Ex.: Manutenção do galpão, uso interno…"
+                                />
+                              ) : (
+                                <EventoPublicCombobox
+                                  value={it.evento_projeto || null}
+                                  onChange={(v) => updateItem(idx, { evento_projeto: v ?? "" })}
+                                />
+                              )}
                             </div>
                           </div>
                           <Button

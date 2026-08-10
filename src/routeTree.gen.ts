@@ -112,6 +112,7 @@ import { Route as ApiPublicSolicitarContratoRouteImport } from './routes/api/pub
 import { Route as ApiPublicSolicitarRouteImport } from './routes/api/public/solicitar'
 import { Route as ApiPublicSendPushRouteImport } from './routes/api/public/send-push'
 import { Route as ApiPublicOpcoesPagamentoRouteImport } from './routes/api/public/opcoes-pagamento'
+import { Route as ApiPublicEventosRouteImport } from './routes/api/public/eventos'
 import { Route as ApiContaazulSyncRouteImport } from './routes/api/contaazul/sync'
 import { Route as ApiContaazulStatusRouteImport } from './routes/api/contaazul/status'
 import { Route as ApiContaazulScheduleRouteImport } from './routes/api/contaazul/schedule'
@@ -653,6 +654,11 @@ const ApiPublicOpcoesPagamentoRoute =
     path: '/api/public/opcoes-pagamento',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicEventosRoute = ApiPublicEventosRouteImport.update({
+  id: '/api/public/eventos',
+  path: '/api/public/eventos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiContaazulSyncRoute = ApiContaazulSyncRouteImport.update({
   id: '/api/contaazul/sync',
   path: '/api/contaazul/sync',
@@ -812,6 +818,7 @@ export interface FileRoutesByFullPath {
   '/api/contaazul/schedule': typeof ApiContaazulScheduleRoute
   '/api/contaazul/status': typeof ApiContaazulStatusRoute
   '/api/contaazul/sync': typeof ApiContaazulSyncRoute
+  '/api/public/eventos': typeof ApiPublicEventosRoute
   '/api/public/opcoes-pagamento': typeof ApiPublicOpcoesPagamentoRoute
   '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
@@ -916,6 +923,7 @@ export interface FileRoutesByTo {
   '/api/contaazul/schedule': typeof ApiContaazulScheduleRoute
   '/api/contaazul/status': typeof ApiContaazulStatusRoute
   '/api/contaazul/sync': typeof ApiContaazulSyncRoute
+  '/api/public/eventos': typeof ApiPublicEventosRoute
   '/api/public/opcoes-pagamento': typeof ApiPublicOpcoesPagamentoRoute
   '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
@@ -1033,6 +1041,7 @@ export interface FileRoutesById {
   '/api/contaazul/schedule': typeof ApiContaazulScheduleRoute
   '/api/contaazul/status': typeof ApiContaazulStatusRoute
   '/api/contaazul/sync': typeof ApiContaazulSyncRoute
+  '/api/public/eventos': typeof ApiPublicEventosRoute
   '/api/public/opcoes-pagamento': typeof ApiPublicOpcoesPagamentoRoute
   '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
@@ -1151,6 +1160,7 @@ export interface FileRouteTypes {
     | '/api/contaazul/schedule'
     | '/api/contaazul/status'
     | '/api/contaazul/sync'
+    | '/api/public/eventos'
     | '/api/public/opcoes-pagamento'
     | '/api/public/send-push'
     | '/api/public/solicitar'
@@ -1255,6 +1265,7 @@ export interface FileRouteTypes {
     | '/api/contaazul/schedule'
     | '/api/contaazul/status'
     | '/api/contaazul/sync'
+    | '/api/public/eventos'
     | '/api/public/opcoes-pagamento'
     | '/api/public/send-push'
     | '/api/public/solicitar'
@@ -1371,6 +1382,7 @@ export interface FileRouteTypes {
     | '/api/contaazul/schedule'
     | '/api/contaazul/status'
     | '/api/contaazul/sync'
+    | '/api/public/eventos'
     | '/api/public/opcoes-pagamento'
     | '/api/public/send-push'
     | '/api/public/solicitar'
@@ -1430,6 +1442,7 @@ export interface RootRouteChildren {
   ApiContaazulScheduleRoute: typeof ApiContaazulScheduleRoute
   ApiContaazulStatusRoute: typeof ApiContaazulStatusRoute
   ApiContaazulSyncRoute: typeof ApiContaazulSyncRoute
+  ApiPublicEventosRoute: typeof ApiPublicEventosRoute
   ApiPublicOpcoesPagamentoRoute: typeof ApiPublicOpcoesPagamentoRoute
   ApiPublicSendPushRoute: typeof ApiPublicSendPushRoute
   ApiPublicSolicitarRoute: typeof ApiPublicSolicitarRoute
@@ -2162,6 +2175,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicOpcoesPagamentoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/eventos': {
+      id: '/api/public/eventos'
+      path: '/api/public/eventos'
+      fullPath: '/api/public/eventos'
+      preLoaderRoute: typeof ApiPublicEventosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/contaazul/sync': {
       id: '/api/contaazul/sync'
       path: '/api/contaazul/sync'
@@ -2534,6 +2554,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiContaazulScheduleRoute: ApiContaazulScheduleRoute,
   ApiContaazulStatusRoute: ApiContaazulStatusRoute,
   ApiContaazulSyncRoute: ApiContaazulSyncRoute,
+  ApiPublicEventosRoute: ApiPublicEventosRoute,
   ApiPublicOpcoesPagamentoRoute: ApiPublicOpcoesPagamentoRoute,
   ApiPublicSendPushRoute: ApiPublicSendPushRoute,
   ApiPublicSolicitarRoute: ApiPublicSolicitarRoute,
