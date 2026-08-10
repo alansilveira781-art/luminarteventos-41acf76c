@@ -528,28 +528,12 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
             <FormField label="Descrição" wide>
               <Textarea rows={2} value={form.descricao} onChange={(e) => set("descricao", e.target.value)} />
             </FormField>
-            <FormField label="Atividade" wide>
-              <Select
-                value={form.atividade_id || "__none"}
-                onValueChange={(v) => set("atividade_id", v === "__none" ? "" : v)}
-              >
-                <SelectTrigger><SelectValue placeholder="Selecione uma atividade" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none">Sem atividade</SelectItem>
-                  {atividades.filter((a) => a.ativo || a.id === form.atividade_id).map((a) => (
-                    <SelectItem key={a.id} value={a.id}>{a.titulo}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {(() => {
-                const at = atividades.find((a) => a.id === form.atividade_id);
-                if (!at) return null;
-                return (
-                  <div className="mt-2 rounded border bg-muted/40 p-2 text-xs whitespace-pre-wrap text-muted-foreground">
-                    {at.descricao?.trim() || "Esta atividade ainda não tem descritivo."}
-                  </div>
-                );
-              })()}
+            <FormField label="Atividades" wide>
+              <AtividadesMultiSelect
+                value={atividadeIds}
+                onChange={setAtividadeIds}
+                atividades={atividades}
+              />
             </FormField>
             <FormField label="Frequência*">
               <Select value={form.frequencia} onValueChange={(v) => set("frequencia", v as Rotina["frequencia"])}>
