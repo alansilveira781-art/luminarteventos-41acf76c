@@ -990,6 +990,7 @@ function RelatoriosTab() {
       deInicial={format(startOfMonth(hoje), "yyyy-MM-dd")}
       ateInicial={format(endOfMonth(hoje), "yyyy-MM-dd")}
       filePrefix="relatorio-diaristas"
+      agruparPorEvento
     />
   );
 }
@@ -998,10 +999,12 @@ function FechamentoView({
   deInicial,
   ateInicial,
   filePrefix,
+  agruparPorEvento = false,
 }: {
   deInicial: string;
   ateInicial: string;
   filePrefix: string;
+  agruparPorEvento?: boolean;
 }) {
   const { data: diaristas = [] } = useDiaristas();
   const { data: apontamentos = [], isLoading } = useApontamentos();
