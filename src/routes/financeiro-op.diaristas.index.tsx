@@ -203,12 +203,16 @@ function DiaristasIndex() {
           <TabsList>
             <TabsTrigger value="apontamento">Apontamento</TabsTrigger>
             <TabsTrigger value="fechamento">Fechamento</TabsTrigger>
+            <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
           </TabsList>
           <TabsContent value="apontamento" className="mt-4">
             <ApontamentoTab />
           </TabsContent>
           <TabsContent value="fechamento" className="mt-4">
             <FechamentoTab />
+          </TabsContent>
+          <TabsContent value="relatorios" className="mt-4">
+            <RelatoriosTab />
           </TabsContent>
         </Tabs>
       ) : (
