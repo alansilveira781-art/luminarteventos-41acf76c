@@ -1010,6 +1010,7 @@ function FechamentoTab() {
       if (ate && a.data > ate) return false;
       if (fLocal !== "todos" && a.local !== fLocal) return false;
       if (fDiarista !== "todos" && a.diarista_id !== fDiarista) return false;
+      if (!matchDepto(diaristasMap.get(a.diarista_id), fDepto)) return false;
       return true;
     });
 
