@@ -412,13 +412,14 @@ function ApontamentoTab() {
     return apontamentos.filter((a) => {
       if (somenteProprios && a.created_by !== user?.id) return false;
       if (fDiarista !== "todos" && a.diarista_id !== fDiarista) return false;
+      if (!matchDepto(diaristasMap.get(a.diarista_id), fDepto)) return false;
       if (fLocal !== "todos" && a.local !== fLocal) return false;
       if (fProjeto && !(a.projeto ?? "").toLowerCase().includes(fProjeto.toLowerCase())) return false;
       if (fDe && a.data < fDe) return false;
       if (fAte && a.data > fAte) return false;
       return true;
     });
-  }, [apontamentos, fDiarista, fLocal, fProjeto, fDe, fAte, somenteProprios, user?.id]);
+  }, [apontamentos, fDiarista, fDepto, diaristasMap, fLocal, fProjeto, fDe, fAte, somenteProprios, user?.id]);
 
   const calcDe = (a: Apontamento) => {
     const d = diaristasMap.get(a.diarista_id);
