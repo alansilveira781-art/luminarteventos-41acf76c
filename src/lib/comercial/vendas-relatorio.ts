@@ -114,7 +114,7 @@ export async function gerarRelatorioVendasPdf(params: RelatorioVendasParams) {
     head: [[
       "Data Evento", "Evento", "Categoria", "Local / Cidade", "Empresa", "Consultor", "Cerimonial", "Decorador",
       "Proposta", "Desconto", "Valor final", "BV", "Comissão",
-    ]]
+    ]],
     body,
     theme: "grid",
     styles: { fontSize: 7, cellPadding: 1.3, overflow: "linebreak", valign: "middle" },
