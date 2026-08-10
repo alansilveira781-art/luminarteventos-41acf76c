@@ -272,6 +272,7 @@ export const Route = createFileRoute("/api/public/solicitar")({
             quantidade: it.quantidade,
             unidade: it.unidade || null,
             valor_unitario: it.valor_unitario ?? null,
+            evento_projeto: it.evento_projeto || null,
           }));
 
           await (supabaseAdmin as any).from("compra_itens").insert(itensPayload);
@@ -353,6 +354,7 @@ export const Route = createFileRoute("/api/public/solicitar")({
               quantidade: it.quantidade,
               unidade: it.unidade || null,
               valor_unitario: it.valor_unitario ?? null,
+              evento_projeto: it.evento_projeto || null,
             })),
           );
         }
