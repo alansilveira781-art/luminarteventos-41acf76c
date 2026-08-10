@@ -81,7 +81,7 @@ export async function gerarRelatorioVendasPdf(params: RelatorioVendasParams) {
   );
 
   const body: any[] = linhas.map((l) => [
-    fmtData(l.dataRegistro),
+    fmtData(l.dataEvento),
     l.nomeEvento ?? "—",
     (l.classificacao ?? "").trim() || "—",
     [l.local, [l.cidade, l.estado].filter(Boolean).join("/")].filter(Boolean).join(" · ") || "—",
@@ -112,7 +112,7 @@ export async function gerarRelatorioVendasPdf(params: RelatorioVendasParams) {
   autoTable(doc, {
     startY: y + 4,
     head: [[
-      "Data registro", "Evento", "Categoria", "Local / Cidade", "Empresa", "Consultor", "Cerimonial", "Decorador",
+      "Data Evento", "Evento", "Categoria", "Local / Cidade", "Empresa", "Consultor", "Cerimonial", "Decorador",
       "Proposta", "Desconto", "Valor final", "BV", "Comissão",
     ]],
     body,
