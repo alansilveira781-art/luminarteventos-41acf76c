@@ -123,6 +123,9 @@ export function IndicadoresEventos() {
   const [mes, setMes] = useState<number>(hoje.getMonth() + 1); // 0 = ano inteiro
   const [categoria, setCategoria] = useState<string>("Todas");
   const [eventoSel, setEventoSel] = useState<string>("");
+  const [eventoOpen, setEventoOpen] = useState(false);
+  const [eventoBusca, setEventoBusca] = useState("");
+
   const [comparar, setComparar] = useState<string[]>([]);
 
   const dreEstrutura = useDreEstrutura().data ?? DRE_STRUCTURE;
