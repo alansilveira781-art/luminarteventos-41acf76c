@@ -228,8 +228,9 @@ function DiaristasConfiguracoes() {
                 <tr className="text-left border-b border-border text-muted-foreground text-xs uppercase tracking-wide">
                   <th className="py-2 pr-3">Apelido</th>
                   <th className="py-2 px-3">Nome</th>
-
+                  <th className="py-2 px-3">Departamento</th>
                   <th className="py-2 px-3 text-right">R$/h Fortaleza</th>
+
                   <th className="py-2 px-3 text-right">Diária Fortaleza (8h)</th>
                   <th className="py-2 px-3 text-right">R$/h Fora</th>
                   <th className="py-2 px-3 text-right">Diária Fora (8h)</th>
