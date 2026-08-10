@@ -1172,6 +1172,11 @@ function RegistrarExecucaoDialog({ rotina, dataInicial, onClose }: { rotina: Rot
         </DialogHeader>
         <form onSubmit={handleSave}>
           <FormSection>
+            {atividadeIds.length > 0 && (
+              <FormField label="Atividades" wide>
+                <AtividadesDescritivos ids={atividadeIds} atividades={atividades} />
+              </FormField>
+            )}
             {rotina.frequencia === "esporadica" && (
               <FormField label="Data da execução*">
                 <Input type="date" required value={dataRef} onChange={(e) => setDataRef(e.target.value)} />
