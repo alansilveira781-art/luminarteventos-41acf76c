@@ -276,6 +276,8 @@ function DiaristasConfiguracoes() {
                               id: d.id,
                               nome: d.nome,
                               apelido: d.apelido ?? "",
+                              departamento: d.departamento ?? "",
+                              colaborador_id: d.colaborador_id ?? null,
                               valor_hora_fortaleza: Number(d.valor_hora_fortaleza) || 0,
                               valor_hora_fora: Number(d.valor_hora_fora) || 0,
                               chave_pix: d.chave_pix ?? "",
