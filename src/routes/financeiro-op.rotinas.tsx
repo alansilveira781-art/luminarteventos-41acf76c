@@ -1084,6 +1084,9 @@ function RegistrarExecucaoDialog({ rotina, dataInicial, onClose }: { rotina: Rot
   const [dataRef, setDataRef] = useState(dataInicial ?? new Date().toISOString().slice(0, 10));
   const [obs, setObs] = useState("");
   const [saving, setSaving] = useState(false);
+  const { data: atividades = [] } = useAtividades();
+  const rotinaAtividades = useRotinaAtividadesMap();
+  const atividadeIds = rotinaAtividades.get(rotina.id) ?? (rotina.atividade_id ? [rotina.atividade_id] : []);
 
 
   async function handleSave(e: React.FormEvent) {
