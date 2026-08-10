@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -123,6 +125,9 @@ export function IndicadoresEventos() {
   const [mes, setMes] = useState<number>(hoje.getMonth() + 1); // 0 = ano inteiro
   const [categoria, setCategoria] = useState<string>("Todas");
   const [eventoSel, setEventoSel] = useState<string>("");
+  const [eventoOpen, setEventoOpen] = useState(false);
+  const [eventoBusca, setEventoBusca] = useState("");
+
   const [comparar, setComparar] = useState<string[]>([]);
 
   const dreEstrutura = useDreEstrutura().data ?? DRE_STRUCTURE;
@@ -187,6 +192,68 @@ export function IndicadoresEventos() {
         .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
     [centros.data, catalogoCategorias.data],
   );
+
+  // Eventos do calendário (fonte da lista suspensa), casados com o centro de custo.
+  const eventosCalendario = useQuery({
+    queryKey: ["indicadores-eventos-calendario"],
+    queryFn: async () => {
+      const { data } = await sb
+        .from("eventos")
+        .select("id,nome,tipo,local,cidade,uf,data_evento,evento_pai_id")
+        .is("evento_pai_id", null)
+        .order("data_evento", { ascending: false });
+      return (data ?? []) as any[];
+    },
+  });
+
+  type EventoOpcao = {
+    external_id: string;
+    nome: string;
+    categoria: string | null;
+    local: string;
+    data: string;
+  };
+
+  const eventosCalendarioOpcoes = useMemo<EventoOpcao[]>(() => {
+    const lista = eventosCalendario.data ?? [];
+    const usados = new Set<string>();
+    const out: EventoOpcao[] = [];
+    for (const ev of lista) {
+      const k = normalize(ev.nome ?? "");
+      if (!k) continue;
+      const centro =
+        centrosComCategoria.find((c) => normalize(c.nome) === k)
+        ?? centrosComCategoria.find((c) => {
+          const n = normalize(c.nome);
+          return n.length >= 4 && (n.includes(k) || k.includes(n));
+        });
+      if (!centro || usados.has(centro.external_id)) continue;
+      usados.add(centro.external_id);
+      out.push({
+        external_id: centro.external_id,
+        nome: ev.nome,
+        categoria: ev.tipo ? String(ev.tipo) : centro.categoria,
+        local: [ev.local, [ev.cidade, ev.uf].filter(Boolean).join("/")].filter(Boolean).join(" · "),
+        data: ev.data_evento ? String(ev.data_evento).split("-").reverse().join("/") : "",
+      });
+    }
+    return out;
+  }, [eventosCalendario.data, centrosComCategoria]);
+
+  const eventosFiltrados = useMemo(() => {
+    const termos = normalize(eventoBusca).split(/\s+/).filter(Boolean);
+    const base = categoria === "Todas"
+      ? eventosCalendarioOpcoes
+      : eventosCalendarioOpcoes.filter((e) => e.categoria === categoria);
+    if (!termos.length) return base.slice(0, 200);
+    return base
+      .filter((e) => {
+        const h = normalize([e.nome, e.local, e.categoria ?? ""].join(" "));
+        return termos.every((t) => h.includes(t));
+      })
+      .slice(0, 200);
+  }, [eventosCalendarioOpcoes, categoria, eventoBusca]);
+
 
   const categoriasDisponiveis = useMemo(() => {
     const s = new Set<string>();
@@ -295,11 +362,14 @@ export function IndicadoresEventos() {
     ant ? `${(((atual - ant) / Math.abs(ant)) * 100).toFixed(1).replace(".", ",")}%` : "—";
 
   const eventoNome = eventoSel
-    ? centrosComCategoria.find((c) => c.external_id === eventoSel)?.nome ?? ""
+    ? eventosCalendarioOpcoes.find((e) => e.external_id === eventoSel)?.nome
+      ?? centrosComCategoria.find((c) => c.external_id === eventoSel)?.nome ?? ""
     : "";
   const eventoCategoria = eventoSel
-    ? centrosComCategoria.find((c) => c.external_id === eventoSel)?.categoria ?? "Sem categoria"
+    ? eventosCalendarioOpcoes.find((e) => e.external_id === eventoSel)?.categoria
+      ?? centrosComCategoria.find((c) => c.external_id === eventoSel)?.categoria ?? "Sem categoria"
     : "";
+
 
   const anos = [2024, 2025, 2026, 2027];
 
@@ -330,6 +400,7 @@ export function IndicadoresEventos() {
             <Label className="text-[11px] uppercase">Categoria</Label>
             <Select
               value={categoria}
+              disabled={!!eventoSel}
               onValueChange={(v) => { setCategoria(v); setEventoSel(""); setComparar([]); }}
             >
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -340,17 +411,57 @@ export function IndicadoresEventos() {
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-[11px] uppercase">Evento</Label>
-            <Select value={eventoSel || "__todos"} onValueChange={(v) => setEventoSel(v === "__todos" ? "" : v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent className="max-h-72">
-                <SelectItem value="__todos">Todos da categoria</SelectItem>
-                {centrosFiltrados.map((c) => (
-                  <SelectItem key={c.external_id} value={c.external_id}>{c.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label className="text-[11px] uppercase">Evento (calendário)</Label>
+            <Popover open={eventoOpen} onOpenChange={setEventoOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-between font-normal">
+                  <span className="truncate text-left">{eventoNome || "Todos da categoria"}</span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-[360px] p-2">
+                <Input
+                  autoFocus
+                  value={eventoBusca}
+                  onChange={(e) => setEventoBusca(e.target.value)}
+                  placeholder="Buscar evento do calendário…"
+                  className="mb-2 h-9"
+                />
+                <div className="max-h-72 overflow-auto">
+                  <button
+                    type="button"
+                    className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+                    onClick={() => { setEventoSel(""); setEventoOpen(false); setEventoBusca(""); }}
+                  >
+                    Todos da categoria
+                  </button>
+                  {eventosFiltrados.length === 0 && (
+                    <div className="p-2 text-sm text-muted-foreground">Nenhum evento encontrado.</div>
+                  )}
+                  {eventosFiltrados.map((e) => (
+                    <button
+                      key={e.external_id}
+                      type="button"
+                      className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+                      onClick={() => {
+                        setEventoSel(e.external_id);
+                        setCategoria(e.categoria ?? "Todas");
+                        setComparar([]);
+                        setEventoOpen(false);
+                        setEventoBusca("");
+                      }}
+                    >
+                      <div className="truncate font-medium">{e.nome}</div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {[e.categoria ?? "Sem categoria", e.local, e.data].filter(Boolean).join(" · ")}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
+
           <div className="flex gap-2">
             <Popover>
               <PopoverTrigger asChild>
