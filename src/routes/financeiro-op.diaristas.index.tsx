@@ -1385,7 +1385,36 @@ function FechamentoView({
                         <td className="py-2 px-3 text-right tabular-nums">{formatHoras(l.minutos)}</td>
                         <td className="py-2 pl-3 text-right tabular-nums font-semibold">{fmtBRL(l.total)}</td>
                       </tr>
-                      {aberto && (
+                      {aberto && agruparPorEvento && (
+                        <tr key={l.id + "-ev"} className="bg-muted/30">
+                          <td />
+                          <td colSpan={5} className="p-3">
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr className="text-left border-b border-border/60 text-muted-foreground">
+                                    <th className="py-1 pr-2">Evento / Projeto</th>
+                                    <th className="py-1 px-2 text-right">Dias</th>
+                                    <th className="py-1 px-2 text-right">Horas</th>
+                                    <th className="py-1 pl-2 text-right">Total</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {l.eventos.map((e) => (
+                                    <tr key={e.nome} className="border-b border-border/40">
+                                      <td className="py-1 pr-2">{e.nome}</td>
+                                      <td className="py-1 px-2 text-right tabular-nums">{e.dias}</td>
+                                      <td className="py-1 px-2 text-right tabular-nums">{formatHoras(e.minutos)}</td>
+                                      <td className="py-1 pl-2 text-right tabular-nums font-medium">{fmtBRL(e.total)}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      {aberto && !agruparPorEvento && (
                         <tr key={l.id + "-det"} className="bg-muted/30">
                           <td />
                           <td colSpan={5} className="p-3">
