@@ -27,6 +27,8 @@ type Diarista = {
   id: string;
   nome: string;
   apelido: string | null;
+  departamento: string | null;
+  colaborador_id: string | null;
   valor_hora_fortaleza: number;
   valor_hora_fora: number;
   chave_pix: string | null;
@@ -37,15 +39,30 @@ type DiaristaForm = {
   id?: string;
   nome: string;
   apelido: string;
+  departamento: string;
+  colaborador_id: string | null;
   valor_hora_fortaleza: number;
   valor_hora_fora: number;
   chave_pix: string;
   ativo: boolean;
 };
 
+const DEPARTAMENTOS = ["Marcenaria", "Estrutura"];
+const SEM_DEPTO = "__sem";
+const SEM_COLAB = "__nenhum";
+
+type Colaborador = {
+  id: string;
+  nome: string;
+  apelido: string | null;
+  departamento: string | null;
+};
+
 const emptyForm: DiaristaForm = {
   nome: "",
   apelido: "",
+  departamento: "",
+  colaborador_id: null,
   valor_hora_fortaleza: 0,
   valor_hora_fora: 0,
   chave_pix: "",
@@ -59,6 +76,22 @@ function fmtBRL(v: number) {
     maximumFractionDigits: 2,
   });
 }
+
+function useColaboradores() {
+  return useQuery({
+    queryKey: ["rh-colaboradores-diaristas"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("rh_colaboradores")
+        .select("id,nome,apelido,departamento")
+        .eq("ativo", true)
+        .order("nome", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as Colaborador[];
+    },
+  });
+}
+
 
 function useDiaristas() {
   return useQuery({
