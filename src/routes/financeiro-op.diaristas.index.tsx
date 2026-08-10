@@ -444,16 +444,29 @@ function ApontamentoTab() {
     <div className="space-y-4">
       {/* Filtros */}
       <Card className="p-4">
-        <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6 items-end">
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-7 items-end">
           <div className="space-y-1">
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Diarista</Label>
             <Select value={fDiarista} onValueChange={setFDiarista}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos</SelectItem>
-                {diaristas.map((d) => (
+                {diaristas.filter((d) => matchDepto(d, fDepto)).map((d) => (
                   <SelectItem key={d.id} value={d.id}>{nomeExib(d)}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Departamento</Label>
+            <Select value={fDepto} onValueChange={setFDepto}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                {DEPARTAMENTOS_DIARISTA.map((dep) => (
+                  <SelectItem key={dep} value={dep}>{dep}</SelectItem>
+                ))}
+                <SelectItem value="__sem">Sem departamento</SelectItem>
               </SelectContent>
             </Select>
           </div>
