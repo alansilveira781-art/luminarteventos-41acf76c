@@ -532,7 +532,7 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
         data_fim: form.data_fim || null,
         responsavel_nome: form.responsavel_nome || null,
         status: form.status,
-        atividade_id: form.atividade_id || null,
+        atividade_id: atividadeIds[0] ?? null,
         max_ocorrencias: maxOcorr,
       };
       const { data: { user } } = await supabase.auth.getUser();
@@ -551,12 +551,16 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
         if (error) throw error;
         savedId = (data as any).id;
       }
+      if (savedId) {
+        await syncRotinaAtividades(savedId, atividadeIds);
+      }
       if (savedId && files.length > 0) {
         await uploadRotinaAnexos(savedId, user?.id ?? null, files);
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["financeiro-rotinas"] });
+      qc.invalidateQueries({ queryKey: ["financeiro-rotina-atividades"] });
       qc.invalidateQueries({ queryKey: ["rotina-anexos"] });
       toast.success(isEdit ? "Rotina atualizada" : "Rotina criada");
       onClose();
