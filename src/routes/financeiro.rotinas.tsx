@@ -17,6 +17,15 @@ import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Pause, Play, Clock, Ch
 import { AnexoViewer } from "@/components/AnexoViewer";
 import { CopiarLinkButton } from "@/components/CopiarLinkButton";
 import { toast } from "sonner";
+import {
+  type Atividade,
+  useAtividades,
+  useRotinaAtividadesMap,
+  syncRotinaAtividades,
+  AtividadesBadges,
+  AtividadesDescritivos,
+  AtividadesMultiSelect,
+} from "@/components/financeiro/RotinaAtividades";
 
 export const Route = createFileRoute("/financeiro/rotinas")({
   component: RotinasPage,
