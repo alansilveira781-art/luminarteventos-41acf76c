@@ -120,6 +120,8 @@ function DiaristasConfiguracoes() {
       const row = {
         nome: payload.nome.trim(),
         apelido: payload.apelido.trim() || null,
+        departamento: payload.departamento.trim() || null,
+        colaborador_id: payload.colaborador_id || null,
         valor_hora_fortaleza: Number(payload.valor_hora_fortaleza) || 0,
         valor_hora_fora: Number(payload.valor_hora_fora) || 0,
         chave_pix: payload.chave_pix.trim() || null,
