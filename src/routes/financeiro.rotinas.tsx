@@ -61,26 +61,8 @@ const FREQ_LABELS: Record<Rotina["frequencia"], string> = {
   esporadica: "Esporádica (sob demanda)",
 };
 
-type Atividade = {
-  id: string;
-  titulo: string;
-  descricao: string | null;
-  ativo: boolean;
-};
 
-function useAtividades() {
-  return useQuery({
-    queryKey: ["financeiro-atividades"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("financeiro_atividades" as any)
-        .select("*")
-        .order("titulo", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as unknown as Atividade[];
-    },
-  });
-}
+
 
 function RotinasPage() {
   const { isAdmin, modulos } = useAuth();
