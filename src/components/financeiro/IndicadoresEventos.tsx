@@ -330,6 +330,7 @@ export function IndicadoresEventos() {
             <Label className="text-[11px] uppercase">Categoria</Label>
             <Select
               value={categoria}
+              disabled={!!eventoSel}
               onValueChange={(v) => { setCategoria(v); setEventoSel(""); setComparar([]); }}
             >
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -340,17 +341,57 @@ export function IndicadoresEventos() {
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-[11px] uppercase">Evento</Label>
-            <Select value={eventoSel || "__todos"} onValueChange={(v) => setEventoSel(v === "__todos" ? "" : v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent className="max-h-72">
-                <SelectItem value="__todos">Todos da categoria</SelectItem>
-                {centrosFiltrados.map((c) => (
-                  <SelectItem key={c.external_id} value={c.external_id}>{c.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label className="text-[11px] uppercase">Evento (calendário)</Label>
+            <Popover open={eventoOpen} onOpenChange={setEventoOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-between font-normal">
+                  <span className="truncate text-left">{eventoNome || "Todos da categoria"}</span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-[360px] p-2">
+                <Input
+                  autoFocus
+                  value={eventoBusca}
+                  onChange={(e) => setEventoBusca(e.target.value)}
+                  placeholder="Buscar evento do calendário…"
+                  className="mb-2 h-9"
+                />
+                <div className="max-h-72 overflow-auto">
+                  <button
+                    type="button"
+                    className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+                    onClick={() => { setEventoSel(""); setEventoOpen(false); setEventoBusca(""); }}
+                  >
+                    Todos da categoria
+                  </button>
+                  {eventosFiltrados.length === 0 && (
+                    <div className="p-2 text-sm text-muted-foreground">Nenhum evento encontrado.</div>
+                  )}
+                  {eventosFiltrados.map((e) => (
+                    <button
+                      key={e.external_id}
+                      type="button"
+                      className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+                      onClick={() => {
+                        setEventoSel(e.external_id);
+                        setCategoria(e.categoria ?? "Todas");
+                        setComparar([]);
+                        setEventoOpen(false);
+                        setEventoBusca("");
+                      }}
+                    >
+                      <div className="truncate font-medium">{e.nome}</div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {[e.categoria ?? "Sem categoria", e.local, e.data].filter(Boolean).join(" · ")}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
+
           <div className="flex gap-2">
             <Popover>
               <PopoverTrigger asChild>
