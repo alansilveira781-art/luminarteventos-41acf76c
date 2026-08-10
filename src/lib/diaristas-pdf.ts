@@ -14,6 +14,13 @@ export type RelatorioItem = {
   total: number;
 };
 
+export type RelatorioEventoItem = {
+  evento: string;
+  dias: number;
+  horasLabel: string;
+  total: number;
+};
+
 export type RelatorioGrupo = {
   nome: string;
   chavePix: string | null;
@@ -23,6 +30,8 @@ export type RelatorioGrupo = {
   valorHoraFortaleza?: number;
   valorHoraFora?: number;
   itens: RelatorioItem[];
+  /** Usado quando o relatório é agrupado por evento */
+  eventos?: RelatorioEventoItem[];
 };
 
 export type RelatorioDiaristasParams = {
@@ -31,6 +40,8 @@ export type RelatorioDiaristasParams = {
   filtros?: string[];
   grupos: RelatorioGrupo[];
   totais: { dias: number; horasLabel: string; valor: number };
+  /** Detalha por evento (somando os dias) em vez de listar dia a dia */
+  porEvento?: boolean;
 };
 
 const brl = (v: number) =>
@@ -81,7 +92,8 @@ export async function gerarRelatorioDiaristasPdf(params: RelatorioDiaristasParam
   y += 8;
 
   for (const g of params.grupos) {
-    const alturaEstimada = 16 + 8 + g.itens.length * 6.5;
+    const nLinhas = params.porEvento ? (g.eventos?.length ?? 0) : g.itens.length;
+    const alturaEstimada = 16 + 8 + nLinhas * 6.5;
     if (y + Math.min(alturaEstimada, 60) > pageH - 18) {
       doc.addPage();
       y = 18;
@@ -112,39 +124,55 @@ export async function gerarRelatorioDiaristasPdf(params: RelatorioDiaristasParam
     doc.setTextColor(0);
     y += 3;
 
+    const porEvento = !!params.porEvento;
     const body: Array<Array<string | { content: string; colSpan?: number; styles?: any }>> = [];
-    for (const it of g.itens) {
-      body.push([
-        fmtDate(it.data),
-        it.projeto || "—",
-        it.local || "—",
-        it.horarioLabel || "—",
-        it.horasLabel || "—",
-        brl(it.diaria),
-        brl(it.extra),
-        brl(it.refeicoes ?? 0),
-        brl(it.total),
-      ]);
+    if (porEvento) {
+      for (const ev of g.eventos ?? []) {
+        body.push([ev.evento || "—", String(ev.dias), ev.horasLabel || "—", brl(ev.total)]);
+      }
+    } else {
+      for (const it of g.itens) {
+        body.push([
+          fmtDate(it.data),
+          it.projeto || "—",
+          it.local || "—",
+          it.horarioLabel || "—",
+          it.horasLabel || "—",
+          brl(it.diaria),
+          brl(it.extra),
+          brl(it.refeicoes ?? 0),
+          brl(it.total),
+        ]);
+      }
     }
 
     autoTable(doc, {
       startY: y,
-      head: [["Data", "Projeto / Evento", "Local", "Horário", "Horas", "Diária", "Extra", "Refeições", "Total"]],
+      head: porEvento
+        ? [["Evento / Projeto", "Dias", "Horas", "Total"]]
+        : [["Data", "Projeto / Evento", "Local", "Horário", "Horas", "Diária", "Extra", "Refeições", "Total"]],
       body: body as any,
       theme: "grid",
       styles: { fontSize: 8, cellPadding: 1.6, overflow: "linebreak" },
       headStyles: { fillColor: [55, 55, 55], textColor: 255, fontSize: 8, fontStyle: "bold" },
-      columnStyles: {
-        0: { cellWidth: 19 },
-        1: { cellWidth: 38 },
-        2: { cellWidth: 15 },
-        3: { cellWidth: 21, halign: "center" },
-        4: { cellWidth: 14, halign: "right" },
-        5: { cellWidth: 20, halign: "right" },
-        6: { cellWidth: 17, halign: "right" },
-        7: { cellWidth: 20, halign: "right" },
-        8: { cellWidth: 22, halign: "right", fontStyle: "bold" },
-      },
+      columnStyles: porEvento
+        ? {
+            0: { cellWidth: 108 },
+            1: { cellWidth: 18, halign: "right" },
+            2: { cellWidth: 24, halign: "right" },
+            3: { cellWidth: 32, halign: "right", fontStyle: "bold" },
+          }
+        : {
+            0: { cellWidth: 19 },
+            1: { cellWidth: 38 },
+            2: { cellWidth: 15 },
+            3: { cellWidth: 21, halign: "center" },
+            4: { cellWidth: 14, halign: "right" },
+            5: { cellWidth: 20, halign: "right" },
+            6: { cellWidth: 17, halign: "right" },
+            7: { cellWidth: 20, halign: "right" },
+            8: { cellWidth: 22, halign: "right", fontStyle: "bold" },
+          },
 
       margin: { left: marginX, right: marginX },
     });

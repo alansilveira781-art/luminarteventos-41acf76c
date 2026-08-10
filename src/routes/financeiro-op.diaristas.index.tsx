@@ -990,6 +990,7 @@ function RelatoriosTab() {
       deInicial={format(startOfMonth(hoje), "yyyy-MM-dd")}
       ateInicial={format(endOfMonth(hoje), "yyyy-MM-dd")}
       filePrefix="relatorio-diaristas"
+      agruparPorEvento
     />
   );
 }
@@ -998,10 +999,12 @@ function FechamentoView({
   deInicial,
   ateInicial,
   filePrefix,
+  agruparPorEvento = false,
 }: {
   deInicial: string;
   ateInicial: string;
   filePrefix: string;
+  agruparPorEvento?: boolean;
 }) {
   const { data: diaristas = [] } = useDiaristas();
   const { data: apontamentos = [], isLoading } = useApontamentos();
@@ -1046,12 +1049,14 @@ function FechamentoView({
       return true;
     });
 
+    type EventoAgregado = { nome: string; dias: number; minutos: number; total: number };
     const grupos = new Map<string, {
       diarista: Diarista | undefined;
       dias: number;
       minutos: number;
       total: number;
       itens: Array<{ ap: Apontamento; calc: ReturnType<typeof calcularApontamento> | null }>;
+      eventos: Map<string, EventoAgregado>;
     }>();
 
     for (const a of filtrados) {
@@ -1059,23 +1064,50 @@ function FechamentoView({
       const t = d ? tarifaDe(d) : null;
       const evs = eventosMap?.get(a.id) ?? [];
       const modo = (a.modo_divisao ?? "unico") as ModoDivisao;
-      const calc = t
-        ? modo !== "unico" && evs.length > 0
+      const calcEv =
+        t && modo !== "unico" && evs.length > 0
           ? calcularApontamentoComEventos(a, t, modo, evs)
-          : calcularApontamento(a, t)
-        : null;
+          : null;
+      const calc = calcEv ?? (t ? calcularApontamento(a, t) : null);
       const g = grupos.get(a.diarista_id) ?? {
-        diarista: d, dias: 0, minutos: 0, total: 0, itens: [],
+        diarista: d, dias: 0, minutos: 0, total: 0, itens: [], eventos: new Map<string, EventoAgregado>(),
       };
       g.dias += 1;
       g.minutos += calc?.minutosTrabalhados ?? 0;
       g.total += calc?.total ?? 0;
       g.itens.push({ ap: a, calc });
+
+      // Fatias por evento (ignora o dia; soma por evento dentro do período)
+      const fatias =
+        calcEv && calcEv.rateio.length > 0
+          ? calcEv.rateio.map((r) => ({
+              nome: (r.evento_nome ?? "").trim() || "Sem evento",
+              minutos: r.minutos,
+              valor: r.valor,
+            }))
+          : [{
+              nome: (a.projeto ?? "").trim() || "Sem evento",
+              minutos: calc?.minutosTrabalhados ?? 0,
+              valor: calc?.total ?? 0,
+            }];
+      for (const f of fatias) {
+        const chave = f.nome.toLocaleLowerCase("pt-BR");
+        const ag = g.eventos.get(chave) ?? { nome: f.nome, dias: 0, minutos: 0, total: 0 };
+        ag.dias += 1;
+        ag.minutos += f.minutos;
+        ag.total += f.valor;
+        g.eventos.set(chave, ag);
+      }
+
       grupos.set(a.diarista_id, g);
     }
 
     return [...grupos.entries()]
-      .map(([id, g]) => ({ id, ...g }))
+      .map(([id, g]) => ({
+        id,
+        ...g,
+        eventos: [...g.eventos.values()].sort((x, y) => x.nome.localeCompare(y.nome, "pt-BR")),
+      }))
       .sort((a, b) => nomeExib(a.diarista).localeCompare(nomeExib(b.diarista), "pt-BR"));
   }, [apontamentos, de, ate, fLocal, fDiarista, fDepto, diaristasMap, eventosMap, cfgRefeicao]);
 
@@ -1096,7 +1128,14 @@ function FechamentoView({
       de,
       ate,
       filtros,
+      porEvento: agruparPorEvento,
       grupos: linhas.map((l) => ({
+        eventos: l.eventos.map((e) => ({
+          evento: e.nome,
+          dias: e.dias,
+          horasLabel: formatHoras(e.minutos),
+          total: e.total,
+        })),
         nome:
           ((l.diarista?.apelido ?? "").trim()
             ? `${nomeExib(l.diarista)} (${l.diarista?.nome})`
@@ -1176,25 +1215,44 @@ function FechamentoView({
     XLSX.utils.book_append_sheet(wb, ws, "Resumo");
 
     // Detalhe
-    const detHeader = ["Diarista", "Data", "Projeto", "Local", "Horas", "Diária", "Extra", "Total"];
-    const detBody: any[][] = [];
-    for (const l of linhas) {
-      for (const it of l.itens) {
-        detBody.push([
-          nomeExib(l.diarista),
-          fmtDate(it.ap.data),
-          it.ap.projeto ?? "",
-          it.ap.local,
-          it.calc?.horasLabel ?? "",
-          Number((it.calc?.diaria ?? 0).toFixed(2)),
-          Number((it.calc?.extra ?? 0).toFixed(2)),
-          Number((it.calc?.total ?? 0).toFixed(2)),
-        ]);
+    if (agruparPorEvento) {
+      const evHeader = ["Diarista", "Evento / Projeto", "Dias", "Horas", "Total"];
+      const evBody: any[][] = [];
+      for (const l of linhas) {
+        for (const e of l.eventos) {
+          evBody.push([
+            nomeExib(l.diarista),
+            e.nome,
+            e.dias,
+            formatHoras(e.minutos),
+            Number(e.total.toFixed(2)),
+          ]);
+        }
       }
+      const wsEv = XLSX.utils.aoa_to_sheet([evHeader, ...evBody]);
+      wsEv["!cols"] = [{ wch: 24 }, { wch: 40 }, { wch: 8 }, { wch: 12 }, { wch: 14 }];
+      XLSX.utils.book_append_sheet(wb, wsEv, "Por evento");
+    } else {
+      const detHeader = ["Diarista", "Data", "Projeto", "Local", "Horas", "Diária", "Extra", "Total"];
+      const detBody: any[][] = [];
+      for (const l of linhas) {
+        for (const it of l.itens) {
+          detBody.push([
+            nomeExib(l.diarista),
+            fmtDate(it.ap.data),
+            it.ap.projeto ?? "",
+            it.ap.local,
+            it.calc?.horasLabel ?? "",
+            Number((it.calc?.diaria ?? 0).toFixed(2)),
+            Number((it.calc?.extra ?? 0).toFixed(2)),
+            Number((it.calc?.total ?? 0).toFixed(2)),
+          ]);
+        }
+      }
+      const ws2 = XLSX.utils.aoa_to_sheet([detHeader, ...detBody]);
+      ws2["!cols"] = [{ wch: 24 }, { wch: 12 }, { wch: 28 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
+      XLSX.utils.book_append_sheet(wb, ws2, "Detalhe");
     }
-    const ws2 = XLSX.utils.aoa_to_sheet([detHeader, ...detBody]);
-    ws2["!cols"] = [{ wch: 24 }, { wch: 12 }, { wch: 28 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
-    XLSX.utils.book_append_sheet(wb, ws2, "Detalhe");
 
     XLSX.writeFile(wb, `${filePrefix}-${de}_a_${ate}.xlsx`);
   };
@@ -1327,7 +1385,36 @@ function FechamentoView({
                         <td className="py-2 px-3 text-right tabular-nums">{formatHoras(l.minutos)}</td>
                         <td className="py-2 pl-3 text-right tabular-nums font-semibold">{fmtBRL(l.total)}</td>
                       </tr>
-                      {aberto && (
+                      {aberto && agruparPorEvento && (
+                        <tr key={l.id + "-ev"} className="bg-muted/30">
+                          <td />
+                          <td colSpan={5} className="p-3">
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr className="text-left border-b border-border/60 text-muted-foreground">
+                                    <th className="py-1 pr-2">Evento / Projeto</th>
+                                    <th className="py-1 px-2 text-right">Dias</th>
+                                    <th className="py-1 px-2 text-right">Horas</th>
+                                    <th className="py-1 pl-2 text-right">Total</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {l.eventos.map((e) => (
+                                    <tr key={e.nome} className="border-b border-border/40">
+                                      <td className="py-1 pr-2">{e.nome}</td>
+                                      <td className="py-1 px-2 text-right tabular-nums">{e.dias}</td>
+                                      <td className="py-1 px-2 text-right tabular-nums">{formatHoras(e.minutos)}</td>
+                                      <td className="py-1 pl-2 text-right tabular-nums font-medium">{fmtBRL(e.total)}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      {aberto && !agruparPorEvento && (
                         <tr key={l.id + "-det"} className="bg-muted/30">
                           <td />
                           <td colSpan={5} className="p-3">
