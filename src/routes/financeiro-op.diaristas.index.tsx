@@ -50,11 +50,14 @@ type Diarista = {
   id: string;
   nome: string;
   apelido?: string | null;
+  departamento?: string | null;
   valor_hora_fortaleza: number;
   valor_hora_fora: number;
   chave_pix: string | null;
   ativo: boolean;
 };
+
+export const DEPARTAMENTOS_DIARISTA = ["Marcenaria", "Estrutura"] as const;
 
 /** Nome usado nas listagens: apelido quando houver, senão o nome completo. */
 function nomeExib(d?: Pick<Diarista, "nome" | "apelido"> | null) {
@@ -62,6 +65,15 @@ function nomeExib(d?: Pick<Diarista, "nome" | "apelido"> | null) {
   const ap = (d.apelido ?? "").trim();
   return ap || d.nome;
 }
+
+/** true quando o diarista atende ao filtro de departamento selecionado. */
+function matchDepto(d: Diarista | undefined, filtro: string) {
+  if (filtro === "todos") return true;
+  const dep = (d?.departamento ?? "").trim();
+  if (filtro === "__sem") return !dep;
+  return dep === filtro;
+}
+
 
 
 type Apontamento = {
