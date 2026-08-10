@@ -16,6 +16,15 @@ import { FormField, FormSection, FormActions } from "@/components/FormSection";
 import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Pause, Play, Clock, CheckCircle2, Paperclip, X, Share2, ListChecks } from "lucide-react";
 import { AnexoViewer } from "@/components/AnexoViewer";
 import { toast } from "sonner";
+import {
+  type Atividade,
+  useAtividades,
+  useRotinaAtividadesMap,
+  syncRotinaAtividades,
+  AtividadesBadges,
+  AtividadesDescritivos,
+  AtividadesMultiSelect,
+} from "@/components/financeiro/RotinaAtividades";
 
 export const Route = createFileRoute("/financeiro-op/rotinas")({
   component: RotinasPage,
