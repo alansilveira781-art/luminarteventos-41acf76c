@@ -3061,6 +3061,48 @@ export type Database = {
           },
         ]
       }
+      financeiro_rotina_atividades: {
+        Row: {
+          atividade_id: string
+          created_at: string
+          id: string
+          ordem: number
+          rotina_id: string
+          updated_at: string
+        }
+        Insert: {
+          atividade_id: string
+          created_at?: string
+          id?: string
+          ordem?: number
+          rotina_id: string
+          updated_at?: string
+        }
+        Update: {
+          atividade_id?: string
+          created_at?: string
+          id?: string
+          ordem?: number
+          rotina_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_rotina_atividades_atividade_id_fkey"
+            columns: ["atividade_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_atividades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_rotina_atividades_rotina_id_fkey"
+            columns: ["rotina_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_rotinas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financeiro_rotina_execucao_anexos: {
         Row: {
           created_at: string

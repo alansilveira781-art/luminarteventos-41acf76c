@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,6 +16,15 @@ import { FormField, FormSection, FormActions } from "@/components/FormSection";
 import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Pause, Play, Clock, CheckCircle2, Paperclip, X, Share2, ListChecks } from "lucide-react";
 import { AnexoViewer } from "@/components/AnexoViewer";
 import { toast } from "sonner";
+import {
+  type Atividade,
+  useAtividades,
+  useRotinaAtividadesMap,
+  syncRotinaAtividades,
+  AtividadesBadges,
+  AtividadesDescritivos,
+  AtividadesMultiSelect,
+} from "@/components/financeiro/RotinaAtividades";
 
 export const Route = createFileRoute("/financeiro-op/rotinas")({
   component: RotinasPage,
@@ -51,26 +60,8 @@ const FREQ_LABELS: Record<Rotina["frequencia"], string> = {
   esporadica: "Esporádica (sob demanda)",
 };
 
-type Atividade = {
-  id: string;
-  titulo: string;
-  descricao: string | null;
-  ativo: boolean;
-};
 
-function useAtividades() {
-  return useQuery({
-    queryKey: ["financeiro-atividades"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("financeiro_atividades" as any)
-        .select("*")
-        .order("titulo", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as unknown as Atividade[];
-    },
-  });
-}
+
 
 function RotinasPage() {
   const { isAdmin, modulos } = useAuth();
@@ -149,6 +140,7 @@ function TabelaRotinas({
 }) {
   const qc = useQueryClient();
   const { data: atividades = [] } = useAtividades();
+  const rotinaAtividades = useRotinaAtividadesMap();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("__all");
   const [freqFilter, setFreqFilter] = useState<string>("__all");
@@ -244,12 +236,10 @@ function TabelaRotinas({
                 <td className="px-4 py-2">
                   <div className="font-medium flex items-center gap-2">
                     {r.titulo}
-                    {r.atividade_id && (
-                      <Badge variant="secondary" className="text-[10px]">
-                        <ListChecks className="h-3 w-3 mr-1" />
-                        {atividades.find((a) => a.id === r.atividade_id)?.titulo ?? "Atividade"}
-                      </Badge>
-                    )}
+                    <AtividadesBadges
+                      ids={rotinaAtividades.get(r.id) ?? (r.atividade_id ? [r.atividade_id] : [])}
+                      atividades={atividades}
+                    />
                   </div>
                   {r.descricao && <div className="text-xs text-muted-foreground">{r.descricao}</div>}
                 </td>
@@ -421,6 +411,24 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
   });
   const [files, setFiles] = useState<File[]>([]);
   const { data: atividades = [] } = useAtividades();
+  const rotinaAtividades = useRotinaAtividadesMap();
+  const [atividadeIds, setAtividadeIds] = useState<string[]>([]);
+  const [atividadesCarregadas, setAtividadesCarregadas] = useState(false);
+
+  useEffect(() => {
+    if (atividadesCarregadas) return;
+    if (!rotina.id) {
+      setAtividadesCarregadas(true);
+      return;
+    }
+    const vinc = rotinaAtividades.get(rotina.id);
+    if (vinc) {
+      setAtividadeIds(vinc);
+      setAtividadesCarregadas(true);
+    } else if (rotina.atividade_id) {
+      setAtividadeIds([rotina.atividade_id]);
+    }
+  }, [rotina.id, rotina.atividade_id, rotinaAtividades, atividadesCarregadas]);
 
   const { data: existingAnexos = [] } = useQuery({
     queryKey: ["rotina-anexos", rotina.id],
@@ -478,7 +486,7 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
         data_fim: form.data_fim || null,
         responsavel_nome: form.responsavel_nome || null,
         status: form.status,
-        atividade_id: form.atividade_id || null,
+        atividade_id: atividadeIds[0] ?? null,
         max_ocorrencias: maxOcorr,
       };
       const { data: { user } } = await supabase.auth.getUser();
@@ -497,12 +505,16 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
         if (error) throw error;
         savedId = (data as any).id;
       }
+      if (savedId) {
+        await syncRotinaAtividades(savedId, atividadeIds);
+      }
       if (savedId && files.length > 0) {
         await uploadRotinaAnexos(savedId, user?.id ?? null, files);
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["financeiro-rotinas"] });
+      qc.invalidateQueries({ queryKey: ["financeiro-rotina-atividades"] });
       qc.invalidateQueries({ queryKey: ["rotina-anexos"] });
       toast.success(isEdit ? "Rotina atualizada" : "Rotina criada");
       onClose();
@@ -528,28 +540,12 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
             <FormField label="Descrição" wide>
               <Textarea rows={2} value={form.descricao} onChange={(e) => set("descricao", e.target.value)} />
             </FormField>
-            <FormField label="Atividade" wide>
-              <Select
-                value={form.atividade_id || "__none"}
-                onValueChange={(v) => set("atividade_id", v === "__none" ? "" : v)}
-              >
-                <SelectTrigger><SelectValue placeholder="Selecione uma atividade" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none">Sem atividade</SelectItem>
-                  {atividades.filter((a) => a.ativo || a.id === form.atividade_id).map((a) => (
-                    <SelectItem key={a.id} value={a.id}>{a.titulo}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {(() => {
-                const at = atividades.find((a) => a.id === form.atividade_id);
-                if (!at) return null;
-                return (
-                  <div className="mt-2 rounded border bg-muted/40 p-2 text-xs whitespace-pre-wrap text-muted-foreground">
-                    {at.descricao?.trim() || "Esta atividade ainda não tem descritivo."}
-                  </div>
-                );
-              })()}
+            <FormField label="Atividades" wide>
+              <AtividadesMultiSelect
+                value={atividadeIds}
+                onChange={setAtividadeIds}
+                atividades={atividades}
+              />
             </FormField>
             <FormField label="Frequência*">
               <Select value={form.frequencia} onValueChange={(v) => set("frequencia", v as Rotina["frequencia"])}>
@@ -1084,6 +1080,9 @@ function RegistrarExecucaoDialog({ rotina, dataInicial, onClose }: { rotina: Rot
   const [dataRef, setDataRef] = useState(dataInicial ?? new Date().toISOString().slice(0, 10));
   const [obs, setObs] = useState("");
   const [saving, setSaving] = useState(false);
+  const { data: atividades = [] } = useAtividades();
+  const rotinaAtividades = useRotinaAtividadesMap();
+  const atividadeIds = rotinaAtividades.get(rotina.id) ?? (rotina.atividade_id ? [rotina.atividade_id] : []);
 
 
   async function handleSave(e: React.FormEvent) {
@@ -1172,6 +1171,11 @@ function RegistrarExecucaoDialog({ rotina, dataInicial, onClose }: { rotina: Rot
         </DialogHeader>
         <form onSubmit={handleSave}>
           <FormSection>
+            {atividadeIds.length > 0 && (
+              <FormField label="Atividades" wide>
+                <AtividadesDescritivos ids={atividadeIds} atividades={atividades} />
+              </FormField>
+            )}
             {rotina.frequencia === "esporadica" && (
               <FormField label="Data da execução*">
                 <Input type="date" required value={dataRef} onChange={(e) => setDataRef(e.target.value)} />
