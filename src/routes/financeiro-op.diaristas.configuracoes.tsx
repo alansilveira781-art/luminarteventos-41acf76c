@@ -341,6 +341,59 @@ function DiaristasConfiguracoes() {
               </div>
             </div>
 
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Colaborador (RH)</Label>
+                <Select
+                  value={editing.colaborador_id ?? SEM_COLAB}
+                  onValueChange={(v) => {
+                    if (v === SEM_COLAB) {
+                      setEditing({ ...editing, colaborador_id: null });
+                      return;
+                    }
+                    const c = colaboradores.find((x) => x.id === v);
+                    setEditing({
+                      ...editing,
+                      colaborador_id: v,
+                      nome: c?.nome ?? editing.nome,
+                      apelido: editing.apelido || (c?.apelido ?? ""),
+                      departamento: c?.departamento ?? editing.departamento,
+                    });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Nenhum (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={SEM_COLAB}>Nenhum (opcional)</SelectItem>
+                    {colaboradores.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="text-[11px] text-muted-foreground">
+                  Ao escolher, o nome é preenchido pelo cadastro do RH.
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Departamento</Label>
+                <Select
+                  value={editing.departamento || SEM_DEPTO}
+                  onValueChange={(v) =>
+                    setEditing({ ...editing, departamento: v === SEM_DEPTO ? "" : v })
+                  }
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={SEM_DEPTO}>Sem departamento</SelectItem>
+                    {DEPARTAMENTOS.map((dep) => (
+                      <SelectItem key={dep} value={dep}>{dep}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Valor/Hora Fortaleza</Label>
