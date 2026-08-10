@@ -190,6 +190,61 @@ export async function gerarRelatorioVendasPdf(params: RelatorioVendasParams) {
     margin: { left: marginX, right: marginX, bottom: 14 },
   });
 
+  // Resumo por categoria (Stand, Social, Cenografia, ...)
+  const porCategoria = new Map<string, { qtd: number; final: number; comissao: number }>();
+  for (const l of linhas) {
+    const cat = (l.classificacao ?? "").trim() || "— Sem categoria —";
+    const cur = porCategoria.get(cat) ?? { qtd: 0, final: 0, comissao: 0 };
+    cur.qtd += 1;
+    cur.final += Number(l.valorFinal || 0);
+    cur.comissao += Number(l.valorComissao || 0);
+    porCategoria.set(cat, cur);
+  }
+  const resumoCat = [...porCategoria.entries()].sort((a, b) => b[1].final - a[1].final);
+
+  let catY = ((doc as any).lastAutoTable?.finalY ?? cursorY) + 10;
+  if (catY > pageH - 45) {
+    doc.addPage();
+    catY = 18;
+  }
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text("Total por categoria", marginX, catY);
+
+  autoTable(doc, {
+    startY: catY + 3,
+    head: [["Categoria", "Vendas", "Valor final", "Comissão", "% do total"]],
+    body: ([
+      ...resumoCat.map(([nome, r]) => [
+        nome,
+        String(r.qtd),
+        brl(r.final),
+        brl(r.comissao),
+        `${(tot.final ? (r.final / tot.final) * 100 : 0).toFixed(2).replace(".", ",")}%`,
+      ]),
+      [
+        { content: "TOTAL", styles: totalStyle },
+        { content: String(linhas.length), styles: totalStyle },
+        { content: brl(tot.final), styles: totalStyle },
+        { content: brl(tot.comissao), styles: totalStyle },
+        { content: "100,00%", styles: totalStyle },
+      ],
+    ] as any),
+    theme: "grid",
+    styles: { fontSize: 8, cellPadding: 1.6 },
+    headStyles: { fillColor: [55, 55, 55], textColor: 255, fontSize: 8, fontStyle: "bold" },
+    columnStyles: {
+      0: { cellWidth: 80 },
+      1: { cellWidth: 22, halign: "right" },
+      2: { cellWidth: 34, halign: "right" },
+      3: { cellWidth: 34, halign: "right" },
+      4: { cellWidth: 24, halign: "right" },
+    },
+    margin: { left: marginX, right: marginX, bottom: 14 },
+  });
+
+
+
   const pages = doc.getNumberOfPages();
   for (let p = 1; p <= pages; p++) {
     doc.setPage(p);
