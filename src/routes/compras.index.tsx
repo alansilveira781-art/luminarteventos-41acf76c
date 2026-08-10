@@ -202,12 +202,6 @@ function ComprasKanban() {
   }, [filteredCompras]);
 
   const [pendingMove, setPendingMove] = useState<{ id: string; status: CompraStatus; titulo: string; prazo?: string } | null>(null);
-  const [prazoAsk, setPrazoAsk] = useState<{
-    compra: Compra;
-    status: CompraStatus;
-    opts?: { force?: boolean; toastMsg?: string; prazo?: string };
-    valor: string;
-  } | null>(null);
 
 
   const moveStatus = useMutation({
