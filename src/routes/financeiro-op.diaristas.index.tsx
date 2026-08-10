@@ -306,6 +306,7 @@ function ApontamentoTab() {
 
   // filtros
   const [fDiarista, setFDiarista] = useState<string>("todos");
+  const [fDepto, setFDepto] = useState<string>("todos");
   const [fLocal, setFLocal] = useState<string>("todos");
   const [fProjeto, setFProjeto] = useState<string>("");
   const [fDe, setFDe] = useState<string>("");
