@@ -503,7 +503,7 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["financeiro-rotinas"] });
-      qc.invalidateQueries({ queryKey: ["rotina-anexos"] });
+      qc.invalidateQueries({ queryKey: ["financeiro-rotina-atividades"] });
       toast.success(isEdit ? "Rotina atualizada" : "Rotina criada");
       onClose();
     },
