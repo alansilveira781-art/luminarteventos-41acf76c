@@ -1151,7 +1151,7 @@ function FechamentoView({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `fechamento-diaristas-${de}_a_${ate}.csv`;
+      a.download = `${filePrefix}-${de}_a_${ate}.csv`;
       a.click();
       URL.revokeObjectURL(url);
       return;
@@ -1192,7 +1192,7 @@ function FechamentoView({
     ws2["!cols"] = [{ wch: 24 }, { wch: 12 }, { wch: 28 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
     XLSX.utils.book_append_sheet(wb, ws2, "Detalhe");
 
-    XLSX.writeFile(wb, `fechamento-diaristas-${de}_a_${ate}.xlsx`);
+    XLSX.writeFile(wb, `${filePrefix}-${de}_a_${ate}.xlsx`);
   };
 
   return (
