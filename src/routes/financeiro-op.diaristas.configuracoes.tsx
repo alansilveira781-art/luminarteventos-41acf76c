@@ -115,6 +115,7 @@ function DiaristasConfiguracoes() {
 
   const qc = useQueryClient();
   const { data = [], isLoading } = useDiaristas();
+  const { data: colaboradores = [] } = useColaboradores();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<DiaristaForm>(emptyForm);
 
