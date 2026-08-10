@@ -968,6 +968,37 @@ function ApontamentoTab() {
 // ─────────────────────────────────────────────────────────────
 
 function FechamentoTab() {
+  const hoje = new Date();
+  const ini = subDays(startOfWeek(hoje, { weekStartsOn: 1 }), 7);
+  return (
+    <FechamentoView
+      deInicial={format(ini, "yyyy-MM-dd")}
+      ateInicial={format(endOfWeek(ini, { weekStartsOn: 1 }), "yyyy-MM-dd")}
+      filePrefix="fechamento-diaristas"
+    />
+  );
+}
+
+function RelatoriosTab() {
+  const hoje = new Date();
+  return (
+    <FechamentoView
+      deInicial={format(startOfMonth(hoje), "yyyy-MM-dd")}
+      ateInicial={format(endOfMonth(hoje), "yyyy-MM-dd")}
+      filePrefix="relatorio-diaristas"
+    />
+  );
+}
+
+function FechamentoView({
+  deInicial,
+  ateInicial,
+  filePrefix,
+}: {
+  deInicial: string;
+  ateInicial: string;
+  filePrefix: string;
+}) {
   const { data: diaristas = [] } = useDiaristas();
   const { data: apontamentos = [], isLoading } = useApontamentos();
   const { data: eventosMap } = useApontamentoEventos();
