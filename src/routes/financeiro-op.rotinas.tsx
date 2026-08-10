@@ -1165,7 +1165,7 @@ function ValidacoesPanel() {
   });
 
   const { data: rotinas = [] } = useQuery({
-    queryKey: ["financeiro-rotinas"],
+    queryKey: ["financeiro-rotinas-nomes"],
     queryFn: async () => {
       const { data } = await supabase.from("financeiro_rotinas" as any).select("id,titulo");
       return (data ?? []) as unknown as { id: string; titulo: string }[];
