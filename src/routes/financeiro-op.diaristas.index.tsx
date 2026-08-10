@@ -1049,12 +1049,14 @@ function FechamentoView({
       return true;
     });
 
+    type EventoAgregado = { nome: string; dias: number; minutos: number; total: number };
     const grupos = new Map<string, {
       diarista: Diarista | undefined;
       dias: number;
       minutos: number;
       total: number;
       itens: Array<{ ap: Apontamento; calc: ReturnType<typeof calcularApontamento> | null }>;
+      eventos: Map<string, EventoAgregado>;
     }>();
 
     for (const a of filtrados) {
@@ -1062,23 +1064,50 @@ function FechamentoView({
       const t = d ? tarifaDe(d) : null;
       const evs = eventosMap?.get(a.id) ?? [];
       const modo = (a.modo_divisao ?? "unico") as ModoDivisao;
-      const calc = t
-        ? modo !== "unico" && evs.length > 0
+      const calcEv =
+        t && modo !== "unico" && evs.length > 0
           ? calcularApontamentoComEventos(a, t, modo, evs)
-          : calcularApontamento(a, t)
-        : null;
+          : null;
+      const calc = calcEv ?? (t ? calcularApontamento(a, t) : null);
       const g = grupos.get(a.diarista_id) ?? {
-        diarista: d, dias: 0, minutos: 0, total: 0, itens: [],
+        diarista: d, dias: 0, minutos: 0, total: 0, itens: [], eventos: new Map<string, EventoAgregado>(),
       };
       g.dias += 1;
       g.minutos += calc?.minutosTrabalhados ?? 0;
       g.total += calc?.total ?? 0;
       g.itens.push({ ap: a, calc });
+
+      // Fatias por evento (ignora o dia; soma por evento dentro do período)
+      const fatias =
+        calcEv && calcEv.rateio.length > 0
+          ? calcEv.rateio.map((r) => ({
+              nome: (r.evento_nome ?? "").trim() || "Sem evento",
+              minutos: r.minutos,
+              valor: r.valor,
+            }))
+          : [{
+              nome: (a.projeto ?? "").trim() || "Sem evento",
+              minutos: calc?.minutosTrabalhados ?? 0,
+              valor: calc?.total ?? 0,
+            }];
+      for (const f of fatias) {
+        const chave = f.nome.toLocaleLowerCase("pt-BR");
+        const ag = g.eventos.get(chave) ?? { nome: f.nome, dias: 0, minutos: 0, total: 0 };
+        ag.dias += 1;
+        ag.minutos += f.minutos;
+        ag.total += f.valor;
+        g.eventos.set(chave, ag);
+      }
+
       grupos.set(a.diarista_id, g);
     }
 
     return [...grupos.entries()]
-      .map(([id, g]) => ({ id, ...g }))
+      .map(([id, g]) => ({
+        id,
+        ...g,
+        eventos: [...g.eventos.values()].sort((x, y) => x.nome.localeCompare(y.nome, "pt-BR")),
+      }))
       .sort((a, b) => nomeExib(a.diarista).localeCompare(nomeExib(b.diarista), "pt-BR"));
   }, [apontamentos, de, ate, fLocal, fDiarista, fDepto, diaristasMap, eventosMap, cfgRefeicao]);
 
