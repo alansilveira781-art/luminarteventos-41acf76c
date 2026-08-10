@@ -12,6 +12,7 @@ export type VendaRelatorioLinha = {
   classificacao: string | null;
   consultor: string | null;
   cerimonial: string | null;
+  decorador?: string | null;
   valorProposta: number;
   desconto: number;
   valorFinal: number;
