@@ -1128,7 +1128,14 @@ function FechamentoView({
       de,
       ate,
       filtros,
+      porEvento: agruparPorEvento,
       grupos: linhas.map((l) => ({
+        eventos: l.eventos.map((e) => ({
+          evento: e.nome,
+          dias: e.dias,
+          horasLabel: formatHoras(e.minutos),
+          total: e.total,
+        })),
         nome:
           ((l.diarista?.apelido ?? "").trim()
             ? `${nomeExib(l.diarista)} (${l.diarista?.nome})`
