@@ -82,6 +82,7 @@ export async function gerarRelatorioVendasPdf(params: RelatorioVendasParams) {
   const body: any[] = linhas.map((l) => [
     fmtData(l.dataEvento),
     l.nomeEvento ?? "—",
+    (l.classificacao ?? "").trim() || "—",
     [l.local, [l.cidade, l.estado].filter(Boolean).join("/")].filter(Boolean).join(" · ") || "—",
     l.empresa ?? "—",
     l.consultor ?? "—",
@@ -95,7 +96,7 @@ export async function gerarRelatorioVendasPdf(params: RelatorioVendasParams) {
 
   const totalStyle = { fontStyle: "bold" as const, halign: "right" as const, fillColor: [55, 55, 55] as [number, number, number], textColor: 255 };
   body.push([
-    { content: `TOTAL (${linhas.length} ${linhas.length === 1 ? "venda" : "vendas"})`, colSpan: 6, styles: totalStyle },
+    { content: `TOTAL (${linhas.length} ${linhas.length === 1 ? "venda" : "vendas"})`, colSpan: 7, styles: totalStyle },
     { content: brl(tot.proposta), styles: totalStyle },
     { content: brl(tot.desconto), styles: totalStyle },
     { content: brl(tot.final), styles: totalStyle },
@@ -103,30 +104,33 @@ export async function gerarRelatorioVendasPdf(params: RelatorioVendasParams) {
     { content: brl(tot.comissao), styles: totalStyle },
   ]);
 
+  const tableW = pageW - marginX * 2; // 273 mm em A4 paisagem com margem 12
+
   autoTable(doc, {
     startY: y + 4,
     head: [[
-      "Data evento", "Evento", "Local / Cidade", "Empresa", "Consultor", "Cerimonial",
+      "Data evento", "Evento", "Categoria", "Local / Cidade", "Empresa", "Consultor", "Cerimonial",
       "Proposta", "Desconto", "Valor final", "BV", "Comissão",
     ]],
     body,
     theme: "grid",
-    styles: { fontSize: 7.5, cellPadding: 1.5, overflow: "linebreak" },
-    headStyles: { fillColor: [55, 55, 55], textColor: 255, fontSize: 7.5, fontStyle: "bold" },
+    styles: { fontSize: 7, cellPadding: 1.3, overflow: "linebreak", valign: "middle" },
+    headStyles: { fillColor: [55, 55, 55], textColor: 255, fontSize: 7, fontStyle: "bold", valign: "middle" },
     columnStyles: {
-      0: { cellWidth: 18 },
-      1: { cellWidth: 44 },
-      2: { cellWidth: 38 },
-      3: { cellWidth: 18 },
-      4: { cellWidth: 24 },
-      5: { cellWidth: 24 },
-      6: { cellWidth: 21, halign: "right" },
-      7: { cellWidth: 19, halign: "right" },
-      8: { cellWidth: 22, halign: "right" },
-      9: { cellWidth: 19, halign: "right" },
-      10: { cellWidth: 22, halign: "right" },
+      0: { cellWidth: 16 },
+      1: { cellWidth: 42 },
+      2: { cellWidth: 22 },
+      3: { cellWidth: 32 },
+      4: { cellWidth: 16 },
+      5: { cellWidth: 21 },
+      6: { cellWidth: 21 },
+      7: { cellWidth: 21, halign: "right" },
+      8: { cellWidth: 19, halign: "right" },
+      9: { cellWidth: 22, halign: "right" },
+      10: { cellWidth: 19, halign: "right" },
+      11: { cellWidth: 22, halign: "right" },
     },
-    tableWidth: pageW - marginX * 2,
+    tableWidth: tableW,
     margin: { left: marginX, right: marginX, bottom: 14 },
   });
 
