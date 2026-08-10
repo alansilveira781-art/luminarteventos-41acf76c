@@ -188,6 +188,68 @@ export function IndicadoresEventos() {
     [centros.data, catalogoCategorias.data],
   );
 
+  // Eventos do calendário (fonte da lista suspensa), casados com o centro de custo.
+  const eventosCalendario = useQuery({
+    queryKey: ["indicadores-eventos-calendario"],
+    queryFn: async () => {
+      const { data } = await sb
+        .from("eventos")
+        .select("id,nome,tipo,local,cidade,uf,data_evento,evento_pai_id")
+        .is("evento_pai_id", null)
+        .order("data_evento", { ascending: false });
+      return (data ?? []) as any[];
+    },
+  });
+
+  type EventoOpcao = {
+    external_id: string;
+    nome: string;
+    categoria: string | null;
+    local: string;
+    data: string;
+  };
+
+  const eventosCalendarioOpcoes = useMemo<EventoOpcao[]>(() => {
+    const lista = eventosCalendario.data ?? [];
+    const usados = new Set<string>();
+    const out: EventoOpcao[] = [];
+    for (const ev of lista) {
+      const k = normalize(ev.nome ?? "");
+      if (!k) continue;
+      const centro =
+        centrosComCategoria.find((c) => normalize(c.nome) === k)
+        ?? centrosComCategoria.find((c) => {
+          const n = normalize(c.nome);
+          return n.length >= 4 && (n.includes(k) || k.includes(n));
+        });
+      if (!centro || usados.has(centro.external_id)) continue;
+      usados.add(centro.external_id);
+      out.push({
+        external_id: centro.external_id,
+        nome: ev.nome,
+        categoria: ev.tipo ? String(ev.tipo) : centro.categoria,
+        local: [ev.local, [ev.cidade, ev.uf].filter(Boolean).join("/")].filter(Boolean).join(" · "),
+        data: ev.data_evento ? String(ev.data_evento).split("-").reverse().join("/") : "",
+      });
+    }
+    return out;
+  }, [eventosCalendario.data, centrosComCategoria]);
+
+  const eventosFiltrados = useMemo(() => {
+    const termos = normalize(eventoBusca).split(/\s+/).filter(Boolean);
+    const base = categoria === "Todas"
+      ? eventosCalendarioOpcoes
+      : eventosCalendarioOpcoes.filter((e) => e.categoria === categoria);
+    if (!termos.length) return base.slice(0, 200);
+    return base
+      .filter((e) => {
+        const h = normalize([e.nome, e.local, e.categoria ?? ""].join(" "));
+        return termos.every((t) => h.includes(t));
+      })
+      .slice(0, 200);
+  }, [eventosCalendarioOpcoes, categoria, eventoBusca]);
+
+
   const categoriasDisponiveis = useMemo(() => {
     const s = new Set<string>();
     centrosComCategoria.forEach((c) => { if (c.categoria) s.add(c.categoria); });
