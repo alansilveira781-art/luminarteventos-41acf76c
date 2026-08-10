@@ -12,6 +12,7 @@ export type VendaRelatorioLinha = {
   classificacao: string | null;
   consultor: string | null;
   cerimonial: string | null;
+  decorador?: string | null;
   valorProposta: number;
   desconto: number;
   valorFinal: number;
@@ -80,13 +81,14 @@ export async function gerarRelatorioVendasPdf(params: RelatorioVendasParams) {
   );
 
   const body: any[] = linhas.map((l) => [
-    fmtData(l.dataEvento),
+    fmtData(l.dataRegistro),
     l.nomeEvento ?? "—",
     (l.classificacao ?? "").trim() || "—",
     [l.local, [l.cidade, l.estado].filter(Boolean).join("/")].filter(Boolean).join(" · ") || "—",
     l.empresa ?? "—",
     l.consultor ?? "—",
     l.cerimonial ?? "—",
+    l.decorador ?? "—",
     brl(l.valorProposta),
     brl(l.desconto),
     brl(l.valorFinal),
@@ -94,9 +96,10 @@ export async function gerarRelatorioVendasPdf(params: RelatorioVendasParams) {
     brl(l.valorComissao),
   ]);
 
+
   const totalStyle = { fontStyle: "bold" as const, halign: "right" as const, fillColor: [55, 55, 55] as [number, number, number], textColor: 255 };
   body.push([
-    { content: `TOTAL (${linhas.length} ${linhas.length === 1 ? "venda" : "vendas"})`, colSpan: 7, styles: totalStyle },
+    { content: `TOTAL (${linhas.length} ${linhas.length === 1 ? "venda" : "vendas"})`, colSpan: 8, styles: totalStyle },
     { content: brl(tot.proposta), styles: totalStyle },
     { content: brl(tot.desconto), styles: totalStyle },
     { content: brl(tot.final), styles: totalStyle },
@@ -109,7 +112,7 @@ export async function gerarRelatorioVendasPdf(params: RelatorioVendasParams) {
   autoTable(doc, {
     startY: y + 4,
     head: [[
-      "Data evento", "Evento", "Categoria", "Local / Cidade", "Empresa", "Consultor", "Cerimonial",
+      "Data registro", "Evento", "Categoria", "Local / Cidade", "Empresa", "Consultor", "Cerimonial", "Decorador",
       "Proposta", "Desconto", "Valor final", "BV", "Comissão",
     ]],
     body,
@@ -118,18 +121,20 @@ export async function gerarRelatorioVendasPdf(params: RelatorioVendasParams) {
     headStyles: { fillColor: [55, 55, 55], textColor: 255, fontSize: 7, fontStyle: "bold", valign: "middle" },
     columnStyles: {
       0: { cellWidth: 16 },
-      1: { cellWidth: 42 },
-      2: { cellWidth: 22 },
-      3: { cellWidth: 32 },
-      4: { cellWidth: 16 },
-      5: { cellWidth: 21 },
-      6: { cellWidth: 21 },
-      7: { cellWidth: 21, halign: "right" },
-      8: { cellWidth: 19, halign: "right" },
-      9: { cellWidth: 22, halign: "right" },
-      10: { cellWidth: 19, halign: "right" },
-      11: { cellWidth: 22, halign: "right" },
+      1: { cellWidth: 36 },
+      2: { cellWidth: 20 },
+      3: { cellWidth: 27 },
+      4: { cellWidth: 14 },
+      5: { cellWidth: 19 },
+      6: { cellWidth: 19 },
+      7: { cellWidth: 19 },
+      8: { cellWidth: 21, halign: "right" },
+      9: { cellWidth: 19, halign: "right" },
+      10: { cellWidth: 22, halign: "right" },
+      11: { cellWidth: 19, halign: "right" },
+      12: { cellWidth: 22, halign: "right" },
     },
+
     tableWidth: tableW,
     margin: { left: marginX, right: marginX, bottom: 14 },
   });
