@@ -92,7 +92,8 @@ export async function gerarRelatorioDiaristasPdf(params: RelatorioDiaristasParam
   y += 8;
 
   for (const g of params.grupos) {
-    const alturaEstimada = 16 + 8 + g.itens.length * 6.5;
+    const nLinhas = params.porEvento ? (g.eventos?.length ?? 0) : g.itens.length;
+    const alturaEstimada = 16 + 8 + nLinhas * 6.5;
     if (y + Math.min(alturaEstimada, 60) > pageH - 18) {
       doc.addPage();
       y = 18;
