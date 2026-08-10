@@ -1055,6 +1055,8 @@ function FechamentoTab() {
     const { gerarRelatorioDiaristasPdf } = await import("@/lib/diaristas-pdf");
     const filtros: string[] = [];
     if (fLocal !== "todos") filtros.push(`Local: ${fLocal}`);
+    if (fDepto !== "todos")
+      filtros.push(`Departamento: ${fDepto === "__sem" ? "Sem departamento" : fDepto}`);
     if (fDiarista !== "todos")
       filtros.push(`Diarista: ${nomeExib(diaristasMap.get(fDiarista))}`);
 
@@ -1063,9 +1065,13 @@ function FechamentoTab() {
       ate,
       filtros,
       grupos: linhas.map((l) => ({
-        nome: (l.diarista?.apelido ?? "").trim()
-          ? `${nomeExib(l.diarista)} (${l.diarista?.nome})`
-          : nomeExib(l.diarista),
+        nome:
+          ((l.diarista?.apelido ?? "").trim()
+            ? `${nomeExib(l.diarista)} (${l.diarista?.nome})`
+            : nomeExib(l.diarista)) +
+          ((l.diarista?.departamento ?? "").trim()
+            ? ` · ${l.diarista?.departamento}`
+            : ""),
         chavePix: l.diarista?.chave_pix ?? null,
         dias: l.dias,
         horasLabel: formatHoras(l.minutos),
