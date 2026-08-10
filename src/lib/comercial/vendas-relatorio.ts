@@ -81,19 +81,21 @@ export async function gerarRelatorioVendasPdf(params: RelatorioVendasParams) {
   );
 
   const body: any[] = linhas.map((l) => [
-    fmtData(l.dataEvento),
+    fmtData(l.dataRegistro),
     l.nomeEvento ?? "—",
     (l.classificacao ?? "").trim() || "—",
     [l.local, [l.cidade, l.estado].filter(Boolean).join("/")].filter(Boolean).join(" · ") || "—",
     l.empresa ?? "—",
     l.consultor ?? "—",
     l.cerimonial ?? "—",
+    l.decorador ?? "—",
     brl(l.valorProposta),
     brl(l.desconto),
     brl(l.valorFinal),
     brl(l.valorBV),
     brl(l.valorComissao),
   ]);
+
 
   const totalStyle = { fontStyle: "bold" as const, halign: "right" as const, fillColor: [55, 55, 55] as [number, number, number], textColor: 255 };
   body.push([
