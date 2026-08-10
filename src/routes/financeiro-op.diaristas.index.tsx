@@ -57,7 +57,7 @@ type Diarista = {
   ativo: boolean;
 };
 
-export const DEPARTAMENTOS_DIARISTA = ["Marcenaria", "Estrutura"] as const;
+export const DEPARTAMENTOS_DIARISTA = ["Marcenaria", "Estrutura", "Iluminação"] as const;
 
 /** Nome usado nas listagens: apelido quando houver, senão o nome completo. */
 function nomeExib(d?: Pick<Diarista, "nome" | "apelido"> | null) {
