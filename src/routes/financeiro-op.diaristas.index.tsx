@@ -1693,6 +1693,20 @@ function FechamentoView({
                           })()}
                         </td>
                         <td className="py-2 px-3 text-xs text-muted-foreground">{l.diarista?.chave_pix ?? "—"}</td>
+                        <td className="py-2 px-3">
+                          <span
+                            className={cn(
+                              "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium border",
+                              l.statusLabel === "Pago"
+                                ? "bg-success/15 text-success border-success/30"
+                                : l.statusLabel === "Parcial"
+                                  ? "bg-warning/15 text-warning border-warning/30"
+                                  : "bg-muted text-muted-foreground border-border",
+                            )}
+                          >
+                            {l.statusLabel}
+                          </span>
+                        </td>
                         <td className="py-2 px-3 text-right tabular-nums">{l.dias}</td>
                         <td className="py-2 px-3 text-right tabular-nums">{formatHoras(l.minutos)}</td>
                         <td className="py-2 pl-3 text-right tabular-nums font-semibold">{fmtBRL(l.total)}</td>
