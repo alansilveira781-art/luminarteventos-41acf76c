@@ -285,6 +285,34 @@ function useApontamentoEventos() {
   });
 }
 
+type Fechamento = {
+  id: string;
+  periodo_inicio: string;
+  periodo_fim: string;
+  filtros: any;
+  total_dias: number;
+  total_minutos: number;
+  total_valor: number;
+  data_pagamento: string;
+  observacao: string | null;
+  created_at: string;
+};
+
+function useFechamentos() {
+  return useQuery({
+    queryKey: ["diarista_fechamentos"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("diarista_fechamentos")
+        .select("*")
+        .order("periodo_inicio", { ascending: false })
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Fechamento[];
+    },
+  });
+}
+
 // ─────────────────────────────────────────────────────────────
 // Apontamento
 // ─────────────────────────────────────────────────────────────
