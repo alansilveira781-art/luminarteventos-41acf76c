@@ -148,7 +148,7 @@ function ModeloDialog({ open, onOpenChange, editing, onSave }: {
               <div className="mx-2 h-4 w-px bg-border" />
               <button type="button" onClick={() => { const v = prompt("Nome do campo (ex: cliente_nome)"); if (v) exec("insertText", `[${v.trim().replace(/\s+/g, "_")}]`); }} className="text-xs px-2 h-7 rounded hover:bg-muted">+ Campo</button>
             </div>
-            <div className="sticky top-0 z-10 flex flex-wrap gap-1 border-b border-border p-1 bg-background max-h-28 overflow-y-auto">
+            <div className="flex flex-wrap gap-1 border-b border-border p-1 bg-background max-h-28 overflow-y-auto">
               <span className="text-[11px] text-muted-foreground px-1 py-0.5">Campos automáticos:</span>
               {CAMPOS_SUGERIDOS.map((c) => (
                 <button
@@ -167,7 +167,7 @@ function ModeloDialog({ open, onOpenChange, editing, onSave }: {
               ref={ref}
               contentEditable
               onInput={(e) => setF((p: any) => ({ ...p, corpo_html: (e.target as HTMLDivElement).innerHTML }))}
-              className="prose prose-sm max-w-none p-3 min-h-[300px] focus:outline-none"
+              className="prose prose-sm max-w-none p-3 min-h-[300px] max-h-[55vh] overflow-y-auto focus:outline-none"
               suppressContentEditableWarning
             />
           </div>
