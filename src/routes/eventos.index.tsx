@@ -13,10 +13,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Plus, Link2, ExternalLink, Trash2, CalendarPlus } from "lucide-react";
 import { toast } from "sonner";
 import { GanttEventos, type EventoCal } from "@/components/eventos/GanttEventos";
-import { SearchableSelect } from "@/components/SearchableSelect";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DbComboboxCreatable } from "@/components/DbComboboxCreatable";
-import { fetchEstados, fetchMunicipios } from "@/lib/ibge";
+import { EventoFormFields } from "@/components/eventos/EventoFormFields";
 
 
 const sb = supabase as any;
@@ -162,43 +161,6 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
   });
 
 
-  const { data: estados = [] } = useQuery({
-    queryKey: ["ibge-estados"],
-    queryFn: fetchEstados,
-    staleTime: Infinity,
-    gcTime: Infinity,
-  });
-  const { data: municipios = [] } = useQuery({
-    queryKey: ["ibge-municipios"],
-    queryFn: fetchMunicipios,
-    staleTime: Infinity,
-    gcTime: Infinity,
-  });
-
-  const ufOptions = estados.map((e) => ({ value: e.sigla, label: `${e.sigla} — ${e.nome}` }));
-  const cidadeOptions = (f.uf
-    ? municipios.filter((m) => m.uf === f.uf).map((m) => ({ value: m.nome, label: m.nome }))
-    : municipios.map((m) => ({ value: `${m.nome}|${m.uf}`, label: `${m.nome} - ${m.uf}` })));
-
-  const cidadeValue = f.uf ? f.cidade : (f.cidade ? `${f.cidade}|${f.uf}` : "");
-
-  const handleCidadeChange = (v: string) => {
-    if (f.uf) {
-      set("cidade", v);
-    } else {
-      const [nome, uf] = v.split("|");
-      setF((p: any) => ({ ...p, cidade: nome, uf: uf ?? "" }));
-    }
-  };
-
-  const handleUfChange = (v: string) => {
-    setF((p: any) => {
-      const cidadePertence = municipios.some((m) => m.uf === v && m.nome === p.cidade);
-      return { ...p, uf: v, cidade: cidadePertence ? p.cidade : "" };
-    });
-  };
-
-
   const salvar = useMutation({
     mutationFn: async () => {
       if (!f.nome.trim()) throw new Error("Informe o nome do evento");
@@ -305,70 +267,7 @@ function EventoDialog({ evento, onClose, onSaved }: { evento: any | null; onClos
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="sm:col-span-2">
-            <Label>Nome do evento *</Label>
-            <Input value={f.nome} onChange={(e) => set("nome", e.target.value)} placeholder="Ex: Casamento Ana & João" />
-          </div>
-          <div>
-            <Label>Local</Label>
-            <Input value={f.local} onChange={(e) => set("local", e.target.value)} />
-          </div>
-          <div>
-            <Label>Estado (UF)</Label>
-            <SearchableSelect
-              value={f.uf}
-              onChange={handleUfChange}
-              options={ufOptions}
-              placeholder="Selecione o estado…"
-              searchPlaceholder="Buscar estado…"
-            />
-          </div>
-          <div>
-            <Label>Cidade</Label>
-            <SearchableSelect
-              value={cidadeValue}
-              onChange={handleCidadeChange}
-              options={cidadeOptions}
-              placeholder={f.uf ? "Selecione a cidade…" : "Selecione a cidade (auto UF)…"}
-              searchPlaceholder="Buscar cidade…"
-            />
-          </div>
-          <div>
-            <Label>Tipo</Label>
-            <select
-              value={f.tipo}
-              onChange={(e) => set("tipo", e.target.value)}
-              className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-            >
-              {TIPOS.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-          <div>
-            <Label>Situação</Label>
-            <select
-              value={f.situacao}
-              onChange={(e) => set("situacao", e.target.value)}
-              className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-            >
-              {["Aprovado", "Em Aprovação", "Reservado"].map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <Label>Data inicial do evento *</Label>
-            <Input type="date" value={f.data_evento} onChange={(e) => set("data_evento", e.target.value)} />
-          </div>
-          <div>
-            <Label>Data final do evento *</Label>
-            <Input type="date" value={f.data_evento_fim} onChange={(e) => set("data_evento_fim", e.target.value)} />
-          </div>
-          <div className="sm:col-span-2">
-            <Label>Observações</Label>
-            <Textarea value={f.observacoes} onChange={(e) => set("observacoes", e.target.value)} />
-          </div>
-        </div>
+        <EventoFormFields f={f} setF={setF} />
 
         {!isNew && !showMontagemSection && (
           <div className="pt-2">
