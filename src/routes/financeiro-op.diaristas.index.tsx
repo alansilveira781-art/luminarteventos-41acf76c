@@ -1456,7 +1456,7 @@ function FechamentoView({
       [],
       foot,
     ]);
-    ws["!cols"] = [{ wch: 28 }, { wch: 32 }, { wch: 14 }, { wch: 14 }, { wch: 16 }];
+    ws["!cols"] = [{ wch: 28 }, { wch: 32 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 16 }];
     XLSX.utils.book_append_sheet(wb, ws, "Resumo");
 
     // Detalhe
