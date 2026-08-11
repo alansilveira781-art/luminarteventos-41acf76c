@@ -1298,6 +1298,7 @@ export type Database = {
           nome: string
           path: string
           tamanho: number | null
+          tipo: string
           uploaded_by: string | null
         }
         Insert: {
@@ -1308,6 +1309,7 @@ export type Database = {
           nome: string
           path: string
           tamanho?: number | null
+          tipo?: string
           uploaded_by?: string | null
         }
         Update: {
@@ -1318,6 +1320,7 @@ export type Database = {
           nome?: string
           path?: string
           tamanho?: number | null
+          tipo?: string
           uploaded_by?: string | null
         }
         Relationships: []
@@ -2132,6 +2135,7 @@ export type Database = {
           nome: string
           path: string
           tamanho: number | null
+          tipo: string
           uploaded_by: string | null
         }
         Insert: {
@@ -2142,6 +2146,7 @@ export type Database = {
           nome: string
           path: string
           tamanho?: number | null
+          tipo?: string
           uploaded_by?: string | null
         }
         Update: {
@@ -2152,6 +2157,7 @@ export type Database = {
           nome?: string
           path?: string
           tamanho?: number | null
+          tipo?: string
           uploaded_by?: string | null
         }
         Relationships: []
