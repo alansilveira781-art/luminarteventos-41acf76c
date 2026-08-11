@@ -375,6 +375,14 @@ function SolicitarPage() {
           duration: 10000,
         });
       }
+      if (json.vinculado === false) {
+        toast.warning("Pedido registrado, mas não vinculado a uma conta.", {
+          description:
+            "O e-mail informado não pertence a nenhum usuário do sistema, então este pedido não vai aparecer em “Meus Pedidos”.",
+          duration: 12000,
+        });
+      }
+
 
 
       try {
