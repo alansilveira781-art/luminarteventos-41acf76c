@@ -95,6 +95,7 @@ type Apontamento = {
   almoco: boolean | null;
   janta: boolean | null;
   diaria_minima: boolean | null;
+  fechamento_id: string | null;
 };
 
 type EventoLinha = {
