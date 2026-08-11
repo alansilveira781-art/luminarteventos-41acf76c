@@ -21,7 +21,9 @@ const baseSchema = z.object({
   titulo: z.string().trim().min(1).max(200),
   subtipo: z.string().trim().max(100).optional().nullable(),
   solicitante_nome: z.string().trim().min(1).max(120),
-  solicitante_email: z.string().trim().email().max(160).optional().or(z.literal("")),
+  solicitante_email: z.string().trim().email().max(160),
+  solicitante_user_id: z.string().uuid().optional().nullable(),
+
   solicitante_telefone: z.string().trim().max(40).optional().or(z.literal("")),
   fornecedor: z.string().trim().max(160).optional().or(z.literal("")),
   descricao: z.string().trim().max(4000).optional().or(z.literal("")),
@@ -232,6 +234,16 @@ export const Route = createFileRoute("/api/public/solicitar")({
             .maybeSingle();
           solicitanteId = (perfil as any)?.id ?? null;
         }
+        if (!solicitanteId && d.solicitante_user_id) {
+          const { data: perfilId } = await (supabaseAdmin as any)
+            .from("profiles")
+            .select("id")
+            .eq("id", d.solicitante_user_id)
+            .maybeSingle();
+          solicitanteId = (perfilId as any)?.id ?? null;
+        }
+        const vinculado = !!solicitanteId;
+
 
         if (d.tipo === "compra") {
           const somaItens = d.itens!.reduce(
@@ -296,6 +308,8 @@ export const Route = createFileRoute("/api/public/solicitar")({
               tipo: "compra",
               anexos_falhados: anexosResult.falhados,
               anexos_erros: anexosResult.erros,
+              vinculado,
+
             }),
 
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -379,6 +393,8 @@ export const Route = createFileRoute("/api/public/solicitar")({
             tipo: "demanda",
             anexos_falhados: anexosDemanda.falhados,
             anexos_erros: anexosDemanda.erros,
+            vinculado,
+
           }),
 
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },

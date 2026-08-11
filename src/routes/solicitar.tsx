@@ -134,6 +134,8 @@ function SolicitarPage() {
     condicoes_pagamento: [],
   });
 
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+
   useEffect(() => {
     fetch("/api/public/opcoes-pagamento")
       .then((r) => r.json())
@@ -143,6 +145,34 @@ function SolicitarPage() {
       }))
       .catch(() => {});
   }, []);
+
+  // Se a pessoa já está logada, pré-preenche nome/e-mail e vincula o pedido à conta
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      try {
+        const { supabase } = await import("@/integrations/supabase/client");
+        const { data } = await supabase.auth.getSession();
+        const u = data.session?.user;
+        if (!u || cancelado) return;
+        setSessionUserId(u.id);
+        const nome =
+          (u.user_metadata as any)?.display_name ||
+          (u.user_metadata as any)?.full_name ||
+          (u.user_metadata as any)?.name ||
+          "";
+        setForm((f) => ({
+          ...f,
+          solicitante_email: f.solicitante_email || (u.email ?? ""),
+          solicitante_nome: f.solicitante_nome || nome,
+        }));
+      } catch {}
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
 
   // Salva rascunho no navegador (debounced)
   useEffect(() => {
@@ -214,6 +244,11 @@ function SolicitarPage() {
     }
     if (step === 2) {
       if (form.solicitante_nome.trim().length === 0) return "Informe o seu nome.";
+      const email = form.solicitante_email.trim();
+      if (email.length === 0)
+        return "Informe o seu e-mail — é ele que vincula o pedido à sua conta em Meus Pedidos.";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "Informe um e-mail válido.";
+
       if (usaItens) {
         const preenchidos = itensPreenchidos();
         if (preenchidos.length === 0) return "Adicione ao menos um item com descrição.";
@@ -299,6 +334,8 @@ function SolicitarPage() {
 
       const payload = {
         tipo: form.tipo,
+        solicitante_user_id: sessionUserId,
+
         titulo: form.titulo.trim(),
         subtipo: form.subtipo || null,
         fornecedor: form.fornecedor || "",
@@ -340,6 +377,14 @@ function SolicitarPage() {
           duration: 10000,
         });
       }
+      if (json.vinculado === false) {
+        toast.warning("Pedido registrado, mas não vinculado a uma conta.", {
+          description:
+            "O e-mail informado não pertence a nenhum usuário do sistema, então este pedido não vai aparecer em “Meus Pedidos”.",
+          duration: 12000,
+        });
+      }
+
 
 
       try {
@@ -612,7 +657,7 @@ function SolicitarPage() {
               />
             </Field>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Field label="E-mail">
+              <Field label="E-mail *">
                 <Input
                   type="email"
                   value={form.solicitante_email}
@@ -622,7 +667,11 @@ function SolicitarPage() {
                   autoComplete="email"
                   name="solicitante_email"
                 />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Use o mesmo e-mail da sua conta para acompanhar em “Meus Pedidos”.
+                </p>
               </Field>
+
               <Field label="Telefone">
                 <Input
                   value={form.solicitante_telefone}
