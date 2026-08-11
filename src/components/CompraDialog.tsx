@@ -1128,7 +1128,9 @@ function Anexos({
       </label>
 
       {anexos.length === 0 ? (
-        <p className="text-xs text-muted-foreground italic">Nenhum anexo.</p>
+        <p className="text-xs text-muted-foreground italic">
+          {isComprovante ? "Nenhum comprovante." : "Nenhum anexo."}
+        </p>
       ) : (
         <div className="space-y-1.5">
           {anexos.map((a: any) => (
