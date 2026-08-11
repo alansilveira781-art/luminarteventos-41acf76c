@@ -246,6 +246,14 @@ function QuadroContratos() {
         onConfirm={aplicarCriacao}
       />
 
+      <ConcluirContratoWizard
+        contrato={concluirCard}
+        open={!!concluirCard}
+        onOpenChange={(v) => !v && setConcluirCard(null)}
+        onConcluir={aplicarConclusao}
+        onFinalizado={() => { setConcluirCard(null); load(); }}
+      />
+
 
       <ContratoDetalhesDialog
         contrato={editing}
