@@ -40,6 +40,10 @@ import { useSort, SortableTh } from "@/components/SortableTh";
 import { useVendedores, useCerimoniais, useDecoradores, useClassificacoes } from "@/lib/comercial/cadastros";
 import { CadastroCombobox } from "@/components/comercial/CadastroCombobox";
 import { calcularDerivados, matchCadastro } from "@/lib/comercial/comissao";
+import {
+  buildVendaDbPayload, emptyVendaForm, todayIso, type VendaFormState,
+} from "@/lib/comercial/venda-form";
+import { VendaFormFields } from "@/components/comercial/VendaFormFields";
 
 
 
