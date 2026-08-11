@@ -24,7 +24,8 @@ import {
 import { COMPRA_STATUSES, type CompraStatus } from "@/lib/compras";
 import { DEMANDA_STATUSES } from "@/lib/demandas";
 import { cn } from "@/lib/utils";
-import { Check, X } from "lucide-react";
+import { Check, X, Download, FileIcon } from "lucide-react";
+import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 
 export const Route = createFileRoute("/meus-pedidos")({
   component: MeusPedidos,
