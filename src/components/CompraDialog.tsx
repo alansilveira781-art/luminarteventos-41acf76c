@@ -740,12 +740,31 @@ export function CompraDialog({
             </div>
           </TabsContent>
 
-          <TabsContent value="anexos" className="space-y-2 pt-4">
-            {compraId ? (
-              <Anexos compraId={compraId} userId={user?.id} />
-            ) : (
-              <PendingAnexos files={pendingFiles} onChange={setPendingFiles} />
-            )}
+          <TabsContent value="anexos" className="space-y-6 pt-4">
+            <div className="space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Anexos
+              </div>
+              {compraId ? (
+                <Anexos compraId={compraId} userId={user?.id} tipo="anexo" />
+              ) : (
+                <PendingAnexos files={pendingFiles} onChange={setPendingFiles} />
+              )}
+            </div>
+            <div className="space-y-2 border-t border-border pt-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Comprovantes
+              </div>
+              {compraId ? (
+                <Anexos compraId={compraId} userId={user?.id} tipo="comprovante" />
+              ) : (
+                <PendingAnexos
+                  files={pendingComprovantes}
+                  onChange={setPendingComprovantes}
+                  label="Clique para anexar comprovantes"
+                />
+              )}
+            </div>
           </TabsContent>
 
         </Tabs>
