@@ -234,6 +234,16 @@ export const Route = createFileRoute("/api/public/solicitar")({
             .maybeSingle();
           solicitanteId = (perfil as any)?.id ?? null;
         }
+        if (!solicitanteId && d.solicitante_user_id) {
+          const { data: perfilId } = await (supabaseAdmin as any)
+            .from("profiles")
+            .select("id")
+            .eq("id", d.solicitante_user_id)
+            .maybeSingle();
+          solicitanteId = (perfilId as any)?.id ?? null;
+        }
+        const vinculado = !!solicitanteId;
+
 
         if (d.tipo === "compra") {
           const somaItens = d.itens!.reduce(
