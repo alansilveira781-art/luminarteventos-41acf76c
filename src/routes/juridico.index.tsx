@@ -100,6 +100,8 @@ type Contrato = {
   observacoes: string | null;
   proposta_numero: number | null;
   proposta_ref: string | null;
+  proposta_numero_manual?: string | null;
+  evento_local?: string | null;
   modelo_id: string | null;
   corpo_html: string | null;
   categoria?: string | null;
