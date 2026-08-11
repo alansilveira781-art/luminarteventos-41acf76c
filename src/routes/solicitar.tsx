@@ -31,7 +31,7 @@ type ItemRow = {
   unidade: string;
   valor_unitario: string;
   evento_projeto: string;
-  evento_livre: boolean;
+  
 };
 
 type FormState = {
@@ -62,7 +62,6 @@ const emptyItem = (): ItemRow => ({
   unidade: "un",
   valor_unitario: "",
   evento_projeto: "",
-  evento_livre: false,
 });
 
 function hojeISO() {
@@ -181,8 +180,13 @@ function SolicitarPage() {
 
   function itemInvalido(it: ItemRow): boolean {
     if (itemVazio(it)) return false;
-    return it.descricao.trim().length === 0 || !(Number(it.quantidade) > 0);
+    return (
+      it.descricao.trim().length === 0
+      || !(Number(it.quantidade) > 0)
+      || (it.evento_projeto ?? "").trim().length === 0
+    );
   }
+
 
   function itensPreenchidos(): ItemRow[] {
     return form.itens.filter((it) => !itemVazio(it));
@@ -214,7 +218,7 @@ function SolicitarPage() {
         const preenchidos = itensPreenchidos();
         if (preenchidos.length === 0) return "Adicione ao menos um item com descrição.";
         if (preenchidos.some((it) => itemInvalido(it)))
-          return "Preencha a descrição e a quantidade de todos os itens (ou remova as linhas em branco).";
+          return "Preencha a descrição, a quantidade e o evento/projeto de todos os itens (ou remova as linhas em branco).";
         return null;
       }
       if (form.tipo === "demanda" && !(Number(form.valor_total) > 0))
@@ -269,7 +273,7 @@ function SolicitarPage() {
       const preenchidos = itensPreenchidos();
       if (preenchidos.length === 0 || preenchidos.some((it) => itemInvalido(it))) {
         setShowItemErrors(true);
-        toast.error("Preencha a descrição e a quantidade de todos os itens (ou remova as linhas em branco).");
+        toast.error("Preencha a descrição, a quantidade e o evento/projeto de todos os itens (ou remova as linhas em branco).");
         return;
       }
     }
@@ -687,42 +691,15 @@ function SolicitarPage() {
                               />
                             </div>
                             <div className="space-y-2 pt-1">
-                              <div className="flex items-center justify-between gap-2">
-                                <Label className="text-[11px] font-medium text-muted-foreground">
-                                  Evento / Projeto
-                                </Label>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[11px] text-muted-foreground">É para um evento?</span>
-                                  <Select
-                                    value={it.evento_livre ? "nao" : "sim"}
-                                    onValueChange={(v) =>
-                                      updateItem(idx, { evento_livre: v === "nao", evento_projeto: "" })
-                                    }
-                                  >
-                                    <SelectTrigger className="h-7 w-20 text-xs">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="sim">Sim</SelectItem>
-                                      <SelectItem value="nao">Não</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                              </div>
-                              {it.evento_livre ? (
-                                <Input
-                                  value={it.evento_projeto}
-                                  maxLength={200}
-                                  onChange={(e) => updateItem(idx, { evento_projeto: e.target.value })}
-                                  placeholder="Ex.: Manutenção do galpão, uso interno…"
-                                />
-                              ) : (
-                                <EventoPublicCombobox
-                                  value={it.evento_projeto || null}
-                                  onChange={(v) => updateItem(idx, { evento_projeto: v ?? "" })}
-                                />
-                              )}
+                              <Label className="text-[11px] font-medium text-muted-foreground">
+                                Evento / Projeto <span className="text-destructive">*</span>
+                              </Label>
+                              <EventoPublicCombobox
+                                value={it.evento_projeto || null}
+                                onChange={(v) => updateItem(idx, { evento_projeto: v ?? "" })}
+                              />
                             </div>
+
                           </div>
                           <Button
                             type="button"
