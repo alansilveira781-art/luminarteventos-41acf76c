@@ -21,7 +21,9 @@ const baseSchema = z.object({
   titulo: z.string().trim().min(1).max(200),
   subtipo: z.string().trim().max(100).optional().nullable(),
   solicitante_nome: z.string().trim().min(1).max(120),
-  solicitante_email: z.string().trim().email().max(160).optional().or(z.literal("")),
+  solicitante_email: z.string().trim().email().max(160),
+  solicitante_user_id: z.string().uuid().optional().nullable(),
+
   solicitante_telefone: z.string().trim().max(40).optional().or(z.literal("")),
   fornecedor: z.string().trim().max(160).optional().or(z.literal("")),
   descricao: z.string().trim().max(4000).optional().or(z.literal("")),
