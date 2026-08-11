@@ -489,7 +489,7 @@ function SolicitarContratoPublico() {
               <Input value={form.titulo} onChange={(e) => set("titulo", e.target.value)} placeholder="Ex.: Contrato de cenografia — Evento X" />
               <Erro msg={erros.titulo} />
             </div>
-            <div className="md:col-span-2">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label>Nome do evento *</Label>
               <Input
                 value={form.evento_nome}
