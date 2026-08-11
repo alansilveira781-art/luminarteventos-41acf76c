@@ -1581,6 +1581,32 @@ function FechamentoView({
         </div>
       </Card>
 
+      {podeFechar && (
+        <Card className="p-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="text-xs text-muted-foreground">
+            {resumoSelecao.pessoas === 0 ? (
+              "Selecione os diaristas para fechar as diárias em aberto do período."
+            ) : (
+              <>
+                <span className="font-medium text-foreground">{resumoSelecao.pessoas}</span> pessoa(s) ·{" "}
+                <span className="font-medium text-foreground">{resumoSelecao.dias}</span> dia(s) ·{" "}
+                {formatHoras(resumoSelecao.minutos)} ·{" "}
+                <span className="font-semibold text-foreground">{fmtBRL(resumoSelecao.valor)}</span>
+              </>
+            )}
+          </div>
+          <Button
+            disabled={idsParaFechar.length === 0}
+            onClick={() => {
+              setDataPagamento(format(new Date(), "yyyy-MM-dd"));
+              setFecharOpen(true);
+            }}
+          >
+            Fechar e marcar como pago
+          </Button>
+        </Card>
+      )}
+
       {/* Tabela consolidada */}
       <Card className="p-4">
         {isLoading ? (
@@ -1596,9 +1622,23 @@ function FechamentoView({
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left border-b border-border text-muted-foreground text-xs uppercase tracking-wide">
+                  {podeFechar && (
+                    <th className="py-2 pr-2 w-8">
+                      <Checkbox
+                        checked={
+                          abertosPorDiarista.size > 0 &&
+                          [...abertosPorDiarista.keys()].every((id) => selecionados.has(id))
+                        }
+                        onCheckedChange={(v) =>
+                          setSelecionados(v ? new Set(abertosPorDiarista.keys()) : new Set())
+                        }
+                      />
+                    </th>
+                  )}
                   <th className="py-2 pr-3 w-8" />
                   <th className="py-2 px-3">Diarista</th>
                   <th className="py-2 px-3">Chave Pix</th>
+                  <th className="py-2 px-3">Status</th>
                   <th className="py-2 px-3 text-right">Dias</th>
                   <th className="py-2 px-3 text-right">Total de horas</th>
                   <th className="py-2 pl-3 text-right">Total a pagar</th>
