@@ -58,6 +58,7 @@ const enderecoVazio: Endereco = {
 const vazio = {
   tipo: "contrato" as "contrato" | "aditivo",
   titulo: "",
+  evento_nome: "",
   cliente_nome: "",
   cliente_documento: "",
   cliente_email: "",
@@ -228,6 +229,7 @@ function SolicitarContratoPublico() {
     };
 
     req("titulo", form.titulo);
+    req("evento_nome", form.evento_nome);
     req("cliente_nome", form.cliente_nome);
     req("cliente_documento", form.cliente_documento);
     req("cliente_email", form.cliente_email);
@@ -318,6 +320,7 @@ function SolicitarContratoPublico() {
     const payload = {
       tipo: form.tipo,
       titulo: form.titulo.trim(),
+      evento_nome: form.evento_nome.trim(),
       cliente_tipo: tipoPessoa,
       cliente_nome: form.cliente_nome.trim(),
       cliente_documento: form.cliente_documento.trim(),
@@ -485,6 +488,15 @@ function SolicitarContratoPublico() {
               <Label>Objeto / título *</Label>
               <Input value={form.titulo} onChange={(e) => set("titulo", e.target.value)} placeholder="Ex.: Contrato de cenografia — Evento X" />
               <Erro msg={erros.titulo} />
+            </div>
+            <div className="md:col-span-2">
+              <Label>Nome do evento *</Label>
+              <Input
+                value={form.evento_nome}
+                onChange={(e) => set("evento_nome", e.target.value)}
+                placeholder="Ex.: ABERTURA COCAL 2026"
+              />
+              <Erro msg={erros.evento_nome} />
             </div>
             <div className="space-y-1.5">
               <Label>Valor total (R$) *</Label>

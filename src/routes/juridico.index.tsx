@@ -84,6 +84,7 @@ type Contrato = {
   ordem: number;
   data_fechamento: string | null;
   data_assinatura: string | null;
+  evento_nome?: string | null;
   evento_inicio?: string | null;
   evento_fim?: string | null;
   evento_hora_inicio?: string | null;
@@ -590,6 +591,7 @@ function ContratoDetalhesDialog({
     setSaving(true);
     const payload: any = {
       titulo: form.titulo,
+      evento_nome: form.evento_nome || null,
       empresa: form.empresa || null,
       cliente_nome: form.cliente_nome || null,
       cliente_documento: form.cliente_documento || null,
@@ -945,6 +947,10 @@ function ContratoDetalhesDialog({
               </div>
               <div className="col-span-2 grid grid-cols-2 gap-3 rounded-md border p-3">
                 <div className="col-span-2 text-sm font-semibold">Período do evento</div>
+                <div className="col-span-2">
+                  <Label>Nome do evento</Label>
+                  <Input value={form.evento_nome ?? ""} onChange={(e) => setForm({ ...form, evento_nome: e.target.value })} placeholder="Ex.: ABERTURA COCAL 2026" />
+                </div>
                 <div>
                   <Label>Início do evento</Label>
                   <Input type="date" value={form.evento_inicio ?? ""} onChange={(e) => setForm({ ...form, evento_inicio: e.target.value })} />
