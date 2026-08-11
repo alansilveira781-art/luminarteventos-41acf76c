@@ -181,8 +181,13 @@ function SolicitarPage() {
 
   function itemInvalido(it: ItemRow): boolean {
     if (itemVazio(it)) return false;
-    return it.descricao.trim().length === 0 || !(Number(it.quantidade) > 0);
+    return (
+      it.descricao.trim().length === 0
+      || !(Number(it.quantidade) > 0)
+      || (it.evento_projeto ?? "").trim().length === 0
+    );
   }
+
 
   function itensPreenchidos(): ItemRow[] {
     return form.itens.filter((it) => !itemVazio(it));
