@@ -102,6 +102,7 @@ export function CompraDialog({
   const [pagamentos, setPagamentos] = useState<PagamentoLinha[]>([]);
 
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [pendingComprovantes, setPendingComprovantes] = useState<File[]>([]);
   const [statusInicial, setStatusInicial] = useState<CompraStatus>(defaultStatus);
   const isAdmin = isGlobalAdmin || modulos.some((m) => m.slug === "compras" && m.is_admin);
   // canEdit é calculado abaixo, após `responsavelDoStatus` estar disponível.
@@ -327,9 +328,13 @@ export function CompraDialog({
         if (pagErr) throw pagErr;
       }
 
-      // Upload de anexos pendentes (anexados antes de salvar)
-      if (id && pendingFiles.length > 0) {
-        for (const file of pendingFiles) {
+      // Upload de anexos/comprovantes pendentes (anexados antes de salvar)
+      const pendentes: Array<{ file: File; tipo: string }> = [
+        ...pendingFiles.map((file) => ({ file, tipo: "anexo" })),
+        ...pendingComprovantes.map((file) => ({ file, tipo: "comprovante" })),
+      ];
+      if (id && pendentes.length > 0) {
+        for (const { file, tipo } of pendentes) {
           const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
           const path = `${id}/${Date.now()}_${safeName}`;
           const { error: upErr } = await sb.storage.from("compra-anexos").upload(path, file, {
@@ -342,6 +347,7 @@ export function CompraDialog({
             path,
             mime_type: file.type || null,
             tamanho: file.size,
+            tipo,
             uploaded_by: user?.id ?? null,
           });
           if (insErr) throw insErr;
@@ -734,12 +740,31 @@ export function CompraDialog({
             </div>
           </TabsContent>
 
-          <TabsContent value="anexos" className="space-y-2 pt-4">
-            {compraId ? (
-              <Anexos compraId={compraId} userId={user?.id} />
-            ) : (
-              <PendingAnexos files={pendingFiles} onChange={setPendingFiles} />
-            )}
+          <TabsContent value="anexos" className="space-y-6 pt-4">
+            <div className="space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Anexos
+              </div>
+              {compraId ? (
+                <Anexos compraId={compraId} userId={user?.id} tipo="anexo" />
+              ) : (
+                <PendingAnexos files={pendingFiles} onChange={setPendingFiles} />
+              )}
+            </div>
+            <div className="space-y-2 border-t border-border pt-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Comprovantes
+              </div>
+              {compraId ? (
+                <Anexos compraId={compraId} userId={user?.id} tipo="comprovante" />
+              ) : (
+                <PendingAnexos
+                  files={pendingComprovantes}
+                  onChange={setPendingComprovantes}
+                  label="Clique para anexar comprovantes"
+                />
+              )}
+            </div>
           </TabsContent>
 
         </Tabs>
@@ -995,18 +1020,28 @@ function Historico({ compraId }: { compraId: string }) {
   );
 }
 
-function Anexos({ compraId, userId }: { compraId: string; userId?: string }) {
+function Anexos({
+  compraId,
+  userId,
+  tipo = "anexo",
+}: {
+  compraId: string;
+  userId?: string;
+  tipo?: "anexo" | "comprovante";
+}) {
   const qc = useQueryClient();
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<any | null>(null);
+  const isComprovante = tipo === "comprovante";
 
   const { data: anexos = [] } = useQuery({
-    queryKey: ["compra-anexos", compraId],
+    queryKey: ["compra-anexos", compraId, tipo],
     queryFn: async () => {
       const { data, error } = await sb
         .from("compra_anexos")
         .select("*")
         .eq("compra_id", compraId)
+        .eq("tipo", tipo)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as any[];
@@ -1030,11 +1065,12 @@ function Anexos({ compraId, userId }: { compraId: string; userId?: string }) {
           path,
           mime_type: file.type || null,
           tamanho: file.size,
+          tipo,
           uploaded_by: userId ?? null,
         });
         if (insErr) throw insErr;
       }
-      toast.success("Anexos enviados");
+      toast.success(isComprovante ? "Comprovantes enviados" : "Anexos enviados");
       qc.invalidateQueries({ queryKey: ["compra-anexos", compraId] });
     } catch (e: any) {
       toast.error(e.message ?? "Erro no upload");
@@ -1073,7 +1109,11 @@ function Anexos({ compraId, userId }: { compraId: string; userId?: string }) {
       <label className="flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-md py-6 cursor-pointer hover:bg-muted/40 transition">
         <Upload className="h-4 w-4 text-muted-foreground" />
         <span className="text-sm text-muted-foreground">
-          {uploading ? "Enviando…" : "Clique para anexar arquivos (PDF, Excel, imagens, etc.)"}
+          {uploading
+            ? "Enviando…"
+            : isComprovante
+              ? "Clique para anexar comprovantes (PDF, imagens, etc.)"
+              : "Clique para anexar arquivos (PDF, Excel, imagens, etc.)"}
         </span>
         <input
           type="file"
@@ -1088,7 +1128,9 @@ function Anexos({ compraId, userId }: { compraId: string; userId?: string }) {
       </label>
 
       {anexos.length === 0 ? (
-        <p className="text-xs text-muted-foreground italic">Nenhum anexo.</p>
+        <p className="text-xs text-muted-foreground italic">
+          {isComprovante ? "Nenhum comprovante." : "Nenhum anexo."}
+        </p>
       ) : (
         <div className="space-y-1.5">
           {anexos.map((a: any) => (
@@ -1124,7 +1166,15 @@ function Anexos({ compraId, userId }: { compraId: string; userId?: string }) {
   );
 }
 
-function PendingAnexos({ files, onChange }: { files: File[]; onChange: (f: File[]) => void }) {
+function PendingAnexos({
+  files,
+  onChange,
+  label = "Clique para anexar arquivos (PDF, Excel, imagens, etc.)",
+}: {
+  files: File[];
+  onChange: (f: File[]) => void;
+  label?: string;
+}) {
   function fmtSize(n: number) {
     if (n < 1024) return `${n} B`;
     if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
@@ -1137,9 +1187,7 @@ function PendingAnexos({ files, onChange }: { files: File[]; onChange: (f: File[
       </p>
       <label className="flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-md py-6 cursor-pointer hover:bg-muted/40 transition">
         <Upload className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">
-          Clique para anexar arquivos (PDF, Excel, imagens, etc.)
-        </span>
+        <span className="text-sm text-muted-foreground">{label}</span>
         <input
           type="file"
           multiple

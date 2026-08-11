@@ -24,7 +24,8 @@ import {
 import { COMPRA_STATUSES, type CompraStatus } from "@/lib/compras";
 import { DEMANDA_STATUSES } from "@/lib/demandas";
 import { cn } from "@/lib/utils";
-import { Check, X } from "lucide-react";
+import { Check, X, Download, FileIcon } from "lucide-react";
+import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 
 export const Route = createFileRoute("/meus-pedidos")({
   component: MeusPedidos,
@@ -393,7 +394,29 @@ function PedidoDetalheDialog({
     },
   });
 
+  const { data: comprovantes = [] } = useQuery({
+    enabled: !!pedido,
+    queryKey: ["meus-pedidos-comprovantes", pedido?.tipo, pedido?.id],
+    queryFn: async () => {
+      if (!pedido) return [];
+      const table = pedido.tipo === "compra" ? "compra_anexos" : "demanda_anexos";
+      const fk = pedido.tipo === "compra" ? "compra_id" : "demanda_id";
+      const { data, error } = await sb
+        .from(table)
+        .select("id,nome,path,mime_type,tamanho,created_at")
+        .eq(fk, pedido.id)
+        .eq("tipo", "comprovante")
+        .order("created_at", { ascending: false });
+      if (error) return [];
+      return data ?? [];
+    },
+  });
+
+  const [preview, setPreview] = useState<any | null>(null);
+
   if (!pedido) return null;
+
+  const bucket = pedido.tipo === "compra" ? "compra-anexos" : "demanda-anexos";
 
   const total = itens.reduce(
     (s: number, it: any) => s + (Number(it.quantidade) || 0) * (Number(it.valor_unitario) || 0),
@@ -482,7 +505,52 @@ function PedidoDetalheDialog({
               </div>
             )
           )}
+
+          <div>
+            <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+              Comprovantes
+            </div>
+            {comprovantes.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">Nenhum comprovante.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {comprovantes.map((a: any) => (
+                  <div
+                    key={a.id}
+                    className="flex items-center gap-2 rounded-md border border-border p-2 text-sm"
+                  >
+                    <FileIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <button
+                      type="button"
+                      className="flex-1 min-w-0 text-left hover:underline"
+                      onClick={() => setPreview(a)}
+                    >
+                      <div className="truncate font-medium">{a.nome}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {fmtDateTime(a.created_at)}
+                      </div>
+                    </button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => baixarAnexo(bucket, a.path, a.nome)}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
+
+        <AnexoViewer
+          bucket={bucket}
+          anexo={preview}
+          open={!!preview}
+          onOpenChange={(o) => !o && setPreview(null)}
+        />
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
