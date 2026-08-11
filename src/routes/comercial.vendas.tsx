@@ -40,6 +40,10 @@ import { useSort, SortableTh } from "@/components/SortableTh";
 import { useVendedores, useCerimoniais, useDecoradores, useClassificacoes } from "@/lib/comercial/cadastros";
 import { CadastroCombobox } from "@/components/comercial/CadastroCombobox";
 import { calcularDerivados, matchCadastro } from "@/lib/comercial/comissao";
+import {
+  buildVendaDbPayload, emptyVendaForm, todayIso, type VendaFormState,
+} from "@/lib/comercial/venda-form";
+import { VendaFormFields } from "@/components/comercial/VendaFormFields";
 
 
 
@@ -76,33 +80,6 @@ function formatDate(iso: string | null) {
   return `${d}/${m}/${y}`;
 }
 
-function mesNomeFrom(iso: string | null): string | null {
-  if (!iso) return null;
-  const m = Number(iso.slice(5, 7));
-  return m ? (MESES_PT[m - 1] ?? null) : null;
-}
-function anoFrom(iso: string | null): number | null {
-  if (!iso) return null;
-  const y = Number(iso.slice(0, 4));
-  return Number.isFinite(y) ? y : null;
-}
-function trimestreFrom(iso: string | null): 1 | 2 | 3 | 4 | null {
-  if (!iso) return null;
-  const m = Number(iso.slice(5, 7));
-  if (!m) return null;
-  if (m <= 3) return 1;
-  if (m <= 6) return 2;
-  if (m <= 9) return 3;
-  return 4;
-}
-
-function todayIso(): string {
-  const d = new Date();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${m}-${day}`;
-}
-
 const PAGE_SIZE = 50;
 
 function unique<T>(arr: (T | null | undefined)[]): T[] {
@@ -111,42 +88,10 @@ function unique<T>(arr: (T | null | undefined)[]): T[] {
   return [...s];
 }
 
-type FormState = {
-  data_registro: string;
-  data_evento: string;
-  tipo: string;
-  nome_evento: string;
-  local: string;
-  cidade: string;
-  estado: string;
-  classificacao: string;
-  consultor: string;
-  cerimonial: string;
-  decorador: string;
-  empresa: string;
-  valor_proposta: number;
-  desconto: number;
-};
+type FormState = VendaFormState;
 
-function emptyForm(): FormState {
-  return {
-    data_registro: todayIso(),
-    data_evento: "",
-
-    tipo: "Venda",
-    nome_evento: "",
-    local: "",
-    cidade: "",
-    estado: "",
-    classificacao: "",
-    consultor: "",
-    cerimonial: "",
-    decorador: "",
-    empresa: "",
-    valor_proposta: 0,
-    desconto: 0,
-  };
-}
+const emptyForm = emptyVendaForm;
+const buildDbPayload = buildVendaDbPayload;
 
 function formFromRow(r: VendaRow): FormState {
   const de = r.dataEvento ?? "";
@@ -163,43 +108,11 @@ function formFromRow(r: VendaRow): FormState {
     cerimonial: r.cerimonial ?? "",
     decorador: r.decorador ?? "",
     empresa: r.empresa ?? "",
-    valor_proposta: r.valorProposta || 0,
-    desconto: r.desconto || 0,
+    valor_proposta: r.valorProposta ?? 0,
+    desconto: r.desconto ?? 0,
   };
 }
 
-function buildDbPayload(
-  f: FormState,
-  derived: { valor_final: number; valor_bv: number; valor_comissao: number },
-) {
-  const data = f.data_registro || null;
-  const dataEvento = f.data_evento || null;
-  const baseEvento = dataEvento ?? data;
-  return {
-    data_registro: data,
-    data_evento: dataEvento,
-    tipo: f.tipo || null,
-    nome_evento: f.nome_evento || null,
-    local: f.local || null,
-    cidade: f.cidade || null,
-    estado: f.estado || null,
-    classificacao: f.classificacao || null,
-    consultor: f.consultor || null,
-    cerimonial: f.cerimonial || null,
-    decorador: f.decorador || null,
-    empresa: f.empresa || null,
-    valor_proposta: f.valor_proposta || 0,
-    desconto: f.desconto || 0,
-    valor_final: derived.valor_final,
-    valor_bv: derived.valor_bv,
-    valor_comissao: derived.valor_comissao,
-    ano: anoFrom(data),
-    mes: mesNomeFrom(data),
-    mes_evento: mesNomeFrom(baseEvento),
-    ano_evento: anoFrom(baseEvento),
-    trimestre_evento: trimestreFrom(baseEvento),
-  };
-}
 
 
 function VendasPage() {
@@ -828,115 +741,7 @@ function VendasPage() {
             className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
             onSubmit={(e) => { e.preventDefault(); saveMut.mutate(); }}
           >
-            <Field label="Data do Evento">
-              <Input type="date" value={form.data_evento}
-                onChange={(e) => setForm({ ...form, data_evento: e.target.value })} required />
-            </Field>
-            <Field label="Data de Registro">
-              <Input type="date" value={form.data_registro}
-                onChange={(e) => setForm({ ...form, data_registro: e.target.value })} required />
-            </Field>
-            <Field label="Tipo">
-              <Select
-                value={form.tipo || "Venda"}
-                onValueChange={(v) => setForm({ ...form, tipo: v })}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Venda">Venda</SelectItem>
-                  <SelectItem value="Extra">Extra</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Empresa">
-              <SelectFree value={form.empresa} options={EMPRESAS}
-                onChange={(v) => setForm({ ...form, empresa: v })} />
-            </Field>
-            <Field label="Nome do Evento" className="sm:col-span-2 lg:col-span-3">
-              <Input value={form.nome_evento}
-                onChange={(e) => setForm({ ...form, nome_evento: e.target.value })} required />
-            </Field>
-            <Field label="Local">
-              <Input value={form.local} onChange={(e) => setForm({ ...form, local: e.target.value })} />
-            </Field>
-            <Field label="Cidade">
-              <Input value={form.cidade} onChange={(e) => setForm({ ...form, cidade: e.target.value })} />
-            </Field>
-            <Field label="Estado">
-              <Input value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })} />
-            </Field>
-            <Field label="Classificação">
-              <CadastroCombobox
-                table="comercial_classificacoes"
-                queryKey="comercial-classificacoes"
-                value={form.classificacao}
-                onChange={(v) => setForm({ ...form, classificacao: v })}
-              />
-            </Field>
-            <Field label="Consultor(a)">
-              <CadastroCombobox
-                table="comercial_vendedores"
-                queryKey="comercial-vendedores"
-                value={form.consultor}
-                onChange={(v) => setForm({ ...form, consultor: v })}
-                extraFields={[{ key: "percentual_comissao", label: "% Comissão", type: "number", default: 0 }]}
-              />
-              {consultorSemCadastro && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                  Consultor(a) sem cadastro — comissão ficará zerada. Cadastre o percentual em Configurações.
-                </p>
-              )}
-            </Field>
-
-            <Field label="Cerimonial">
-              <CadastroCombobox
-                table="comercial_cerimoniais"
-                queryKey="comercial-cerimoniais"
-                value={form.cerimonial}
-                onChange={(v) => setForm({ ...form, cerimonial: v })}
-                extraFields={[{ key: "percentual_bv", label: "% BV", type: "number", default: 0 }]}
-              />
-            </Field>
-            <Field label="Decorador(a)/Agência">
-              <CadastroCombobox
-                table="comercial_decoradores"
-                queryKey="comercial-decoradores"
-                value={form.decorador}
-                onChange={(v) => setForm({ ...form, decorador: v })}
-              />
-            </Field>
-            <Field label="Valor da Proposta">
-              <MoneyInput value={form.valor_proposta}
-                onChange={(n) => setForm({ ...form, valor_proposta: n })} />
-            </Field>
-            <Field label="Desconto">
-              <MoneyInput value={form.desconto}
-                onChange={(n) => setForm({ ...form, desconto: n })} />
-            </Field>
-            <Field label="Valor Final (calculado)">
-              <div className="h-9 px-3 flex items-center text-sm rounded-md border bg-muted/40 font-medium tabular-nums">
-                {brl(derived.valor_final)}
-              </div>
-            </Field>
-            <Field label="Valor BV (calculado)">
-              <div className="h-9 px-3 flex items-center text-sm rounded-md border bg-muted/40 tabular-nums">
-                {brl(derived.valor_bv)}
-              </div>
-            </Field>
-            <Field label="Valor Comissão (calculado)">
-              <div className="h-9 px-3 flex items-center text-sm rounded-md border bg-muted/40 tabular-nums">
-                {brl(derived.valor_comissao)}
-              </div>
-            </Field>
-            <div className="sm:col-span-2 lg:col-span-3 text-xs text-muted-foreground flex items-start gap-1">
-              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-              <span>
-                Valor Final = Proposta − Desconto. BV e Comissão usam os percentuais cadastrados no
-                consultor/cerimonial.
-                {consultorGatilho && " Este consultor tem comissão por gatilho (meta), por isso a comissão da venda fica zerada."}
-                {cadastrosCarregando && " Carregando cadastros de consultores/cerimoniais…"}
-              </span>
-            </div>
+            <VendaFormFields form={form} setForm={setForm} derived={derived} />
 
             <div className="sm:col-span-2 lg:col-span-3 flex justify-end gap-2 pt-2 border-t border-border">
               <Button type="button" variant="ghost" onClick={() => setFormOpen(false)}>Cancelar</Button>
@@ -959,49 +764,6 @@ function VendasPage() {
         title="Editar vendas em massa"
       />
     </div>
-  );
-}
-
-function Field({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
-  return (
-    <div className={`space-y-1 ${className}`}>
-      <Label className="text-[11px] uppercase">{label}</Label>
-      {children}
-    </div>
-  );
-}
-
-function SelectFree({
-  value, options, onChange,
-}: { value: string; options: string[]; onChange: (v: string) => void }) {
-  const [custom, setCustom] = useState(value !== "" && !options.includes(value));
-  useEffect(() => {
-    if (value !== "" && !options.includes(value)) setCustom(true);
-  }, [value, options]);
-  if (custom) {
-    return (
-      <div className="flex gap-1">
-        <Input value={value} onChange={(e) => onChange(e.target.value)} />
-        <Button type="button" variant="ghost" size="sm" onClick={() => { setCustom(false); onChange(""); }}>↺</Button>
-      </div>
-    );
-  }
-  return (
-    <Select
-      value={value || "__none__"}
-      onValueChange={(v) => {
-        if (v === "__other__") { setCustom(true); onChange(""); return; }
-        if (v === "__none__") { onChange(""); return; }
-        onChange(v);
-      }}
-    >
-      <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-      <SelectContent>
-        <SelectItem value="__none__">—</SelectItem>
-        {options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-        <SelectItem value="__other__">Outro...</SelectItem>
-      </SelectContent>
-    </Select>
   );
 }
 

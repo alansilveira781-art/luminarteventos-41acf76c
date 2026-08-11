@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { EMPRESAS } from "@/lib/empresas";
 import { DefinirCategoriaDialog, CATEGORIAS_CONTRATO } from "@/components/juridico/DefinirCategoriaDialog";
+import { ConcluirContratoWizard } from "@/components/juridico/ConcluirContratoWizard";
 import { EnderecoEditor } from "@/components/juridico/EnderecoEditor";
 import { PagamentoEditor } from "@/components/juridico/PagamentoEditor";
 import { toast } from "sonner";
@@ -122,6 +123,7 @@ function QuadroContratos() {
   const [novoOpen, setNovoOpen] = useState(false);
   const [defaultStatus, setDefaultStatus] = useState<Status>("entrada");
   const [criacaoCard, setCriacaoCard] = useState<Contrato | null>(null);
+  const [concluirCard, setConcluirCard] = useState<Contrato | null>(null);
 
 
   const load = async () => {
@@ -155,6 +157,7 @@ function QuadroContratos() {
     const card = rows.find((r) => r.id === id);
     if (!card || card.status === status) return;
     if (status === "criacao") { setCriacaoCard(card); return; }
+    if (status === "concluido") { setConcluirCard(card); return; }
     const patch: any = { status };
     if (status === "assinatura" && !card.data_assinatura) patch.data_assinatura = new Date().toISOString().slice(0, 10);
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -171,6 +174,14 @@ function QuadroContratos() {
     setCriacaoCard(null);
     await load();
   }
+
+  async function aplicarConclusao(patch: Record<string, any>) {
+    const id = concluirCard!.id;
+    const { error } = await sb.from("juridico_contratos").update(patch).eq("id", id);
+    if (error) { toast.error(error.message); throw error; }
+    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  }
+
 
 
   async function onDelete(id: string) {
@@ -235,6 +246,14 @@ function QuadroContratos() {
         open={!!criacaoCard}
         onOpenChange={(v) => !v && setCriacaoCard(null)}
         onConfirm={aplicarCriacao}
+      />
+
+      <ConcluirContratoWizard
+        contrato={concluirCard}
+        open={!!concluirCard}
+        onOpenChange={(v) => !v && setConcluirCard(null)}
+        onConcluir={aplicarConclusao}
+        onFinalizado={() => { setConcluirCard(null); load(); }}
       />
 
 
