@@ -114,6 +114,7 @@ export async function gerarRelatorioDiaristasPdf(params: RelatorioDiaristasParam
     doc.setFontSize(8.5);
     doc.setTextColor(90);
     const info = [
+      g.statusLabel ? `Situação: ${g.statusLabel}` : null,
       g.chavePix ? `Pix: ${g.chavePix}` : null,
       `${g.dias} ${g.dias === 1 ? "dia" : "dias"}`,
       `${g.horasLabel} trabalhadas`,
