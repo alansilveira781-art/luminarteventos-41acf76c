@@ -1762,8 +1762,10 @@ function FechamentoView({
               </tbody>
               <tfoot>
                 <tr className="border-t border-border font-semibold">
+                  {podeFechar && <td />}
                   <td />
                   <td className="py-2 px-3">TOTAL GERAL</td>
+                  <td />
                   <td />
                   <td className="py-2 px-3 text-right tabular-nums">{totalDias}</td>
                   <td className="py-2 px-3 text-right tabular-nums">{formatHoras(totalMinutos)}</td>
@@ -1774,6 +1776,40 @@ function FechamentoView({
           </div>
         )}
       </Card>
+
+      <Dialog open={fecharOpen} onOpenChange={setFecharOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Fechar diárias</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-md border border-border p-3 text-sm space-y-1">
+              <div>Período: <b>{fmtDate(de)} a {fmtDate(ate)}</b></div>
+              <div>Pessoas: <b>{resumoSelecao.pessoas}</b> · Dias: <b>{resumoSelecao.dias}</b></div>
+              <div>Horas: <b>{formatHoras(resumoSelecao.minutos)}</b></div>
+              <div>Total a pagar: <b>{fmtBRL(resumoSelecao.valor)}</b></div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Data do pagamento</Label>
+              <Input type="date" value={dataPagamento} onChange={(e) => setDataPagamento(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Observação</Label>
+              <Input value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder="Opcional" />
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              As diárias incluídas serão marcadas como pagas e não poderão mais ser editadas pelos lançadores.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFecharOpen(false)}>Cancelar</Button>
+            <Button disabled={fechar.isPending} onClick={() => fechar.mutate()}>
+              {fechar.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Confirmar fechamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
