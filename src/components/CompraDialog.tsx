@@ -21,7 +21,7 @@ import { EMPRESAS } from "@/lib/empresas";
 import { useAuth } from "@/contexts/AuthContext";
 import { notifyResponsiblesForStatus, notifyMentions } from "@/lib/notify";
 import { CopiarLinkButton } from "@/components/CopiarLinkButton";
-import { listEventos } from "@/lib/sheets.functions";
+
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { PagamentosGrid } from "@/components/PagamentosGrid";
 import { PrazoDot } from "@/components/PrazoDot";
