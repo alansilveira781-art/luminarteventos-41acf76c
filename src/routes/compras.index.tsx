@@ -725,7 +725,7 @@ function MigrarCompraDialog({
       // 1) Buscar itens da compra
       const { data: itens, error: itensErr } = await sb
         .from("compra_itens")
-        .select("descricao,quantidade,unidade,valor_unitario")
+        .select("descricao,quantidade,unidade,valor_unitario,evento_projeto")
         .eq("compra_id", compra.id);
       if (itensErr) throw itensErr;
 
