@@ -3727,6 +3727,7 @@ export type Database = {
           evento_hora_inicio: string | null
           evento_id: string | null
           evento_inicio: string | null
+          evento_local: string | null
           evento_nome: string | null
           forma_pagamento: string | null
           id: string
@@ -3742,6 +3743,7 @@ export type Database = {
           pagamento_modo: string | null
           pagamento_parcelas: Json | null
           proposta_numero: number | null
+          proposta_numero_manual: string | null
           proposta_ref: string | null
           resp_legal_bairro: string | null
           resp_legal_cep: string | null
@@ -3805,6 +3807,7 @@ export type Database = {
           evento_hora_inicio?: string | null
           evento_id?: string | null
           evento_inicio?: string | null
+          evento_local?: string | null
           evento_nome?: string | null
           forma_pagamento?: string | null
           id?: string
@@ -3820,6 +3823,7 @@ export type Database = {
           pagamento_modo?: string | null
           pagamento_parcelas?: Json | null
           proposta_numero?: number | null
+          proposta_numero_manual?: string | null
           proposta_ref?: string | null
           resp_legal_bairro?: string | null
           resp_legal_cep?: string | null
@@ -3883,6 +3887,7 @@ export type Database = {
           evento_hora_inicio?: string | null
           evento_id?: string | null
           evento_inicio?: string | null
+          evento_local?: string | null
           evento_nome?: string | null
           forma_pagamento?: string | null
           id?: string
@@ -3898,6 +3903,7 @@ export type Database = {
           pagamento_modo?: string | null
           pagamento_parcelas?: Json | null
           proposta_numero?: number | null
+          proposta_numero_manual?: string | null
           proposta_ref?: string | null
           resp_legal_bairro?: string | null
           resp_legal_cep?: string | null
