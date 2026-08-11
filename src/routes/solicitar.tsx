@@ -31,7 +31,7 @@ type ItemRow = {
   unidade: string;
   valor_unitario: string;
   evento_projeto: string;
-  evento_livre: boolean;
+  
 };
 
 type FormState = {
