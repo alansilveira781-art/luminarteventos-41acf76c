@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { EMPRESAS } from "@/lib/empresas";
 import { DefinirCategoriaDialog, CATEGORIAS_CONTRATO } from "@/components/juridico/DefinirCategoriaDialog";
+import { ConcluirContratoWizard } from "@/components/juridico/ConcluirContratoWizard";
 import { EnderecoEditor } from "@/components/juridico/EnderecoEditor";
 import { PagamentoEditor } from "@/components/juridico/PagamentoEditor";
 import { toast } from "sonner";
@@ -122,6 +123,7 @@ function QuadroContratos() {
   const [novoOpen, setNovoOpen] = useState(false);
   const [defaultStatus, setDefaultStatus] = useState<Status>("entrada");
   const [criacaoCard, setCriacaoCard] = useState<Contrato | null>(null);
+  const [concluirCard, setConcluirCard] = useState<Contrato | null>(null);
 
 
   const load = async () => {
