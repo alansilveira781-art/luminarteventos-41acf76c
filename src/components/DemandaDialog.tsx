@@ -99,6 +99,7 @@ export function DemandaDialog({
   const { user } = useAuth();
   const [form, setForm] = useState<Demanda>({ status: defaultStatus });
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [pendingComprovantes, setPendingComprovantes] = useState<File[]>([]);
   const [itens, setItens] = useState<DemandaItem[]>([]);
   const [pagamentos, setPagamentos] = useState<PagamentoLinha[]>([]);
 
