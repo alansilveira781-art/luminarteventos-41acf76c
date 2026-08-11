@@ -3719,6 +3719,7 @@ export type Database = {
           evento_fim: string | null
           evento_hora_fim: string | null
           evento_hora_inicio: string | null
+          evento_id: string | null
           evento_inicio: string | null
           forma_pagamento: string | null
           id: string
@@ -3766,6 +3767,7 @@ export type Database = {
           updated_at: string
           valor: number | null
           variaveis_valores: Json | null
+          venda_id: string | null
         }
         Insert: {
           categoria?: string | null
@@ -3794,6 +3796,7 @@ export type Database = {
           evento_fim?: string | null
           evento_hora_fim?: string | null
           evento_hora_inicio?: string | null
+          evento_id?: string | null
           evento_inicio?: string | null
           forma_pagamento?: string | null
           id?: string
@@ -3841,6 +3844,7 @@ export type Database = {
           updated_at?: string
           valor?: number | null
           variaveis_valores?: Json | null
+          venda_id?: string | null
         }
         Update: {
           categoria?: string | null
@@ -3869,6 +3873,7 @@ export type Database = {
           evento_fim?: string | null
           evento_hora_fim?: string | null
           evento_hora_inicio?: string | null
+          evento_id?: string | null
           evento_inicio?: string | null
           forma_pagamento?: string | null
           id?: string
@@ -3916,13 +3921,28 @@ export type Database = {
           updated_at?: string
           valor?: number | null
           variaveis_valores?: Json | null
+          venda_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "juridico_contratos_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "juridico_contratos_modelo_id_fkey"
             columns: ["modelo_id"]
             isOneToOne: false
             referencedRelation: "juridico_modelos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "juridico_contratos_venda_id_fkey"
+            columns: ["venda_id"]
+            isOneToOne: false
+            referencedRelation: "comercial_vendas"
             referencedColumns: ["id"]
           },
         ]
