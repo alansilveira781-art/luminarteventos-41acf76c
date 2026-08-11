@@ -308,6 +308,8 @@ export const Route = createFileRoute("/api/public/solicitar")({
               tipo: "compra",
               anexos_falhados: anexosResult.falhados,
               anexos_erros: anexosResult.erros,
+              vinculado,
+
             }),
 
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
