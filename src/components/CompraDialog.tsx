@@ -1020,18 +1020,28 @@ function Historico({ compraId }: { compraId: string }) {
   );
 }
 
-function Anexos({ compraId, userId }: { compraId: string; userId?: string }) {
+function Anexos({
+  compraId,
+  userId,
+  tipo = "anexo",
+}: {
+  compraId: string;
+  userId?: string;
+  tipo?: "anexo" | "comprovante";
+}) {
   const qc = useQueryClient();
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<any | null>(null);
+  const isComprovante = tipo === "comprovante";
 
   const { data: anexos = [] } = useQuery({
-    queryKey: ["compra-anexos", compraId],
+    queryKey: ["compra-anexos", compraId, tipo],
     queryFn: async () => {
       const { data, error } = await sb
         .from("compra_anexos")
         .select("*")
         .eq("compra_id", compraId)
+        .eq("tipo", tipo)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as any[];
@@ -1055,11 +1065,12 @@ function Anexos({ compraId, userId }: { compraId: string; userId?: string }) {
           path,
           mime_type: file.type || null,
           tamanho: file.size,
+          tipo,
           uploaded_by: userId ?? null,
         });
         if (insErr) throw insErr;
       }
-      toast.success("Anexos enviados");
+      toast.success(isComprovante ? "Comprovantes enviados" : "Anexos enviados");
       qc.invalidateQueries({ queryKey: ["compra-anexos", compraId] });
     } catch (e: any) {
       toast.error(e.message ?? "Erro no upload");
