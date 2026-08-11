@@ -244,6 +244,11 @@ function SolicitarPage() {
     }
     if (step === 2) {
       if (form.solicitante_nome.trim().length === 0) return "Informe o seu nome.";
+      const email = form.solicitante_email.trim();
+      if (email.length === 0)
+        return "Informe o seu e-mail — é ele que vincula o pedido à sua conta em Meus Pedidos.";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "Informe um e-mail válido.";
+
       if (usaItens) {
         const preenchidos = itensPreenchidos();
         if (preenchidos.length === 0) return "Adicione ao menos um item com descrição.";
