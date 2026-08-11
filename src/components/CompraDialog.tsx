@@ -1166,7 +1166,15 @@ function Anexos({
   );
 }
 
-function PendingAnexos({ files, onChange }: { files: File[]; onChange: (f: File[]) => void }) {
+function PendingAnexos({
+  files,
+  onChange,
+  label = "Clique para anexar arquivos (PDF, Excel, imagens, etc.)",
+}: {
+  files: File[];
+  onChange: (f: File[]) => void;
+  label?: string;
+}) {
   function fmtSize(n: number) {
     if (n < 1024) return `${n} B`;
     if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
@@ -1179,9 +1187,7 @@ function PendingAnexos({ files, onChange }: { files: File[]; onChange: (f: File[
       </p>
       <label className="flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-md py-6 cursor-pointer hover:bg-muted/40 transition">
         <Upload className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">
-          Clique para anexar arquivos (PDF, Excel, imagens, etc.)
-        </span>
+        <span className="text-sm text-muted-foreground">{label}</span>
         <input
           type="file"
           multiple
