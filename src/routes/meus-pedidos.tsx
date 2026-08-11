@@ -504,7 +504,52 @@ function PedidoDetalheDialog({
               </div>
             )
           )}
+
+          <div>
+            <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+              Comprovantes
+            </div>
+            {comprovantes.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">Nenhum comprovante.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {comprovantes.map((a: any) => (
+                  <div
+                    key={a.id}
+                    className="flex items-center gap-2 rounded-md border border-border p-2 text-sm"
+                  >
+                    <FileIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <button
+                      type="button"
+                      className="flex-1 min-w-0 text-left hover:underline"
+                      onClick={() => setPreview(a)}
+                    >
+                      <div className="truncate font-medium">{a.nome}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {fmtDateTime(a.created_at)}
+                      </div>
+                    </button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => baixarAnexo(bucket, a.path, a.nome)}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
+
+        <AnexoViewer
+          bucket={bucket}
+          anexo={preview}
+          open={!!preview}
+          onOpenChange={(o) => !o && setPreview(null)}
+        />
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
