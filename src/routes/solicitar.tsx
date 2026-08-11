@@ -218,7 +218,7 @@ function SolicitarPage() {
         const preenchidos = itensPreenchidos();
         if (preenchidos.length === 0) return "Adicione ao menos um item com descrição.";
         if (preenchidos.some((it) => itemInvalido(it)))
-          return "Preencha a descrição e a quantidade de todos os itens (ou remova as linhas em branco).";
+          return "Preencha a descrição, a quantidade e o evento/projeto de todos os itens (ou remova as linhas em branco).";
         return null;
       }
       if (form.tipo === "demanda" && !(Number(form.valor_total) > 0))
@@ -273,7 +273,7 @@ function SolicitarPage() {
       const preenchidos = itensPreenchidos();
       if (preenchidos.length === 0 || preenchidos.some((it) => itemInvalido(it))) {
         setShowItemErrors(true);
-        toast.error("Preencha a descrição e a quantidade de todos os itens (ou remova as linhas em branco).");
+        toast.error("Preencha a descrição, a quantidade e o evento/projeto de todos os itens (ou remova as linhas em branco).");
         return;
       }
     }
