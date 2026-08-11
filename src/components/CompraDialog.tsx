@@ -102,6 +102,7 @@ export function CompraDialog({
   const [pagamentos, setPagamentos] = useState<PagamentoLinha[]>([]);
 
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [pendingComprovantes, setPendingComprovantes] = useState<File[]>([]);
   const [statusInicial, setStatusInicial] = useState<CompraStatus>(defaultStatus);
   const isAdmin = isGlobalAdmin || modulos.some((m) => m.slug === "compras" && m.is_admin);
   // canEdit é calculado abaixo, após `responsavelDoStatus` estar disponível.
