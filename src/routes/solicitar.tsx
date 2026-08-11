@@ -134,6 +134,8 @@ function SolicitarPage() {
     condicoes_pagamento: [],
   });
 
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+
   useEffect(() => {
     fetch("/api/public/opcoes-pagamento")
       .then((r) => r.json())
@@ -143,6 +145,34 @@ function SolicitarPage() {
       }))
       .catch(() => {});
   }, []);
+
+  // Se a pessoa já está logada, pré-preenche nome/e-mail e vincula o pedido à conta
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      try {
+        const { supabase } = await import("@/integrations/supabase/client");
+        const { data } = await supabase.auth.getSession();
+        const u = data.session?.user;
+        if (!u || cancelado) return;
+        setSessionUserId(u.id);
+        const nome =
+          (u.user_metadata as any)?.display_name ||
+          (u.user_metadata as any)?.full_name ||
+          (u.user_metadata as any)?.name ||
+          "";
+        setForm((f) => ({
+          ...f,
+          solicitante_email: f.solicitante_email || (u.email ?? ""),
+          solicitante_nome: f.solicitante_nome || nome,
+        }));
+      } catch {}
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
 
   // Salva rascunho no navegador (debounced)
   useEffect(() => {
