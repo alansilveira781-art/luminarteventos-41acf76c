@@ -334,6 +334,8 @@ function SolicitarPage() {
 
       const payload = {
         tipo: form.tipo,
+        solicitante_user_id: sessionUserId,
+
         titulo: form.titulo.trim(),
         subtipo: form.subtipo || null,
         fornecedor: form.fornecedor || "",
