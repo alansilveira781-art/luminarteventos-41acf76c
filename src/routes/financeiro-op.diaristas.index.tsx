@@ -40,6 +40,7 @@ import {
 import { useDiaristaAcesso } from "@/lib/diaristas-acesso";
 import { useDiaristaConfig } from "@/lib/diaristas-config";
 import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 
 export const Route = createFileRoute("/financeiro-op/diaristas/")({
@@ -95,6 +96,7 @@ type Apontamento = {
   almoco: boolean | null;
   janta: boolean | null;
   diaria_minima: boolean | null;
+  fechamento_id: string | null;
 };
 
 type EventoLinha = {
@@ -280,6 +282,34 @@ function useApontamentoEventos() {
         map.set(row.apontamento_id, list);
       }
       return map;
+    },
+  });
+}
+
+type Fechamento = {
+  id: string;
+  periodo_inicio: string;
+  periodo_fim: string;
+  filtros: any;
+  total_dias: number;
+  total_minutos: number;
+  total_valor: number;
+  data_pagamento: string;
+  observacao: string | null;
+  created_at: string;
+};
+
+function useFechamentos() {
+  return useQuery({
+    queryKey: ["diarista_fechamentos"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("diarista_fechamentos")
+        .select("*")
+        .order("periodo_inicio", { ascending: false })
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Fechamento[];
     },
   });
 }
@@ -979,19 +1009,123 @@ function FechamentoTab() {
       deInicial={format(ini, "yyyy-MM-dd")}
       ateInicial={format(endOfWeek(ini, { weekStartsOn: 1 }), "yyyy-MM-dd")}
       filePrefix="fechamento-diaristas"
+      permitirFechar
     />
   );
 }
 
 function RelatoriosTab() {
   const hoje = new Date();
+  const qc = useQueryClient();
+  const { isFinAdmin } = useDiaristaAcesso();
+  const { data: fechamentos = [] } = useFechamentos();
+  const [selId, setSelId] = useState<string>("");
+  const sel = fechamentos.find((f) => f.id === selId) ?? null;
+
+  const reabrir = useMutation({
+    mutationFn: async (f: Fechamento) => {
+      const { error: e1 } = await (supabase as any)
+        .from("diarista_apontamentos")
+        .update({ fechamento_id: null })
+        .eq("fechamento_id", f.id);
+      if (e1) throw e1;
+      const { error: e2 } = await (supabase as any)
+        .from("diarista_fechamentos")
+        .delete()
+        .eq("id", f.id);
+      if (e2) throw e2;
+    },
+    onSuccess: () => {
+      toast.success("Fechamento reaberto");
+      setSelId("");
+      qc.invalidateQueries({ queryKey: ["diarista_fechamentos"] });
+      qc.invalidateQueries({ queryKey: ["diarista_apontamentos"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao reabrir"),
+  });
+
   return (
-    <FechamentoView
-      deInicial={format(startOfMonth(hoje), "yyyy-MM-dd")}
-      ateInicial={format(endOfMonth(hoje), "yyyy-MM-dd")}
-      filePrefix="relatorio-diaristas"
-      agruparPorEvento
-    />
+    <div className="space-y-4">
+      <Card className="p-4">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="text-sm font-semibold">Fechamentos realizados</div>
+          {sel && (
+            <Button variant="ghost" size="sm" onClick={() => setSelId("")}>
+              Ver período livre
+            </Button>
+          )}
+        </div>
+        {fechamentos.length === 0 ? (
+          <div className="text-xs text-muted-foreground">
+            Nenhum fechamento registrado ainda. Use a aba Fechamento para fechar e marcar diárias como pagas.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left border-b border-border text-muted-foreground text-xs uppercase tracking-wide">
+                  <th className="py-2 pr-3">Período</th>
+                  <th className="py-2 px-3">Filtros</th>
+                  <th className="py-2 px-3 text-right">Dias</th>
+                  <th className="py-2 px-3 text-right">Valor</th>
+                  <th className="py-2 px-3">Pagamento</th>
+                  <th className="py-2 pl-3" />
+                </tr>
+              </thead>
+              <tbody>
+                {fechamentos.map((f) => (
+                  <tr
+                    key={f.id}
+                    className={`border-b border-border/50 cursor-pointer hover:bg-muted/40 ${
+                      selId === f.id ? "bg-muted/60" : ""
+                    }`}
+                    onClick={() => setSelId(f.id)}
+                  >
+                    <td className="py-2 pr-3 tabular-nums">
+                      {fmtDate(f.periodo_inicio)} a {fmtDate(f.periodo_fim)}
+                    </td>
+                    <td className="py-2 px-3 text-xs text-muted-foreground">
+                      {(f.filtros?.descricao as string) || "—"}
+                      {f.observacao ? ` · ${f.observacao}` : ""}
+                    </td>
+                    <td className="py-2 px-3 text-right tabular-nums">{f.total_dias}</td>
+                    <td className="py-2 px-3 text-right tabular-nums font-semibold">
+                      {fmtBRL(Number(f.total_valor) || 0)}
+                    </td>
+                    <td className="py-2 px-3 tabular-nums">{fmtDate(f.data_pagamento)}</td>
+                    <td className="py-2 pl-3 text-right">
+                      {isFinAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm("Reabrir este fechamento? As diárias voltam para 'Em aberto'.")) {
+                              reabrir.mutate(f);
+                            }
+                          }}
+                        >
+                          Reabrir
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      <FechamentoView
+        key={sel?.id ?? "livre"}
+        deInicial={sel ? sel.periodo_inicio : format(startOfMonth(hoje), "yyyy-MM-dd")}
+        ateInicial={sel ? sel.periodo_fim : format(endOfMonth(hoje), "yyyy-MM-dd")}
+        filePrefix="relatorio-diaristas"
+        agruparPorEvento
+        fechamentoSel={sel}
+      />
+    </div>
   );
 }
 
@@ -1000,11 +1134,15 @@ function FechamentoView({
   ateInicial,
   filePrefix,
   agruparPorEvento = false,
+  permitirFechar = false,
+  fechamentoSel = null,
 }: {
   deInicial: string;
   ateInicial: string;
   filePrefix: string;
   agruparPorEvento?: boolean;
+  permitirFechar?: boolean;
+  fechamentoSel?: Fechamento | null;
 }) {
   const { data: diaristas = [] } = useDiaristas();
   const { data: apontamentos = [], isLoading } = useApontamentos();
@@ -1024,12 +1162,21 @@ function FechamentoView({
     [diaristas],
   );
 
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  const { isFinAdmin } = useDiaristaAcesso();
+
   const [de, setDe] = useState<string>(deInicial);
   const [ate, setAte] = useState<string>(ateInicial);
   const [fLocal, setFLocal] = useState<string>("todos");
   const [fDiarista, setFDiarista] = useState<string>("todos");
   const [fDepto, setFDepto] = useState<string>("todos");
+  const [fSituacao, setFSituacao] = useState<string>("todas");
   const [expandido, setExpandido] = useState<Set<string>>(new Set());
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [fecharOpen, setFecharOpen] = useState(false);
+  const [dataPagamento, setDataPagamento] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+  const [observacao, setObservacao] = useState("");
 
   const toggleExp = (id: string) => {
     setExpandido((prev) => {
@@ -1039,13 +1186,27 @@ function FechamentoView({
     });
   };
 
+  const toggleSel = (id: string) => {
+    setSelecionados((prev) => {
+      const s = new Set(prev);
+      if (s.has(id)) s.delete(id); else s.add(id);
+      return s;
+    });
+  };
+
   const linhas = useMemo(() => {
     const filtrados = apontamentos.filter((a) => {
-      if (de && a.data < de) return false;
-      if (ate && a.data > ate) return false;
+      if (fechamentoSel) {
+        if (a.fechamento_id !== fechamentoSel.id) return false;
+      } else {
+        if (de && a.data < de) return false;
+        if (ate && a.data > ate) return false;
+      }
       if (fLocal !== "todos" && a.local !== fLocal) return false;
       if (fDiarista !== "todos" && a.diarista_id !== fDiarista) return false;
       if (!matchDepto(diaristasMap.get(a.diarista_id), fDepto)) return false;
+      if (fSituacao === "aberto" && a.fechamento_id) return false;
+      if (fSituacao === "pago" && !a.fechamento_id) return false;
       return true;
     });
 
@@ -1053,6 +1214,7 @@ function FechamentoView({
     const grupos = new Map<string, {
       diarista: Diarista | undefined;
       dias: number;
+      pagos: number;
       minutos: number;
       total: number;
       itens: Array<{ ap: Apontamento; calc: ReturnType<typeof calcularApontamento> | null }>;
@@ -1070,9 +1232,10 @@ function FechamentoView({
           : null;
       const calc = calcEv ?? (t ? calcularApontamento(a, t) : null);
       const g = grupos.get(a.diarista_id) ?? {
-        diarista: d, dias: 0, minutos: 0, total: 0, itens: [], eventos: new Map<string, EventoAgregado>(),
+        diarista: d, dias: 0, pagos: 0, minutos: 0, total: 0, itens: [], eventos: new Map<string, EventoAgregado>(),
       };
       g.dias += 1;
+      if (a.fechamento_id) g.pagos += 1;
       g.minutos += calc?.minutosTrabalhados ?? 0;
       g.total += calc?.total ?? 0;
       g.itens.push({ ap: a, calc });
@@ -1106,10 +1269,91 @@ function FechamentoView({
       .map(([id, g]) => ({
         id,
         ...g,
+        statusLabel:
+          g.pagos === 0 ? "Em aberto" : g.pagos === g.dias ? "Pago" : "Parcial",
         eventos: [...g.eventos.values()].sort((x, y) => x.nome.localeCompare(y.nome, "pt-BR")),
       }))
       .sort((a, b) => nomeExib(a.diarista).localeCompare(nomeExib(b.diarista), "pt-BR"));
-  }, [apontamentos, de, ate, fLocal, fDiarista, fDepto, diaristasMap, eventosMap, cfgRefeicao]);
+  }, [apontamentos, de, ate, fLocal, fDiarista, fDepto, fSituacao, fechamentoSel, diaristasMap, eventosMap, cfgRefeicao]);
+
+  // Diárias em aberto por diarista (base do fechamento)
+  const abertosPorDiarista = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const l of linhas) {
+      const ids = l.itens.filter((it) => !it.ap.fechamento_id).map((it) => it.ap.id);
+      if (ids.length) m.set(l.id, ids);
+    }
+    return m;
+  }, [linhas]);
+
+  const idsParaFechar = useMemo(
+    () => [...selecionados].flatMap((id) => abertosPorDiarista.get(id) ?? []),
+    [selecionados, abertosPorDiarista],
+  );
+
+  const resumoSelecao = useMemo(() => {
+    let dias = 0, minutos = 0, valor = 0;
+    for (const l of linhas) {
+      if (!selecionados.has(l.id)) continue;
+      for (const it of l.itens) {
+        if (it.ap.fechamento_id) continue;
+        dias += 1;
+        minutos += it.calc?.minutosTrabalhados ?? 0;
+        valor += it.calc?.total ?? 0;
+      }
+    }
+    return { dias, minutos, valor, pessoas: selecionados.size };
+  }, [linhas, selecionados]);
+
+  const descricaoFiltros = () => {
+    const f: string[] = [];
+    if (fLocal !== "todos") f.push(`Local: ${fLocal}`);
+    if (fDepto !== "todos") f.push(`Departamento: ${fDepto === "__sem" ? "Sem departamento" : fDepto}`);
+    if (fDiarista !== "todos") f.push(`Diarista: ${nomeExib(diaristasMap.get(fDiarista))}`);
+    return f;
+  };
+
+  const fechar = useMutation({
+    mutationFn: async () => {
+      if (idsParaFechar.length === 0) throw new Error("Nenhuma diária em aberto selecionada.");
+      const { data, error } = await (supabase as any)
+        .from("diarista_fechamentos")
+        .insert({
+          periodo_inicio: de,
+          periodo_fim: ate,
+          filtros: {
+            descricao: descricaoFiltros().join(" · "),
+            diaristas: [...selecionados],
+          },
+          total_dias: resumoSelecao.dias,
+          total_minutos: resumoSelecao.minutos,
+          total_valor: Number(resumoSelecao.valor.toFixed(2)),
+          data_pagamento: dataPagamento,
+          observacao: observacao.trim() || null,
+          created_by: user?.id ?? null,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      const { error: e2 } = await (supabase as any)
+        .from("diarista_apontamentos")
+        .update({ fechamento_id: data.id })
+        .in("id", idsParaFechar);
+      if (e2) throw e2;
+    },
+    onSuccess: () => {
+      toast.success("Fechamento realizado — diárias marcadas como pagas");
+      setFecharOpen(false);
+      setSelecionados(new Set());
+      setObservacao("");
+      qc.invalidateQueries({ queryKey: ["diarista_apontamentos"] });
+      qc.invalidateQueries({ queryKey: ["diarista_fechamentos"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao fechar"),
+  });
+
+  const podeFechar = permitirFechar && isFinAdmin;
+
 
   const totalGeral = linhas.reduce((acc, l) => acc + l.total, 0);
   const totalDias = linhas.reduce((acc, l) => acc + l.dias, 0);
@@ -1143,6 +1387,7 @@ function FechamentoView({
           ((l.diarista?.departamento ?? "").trim()
             ? ` · ${l.diarista?.departamento}`
             : ""),
+        statusLabel: l.statusLabel,
         chavePix: l.diarista?.chave_pix ?? null,
         dias: l.dias,
         horasLabel: formatHoras(l.minutos),
@@ -1172,15 +1417,16 @@ function FechamentoView({
 
   const exportar = async (formato: "xlsx" | "csv") => {
 
-    const header = ["Diarista", "Chave Pix", "Qtde de dias", "Total de horas", "Total a pagar"];
+    const header = ["Diarista", "Chave Pix", "Situação", "Qtde de dias", "Total de horas", "Total a pagar"];
     const body = linhas.map((l) => [
       nomeExib(l.diarista),
       l.diarista?.chave_pix ?? "",
+      l.statusLabel,
       l.dias,
       formatHoras(l.minutos),
       Number(l.total.toFixed(2)),
     ]);
-    const foot = ["TOTAL", "", totalDias, formatHoras(totalMinutos), Number(totalGeral.toFixed(2))];
+    const foot = ["TOTAL", "", "", totalDias, formatHoras(totalMinutos), Number(totalGeral.toFixed(2))];
 
     if (formato === "csv") {
       const rows = [header, ...body, foot];
@@ -1211,7 +1457,7 @@ function FechamentoView({
       [],
       foot,
     ]);
-    ws["!cols"] = [{ wch: 28 }, { wch: 32 }, { wch: 14 }, { wch: 14 }, { wch: 16 }];
+    ws["!cols"] = [{ wch: 28 }, { wch: 32 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 16 }];
     XLSX.utils.book_append_sheet(wb, ws, "Resumo");
 
     // Detalhe
@@ -1261,14 +1507,25 @@ function FechamentoView({
     <div className="space-y-4">
       {/* Filtros */}
       <Card className="p-4">
-        <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6 items-end">
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-7 items-end">
           <div className="space-y-1">
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">De</Label>
-            <Input type="date" value={de} onChange={(e) => setDe(e.target.value)} />
+            <Input type="date" value={de} disabled={!!fechamentoSel} onChange={(e) => setDe(e.target.value)} />
           </div>
           <div className="space-y-1">
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Até</Label>
-            <Input type="date" value={ate} onChange={(e) => setAte(e.target.value)} />
+            <Input type="date" value={ate} disabled={!!fechamentoSel} onChange={(e) => setAte(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Situação</Label>
+            <Select value={fSituacao} onValueChange={setFSituacao}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas</SelectItem>
+                <SelectItem value="aberto">Em aberto</SelectItem>
+                <SelectItem value="pago">Pagas</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1">
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Local</Label>
@@ -1325,6 +1582,32 @@ function FechamentoView({
         </div>
       </Card>
 
+      {podeFechar && (
+        <Card className="p-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="text-xs text-muted-foreground">
+            {resumoSelecao.pessoas === 0 ? (
+              "Selecione os diaristas para fechar as diárias em aberto do período."
+            ) : (
+              <>
+                <span className="font-medium text-foreground">{resumoSelecao.pessoas}</span> pessoa(s) ·{" "}
+                <span className="font-medium text-foreground">{resumoSelecao.dias}</span> dia(s) ·{" "}
+                {formatHoras(resumoSelecao.minutos)} ·{" "}
+                <span className="font-semibold text-foreground">{fmtBRL(resumoSelecao.valor)}</span>
+              </>
+            )}
+          </div>
+          <Button
+            disabled={idsParaFechar.length === 0}
+            onClick={() => {
+              setDataPagamento(format(new Date(), "yyyy-MM-dd"));
+              setFecharOpen(true);
+            }}
+          >
+            Fechar e marcar como pago
+          </Button>
+        </Card>
+      )}
+
       {/* Tabela consolidada */}
       <Card className="p-4">
         {isLoading ? (
@@ -1340,9 +1623,23 @@ function FechamentoView({
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left border-b border-border text-muted-foreground text-xs uppercase tracking-wide">
+                  {podeFechar && (
+                    <th className="py-2 pr-2 w-8">
+                      <Checkbox
+                        checked={
+                          abertosPorDiarista.size > 0 &&
+                          [...abertosPorDiarista.keys()].every((id) => selecionados.has(id))
+                        }
+                        onCheckedChange={(v) =>
+                          setSelecionados(v ? new Set(abertosPorDiarista.keys()) : new Set())
+                        }
+                      />
+                    </th>
+                  )}
                   <th className="py-2 pr-3 w-8" />
                   <th className="py-2 px-3">Diarista</th>
                   <th className="py-2 px-3">Chave Pix</th>
+                  <th className="py-2 px-3">Status</th>
                   <th className="py-2 px-3 text-right">Dias</th>
                   <th className="py-2 px-3 text-right">Total de horas</th>
                   <th className="py-2 pl-3 text-right">Total a pagar</th>
@@ -1351,10 +1648,26 @@ function FechamentoView({
               <tbody>
                 {linhas.map((l) => {
                   const aberto = expandido.has(l.id);
+                  const abertosDaLinha = abertosPorDiarista.get(l.id)?.length ?? 0;
                   return (
                     <Fragment key={l.id}>
                       <tr key={l.id} className="border-b border-border/50 hover:bg-muted/40 cursor-pointer"
                         onClick={() => toggleExp(l.id)}>
+                        {podeFechar && (
+                          <td className="py-2 pr-2" onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              disabled={abertosDaLinha === 0}
+                              checked={selecionados.has(l.id)}
+                              onCheckedChange={(v) =>
+                                setSelecionados((prev) => {
+                                  const n = new Set(prev);
+                                  if (v) n.add(l.id); else n.delete(l.id);
+                                  return n;
+                                })
+                              }
+                            />
+                          </td>
+                        )}
                         <td className="py-2 pr-3">
                           {aberto ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </td>
@@ -1381,6 +1694,20 @@ function FechamentoView({
                           })()}
                         </td>
                         <td className="py-2 px-3 text-xs text-muted-foreground">{l.diarista?.chave_pix ?? "—"}</td>
+                        <td className="py-2 px-3">
+                          <span
+                            className={cn(
+                              "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium border",
+                              l.statusLabel === "Pago"
+                                ? "bg-success/15 text-success border-success/30"
+                                : l.statusLabel === "Parcial"
+                                  ? "bg-warning/15 text-warning border-warning/30"
+                                  : "bg-muted text-muted-foreground border-border",
+                            )}
+                          >
+                            {l.statusLabel}
+                          </span>
+                        </td>
                         <td className="py-2 px-3 text-right tabular-nums">{l.dias}</td>
                         <td className="py-2 px-3 text-right tabular-nums">{formatHoras(l.minutos)}</td>
                         <td className="py-2 pl-3 text-right tabular-nums font-semibold">{fmtBRL(l.total)}</td>
@@ -1388,7 +1715,7 @@ function FechamentoView({
                       {aberto && agruparPorEvento && (
                         <tr key={l.id + "-ev"} className="bg-muted/30">
                           <td />
-                          <td colSpan={5} className="p-3">
+                          <td colSpan={podeFechar ? 7 : 6} className="p-3">
                             <div className="overflow-x-auto">
                               <table className="w-full text-xs">
                                 <thead>
@@ -1417,7 +1744,7 @@ function FechamentoView({
                       {aberto && !agruparPorEvento && (
                         <tr key={l.id + "-det"} className="bg-muted/30">
                           <td />
-                          <td colSpan={5} className="p-3">
+                          <td colSpan={podeFechar ? 7 : 6} className="p-3">
                             <div className="overflow-x-auto">
                               <table className="w-full text-xs">
                                 <thead>
@@ -1466,8 +1793,10 @@ function FechamentoView({
               </tbody>
               <tfoot>
                 <tr className="border-t border-border font-semibold">
+                  {podeFechar && <td />}
                   <td />
                   <td className="py-2 px-3">TOTAL GERAL</td>
+                  <td />
                   <td />
                   <td className="py-2 px-3 text-right tabular-nums">{totalDias}</td>
                   <td className="py-2 px-3 text-right tabular-nums">{formatHoras(totalMinutos)}</td>
@@ -1478,6 +1807,40 @@ function FechamentoView({
           </div>
         )}
       </Card>
+
+      <Dialog open={fecharOpen} onOpenChange={setFecharOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Fechar diárias</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-md border border-border p-3 text-sm space-y-1">
+              <div>Período: <b>{fmtDate(de)} a {fmtDate(ate)}</b></div>
+              <div>Pessoas: <b>{resumoSelecao.pessoas}</b> · Dias: <b>{resumoSelecao.dias}</b></div>
+              <div>Horas: <b>{formatHoras(resumoSelecao.minutos)}</b></div>
+              <div>Total a pagar: <b>{fmtBRL(resumoSelecao.valor)}</b></div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Data do pagamento</Label>
+              <Input type="date" value={dataPagamento} onChange={(e) => setDataPagamento(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Observação</Label>
+              <Input value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder="Opcional" />
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              As diárias incluídas serão marcadas como pagas e não poderão mais ser editadas pelos lançadores.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFecharOpen(false)}>Cancelar</Button>
+            <Button disabled={fechar.isPending} onClick={() => fechar.mutate()}>
+              {fechar.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Confirmar fechamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
