@@ -61,7 +61,6 @@ const emptyItem = (): ItemRow => ({
   quantidade: "1",
   unidade: "un",
   valor_unitario: "",
-  evento_projeto: "",
   evento_livre: false,
 });
 
