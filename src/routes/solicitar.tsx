@@ -647,7 +647,7 @@ function SolicitarPage() {
               />
             </Field>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Field label="E-mail">
+              <Field label="E-mail *">
                 <Input
                   type="email"
                   value={form.solicitante_email}
@@ -657,7 +657,11 @@ function SolicitarPage() {
                   autoComplete="email"
                   name="solicitante_email"
                 />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Use o mesmo e-mail da sua conta para acompanhar em “Meus Pedidos”.
+                </p>
               </Field>
+
               <Field label="Telefone">
                 <Input
                   value={form.solicitante_telefone}
