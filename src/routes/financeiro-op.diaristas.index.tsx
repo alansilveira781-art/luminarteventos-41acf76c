@@ -1008,19 +1008,123 @@ function FechamentoTab() {
       deInicial={format(ini, "yyyy-MM-dd")}
       ateInicial={format(endOfWeek(ini, { weekStartsOn: 1 }), "yyyy-MM-dd")}
       filePrefix="fechamento-diaristas"
+      permitirFechar
     />
   );
 }
 
 function RelatoriosTab() {
   const hoje = new Date();
+  const qc = useQueryClient();
+  const { isFinAdmin } = useDiaristaAcesso();
+  const { data: fechamentos = [] } = useFechamentos();
+  const [selId, setSelId] = useState<string>("");
+  const sel = fechamentos.find((f) => f.id === selId) ?? null;
+
+  const reabrir = useMutation({
+    mutationFn: async (f: Fechamento) => {
+      const { error: e1 } = await (supabase as any)
+        .from("diarista_apontamentos")
+        .update({ fechamento_id: null })
+        .eq("fechamento_id", f.id);
+      if (e1) throw e1;
+      const { error: e2 } = await (supabase as any)
+        .from("diarista_fechamentos")
+        .delete()
+        .eq("id", f.id);
+      if (e2) throw e2;
+    },
+    onSuccess: () => {
+      toast.success("Fechamento reaberto");
+      setSelId("");
+      qc.invalidateQueries({ queryKey: ["diarista_fechamentos"] });
+      qc.invalidateQueries({ queryKey: ["diarista_apontamentos"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao reabrir"),
+  });
+
   return (
-    <FechamentoView
-      deInicial={format(startOfMonth(hoje), "yyyy-MM-dd")}
-      ateInicial={format(endOfMonth(hoje), "yyyy-MM-dd")}
-      filePrefix="relatorio-diaristas"
-      agruparPorEvento
-    />
+    <div className="space-y-4">
+      <Card className="p-4">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="text-sm font-semibold">Fechamentos realizados</div>
+          {sel && (
+            <Button variant="ghost" size="sm" onClick={() => setSelId("")}>
+              Ver período livre
+            </Button>
+          )}
+        </div>
+        {fechamentos.length === 0 ? (
+          <div className="text-xs text-muted-foreground">
+            Nenhum fechamento registrado ainda. Use a aba Fechamento para fechar e marcar diárias como pagas.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left border-b border-border text-muted-foreground text-xs uppercase tracking-wide">
+                  <th className="py-2 pr-3">Período</th>
+                  <th className="py-2 px-3">Filtros</th>
+                  <th className="py-2 px-3 text-right">Dias</th>
+                  <th className="py-2 px-3 text-right">Valor</th>
+                  <th className="py-2 px-3">Pagamento</th>
+                  <th className="py-2 pl-3" />
+                </tr>
+              </thead>
+              <tbody>
+                {fechamentos.map((f) => (
+                  <tr
+                    key={f.id}
+                    className={`border-b border-border/50 cursor-pointer hover:bg-muted/40 ${
+                      selId === f.id ? "bg-muted/60" : ""
+                    }`}
+                    onClick={() => setSelId(f.id)}
+                  >
+                    <td className="py-2 pr-3 tabular-nums">
+                      {fmtDate(f.periodo_inicio)} a {fmtDate(f.periodo_fim)}
+                    </td>
+                    <td className="py-2 px-3 text-xs text-muted-foreground">
+                      {(f.filtros?.descricao as string) || "—"}
+                      {f.observacao ? ` · ${f.observacao}` : ""}
+                    </td>
+                    <td className="py-2 px-3 text-right tabular-nums">{f.total_dias}</td>
+                    <td className="py-2 px-3 text-right tabular-nums font-semibold">
+                      {fmtBRL(Number(f.total_valor) || 0)}
+                    </td>
+                    <td className="py-2 px-3 tabular-nums">{fmtDate(f.data_pagamento)}</td>
+                    <td className="py-2 pl-3 text-right">
+                      {isFinAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm("Reabrir este fechamento? As diárias voltam para 'Em aberto'.")) {
+                              reabrir.mutate(f);
+                            }
+                          }}
+                        >
+                          Reabrir
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      <FechamentoView
+        key={sel?.id ?? "livre"}
+        deInicial={sel ? sel.periodo_inicio : format(startOfMonth(hoje), "yyyy-MM-dd")}
+        ateInicial={sel ? sel.periodo_fim : format(endOfMonth(hoje), "yyyy-MM-dd")}
+        filePrefix="relatorio-diaristas"
+        agruparPorEvento
+        fechamentoSel={sel}
+      />
+    </div>
   );
 }
 
@@ -1029,11 +1133,15 @@ function FechamentoView({
   ateInicial,
   filePrefix,
   agruparPorEvento = false,
+  permitirFechar = false,
+  fechamentoSel = null,
 }: {
   deInicial: string;
   ateInicial: string;
   filePrefix: string;
   agruparPorEvento?: boolean;
+  permitirFechar?: boolean;
+  fechamentoSel?: Fechamento | null;
 }) {
   const { data: diaristas = [] } = useDiaristas();
   const { data: apontamentos = [], isLoading } = useApontamentos();
