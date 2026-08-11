@@ -1647,10 +1647,26 @@ function FechamentoView({
               <tbody>
                 {linhas.map((l) => {
                   const aberto = expandido.has(l.id);
+                  const abertosDaLinha = abertosPorDiarista.get(l.id)?.length ?? 0;
                   return (
                     <Fragment key={l.id}>
                       <tr key={l.id} className="border-b border-border/50 hover:bg-muted/40 cursor-pointer"
                         onClick={() => toggleExp(l.id)}>
+                        {podeFechar && (
+                          <td className="py-2 pr-2" onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              disabled={abertosDaLinha === 0}
+                              checked={selecionados.has(l.id)}
+                              onCheckedChange={(v) =>
+                                setSelecionados((prev) => {
+                                  const n = new Set(prev);
+                                  if (v) n.add(l.id); else n.delete(l.id);
+                                  return n;
+                                })
+                              }
+                            />
+                          </td>
+                        )}
                         <td className="py-2 pr-3">
                           {aberto ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </td>
