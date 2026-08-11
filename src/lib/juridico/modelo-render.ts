@@ -1,5 +1,6 @@
 import DOMPurify from "dompurify";
 import { fmtData, fmtMoeda, type ParcelaContrato } from "./contrato-form";
+import { valorPorExtenso } from "./valor-extenso";
 
 export const SANITIZE_OPTS = {
   ALLOWED_TAGS: [
@@ -217,6 +218,8 @@ export function variaveisDoContrato(
     testemunha2_documento: testemunhas[1]?.documento ?? "",
     valor: c.valor != null ? fmtMoeda(Number(c.valor)) : "",
     valor_total: c.valor != null ? fmtMoeda(Number(c.valor)) : "",
+    valor_extenso: c.valor != null ? valorPorExtenso(Number(c.valor)) : "",
+    valor_total_extenso: c.valor != null ? valorPorExtenso(Number(c.valor)) : "",
     forma_pagamento: pagamentoTexto(parcelas),
     forma_pagamento_tipo:
       c.pagamento_forma === "boleto" ? "Boleto" : c.pagamento_forma === "pix" ? "Pix" : "",
@@ -272,6 +275,7 @@ export const CAMPOS_SUGERIDOS: { campo: string; label: string }[] = [
   { campo: "testemunha2_nome", label: "Testemunha 2" },
   { campo: "testemunha2_documento", label: "CPF testemunha 2" },
   { campo: "valor_total", label: "Valor total" },
+  { campo: "valor_extenso", label: "Valor total por extenso" },
   { campo: "forma_pagamento", label: "Forma de pagamento" },
   { campo: "parcelas", label: "Parcelas (detalhe)" },
   { campo: "qtd_parcelas", label: "Qtd. de parcelas" },
