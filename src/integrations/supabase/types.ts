@@ -2598,6 +2598,7 @@ export type Database = {
           diarista_id: string | null
           empresa: string | null
           extra_manual: number
+          fechamento_id: string | null
           hora_final: string
           hora_inicial: string
           id: string
@@ -2620,6 +2621,7 @@ export type Database = {
           diarista_id?: string | null
           empresa?: string | null
           extra_manual?: number
+          fechamento_id?: string | null
           hora_final: string
           hora_inicial: string
           id?: string
@@ -2642,6 +2644,7 @@ export type Database = {
           diarista_id?: string | null
           empresa?: string | null
           extra_manual?: number
+          fechamento_id?: string | null
           hora_final?: string
           hora_inicial?: string
           id?: string
@@ -2659,6 +2662,13 @@ export type Database = {
             columns: ["diarista_id"]
             isOneToOne: false
             referencedRelation: "diaristas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diarista_apontamentos_fechamento_id_fkey"
+            columns: ["fechamento_id"]
+            isOneToOne: false
+            referencedRelation: "diarista_fechamentos"
             referencedColumns: ["id"]
           },
         ]
@@ -2684,6 +2694,51 @@ export type Database = {
           updated_at?: string
           valor_almoco?: number
           valor_janta?: number
+        }
+        Relationships: []
+      }
+      diarista_fechamentos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_pagamento: string
+          filtros: Json
+          id: string
+          observacao: string | null
+          periodo_fim: string
+          periodo_inicio: string
+          total_dias: number
+          total_minutos: number
+          total_valor: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_pagamento?: string
+          filtros?: Json
+          id?: string
+          observacao?: string | null
+          periodo_fim: string
+          periodo_inicio: string
+          total_dias?: number
+          total_minutos?: number
+          total_valor?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_pagamento?: string
+          filtros?: Json
+          id?: string
+          observacao?: string | null
+          periodo_fim?: string
+          periodo_inicio?: string
+          total_dias?: number
+          total_minutos?: number
+          total_valor?: number
+          updated_at?: string
         }
         Relationships: []
       }
