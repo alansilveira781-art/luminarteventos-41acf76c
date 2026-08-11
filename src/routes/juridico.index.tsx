@@ -155,6 +155,7 @@ function QuadroContratos() {
     const card = rows.find((r) => r.id === id);
     if (!card || card.status === status) return;
     if (status === "criacao") { setCriacaoCard(card); return; }
+    if (status === "concluido") { setConcluirCard(card); return; }
     const patch: any = { status };
     if (status === "assinatura" && !card.data_assinatura) patch.data_assinatura = new Date().toISOString().slice(0, 10);
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -171,6 +172,14 @@ function QuadroContratos() {
     setCriacaoCard(null);
     await load();
   }
+
+  async function aplicarConclusao(patch: Record<string, any>) {
+    const id = concluirCard!.id;
+    const { error } = await sb.from("juridico_contratos").update(patch).eq("id", id);
+    if (error) { toast.error(error.message); throw error; }
+    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  }
+
 
 
   async function onDelete(id: string) {
