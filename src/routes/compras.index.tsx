@@ -258,6 +258,27 @@ function ComprasKanban() {
     }
 
 
+    if (status === "pendente_aprovacao") {
+      const { data: itensEvento, error: itensErr } = await sb
+        .from("compra_itens")
+        .select("id,evento_projeto")
+        .eq("compra_id", compra.id);
+      if (itensErr) {
+        toast.error("Não foi possível validar os itens da compra. Tente novamente.");
+        return;
+      }
+      if (!itensEvento || itensEvento.length === 0) {
+        toast.error("Adicione os itens da compra (com Evento / Projeto) antes de enviar para Pendente Aprovação.");
+        return;
+      }
+      const semEvento = itensEvento.filter((it: any) => !String(it.evento_projeto ?? "").trim()).length;
+      if (semEvento > 0) {
+        toast.error(
+          `Preencha o Evento / Projeto de todos os itens antes de enviar para Pendente Aprovação (${semEvento} item(ns) sem evento).`,
+        );
+        return;
+      }
+    }
 
 
 
