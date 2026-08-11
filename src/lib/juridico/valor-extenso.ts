@@ -75,7 +75,7 @@ export function inteiroPorExtenso(valor: number): string {
     const ultimo = idx === partes.length - 1;
     const grupoIdx = grupos.length - 1 - idx;
     const g = grupos[grupoIdx];
-    const anteriorMil = grupos.length - idx === 2; // grupo anterior é o de milhar
+    const anteriorMil = grupoIdx + 1 === 1; // grupo anterior é o de milhar
     const usaE = ultimo && grupoIdx === 0 && (g < 100 || g % 100 === 0);
     texto += usaE ? ` e ${p}` : anteriorMil ? ` ${p}` : `, ${p}`;
   });
