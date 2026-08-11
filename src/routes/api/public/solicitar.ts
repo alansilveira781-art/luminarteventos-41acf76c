@@ -393,6 +393,8 @@ export const Route = createFileRoute("/api/public/solicitar")({
             tipo: "demanda",
             anexos_falhados: anexosDemanda.falhados,
             anexos_erros: anexosDemanda.erros,
+            vinculado,
+
           }),
 
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
