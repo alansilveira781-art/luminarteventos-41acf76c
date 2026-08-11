@@ -1161,12 +1161,21 @@ function FechamentoView({
     [diaristas],
   );
 
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  const { isFinAdmin } = useDiaristaAcesso();
+
   const [de, setDe] = useState<string>(deInicial);
   const [ate, setAte] = useState<string>(ateInicial);
   const [fLocal, setFLocal] = useState<string>("todos");
   const [fDiarista, setFDiarista] = useState<string>("todos");
   const [fDepto, setFDepto] = useState<string>("todos");
+  const [fSituacao, setFSituacao] = useState<string>("todas");
   const [expandido, setExpandido] = useState<Set<string>>(new Set());
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [fecharOpen, setFecharOpen] = useState(false);
+  const [dataPagamento, setDataPagamento] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+  const [observacao, setObservacao] = useState("");
 
   const toggleExp = (id: string) => {
     setExpandido((prev) => {
@@ -1176,13 +1185,27 @@ function FechamentoView({
     });
   };
 
+  const toggleSel = (id: string) => {
+    setSelecionados((prev) => {
+      const s = new Set(prev);
+      if (s.has(id)) s.delete(id); else s.add(id);
+      return s;
+    });
+  };
+
   const linhas = useMemo(() => {
     const filtrados = apontamentos.filter((a) => {
-      if (de && a.data < de) return false;
-      if (ate && a.data > ate) return false;
+      if (fechamentoSel) {
+        if (a.fechamento_id !== fechamentoSel.id) return false;
+      } else {
+        if (de && a.data < de) return false;
+        if (ate && a.data > ate) return false;
+      }
       if (fLocal !== "todos" && a.local !== fLocal) return false;
       if (fDiarista !== "todos" && a.diarista_id !== fDiarista) return false;
       if (!matchDepto(diaristasMap.get(a.diarista_id), fDepto)) return false;
+      if (fSituacao === "aberto" && a.fechamento_id) return false;
+      if (fSituacao === "pago" && !a.fechamento_id) return false;
       return true;
     });
 
@@ -1190,6 +1213,7 @@ function FechamentoView({
     const grupos = new Map<string, {
       diarista: Diarista | undefined;
       dias: number;
+      pagos: number;
       minutos: number;
       total: number;
       itens: Array<{ ap: Apontamento; calc: ReturnType<typeof calcularApontamento> | null }>;
@@ -1207,9 +1231,10 @@ function FechamentoView({
           : null;
       const calc = calcEv ?? (t ? calcularApontamento(a, t) : null);
       const g = grupos.get(a.diarista_id) ?? {
-        diarista: d, dias: 0, minutos: 0, total: 0, itens: [], eventos: new Map<string, EventoAgregado>(),
+        diarista: d, dias: 0, pagos: 0, minutos: 0, total: 0, itens: [], eventos: new Map<string, EventoAgregado>(),
       };
       g.dias += 1;
+      if (a.fechamento_id) g.pagos += 1;
       g.minutos += calc?.minutosTrabalhados ?? 0;
       g.total += calc?.total ?? 0;
       g.itens.push({ ap: a, calc });
@@ -1243,10 +1268,91 @@ function FechamentoView({
       .map(([id, g]) => ({
         id,
         ...g,
+        statusLabel:
+          g.pagos === 0 ? "Em aberto" : g.pagos === g.dias ? "Pago" : "Parcial",
         eventos: [...g.eventos.values()].sort((x, y) => x.nome.localeCompare(y.nome, "pt-BR")),
       }))
       .sort((a, b) => nomeExib(a.diarista).localeCompare(nomeExib(b.diarista), "pt-BR"));
-  }, [apontamentos, de, ate, fLocal, fDiarista, fDepto, diaristasMap, eventosMap, cfgRefeicao]);
+  }, [apontamentos, de, ate, fLocal, fDiarista, fDepto, fSituacao, fechamentoSel, diaristasMap, eventosMap, cfgRefeicao]);
+
+  // Diárias em aberto por diarista (base do fechamento)
+  const abertosPorDiarista = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const l of linhas) {
+      const ids = l.itens.filter((it) => !it.ap.fechamento_id).map((it) => it.ap.id);
+      if (ids.length) m.set(l.id, ids);
+    }
+    return m;
+  }, [linhas]);
+
+  const idsParaFechar = useMemo(
+    () => [...selecionados].flatMap((id) => abertosPorDiarista.get(id) ?? []),
+    [selecionados, abertosPorDiarista],
+  );
+
+  const resumoSelecao = useMemo(() => {
+    let dias = 0, minutos = 0, valor = 0;
+    for (const l of linhas) {
+      if (!selecionados.has(l.id)) continue;
+      for (const it of l.itens) {
+        if (it.ap.fechamento_id) continue;
+        dias += 1;
+        minutos += it.calc?.minutosTrabalhados ?? 0;
+        valor += it.calc?.total ?? 0;
+      }
+    }
+    return { dias, minutos, valor, pessoas: selecionados.size };
+  }, [linhas, selecionados]);
+
+  const descricaoFiltros = () => {
+    const f: string[] = [];
+    if (fLocal !== "todos") f.push(`Local: ${fLocal}`);
+    if (fDepto !== "todos") f.push(`Departamento: ${fDepto === "__sem" ? "Sem departamento" : fDepto}`);
+    if (fDiarista !== "todos") f.push(`Diarista: ${nomeExib(diaristasMap.get(fDiarista))}`);
+    return f;
+  };
+
+  const fechar = useMutation({
+    mutationFn: async () => {
+      if (idsParaFechar.length === 0) throw new Error("Nenhuma diária em aberto selecionada.");
+      const { data, error } = await (supabase as any)
+        .from("diarista_fechamentos")
+        .insert({
+          periodo_inicio: de,
+          periodo_fim: ate,
+          filtros: {
+            descricao: descricaoFiltros().join(" · "),
+            diaristas: [...selecionados],
+          },
+          total_dias: resumoSelecao.dias,
+          total_minutos: resumoSelecao.minutos,
+          total_valor: Number(resumoSelecao.valor.toFixed(2)),
+          data_pagamento: dataPagamento,
+          observacao: observacao.trim() || null,
+          created_by: user?.id ?? null,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      const { error: e2 } = await (supabase as any)
+        .from("diarista_apontamentos")
+        .update({ fechamento_id: data.id })
+        .in("id", idsParaFechar);
+      if (e2) throw e2;
+    },
+    onSuccess: () => {
+      toast.success("Fechamento realizado — diárias marcadas como pagas");
+      setFecharOpen(false);
+      setSelecionados(new Set());
+      setObservacao("");
+      qc.invalidateQueries({ queryKey: ["diarista_apontamentos"] });
+      qc.invalidateQueries({ queryKey: ["diarista_fechamentos"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao fechar"),
+  });
+
+  const podeFechar = permitirFechar && isFinAdmin;
+
 
   const totalGeral = linhas.reduce((acc, l) => acc + l.total, 0);
   const totalDias = linhas.reduce((acc, l) => acc + l.dias, 0);
