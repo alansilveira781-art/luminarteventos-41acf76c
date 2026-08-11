@@ -23,6 +23,8 @@ export type RelatorioEventoItem = {
 
 export type RelatorioGrupo = {
   nome: string;
+  /** "Pago", "Em aberto" ou "Parcial" */
+  statusLabel?: string;
   chavePix: string | null;
   dias: number;
   horasLabel: string;
