@@ -40,6 +40,7 @@ import {
 import { useDiaristaAcesso } from "@/lib/diaristas-acesso";
 import { useDiaristaConfig } from "@/lib/diaristas-config";
 import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 
 export const Route = createFileRoute("/financeiro-op/diaristas/")({
@@ -1714,7 +1715,7 @@ function FechamentoView({
                       {aberto && agruparPorEvento && (
                         <tr key={l.id + "-ev"} className="bg-muted/30">
                           <td />
-                          <td colSpan={5} className="p-3">
+                          <td colSpan={podeFechar ? 7 : 6} className="p-3">
                             <div className="overflow-x-auto">
                               <table className="w-full text-xs">
                                 <thead>
@@ -1743,7 +1744,7 @@ function FechamentoView({
                       {aberto && !agruparPorEvento && (
                         <tr key={l.id + "-det"} className="bg-muted/30">
                           <td />
-                          <td colSpan={5} className="p-3">
+                          <td colSpan={podeFechar ? 7 : 6} className="p-3">
                             <div className="overflow-x-auto">
                               <table className="w-full text-xs">
                                 <thead>
