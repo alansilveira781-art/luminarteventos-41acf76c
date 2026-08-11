@@ -1416,15 +1416,16 @@ function FechamentoView({
 
   const exportar = async (formato: "xlsx" | "csv") => {
 
-    const header = ["Diarista", "Chave Pix", "Qtde de dias", "Total de horas", "Total a pagar"];
+    const header = ["Diarista", "Chave Pix", "Situação", "Qtde de dias", "Total de horas", "Total a pagar"];
     const body = linhas.map((l) => [
       nomeExib(l.diarista),
       l.diarista?.chave_pix ?? "",
+      l.statusLabel,
       l.dias,
       formatHoras(l.minutos),
       Number(l.total.toFixed(2)),
     ]);
-    const foot = ["TOTAL", "", totalDias, formatHoras(totalMinutos), Number(totalGeral.toFixed(2))];
+    const foot = ["TOTAL", "", "", totalDias, formatHoras(totalMinutos), Number(totalGeral.toFixed(2))];
 
     if (formato === "csv") {
       const rows = [header, ...body, foot];
