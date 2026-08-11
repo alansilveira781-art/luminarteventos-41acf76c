@@ -594,6 +594,8 @@ function ContratoDetalhesDialog({
     const payload: any = {
       titulo: form.titulo,
       evento_nome: form.evento_nome || null,
+      evento_local: (form as any).evento_local || null,
+      proposta_numero_manual: (form as any).proposta_numero_manual || null,
       empresa: form.empresa || null,
       cliente_nome: form.cliente_nome || null,
       cliente_documento: form.cliente_documento || null,
