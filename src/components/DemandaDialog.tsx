@@ -975,7 +975,11 @@ function Anexos({
       <label className="flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-md py-6 cursor-pointer hover:bg-muted/40 transition">
         <Upload className="h-4 w-4 text-muted-foreground" />
         <span className="text-sm text-muted-foreground">
-          {uploading ? "Enviando…" : "Clique para anexar arquivos (PDF, Excel, imagens, etc.)"}
+          {uploading
+            ? "Enviando…"
+            : isComprovante
+              ? "Clique para anexar comprovantes (PDF, imagens, etc.)"
+              : "Clique para anexar arquivos (PDF, Excel, imagens, etc.)"}
         </span>
         <input
           type="file"
@@ -990,7 +994,9 @@ function Anexos({
       </label>
 
       {anexos.length === 0 ? (
-        <p className="text-xs text-muted-foreground italic">Nenhum anexo.</p>
+        <p className="text-xs text-muted-foreground italic">
+          {isComprovante ? "Nenhum comprovante." : "Nenhum anexo."}
+        </p>
       ) : (
         <div className="space-y-1.5">
           {anexos.map((a: any) => (
