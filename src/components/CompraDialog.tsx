@@ -184,19 +184,8 @@ export function CompraDialog({
     );
   }, [compraId, form, isAdmin, statusDefaults, statusInicial, user?.email, user?.id]);
 
-  const { data: eventosData } = useQuery({
-    queryKey: ["sheets-eventos"],
-    queryFn: async () => await listEventos(),
-    staleTime: 5 * 60 * 1000,
-  });
-  const eventosValidosSet = useMemo(() => {
-    return new Set((eventosData?.eventos ?? []) as string[]);
-  }, [eventosData]);
 
-  // Modo por item: true = texto livre; false/undefined = seleção pela planilha.
-  const [itemLivreMode, setItemLivreMode] = useState<Record<number, boolean>>({});
-  const setModoLivre = (idx: number, livre: boolean) =>
-    setItemLivreMode((p) => ({ ...p, [idx]: livre }));
+
 
   useEffect(() => {
     if (!open) return;
