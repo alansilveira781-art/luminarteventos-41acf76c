@@ -1386,6 +1386,7 @@ function FechamentoView({
           ((l.diarista?.departamento ?? "").trim()
             ? ` · ${l.diarista?.departamento}`
             : ""),
+        statusLabel: l.statusLabel,
         chavePix: l.diarista?.chave_pix ?? null,
         dias: l.dias,
         horasLabel: formatHoras(l.minutos),
