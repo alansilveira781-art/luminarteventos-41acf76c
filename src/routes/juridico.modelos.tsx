@@ -148,7 +148,7 @@ function ModeloDialog({ open, onOpenChange, editing, onSave }: {
               <div className="mx-2 h-4 w-px bg-border" />
               <button type="button" onClick={() => { const v = prompt("Nome do campo (ex: cliente_nome)"); if (v) exec("insertText", `[${v.trim().replace(/\s+/g, "_")}]`); }} className="text-xs px-2 h-7 rounded hover:bg-muted">+ Campo</button>
             </div>
-            <div className="flex flex-wrap gap-1 border-b border-border p-1 bg-background max-h-28 overflow-y-auto">
+            <div className="flex flex-wrap gap-1 border-b border-border p-1 bg-background max-h-52 overflow-y-auto">
               <span className="text-[11px] text-muted-foreground px-1 py-0.5">Campos automáticos:</span>
               {CAMPOS_SUGERIDOS.map((c) => (
                 <button
