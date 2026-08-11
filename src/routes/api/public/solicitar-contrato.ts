@@ -33,6 +33,7 @@ const schema = z
   .object({
     tipo: z.enum(["contrato", "aditivo"]),
     titulo: z.string().trim().min(1).max(200),
+    evento_nome: z.string().trim().min(1).max(200),
     empresa: z.string().trim().max(120).optional().or(z.literal("")),
     cliente_tipo: z.enum(["pf", "pj"]),
     cliente_nome: z.string().trim().min(1).max(160),
@@ -236,6 +237,7 @@ export const Route = createFileRoute("/api/public/solicitar-contrato")({
           .from("juridico_contratos")
           .insert({
             titulo: d.titulo,
+            evento_nome: d.evento_nome,
             tipo: d.tipo,
             status: "entrada",
             empresa: d.empresa || null,
