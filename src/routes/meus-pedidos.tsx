@@ -386,7 +386,7 @@ function PedidoDetalheDialog({
       const fk = pedido.tipo === "compra" ? "compra_id" : "demanda_id";
       const { data, error } = await sb
         .from(table)
-        .select("id,descricao,quantidade,unidade,valor_unitario")
+        .select("id,descricao,quantidade,unidade,valor_unitario,evento_projeto")
         .eq(fk, pedido.id);
       if (error) return [];
       return data ?? [];
@@ -439,6 +439,7 @@ function PedidoDetalheDialog({
                   <TableHeader>
                     <TableRow>
                       <TableHead>Descrição</TableHead>
+                      <TableHead>Evento / Projeto</TableHead>
                       <TableHead className="text-right">Qtd</TableHead>
                       <TableHead>Un</TableHead>
                       <TableHead className="text-right">V. Unit.</TableHead>
@@ -451,6 +452,7 @@ function PedidoDetalheDialog({
                       return (
                         <TableRow key={it.id}>
                           <TableCell>{it.descricao}</TableCell>
+                          <TableCell>{it.evento_projeto || "—"}</TableCell>
                           <TableCell className="text-right">{it.quantidade}</TableCell>
                           <TableCell>{it.unidade ?? "—"}</TableCell>
                           <TableCell className="text-right">{fmtBRL(it.valor_unitario)}</TableCell>
@@ -459,7 +461,7 @@ function PedidoDetalheDialog({
                       );
                     })}
                     <TableRow>
-                      <TableCell colSpan={4} className="text-right font-semibold">
+                      <TableCell colSpan={5} className="text-right font-semibold">
                         Total
                       </TableCell>
                       <TableCell className="text-right font-semibold">{fmtBRL(total)}</TableCell>
