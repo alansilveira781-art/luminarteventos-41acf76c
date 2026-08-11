@@ -100,6 +100,8 @@ type Contrato = {
   observacoes: string | null;
   proposta_numero: number | null;
   proposta_ref: string | null;
+  proposta_numero_manual?: string | null;
+  evento_local?: string | null;
   modelo_id: string | null;
   corpo_html: string | null;
   categoria?: string | null;
@@ -592,6 +594,8 @@ function ContratoDetalhesDialog({
     const payload: any = {
       titulo: form.titulo,
       evento_nome: form.evento_nome || null,
+      evento_local: (form as any).evento_local || null,
+      proposta_numero_manual: (form as any).proposta_numero_manual || null,
       empresa: form.empresa || null,
       cliente_nome: form.cliente_nome || null,
       cliente_documento: form.cliente_documento || null,
@@ -950,6 +954,22 @@ function ContratoDetalhesDialog({
                 <div className="col-span-2">
                   <Label>Nome do evento</Label>
                   <Input value={form.evento_nome ?? ""} onChange={(e) => setForm({ ...form, evento_nome: e.target.value })} placeholder="Ex.: ABERTURA COCAL 2026" />
+                </div>
+                <div className="col-span-2">
+                  <Label>Local do evento</Label>
+                  <Input
+                    value={(form as any).evento_local ?? ""}
+                    onChange={(e) => setForm({ ...form, evento_local: e.target.value } as any)}
+                    placeholder="Ex.: Expominas — Belo Horizonte/MG"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label>Nº da proposta</Label>
+                  <Input
+                    value={(form as any).proposta_numero_manual ?? ""}
+                    onChange={(e) => setForm({ ...form, proposta_numero_manual: e.target.value } as any)}
+                    placeholder="Ex.: 2026-0345"
+                  />
                 </div>
                 <div>
                   <Label>Início do evento</Label>
