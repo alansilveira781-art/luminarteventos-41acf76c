@@ -61,7 +61,7 @@ const emptyItem = (): ItemRow => ({
   quantidade: "1",
   unidade: "un",
   valor_unitario: "",
-  evento_livre: false,
+  evento_projeto: "",
 });
 
 function hojeISO() {
