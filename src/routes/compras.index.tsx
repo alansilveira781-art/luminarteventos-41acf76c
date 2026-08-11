@@ -811,6 +811,7 @@ function MigrarCompraDialog({
           quantidade: it.quantidade,
           unidade: it.unidade,
           valor_unitario: it.valor_unitario,
+          evento_projeto: it.evento_projeto ?? null,
         }));
         const { error: insItErr } = await sb.from("demanda_itens").insert(rows);
         if (insItErr) throw insItErr;
