@@ -1506,14 +1506,25 @@ function FechamentoView({
     <div className="space-y-4">
       {/* Filtros */}
       <Card className="p-4">
-        <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6 items-end">
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-7 items-end">
           <div className="space-y-1">
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">De</Label>
-            <Input type="date" value={de} onChange={(e) => setDe(e.target.value)} />
+            <Input type="date" value={de} disabled={!!fechamentoSel} onChange={(e) => setDe(e.target.value)} />
           </div>
           <div className="space-y-1">
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Até</Label>
-            <Input type="date" value={ate} onChange={(e) => setAte(e.target.value)} />
+            <Input type="date" value={ate} disabled={!!fechamentoSel} onChange={(e) => setAte(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Situação</Label>
+            <Select value={fSituacao} onValueChange={setFSituacao}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas</SelectItem>
+                <SelectItem value="aberto">Em aberto</SelectItem>
+                <SelectItem value="pago">Pagas</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1">
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Local</Label>
