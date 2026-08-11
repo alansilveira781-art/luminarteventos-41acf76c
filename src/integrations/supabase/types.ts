@@ -3727,6 +3727,7 @@ export type Database = {
           evento_hora_inicio: string | null
           evento_id: string | null
           evento_inicio: string | null
+          evento_nome: string | null
           forma_pagamento: string | null
           id: string
           modelo_id: string | null
@@ -3804,6 +3805,7 @@ export type Database = {
           evento_hora_inicio?: string | null
           evento_id?: string | null
           evento_inicio?: string | null
+          evento_nome?: string | null
           forma_pagamento?: string | null
           id?: string
           modelo_id?: string | null
@@ -3881,6 +3883,7 @@ export type Database = {
           evento_hora_inicio?: string | null
           evento_id?: string | null
           evento_inicio?: string | null
+          evento_nome?: string | null
           forma_pagamento?: string | null
           id?: string
           modelo_id?: string | null
