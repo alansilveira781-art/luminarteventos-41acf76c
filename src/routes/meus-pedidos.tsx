@@ -393,7 +393,29 @@ function PedidoDetalheDialog({
     },
   });
 
+  const { data: comprovantes = [] } = useQuery({
+    enabled: !!pedido,
+    queryKey: ["meus-pedidos-comprovantes", pedido?.tipo, pedido?.id],
+    queryFn: async () => {
+      if (!pedido) return [];
+      const table = pedido.tipo === "compra" ? "compra_anexos" : "demanda_anexos";
+      const fk = pedido.tipo === "compra" ? "compra_id" : "demanda_id";
+      const { data, error } = await sb
+        .from(table)
+        .select("id,nome,path,mime_type,tamanho,created_at")
+        .eq(fk, pedido.id)
+        .eq("tipo", "comprovante")
+        .order("created_at", { ascending: false });
+      if (error) return [];
+      return data ?? [];
+    },
+  });
+
+  const [preview, setPreview] = useState<any | null>(null);
+
   if (!pedido) return null;
+
+  const bucket = pedido.tipo === "compra" ? "compra-anexos" : "demanda-anexos";
 
   const total = itens.reduce(
     (s: number, it: any) => s + (Number(it.quantidade) || 0) * (Number(it.valor_unitario) || 0),
