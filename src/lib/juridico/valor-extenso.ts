@@ -75,10 +75,16 @@ export function inteiroPorExtenso(valor: number): string {
     const ultimo = idx === partes.length - 1;
     const grupoIdx = grupos.length - 1 - idx;
     const g = grupos[grupoIdx];
+    const anteriorMil = grupos.length - idx === 2; // grupo anterior é o de milhar
     const usaE = ultimo && grupoIdx === 0 && (g < 100 || g % 100 === 0);
-    texto += usaE ? ` e ${p}` : `, ${p}`;
+    texto += usaE ? ` e ${p}` : anteriorMil ? ` ${p}` : `, ${p}`;
   });
   return texto;
+}
+
+/** true quando o número é múltiplo exato de milhão/bilhão (pede "de reais"). */
+function pedeDe(n: number): boolean {
+  return n >= 1_000_000 && n % 1_000_000 === 0;
 }
 
 /** Escreve um valor monetário em reais por extenso. Ex.: "trinta mil reais". */
@@ -90,10 +96,14 @@ export function valorPorExtenso(valor: number): string {
   const centavos = total % 100;
 
   const partes: string[] = [];
-  if (reais > 0) partes.push(`${inteiroPorExtenso(reais)} ${reais === 1 ? "real" : "reais"}`);
+  if (reais > 0)
+    partes.push(
+      `${inteiroPorExtenso(reais)} ${pedeDe(reais) ? "de " : ""}${reais === 1 ? "real" : "reais"}`,
+    );
   if (centavos > 0)
     partes.push(`${inteiroPorExtenso(centavos)} ${centavos === 1 ? "centavo" : "centavos"}`);
   if (!partes.length) partes.push("zero real");
 
   return `${negativo ? "menos " : ""}${partes.join(" e ")}`;
 }
+
