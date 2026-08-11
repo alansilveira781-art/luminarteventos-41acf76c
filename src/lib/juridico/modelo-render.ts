@@ -84,6 +84,20 @@ export function parcelasTexto(parcelas: ParcelaContrato[]): string {
     .join("<br>");
 }
 
+/** Texto padrão da forma de pagamento: uma parcela por linha. */
+export function pagamentoTexto(parcelas: ParcelaContrato[]): string {
+  const lista = (parcelas ?? []).filter((p) => Number(p?.valor) > 0 || p?.vencimento);
+  if (!lista.length) return "";
+  return lista
+    .map(
+      (p, i) =>
+        `${fmtMoeda(Number(p.valor))} com vencimento em ${fmtData(p.vencimento)}${
+          i === lista.length - 1 ? "." : ";"
+        }`,
+    )
+    .join("<br>");
+}
+
 function blocoAssinaturas(c: ContratoDados, empresa?: EmpresaContratada | null): string {
   const linha = (nome: string, sub?: string) =>
     `<p style="text-align:center;margin-top:36px">___________________________________________<br>` +
@@ -165,6 +179,8 @@ export function variaveisDoContrato(
     empresa_representante: empresa?.representante_nome ?? "",
     empresa_representante_documento: empresa?.representante_documento ?? "",
     categoria: c.categoria ?? "",
+    evento_nome: c.evento_nome ?? "",
+    nome_evento: c.evento_nome ?? "",
     cliente: c.cliente_nome ?? "",
     cliente_nome: c.cliente_nome ?? "",
     razao_social: c.cliente_nome ?? "",
@@ -201,7 +217,9 @@ export function variaveisDoContrato(
     testemunha2_documento: testemunhas[1]?.documento ?? "",
     valor: c.valor != null ? fmtMoeda(Number(c.valor)) : "",
     valor_total: c.valor != null ? fmtMoeda(Number(c.valor)) : "",
-    forma_pagamento: c.pagamento_forma === "boleto" ? "Boleto" : c.pagamento_forma === "pix" ? "Pix" : "",
+    forma_pagamento: pagamentoTexto(parcelas),
+    forma_pagamento_tipo:
+      c.pagamento_forma === "boleto" ? "Boleto" : c.pagamento_forma === "pix" ? "Pix" : "",
     condicao_pagamento: parcelas.length ? `${parcelas.length}x` : "",
     qtd_parcelas: parcelas.length ? String(parcelas.length) : "",
     parcelas: texto,
@@ -257,6 +275,8 @@ export const CAMPOS_SUGERIDOS: { campo: string; label: string }[] = [
   { campo: "forma_pagamento", label: "Forma de pagamento" },
   { campo: "parcelas", label: "Parcelas (detalhe)" },
   { campo: "qtd_parcelas", label: "Qtd. de parcelas" },
+  { campo: "forma_pagamento_tipo", label: "Meio de pagamento (Pix/Boleto)" },
+  { campo: "evento_nome", label: "Nome do evento" },
   { campo: "evento_periodo", label: "Período do evento" },
   { campo: "evento_inicio", label: "Início do evento" },
   { campo: "evento_fim", label: "Fim do evento" },
@@ -286,7 +306,7 @@ export function renderizarModelo(
   valores: Record<string, string>,
 ): string {
   // Campos gerados pelo sistema que já contêm HTML (quebras de linha, blocos).
-  const CAMPOS_HTML = new Set(["parcelas", "parcelas_detalhe", "assinaturas"]);
+  const CAMPOS_HTML = new Set(["parcelas", "parcelas_detalhe", "forma_pagamento", "assinaturas"]);
   const troca = (raw: string) => {
     const k = normalizarCampo(raw);
     const v = (valores[k] ?? "").toString().trim();
