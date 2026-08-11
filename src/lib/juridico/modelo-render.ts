@@ -286,6 +286,8 @@ export const CAMPOS_SUGERIDOS: { campo: string; label: string }[] = [
   { campo: "qtd_parcelas", label: "Qtd. de parcelas" },
   { campo: "forma_pagamento_tipo", label: "Meio de pagamento (Pix/Boleto)" },
   { campo: "evento_nome", label: "Nome do evento" },
+  { campo: "local", label: "Local do evento" },
+  { campo: "numero_proposta", label: "Nº da proposta" },
   { campo: "evento_periodo", label: "Período do evento" },
   { campo: "evento_inicio", label: "Início do evento" },
   { campo: "evento_fim", label: "Fim do evento" },
