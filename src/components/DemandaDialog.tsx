@@ -262,9 +262,13 @@ export function DemandaDialog({
           if (error) throw error;
         }
       }
-      // Upload de anexos pendentes (anexados antes de salvar)
-      if (id && pendingFiles.length > 0) {
-        for (const file of pendingFiles) {
+      // Upload de anexos/comprovantes pendentes (anexados antes de salvar)
+      const pendentes: Array<{ file: File; tipo: string }> = [
+        ...pendingFiles.map((file) => ({ file, tipo: "anexo" })),
+        ...pendingComprovantes.map((file) => ({ file, tipo: "comprovante" })),
+      ];
+      if (id && pendentes.length > 0) {
+        for (const { file, tipo } of pendentes) {
           const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
           const path = `${id}/${Date.now()}_${safeName}`;
           const { error: upErr } = await sb.storage.from("demanda-anexos").upload(path, file, {
@@ -277,6 +281,7 @@ export function DemandaDialog({
             path,
             mime_type: file.type || null,
             tamanho: file.size,
+            tipo,
             uploaded_by: user?.id ?? null,
           });
           if (insErr) throw insErr;
