@@ -157,6 +157,7 @@ const emptyApontamento = (): ApontamentoForm => ({
   almoco: false,
   janta: false,
   diaria_minima: true,
+  empeleita: false,
 });
 
 function fmtBRL(v: number) {
