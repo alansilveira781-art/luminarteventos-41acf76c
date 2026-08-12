@@ -184,7 +184,7 @@ export function ImplementarProjetoDialog({
           evento_id: evento.id,
           origem: "evento",
           status: "aberta",
-          data_inicio: toISO(new Date()),
+          data_inicio: dataInicio || toISO(new Date()),
           prazo: limitePrazo ?? evento.data_montagem ?? null,
           created_by: userId,
         })
