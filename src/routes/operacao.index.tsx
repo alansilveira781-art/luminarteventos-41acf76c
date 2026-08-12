@@ -40,6 +40,7 @@ import {
   type Ordem,
   type OrdemSetor,
   type Setor,
+  calcularPrazosRoteiro,
 } from "@/lib/operacao";
 
 export const Route = createFileRoute("/operacao/")({ component: OperacaoQuadro });
@@ -59,7 +60,7 @@ function OperacaoQuadro() {
     queryFn: async () => {
       const { data, error } = await sb
         .from("op_setores")
-        .select("id,nome,slug,ordem,responsavel_id,fixo")
+        .select("id,nome,slug,ordem,responsavel_id,fixo,dias_medios")
         .eq("ativo", true)
         .order("ordem");
       if (error) throw error;
@@ -468,11 +469,12 @@ function NovaOrdemDialog({
   const [dataInicio, setDataInicio] = useState<string>("");
   const [prazo, setPrazo] = useState<string>("");
   const [roteiro, setRoteiro] = useState<string[]>([]);
-  const [prazosSetor, setPrazosSetor] = useState<Record<string, string>>({});
+  const [prazosManuais, setPrazosManuais] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
 
   const selecionados = setores.filter((s) => s.fixo || roteiro.includes(s.id));
+  const prazosSetor = calcularPrazosRoteiro(dataInicio, selecionados, prazosManuais);
 
   function toggleSetor(id: string, v: boolean) {
     setRoteiro((prev) => (v ? [...prev, id] : prev.filter((x) => x !== id)));
@@ -594,11 +596,31 @@ function NovaOrdemDialog({
                       disabled={!marcado}
                       max={prazo || undefined}
                       value={prazosSetor[s.id] ?? ""}
-                      onChange={(e) => setPrazosSetor((p) => ({ ...p, [s.id]: e.target.value }))}
+                      onChange={(e) =>
+                        setPrazosManuais((p) => ({ ...p, [s.id]: e.target.value }))
+                      }
                     />
                   </div>
                 );
               })}
+            </div>
+            <div className="flex items-center justify-between gap-2 mt-1">
+              <p className="text-[11px] text-muted-foreground">
+                {dataInicio
+                  ? "Prazos gerados pelo tempo médio de cada setor — podem ser editados."
+                  : "Informe a data de início para gerar os prazos automaticamente."}
+              </p>
+              {Object.keys(prazosManuais).length > 0 && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 text-[11px]"
+                  onClick={() => setPrazosManuais({})}
+                >
+                  Recalcular prazos
+                </Button>
+              )}
             </div>
             {prazo && (
               <p className="text-[11px] text-muted-foreground mt-1">

@@ -17,7 +17,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { CalendarDays, CheckCircle2, ChevronLeft } from "lucide-react";
 import { garantirChecklist } from "./ChecklistCardDialog";
-import { fmtData, type Setor } from "@/lib/operacao";
+import { calcularPrazosRoteiro, fmtData, type Setor } from "@/lib/operacao";
 
 const sb = supabase as any;
 
@@ -72,7 +72,8 @@ export function ImplementarProjetoDialog({
   const [criando, setCriando] = useState(false);
   const [evento, setEvento] = useState<EventoLite | null>(null);
   const [selecionadosIds, setSelecionadosIds] = useState<string[]>([]);
-  const [prazos, setPrazos] = useState<Record<string, string>>({});
+  const [prazosManuais, setPrazosManuais] = useState<Record<string, string>>({});
+  const [dataInicio, setDataInicio] = useState<string>(toISO(new Date()));
 
   const inicioMes = `${mes}-01`;
   const fimMes = useMemo(() => {
@@ -142,15 +143,21 @@ export function ImplementarProjetoDialog({
 
   const limitePrazo = evento?.data_evento_fim ?? evento?.data_evento ?? undefined;
 
+  const prazos = useMemo(
+    () => calcularPrazosRoteiro(dataInicio, roteiroSelecionado, prazosManuais),
+    [dataInicio, roteiroSelecionado, prazosManuais],
+  );
+
   function escolherEvento(ev: EventoLite) {
     setEvento(ev);
     setSelecionadosIds(setores.filter((s) => !s.fixo).map((s) => s.id));
-    setPrazos({});
+    setPrazosManuais({});
+    setDataInicio(toISO(new Date()));
   }
 
   function voltar() {
     setEvento(null);
-    setPrazos({});
+    setPrazosManuais({});
   }
 
   async function confirmar() {
@@ -177,7 +184,7 @@ export function ImplementarProjetoDialog({
           evento_id: evento.id,
           origem: "evento",
           status: "aberta",
-          data_inicio: toISO(new Date()),
+          data_inicio: dataInicio || toISO(new Date()),
           prazo: limitePrazo ?? evento.data_montagem ?? null,
           created_by: userId,
         })
@@ -312,7 +319,33 @@ export function ImplementarProjetoDialog({
             </div>
 
             <div>
+            <div>
+              <Label className="text-xs uppercase text-muted-foreground">Data de início</Label>
+              <Input
+                type="date"
+                className="h-8 w-[170px]"
+                value={dataInicio}
+                onChange={(e) => setDataInicio(e.target.value)}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Os prazos abaixo são gerados somando o tempo médio de cada setor.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
               <Label className="text-xs uppercase text-muted-foreground">Setores do roteiro</Label>
+              {Object.keys(prazosManuais).length > 0 && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 text-[11px]"
+                  onClick={() => setPrazosManuais({})}
+                >
+                  Recalcular prazos
+                </Button>
+              )}
+            </div>
               <div className="mt-1 space-y-1 rounded border p-2 max-h-72 overflow-y-auto">
                 {setores.map((s) => {
                   const marcado = s.fixo || selecionadosIds.includes(s.id);
@@ -337,7 +370,9 @@ export function ImplementarProjetoDialog({
                         disabled={!marcado}
                         max={limitePrazo}
                         value={prazos[s.id] ?? ""}
-                        onChange={(e) => setPrazos((p) => ({ ...p, [s.id]: e.target.value }))}
+                        onChange={(e) =>
+                          setPrazosManuais((p) => ({ ...p, [s.id]: e.target.value }))
+                        }
                       />
                     </div>
                   );
