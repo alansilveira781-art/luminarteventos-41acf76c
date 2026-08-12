@@ -344,7 +344,9 @@ export function ImplementarProjetoDialog({
                         disabled={!marcado}
                         max={limitePrazo}
                         value={prazos[s.id] ?? ""}
-                        onChange={(e) => setPrazos((p) => ({ ...p, [s.id]: e.target.value }))}
+                        onChange={(e) =>
+                          setPrazosManuais((p) => ({ ...p, [s.id]: e.target.value }))
+                        }
                       />
                     </div>
                   );
