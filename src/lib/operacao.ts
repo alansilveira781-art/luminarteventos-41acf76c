@@ -5,7 +5,40 @@ export type Setor = {
   ordem: number;
   responsavel_id: string | null;
   fixo?: boolean;
+  dias_medios?: number | null;
 };
+
+function addDias(iso: string, dias: number) {
+  const d = new Date(`${iso}T12:00:00`);
+  d.setDate(d.getDate() + dias);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Encadeia os prazos do roteiro a partir da data de início, somando o tempo
+ * médio (dias corridos) de cada setor. Prazos editados manualmente são
+ * mantidos e servem de base para os setores seguintes.
+ */
+export function calcularPrazosRoteiro(
+  dataInicio: string | null | undefined,
+  roteiro: Setor[],
+  manuais: Record<string, string> = {},
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!dataInicio) return { ...manuais };
+  let base = dataInicio;
+  for (const s of roteiro) {
+    const manual = manuais[s.id];
+    if (manual) {
+      out[s.id] = manual;
+      base = manual;
+      continue;
+    }
+    base = addDias(base, Math.max(0, Number(s.dias_medios ?? 0) || 0));
+    out[s.id] = base;
+  }
+  return out;
+}
 
 export type Etapa = {
   id: string;
