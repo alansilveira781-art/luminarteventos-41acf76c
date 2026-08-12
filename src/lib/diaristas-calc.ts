@@ -102,16 +102,26 @@ export function usaDiariaMinima(a: ApontamentoInput): boolean {
   return a.diaria_minima == null ? true : !!a.diaria_minima;
 }
 
+export function isEmpeleita(a: ApontamentoInput): boolean {
+  return !!a.empeleita;
+}
+
+/** Empeleita: mantém horas/horários mas zera qualquer valor. */
+function zerarValores<T extends CalcResult>(r: T): T {
+  return { ...r, diaria: 0, extra: 0, refeicoes: 0, total: 0 };
+}
+
 export function calcularApontamento(a: ApontamentoInput, t: DiaristaTarifa): CalcResult {
   const bruto = minutosEntre(a.hora_inicial, a.hora_final);
   const minutosTrab = Math.max(0, bruto - (Number(a.intervalo_minutos) || 0));
-  return montarResultado(
+  const res = montarResultado(
     minutosTrab,
     valorHoraDoLocal(a.local, t),
     a.extra_manual ?? 0,
     valorRefeicoes(a, t),
     usaDiariaMinima(a),
   );
+  return isEmpeleita(a) ? zerarValores(res) : res;
 }
 
 
