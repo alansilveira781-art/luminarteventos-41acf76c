@@ -359,7 +359,7 @@ function CartoesReport() {
     doc.text("Luminart Eventos", 40, 40);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
-    doc.text(`Relatório de Cartão — Cartão Final ${cartao}`, 40, 56);
+    doc.text(`Relatório de Pagamentos — ${formaLabel}`, 40, 56);
     doc.text(`Período: ${periodoLabel}`, 40, 70);
     doc.setFontSize(8);
     doc.setTextColor(120, 120, 120);
@@ -374,29 +374,35 @@ function CartoesReport() {
       r.itens.length > 0
         ? r.itens.map((it) => `${Number(it.quantidade ?? 0)}x ${it.descricao ?? "—"}`).join("\n")
         : (r.descritivo_fallback ?? "—"),
+      ...(mostrarForma ? [r.forma ?? "—"] : []),
       r.parcelamento ?? "—",
       brl(r.valor_total),
     ]);
 
     autoTable(doc, {
       startY: 90,
-      head: [["Tipo", "Título", "Solicitante", "Comprador", "Itens ou Descritivo", "Pagamento", "Valor Total"]],
+      head: [[
+        "Tipo", "Título", "Solicitante", "Comprador", "Itens ou Descritivo",
+        ...(mostrarForma ? ["Forma"] : []),
+        "Pagamento", "Valor Total",
+      ]],
       body,
       styles: { fontSize: 8, cellPadding: 4, overflow: "linebreak", valign: "top" },
       headStyles: { fillColor: [30, 30, 30], textColor: [255, 255, 255], fontStyle: "bold" },
       alternateRowStyles: { fillColor: [245, 245, 245] },
-      columnStyles: {
-        0: { cellWidth: 60 },
-        1: { cellWidth: 110 },
-        2: { cellWidth: 90 },
-        3: { cellWidth: 90 },
-        4: { cellWidth: "auto" },
-        5: { cellWidth: 90 },
-        6: { cellWidth: 75, halign: "right" },
-      },
+      columnStyles: mostrarForma
+        ? {
+            0: { cellWidth: 60 }, 1: { cellWidth: 100 }, 2: { cellWidth: 80 }, 3: { cellWidth: 80 },
+            4: { cellWidth: "auto" }, 5: { cellWidth: 80 }, 6: { cellWidth: 80 }, 7: { cellWidth: 75, halign: "right" },
+          }
+        : {
+            0: { cellWidth: 60 }, 1: { cellWidth: 110 }, 2: { cellWidth: 90 }, 3: { cellWidth: 90 },
+            4: { cellWidth: "auto" }, 5: { cellWidth: 90 }, 6: { cellWidth: 75, halign: "right" },
+          },
       margin: { left: 40, right: 40 },
       showHead: "everyPage",
     });
+
 
     const finalY = (doc as any).lastAutoTable?.finalY ?? 90;
     let y = finalY + 20;
