@@ -101,6 +101,19 @@ function SetoresPage() {
                     await sb.from("op_setores").update({ nome: e.target.value }).eq("id", s.id);
                     inv();
                   }} />
+                  <Label className="text-xs whitespace-nowrap">Tempo médio (dias):</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    className="w-20 h-8"
+                    defaultValue={s.dias_medios ?? 0}
+                    onBlur={async (e) => {
+                      const v = Math.max(0, Number(e.target.value) || 0);
+                      await sb.from("op_setores").update({ dias_medios: v }).eq("id", s.id);
+                      inv();
+                    }}
+                  />
+
                   <Label className="text-xs">Responsável:</Label>
                   <Select value={s.responsavel_id ?? "__none__"} onValueChange={async (v) => {
                     await sb.from("op_setores").update({ responsavel_id: v === "__none__" ? null : v }).eq("id", s.id);
