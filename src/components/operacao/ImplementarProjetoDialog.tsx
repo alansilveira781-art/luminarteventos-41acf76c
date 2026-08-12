@@ -319,7 +319,33 @@ export function ImplementarProjetoDialog({
             </div>
 
             <div>
+            <div>
+              <Label className="text-xs uppercase text-muted-foreground">Data de início</Label>
+              <Input
+                type="date"
+                className="h-8 w-[170px]"
+                value={dataInicio}
+                onChange={(e) => setDataInicio(e.target.value)}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Os prazos abaixo são gerados somando o tempo médio de cada setor.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
               <Label className="text-xs uppercase text-muted-foreground">Setores do roteiro</Label>
+              {Object.keys(prazosManuais).length > 0 && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 text-[11px]"
+                  onClick={() => setPrazosManuais({})}
+                >
+                  Recalcular prazos
+                </Button>
+              )}
+            </div>
               <div className="mt-1 space-y-1 rounded border p-2 max-h-72 overflow-y-auto">
                 {setores.map((s) => {
                   const marcado = s.fixo || selecionadosIds.includes(s.id);
