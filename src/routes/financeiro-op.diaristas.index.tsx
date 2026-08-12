@@ -805,7 +805,7 @@ function ApontamentoTab() {
                           ? []
                           : prev.eventos.length >= 2
                             ? prev.eventos
-                            : [emptyEvento(), emptyEvento()],
+                            : [emptyEvento(0), emptyEvento(1)],
                     }));
                   }}
                 >
