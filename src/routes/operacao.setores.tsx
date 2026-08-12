@@ -25,6 +25,7 @@ type Setor = {
   ativo: boolean;
   fixo: boolean;
   responsavel_id: string | null;
+  dias_medios: number | null;
 };
 type Etapa = { id: string; setor_id: string; nome: string; descricao: string | null; ordem: number; ativo: boolean };
 type Profile = { id: string; display_name: string | null; email: string | null };
