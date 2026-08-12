@@ -18,6 +18,8 @@ export type ApontamentoInput = {
   janta?: boolean | null;
   /** Garante a diária cheia de 8h mesmo com menos horas (padrão: true) */
   diaria_minima?: boolean | null;
+  /** Empeleita: registra apenas o horário, sem gerar valor */
+  empeleita?: boolean | null;
 };
 
 export type DiaristaTarifa = {
