@@ -468,11 +468,12 @@ function NovaOrdemDialog({
   const [dataInicio, setDataInicio] = useState<string>("");
   const [prazo, setPrazo] = useState<string>("");
   const [roteiro, setRoteiro] = useState<string[]>([]);
-  const [prazosSetor, setPrazosSetor] = useState<Record<string, string>>({});
+  const [prazosManuais, setPrazosManuais] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
 
   const selecionados = setores.filter((s) => s.fixo || roteiro.includes(s.id));
+  const prazosSetor = calcularPrazosRoteiro(dataInicio, selecionados, prazosManuais);
 
   function toggleSetor(id: string, v: boolean) {
     setRoteiro((prev) => (v ? [...prev, id] : prev.filter((x) => x !== id)));
