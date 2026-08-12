@@ -2,8 +2,9 @@ import { Fragment } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subDays } from "date-fns";
-import { Settings, Plus, Pencil, Trash2, Loader2, Download, ChevronDown, ChevronRight } from "lucide-react";
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subDays, addDays, addWeeks, subWeeks } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Settings, Plus, Pencil, Trash2, Loader2, Download, ChevronDown, ChevronRight, ChevronLeft, LayoutGrid, List } from "lucide-react";
 import { toast } from "sonner";
 type XLSXNs = typeof import("xlsx");
 let _xlsxPromise: Promise<XLSXNs> | null = null;
@@ -169,6 +170,24 @@ function fmtBRL(v: number) {
 function fmtDate(iso: string) {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="space-y-0.5">
+      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-sm">{value}</div>
+    </div>
+  );
+}
+
+function Linha({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+  return (
+    <div className={`flex items-center justify-between text-sm ${bold ? "font-semibold" : ""}`}>
+      <span>{label}</span>
+      <span className="tabular-nums">{value}</span>
+    </div>
+  );
 }
 
 function DiaristasIndex() {
@@ -352,6 +371,23 @@ function ApontamentoTab() {
   const [fProjeto, setFProjeto] = useState<string>("");
   const [fDe, setFDe] = useState<string>("");
   const [fAte, setFAte] = useState<string>("");
+  const [fSituacao, setFSituacao] = useState<"todas" | "aberto" | "pago" | "empeleita">("todas");
+
+  const [visao, setVisao] = useState<"tabela" | "semana">("tabela");
+  const [semanaRef, setSemanaRef] = useState<Date>(() => new Date());
+  const [detalheId, setDetalheId] = useState<string | null>(null);
+
+  const semana = useMemo(() => {
+    const ini = startOfWeek(semanaRef, { weekStartsOn: 1 });
+    const fim = endOfWeek(semanaRef, { weekStartsOn: 1 });
+    return {
+      ini,
+      fim,
+      iniYmd: format(ini, "yyyy-MM-dd"),
+      fimYmd: format(fim, "yyyy-MM-dd"),
+      dias: Array.from({ length: 7 }, (_, i) => addDays(ini, i)),
+    };
+  }, [semanaRef]);
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ApontamentoForm>(emptyApontamento());
@@ -458,11 +494,18 @@ function ApontamentoTab() {
       if (!matchDepto(diaristasMap.get(a.diarista_id), fDepto)) return false;
       if (fLocal !== "todos" && a.local !== fLocal) return false;
       if (fProjeto && !(a.projeto ?? "").toLowerCase().includes(fProjeto.toLowerCase())) return false;
-      if (fDe && a.data < fDe) return false;
-      if (fAte && a.data > fAte) return false;
+      if (fSituacao === "aberto" && a.fechamento_id) return false;
+      if (fSituacao === "pago" && !a.fechamento_id) return false;
+      if (fSituacao === "empeleita" && !a.empeleita) return false;
+      if (visao === "semana") {
+        if (a.data < semana.iniYmd || a.data > semana.fimYmd) return false;
+      } else {
+        if (fDe && a.data < fDe) return false;
+        if (fAte && a.data > fAte) return false;
+      }
       return true;
     });
-  }, [apontamentos, fDiarista, fDepto, diaristasMap, fLocal, fProjeto, fDe, fAte, somenteProprios, user?.id]);
+  }, [apontamentos, fDiarista, fDepto, diaristasMap, fLocal, fProjeto, fDe, fAte, fSituacao, visao, semana, somenteProprios, user?.id]);
 
   const calcDe = (a: Apontamento) => {
     const d = diaristasMap.get(a.diarista_id);
@@ -470,6 +513,51 @@ function ApontamentoTab() {
     const evs = eventosMap?.get(a.id) ?? [];
     return calcularApontamentoComEventos(a, tarifaDe(d), (a.modo_divisao ?? "unico") as ModoDivisao, evs);
   };
+
+  const porDia = useMemo(() => {
+    const m = new Map<string, Apontamento[]>();
+    for (const a of filtered) {
+      const arr = m.get(a.data);
+      if (arr) arr.push(a);
+      else m.set(a.data, [a]);
+    }
+    return m;
+  }, [filtered]);
+
+  const detalhe = useMemo(
+    () => filtered.find((a) => a.id === detalheId) ?? null,
+    [filtered, detalheId],
+  );
+
+  const abrirEdicao = (a: Apontamento) => {
+    const evs = eventosMap?.get(a.id) ?? [];
+    setEditing({
+      id: a.id,
+      diarista_id: a.diarista_id,
+      projeto: a.projeto ?? "",
+      data: a.data,
+      hora_inicial: a.hora_inicial.slice(0, 5),
+      hora_final: a.hora_final.slice(0, 5),
+      intervalo_minutos: a.intervalo_minutos,
+      local: (a.local as Local) ?? "Fortaleza",
+      obs: a.obs ?? "",
+      extra_manual: Number(a.extra_manual) || 0,
+      modo_divisao: (a.modo_divisao ?? "unico") as ModoDivisao,
+      almoco: !!a.almoco,
+      janta: !!a.janta,
+      diaria_minima: a.diaria_minima !== false,
+      empeleita: !!a.empeleita,
+      eventos: evs.map((e, i) => ({
+        evento_nome: e.evento_nome,
+        hora_inicial: e.hora_inicial || "08:00",
+        hora_final: e.hora_final || "12:00",
+        intervalo_minutos: e.intervalo_minutos,
+        bloco: e.bloco ?? i,
+      })),
+    });
+    setOpen(true);
+  };
+
 
   // preview em tempo real no formulário
   const previewDiarista = diaristasMap.get(editing.diarista_id);
@@ -527,6 +615,24 @@ function ApontamentoTab() {
 
   return (
     <div className="space-y-4">
+      {/* Visualização */}
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          variant={visao === "tabela" ? "default" : "outline"}
+          onClick={() => setVisao("tabela")}
+        >
+          <List className="h-4 w-4 mr-1" /> Tabela
+        </Button>
+        <Button
+          size="sm"
+          variant={visao === "semana" ? "default" : "outline"}
+          onClick={() => setVisao("semana")}
+        >
+          <LayoutGrid className="h-4 w-4 mr-1" /> Semana
+        </Button>
+      </div>
+
       {/* Filtros */}
       <Card className="p-4">
         <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-7 items-end">
@@ -571,13 +677,46 @@ function ApontamentoTab() {
             <Input value={fProjeto} onChange={(e) => setFProjeto(e.target.value)} placeholder="Filtrar" />
           </div>
           <div className="space-y-1">
-            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">De</Label>
-            <Input type="date" value={fDe} onChange={(e) => setFDe(e.target.value)} />
+            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Situação</Label>
+            <Select value={fSituacao} onValueChange={(v) => setFSituacao(v as typeof fSituacao)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas</SelectItem>
+                <SelectItem value="aberto">Em aberto</SelectItem>
+                <SelectItem value="pago">Pagas</SelectItem>
+                <SelectItem value="empeleita">Empeleita</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <div className="space-y-1">
-            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Até</Label>
-            <Input type="date" value={fAte} onChange={(e) => setFAte(e.target.value)} />
-          </div>
+          {visao === "tabela" ? (
+            <>
+              <div className="space-y-1">
+                <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">De</Label>
+                <Input type="date" value={fDe} onChange={(e) => setFDe(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Até</Label>
+                <Input type="date" value={fAte} onChange={(e) => setFAte(e.target.value)} />
+              </div>
+            </>
+          ) : (
+            <div className="space-y-1 col-span-2">
+              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Semana</Label>
+              <div className="flex items-center gap-1">
+                <Button type="button" variant="outline" size="icon" className="h-9 w-9"
+                  onClick={() => setSemanaRef((d) => subWeeks(d, 1))} aria-label="Semana anterior">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="flex-1 text-center text-xs font-medium tabular-nums">
+                  {format(semana.ini, "dd/MM")} – {format(semana.fim, "dd/MM/yy")}
+                </span>
+                <Button type="button" variant="outline" size="icon" className="h-9 w-9"
+                  onClick={() => setSemanaRef((d) => addWeeks(d, 1))} aria-label="Próxima semana">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
           <div>
             <Button
               className="w-full"
@@ -589,7 +728,90 @@ function ApontamentoTab() {
         </div>
       </Card>
 
+      {/* Visão semanal em cards */}
+      {visao === "semana" && (
+        isLoading ? (
+          <Card className="p-6 flex justify-center text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />
+          </Card>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {semana.dias.map((dia) => {
+              const ymd = format(dia, "yyyy-MM-dd");
+              const itens = porDia.get(ymd) ?? [];
+              const totalDia = itens.reduce((acc, a) => acc + (calcDe(a)?.total ?? 0), 0);
+              return (
+                <Card key={ymd} className="p-3 space-y-2">
+                  <div className="flex items-baseline justify-between">
+                    <div>
+                      <div className="text-sm font-semibold capitalize">
+                        {format(dia, "EEEE", { locale: ptBR })}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground tabular-nums">
+                        {format(dia, "dd/MM/yyyy")}
+                      </div>
+                    </div>
+                    <span className="text-[11px] text-muted-foreground">{itens.length}</span>
+                  </div>
+                  <div className="space-y-1">
+                    {itens.length === 0 ? (
+                      <div className="text-xs text-muted-foreground py-2">Sem lançamentos.</div>
+                    ) : itens.map((a) => {
+                      const calc = calcDe(a);
+                      return (
+                        <button
+                          key={a.id}
+                          type="button"
+                          onClick={() => setDetalheId(a.id)}
+                          className="w-full rounded-md border border-border/60 px-2 py-1.5 text-left hover:bg-muted/50"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-medium truncate">
+                              {nomeExib(diaristasMap.get(a.diarista_id))}
+                            </span>
+                            <span className="text-[11px] tabular-nums text-muted-foreground">
+                              {calc?.horasLabel ?? "—"}
+                            </span>
+                          </div>
+                          <div className="mt-0.5 flex items-center justify-between gap-2">
+                            <span className="text-[11px] text-muted-foreground truncate">
+                              {a.projeto || "—"}
+                            </span>
+                            {verValores && (
+                              <span className="text-[11px] tabular-nums font-semibold">
+                                {calc ? fmtBRL(calc.total) : "—"}
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            <span className={`rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${a.fechamento_id ? "bg-emerald-500/15 text-emerald-600" : "bg-muted text-muted-foreground"}`}>
+                              {a.fechamento_id ? "pago" : "em aberto"}
+                            </span>
+                            {a.empeleita && (
+                              <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-amber-600">
+                                empeleita
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {verValores && itens.length > 0 && (
+                    <div className="border-t border-border pt-1.5 flex items-center justify-between text-xs font-semibold">
+                      <span>Total</span>
+                      <span className="tabular-nums">{fmtBRL(totalDia)}</span>
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+        )
+      )}
+
       {/* Tabela */}
+      {visao === "tabela" && (
       <Card className="p-4">
         {isLoading ? (
           <div className="p-6 flex justify-center text-muted-foreground">
@@ -758,6 +980,86 @@ function ApontamentoTab() {
           </div>
         )}
       </Card>
+      )}
+
+      {/* Detalhe do apontamento (visão semanal) */}
+      <Dialog open={!!detalhe} onOpenChange={(v) => !v && setDetalheId(null)}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalhes do apontamento</DialogTitle>
+          </DialogHeader>
+          {detalhe && (() => {
+            const d = diaristasMap.get(detalhe.diarista_id);
+            const evs = eventosMap?.get(detalhe.id) ?? [];
+            const calc = calcDe(detalhe);
+            const modo = (detalhe.modo_divisao ?? "unico") as ModoDivisao;
+            return (
+              <div className="space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-2">
+                  <Info label="Diarista" value={nomeExib(d)} />
+                  <Info label="Data" value={fmtDate(detalhe.data)} />
+                  <Info label="Projeto" value={detalhe.projeto || "—"} />
+                  <Info label="Local" value={detalhe.local} />
+                  <Info label="Horário" value={intervaloExibicao(detalhe, evs, modo).label} />
+                  <Info label="Intervalo" value={`${detalhe.intervalo_minutos}min`} />
+                  <Info label="Horas" value={calc?.horasLabel ?? "—"} />
+                  <Info label="Situação" value={detalhe.fechamento_id ? "Pago" : "Em aberto"} />
+                  {detalhe.empeleita && <Info label="Empeleita" value="Sim" />}
+                  {(detalhe.almoco || detalhe.janta) && (
+                    <Info
+                      label="Refeições"
+                      value={[detalhe.almoco ? "Almoço" : null, detalhe.janta ? "Janta" : null].filter(Boolean).join(" · ")}
+                    />
+                  )}
+                </div>
+
+                {verValores && calc && (
+                  <div className="rounded-md border border-border p-3 space-y-1">
+                    <Linha label="Diária" value={fmtBRL(calc.diaria)} />
+                    <Linha label="Extra" value={fmtBRL(calc.extra)} />
+                    <Linha label="Total" value={fmtBRL(calc.total)} bold />
+                  </div>
+                )}
+
+                {(calc?.rateio?.length ?? 0) > 0 && (
+                  <div className="space-y-1">
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Eventos</div>
+                    {(calc?.rateio ?? []).map((r, i) => (
+                      <div key={i} className="flex items-center justify-between gap-3 text-xs">
+                        <span className="font-medium">{r.evento_nome}</span>
+                        <span className="tabular-nums text-muted-foreground">
+                          {r.horasLabel}{verValores ? ` · ${fmtBRL(r.valor)}` : ""}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {detalhe.obs && (
+                  <div className="text-xs text-muted-foreground whitespace-pre-wrap">{detalhe.obs}</div>
+                )}
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" size="sm"
+                    onClick={() => { const a = detalhe; setDetalheId(null); abrirEdicao(a); }}
+                  >
+                    <Pencil className="h-4 w-4 mr-1" /> Editar
+                  </Button>
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive"
+                    onClick={() => {
+                      if (confirm("Excluir este apontamento?")) { remove.mutate(detalhe.id); setDetalheId(null); }
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" /> Excluir
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+
 
       {/* Dialog Novo/Editar */}
       <Dialog open={open} onOpenChange={setOpen}>
