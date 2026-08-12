@@ -17,7 +17,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { CalendarDays, CheckCircle2, ChevronLeft } from "lucide-react";
 import { garantirChecklist } from "./ChecklistCardDialog";
-import { fmtData, type Setor } from "@/lib/operacao";
+import { calcularPrazosRoteiro, fmtData, type Setor } from "@/lib/operacao";
 
 const sb = supabase as any;
 
