@@ -143,15 +143,21 @@ export function ImplementarProjetoDialog({
 
   const limitePrazo = evento?.data_evento_fim ?? evento?.data_evento ?? undefined;
 
+  const prazos = useMemo(
+    () => calcularPrazosRoteiro(dataInicio, roteiroSelecionado, prazosManuais),
+    [dataInicio, roteiroSelecionado, prazosManuais],
+  );
+
   function escolherEvento(ev: EventoLite) {
     setEvento(ev);
     setSelecionadosIds(setores.filter((s) => !s.fixo).map((s) => s.id));
-    setPrazos({});
+    setPrazosManuais({});
+    setDataInicio(toISO(new Date()));
   }
 
   function voltar() {
     setEvento(null);
-    setPrazos({});
+    setPrazosManuais({});
   }
 
   async function confirmar() {
