@@ -71,6 +71,8 @@ type Row = {
   descritivo_fallback: string | null;
   valor_total: number | null;
   parcelamento: string | null;
+  forma: string | null;
+
   status: string | null;
   dataRef: string | null;
   itens: { descricao: string | null; quantidade: number | null }[];
