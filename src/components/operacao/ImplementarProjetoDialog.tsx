@@ -72,7 +72,8 @@ export function ImplementarProjetoDialog({
   const [criando, setCriando] = useState(false);
   const [evento, setEvento] = useState<EventoLite | null>(null);
   const [selecionadosIds, setSelecionadosIds] = useState<string[]>([]);
-  const [prazos, setPrazos] = useState<Record<string, string>>({});
+  const [prazosManuais, setPrazosManuais] = useState<Record<string, string>>({});
+  const [dataInicio, setDataInicio] = useState<string>(toISO(new Date()));
 
   const inicioMes = `${mes}-01`;
   const fimMes = useMemo(() => {
