@@ -19,6 +19,8 @@ import {
   PeriodoFilter, PERIODO_MES_DEFAULT, type Periodo, type PeriodoPreset,
 } from "@/components/PeriodoFilter";
 import { toast } from "sonner";
+import { fetchAllRows } from "@/lib/fetch-all";
+
 import { useDreEstrutura } from "@/hooks/useDreEstrutura";
 import {
   DRE_STRUCTURE, calcularDRECaixa, montarLinhasPorCentro,
