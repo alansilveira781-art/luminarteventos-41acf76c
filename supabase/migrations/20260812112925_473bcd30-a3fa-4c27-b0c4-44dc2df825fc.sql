@@ -1,0 +1,1 @@
+ALTER TABLE public.op_setores ADD COLUMN IF NOT EXISTS dias_medios integer NOT NULL DEFAULT 0;
