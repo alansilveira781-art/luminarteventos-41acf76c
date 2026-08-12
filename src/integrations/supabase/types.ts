@@ -2545,6 +2545,7 @@ export type Database = {
       diarista_apontamento_eventos: {
         Row: {
           apontamento_id: string
+          bloco: number
           created_at: string
           evento_id: string | null
           evento_nome: string
@@ -2556,6 +2557,7 @@ export type Database = {
         }
         Insert: {
           apontamento_id: string
+          bloco?: number
           created_at?: string
           evento_id?: string | null
           evento_nome: string
@@ -2567,6 +2569,7 @@ export type Database = {
         }
         Update: {
           apontamento_id?: string
+          bloco?: number
           created_at?: string
           evento_id?: string | null
           evento_nome?: string
@@ -2596,6 +2599,7 @@ export type Database = {
           data: string
           diaria_minima: boolean
           diarista_id: string | null
+          empeleita: boolean
           empresa: string | null
           extra_manual: number
           fechamento_id: string | null
@@ -2619,6 +2623,7 @@ export type Database = {
           data: string
           diaria_minima?: boolean
           diarista_id?: string | null
+          empeleita?: boolean
           empresa?: string | null
           extra_manual?: number
           fechamento_id?: string | null
@@ -2642,6 +2647,7 @@ export type Database = {
           data?: string
           diaria_minima?: boolean
           diarista_id?: string | null
+          empeleita?: boolean
           empresa?: string | null
           extra_manual?: number
           fechamento_id?: string | null
