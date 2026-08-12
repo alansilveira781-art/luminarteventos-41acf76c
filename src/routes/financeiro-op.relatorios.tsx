@@ -466,13 +466,13 @@ function CartoesReport() {
 
       {!cartao ? (
         <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-          Selecione um cartão para gerar o relatório.
+          Selecione uma forma de pagamento para gerar o relatório.
         </div>
       ) : isLoading ? (
         <div className="text-sm text-muted-foreground">Carregando…</div>
       ) : rows.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-          Nenhum lançamento deste cartão no período/status selecionados.
+          Nenhum lançamento em “{formaLabel}” no período/status selecionados.
           {foraDoFiltro > 0 && ` Existem ${foraDoFiltro} lançamento(s) fora do filtro atual.`}
         </div>
 
@@ -486,6 +486,7 @@ function CartoesReport() {
                 <th className="text-left px-3 py-2 font-medium">Solicitante</th>
                 <th className="text-left px-3 py-2 font-medium">Comprador</th>
                 <th className="text-left px-3 py-2 font-medium">Itens ou Descritivo</th>
+                {mostrarForma && <th className="text-left px-3 py-2 font-medium">Forma</th>}
                 <th className="text-left px-3 py-2 font-medium">Parcelamento</th>
                 <th className="text-right px-3 py-2 font-medium">Valor total</th>
               </tr>
@@ -508,6 +509,7 @@ function CartoesReport() {
                       <span className="whitespace-pre-wrap">{r.descritivo_fallback ?? "—"}</span>
                     )}
                   </td>
+                  {mostrarForma && <td className="px-3 py-2">{r.forma ?? "—"}</td>}
                   <td className="px-3 py-2 whitespace-nowrap">{r.parcelamento ?? "—"}</td>
                   <td className="px-3 py-2 text-right whitespace-nowrap">{brl(r.valor_total)}</td>
                 </tr>
@@ -515,24 +517,27 @@ function CartoesReport() {
             </tbody>
             <tfoot>
               <tr className="border-t bg-muted/30">
-                <td colSpan={6} className="px-3 py-2 text-right text-xs text-muted-foreground">
+                <td colSpan={mostrarForma ? 7 : 6} className="px-3 py-2 text-right text-xs text-muted-foreground">
                   Subtotal Compras: {brl(totalCompras)} · Subtotal Despesas: {brl(totalDemandas)}
                 </td>
                 <td className="px-3 py-2 text-right font-mono text-xs text-muted-foreground">&nbsp;</td>
               </tr>
               <tr className="border-t bg-muted/60">
-                <td colSpan={6} className="px-3 py-2 text-right font-semibold">Total geral</td>
+                <td colSpan={mostrarForma ? 7 : 6} className="px-3 py-2 text-right font-semibold">Total geral</td>
                 <td className="px-3 py-2 text-right font-semibold whitespace-nowrap">{brl(totalGeral)}</td>
               </tr>
             </tfoot>
           </table>
           {foraDoFiltro > 0 && (
             <p className="border-t px-3 py-2 text-xs text-muted-foreground">
-              {foraDoFiltro} lançamento(s) deste cartão ficaram fora do período/status selecionados.
+              {foraDoFiltro} lançamento(s) fora do filtro atual
+              {foraPorPeriodo > 0 && ` · ${foraPorPeriodo} fora do período`}
+              {foraPorStatus > 0 && ` · ${foraPorStatus} fora do status`}.
             </p>
           )}
         </div>
       )}
+
 
     </div>
   );
