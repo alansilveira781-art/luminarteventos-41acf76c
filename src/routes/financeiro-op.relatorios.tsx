@@ -335,6 +335,8 @@ function CartoesReport() {
 
 
   const foraDoFiltro = (data?.total ?? 0) - rows.length;
+  const mostrarForma = cartao === TODAS;
+
 
   const totalGeral = rows.reduce((s, r) => s + Number(r.valor_total ?? 0), 0);
 
