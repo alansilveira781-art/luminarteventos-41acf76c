@@ -59,7 +59,7 @@ function OperacaoQuadro() {
     queryFn: async () => {
       const { data, error } = await sb
         .from("op_setores")
-        .select("id,nome,slug,ordem,responsavel_id,fixo")
+        .select("id,nome,slug,ordem,responsavel_id,fixo,dias_medios")
         .eq("ativo", true)
         .order("ordem");
       if (error) throw error;
