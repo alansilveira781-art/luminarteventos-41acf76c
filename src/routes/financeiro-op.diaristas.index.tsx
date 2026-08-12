@@ -353,6 +353,23 @@ function ApontamentoTab() {
   const [fProjeto, setFProjeto] = useState<string>("");
   const [fDe, setFDe] = useState<string>("");
   const [fAte, setFAte] = useState<string>("");
+  const [fSituacao, setFSituacao] = useState<"todas" | "aberto" | "pago" | "empeleita">("todas");
+
+  const [visao, setVisao] = useState<"tabela" | "semana">("tabela");
+  const [semanaRef, setSemanaRef] = useState<Date>(() => new Date());
+  const [detalheId, setDetalheId] = useState<string | null>(null);
+
+  const semana = useMemo(() => {
+    const ini = startOfWeek(semanaRef, { weekStartsOn: 1 });
+    const fim = endOfWeek(semanaRef, { weekStartsOn: 1 });
+    return {
+      ini,
+      fim,
+      iniYmd: format(ini, "yyyy-MM-dd"),
+      fimYmd: format(fim, "yyyy-MM-dd"),
+      dias: Array.from({ length: 7 }, (_, i) => addDays(ini, i)),
+    };
+  }, [semanaRef]);
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ApontamentoForm>(emptyApontamento());
