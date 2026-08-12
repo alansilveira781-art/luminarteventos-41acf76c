@@ -420,18 +420,21 @@ function CartoesReport() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Cartão (condição de pagamento)</label>
+          <label className="text-xs text-muted-foreground">Forma de pagamento</label>
           <Select value={cartao} onValueChange={setCartao}>
             <SelectTrigger className="w-[280px]">
-              <SelectValue placeholder="Selecione um cartão…" />
+              <SelectValue placeholder="Selecione uma forma…" />
             </SelectTrigger>
             <SelectContent>
-              {cartoes.map((n: string) => (
-                <SelectItem key={n} value={n}>{n}</SelectItem>
+              <SelectItem value={TODAS}>Todas as formas</SelectItem>
+              <SelectItem value={SEM_FORMA}>Sem forma informada</SelectItem>
+              {formas.map((f) => (
+                <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
+
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">Período</label>
           <PeriodoFilter
