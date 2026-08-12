@@ -172,6 +172,24 @@ function fmtDate(iso: string) {
   return `${d}/${m}/${y}`;
 }
 
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="space-y-0.5">
+      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-sm">{value}</div>
+    </div>
+  );
+}
+
+function Linha({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+  return (
+    <div className={`flex items-center justify-between text-sm ${bold ? "font-semibold" : ""}`}>
+      <span>{label}</span>
+      <span className="tabular-nums">{value}</span>
+    </div>
+  );
+}
+
 function DiaristasIndex() {
   const { isFinAdmin, podeLancar, podeAcessar, verValores, loading } = useDiaristaAcesso();
 
