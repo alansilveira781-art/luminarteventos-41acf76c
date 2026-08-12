@@ -876,6 +876,21 @@ function ApontamentoTab() {
                   onCheckedChange={(v) => setEditing({ ...editing, diaria_minima: v })}
                 />
               </div>
+              <div className="sm:col-span-2 flex items-start justify-between gap-4 rounded-md border border-border p-3">
+                <div>
+                  <Label htmlFor="empeleita">Empreitada (empeleita)</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {editing.empeleita
+                      ? "Não contabiliza valores — as horas ficam apenas como registro visual."
+                      : "Pagamento normal por horas/diária."}
+                  </p>
+                </div>
+                <Switch
+                  id="empeleita"
+                  checked={editing.empeleita}
+                  onCheckedChange={(v) => setEditing({ ...editing, empeleita: v })}
+                />
+              </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Refeições</Label>
                 <div className="flex flex-wrap items-center gap-6">
