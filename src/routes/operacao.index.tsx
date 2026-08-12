@@ -596,7 +596,9 @@ function NovaOrdemDialog({
                       disabled={!marcado}
                       max={prazo || undefined}
                       value={prazosSetor[s.id] ?? ""}
-                      onChange={(e) => setPrazosSetor((p) => ({ ...p, [s.id]: e.target.value }))}
+                      onChange={(e) =>
+                        setPrazosManuais((p) => ({ ...p, [s.id]: e.target.value }))
+                      }
                     />
                   </div>
                 );
