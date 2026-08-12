@@ -483,6 +483,48 @@ function ApontamentoTab() {
       eventos: prev.eventos.map((e, idx) => (idx === i ? { ...e, ...patch } : e)),
     }));
 
+  // Blocos de horário (modo "horarios"): um mesmo horário pode ter vários projetos
+  const blocos = useMemo(() => {
+    const ordem: number[] = [];
+    for (const e of editing.eventos) if (!ordem.includes(e.bloco)) ordem.push(e.bloco);
+    return ordem;
+  }, [editing.eventos]);
+
+  const setBlocoHoras = (bloco: number, patch: Partial<EventoLinha>) =>
+    setEditing((prev) => ({
+      ...prev,
+      eventos: prev.eventos.map((e) => (e.bloco === bloco ? { ...e, ...patch } : e)),
+    }));
+
+  const addBloco = () =>
+    setEditing((prev) => {
+      const novo = prev.eventos.reduce((m, e) => Math.max(m, e.bloco), -1) + 1;
+      return { ...prev, eventos: [...prev.eventos, emptyEvento(novo)] };
+    });
+
+  const addProjetoNoBloco = (bloco: number) =>
+    setEditing((prev) => {
+      const base = prev.eventos.find((e) => e.bloco === bloco);
+      return {
+        ...prev,
+        eventos: [
+          ...prev.eventos,
+          emptyEvento(bloco, {
+            hora_inicial: base?.hora_inicial ?? "08:00",
+            hora_final: base?.hora_final ?? "12:00",
+            intervalo_minutos: base?.intervalo_minutos ?? 0,
+          }),
+        ],
+      };
+    });
+
+  const removeBloco = (bloco: number) =>
+    setEditing((prev) => ({ ...prev, eventos: prev.eventos.filter((e) => e.bloco !== bloco) }));
+
+  const removeEvento = (idx: number) =>
+    setEditing((prev) => ({ ...prev, eventos: prev.eventos.filter((_, i) => i !== idx) }));
+
+
   return (
     <div className="space-y-4">
       {/* Filtros */}
