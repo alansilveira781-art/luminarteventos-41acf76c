@@ -918,60 +918,111 @@ function ApontamentoTab() {
               <div className="rounded-md border border-border p-3 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm font-medium">Eventos do dia</div>
+                    <div className="text-sm font-medium">
+                      {editing.modo_divisao === "horarios" ? "Blocos de horário" : "Eventos do dia"}
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       {editing.modo_divisao === "horarios"
-                        ? "Informe o horário trabalhado em cada evento."
+                        ? "Informe cada faixa de horário e os projetos trabalhados nela. Com mais de um projeto no mesmo horário, o tempo e o valor são divididos igualmente entre eles."
                         : "O valor total do dia será dividido em partes iguais entre os eventos."}
                     </div>
                   </div>
                   <Button size="sm" variant="outline"
-                    onClick={() => setEditing((p) => ({ ...p, eventos: [...p.eventos, emptyEvento()] }))}
+                    onClick={() =>
+                      editing.modo_divisao === "horarios"
+                        ? addBloco()
+                        : setEditing((p) => ({
+                            ...p,
+                            eventos: [...p.eventos, emptyEvento(p.eventos.length)],
+                          }))
+                    }
                   >
-                    <Plus className="h-4 w-4 mr-1" /> Adicionar evento
+                    <Plus className="h-4 w-4 mr-1" />
+                    {editing.modo_divisao === "horarios" ? "Adicionar bloco" : "Adicionar evento"}
                   </Button>
                 </div>
 
-                {editing.eventos.map((ev, i) => (
-                  <div key={i} className="rounded-md border border-border/60 p-2 space-y-2">
-                    <div className="flex items-start gap-2">
-                      <div className="flex-1 space-y-1.5">
-                        <Label className="text-xs">Evento {i + 1}</Label>
-                        <EventoSheetCombobox
-                          value={ev.evento_nome || null}
-                          onChange={(v) => setEvento(i, { evento_nome: v ?? "" })}
-                        />
+                {editing.modo_divisao === "horarios"
+                  ? blocos.map((bloco, bi) => {
+                      const base = editing.eventos.find((e) => e.bloco === bloco);
+                      return (
+                        <div key={bloco} className="rounded-md border border-border/60 p-2 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                              Bloco {bi + 1}
+                            </Label>
+                            <Button size="icon" variant="ghost"
+                              className="h-7 w-7 text-destructive hover:text-destructive"
+                              onClick={() => removeBloco(bloco)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Início</Label>
+                              <Input type="time" value={base?.hora_inicial ?? "08:00"}
+                                onChange={(e) => setBlocoHoras(bloco, { hora_inicial: e.target.value })} />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Fim</Label>
+                              <Input type="time" value={base?.hora_final ?? "12:00"}
+                                onChange={(e) => setBlocoHoras(bloco, { hora_final: e.target.value })} />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Intervalo (min)</Label>
+                              <Input type="number" min={0} value={base?.intervalo_minutos ?? 0}
+                                onChange={(e) =>
+                                  setBlocoHoras(bloco, { intervalo_minutos: Number(e.target.value) || 0 })
+                                } />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            {editing.eventos.map((ev, i) =>
+                              ev.bloco !== bloco ? null : (
+                                <div key={i} className="flex items-end gap-2">
+                                  <div className="flex-1 space-y-1">
+                                    <Label className="text-xs">Projeto</Label>
+                                    <EventoSheetCombobox
+                                      value={ev.evento_nome || null}
+                                      onChange={(v) => setEvento(i, { evento_nome: v ?? "" })}
+                                    />
+                                  </div>
+                                  <Button size="icon" variant="ghost"
+                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                    onClick={() => removeEvento(i)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ),
+                            )}
+                            <Button size="sm" variant="ghost" onClick={() => addProjetoNoBloco(bloco)}>
+                              <Plus className="h-4 w-4 mr-1" /> Adicionar projeto neste bloco
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  : editing.eventos.map((ev, i) => (
+                      <div key={i} className="rounded-md border border-border/60 p-2">
+                        <div className="flex items-end gap-2">
+                          <div className="flex-1 space-y-1.5">
+                            <Label className="text-xs">Evento {i + 1}</Label>
+                            <EventoSheetCombobox
+                              value={ev.evento_nome || null}
+                              onChange={(v) => setEvento(i, { evento_nome: v ?? "" })}
+                            />
+                          </div>
+                          <Button size="icon" variant="ghost"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => removeEvento(i)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <Button size="icon" variant="ghost"
-                        className="h-8 w-8 mt-6 text-destructive hover:text-destructive"
-                        onClick={() =>
-                          setEditing((p) => ({ ...p, eventos: p.eventos.filter((_, idx) => idx !== i) }))
-                        }
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    {editing.modo_divisao === "horarios" && (
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="space-y-1">
-                          <Label className="text-xs">Início</Label>
-                          <Input type="time" value={ev.hora_inicial}
-                            onChange={(e) => setEvento(i, { hora_inicial: e.target.value })} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Fim</Label>
-                          <Input type="time" value={ev.hora_final}
-                            onChange={(e) => setEvento(i, { hora_final: e.target.value })} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Intervalo (min)</Label>
-                          <Input type="number" min={0} value={ev.intervalo_minutos}
-                            onChange={(e) => setEvento(i, { intervalo_minutos: Number(e.target.value) || 0 })} />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                    ))}
               </div>
             )}
 
