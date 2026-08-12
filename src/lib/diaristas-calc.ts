@@ -18,6 +18,8 @@ export type ApontamentoInput = {
   janta?: boolean | null;
   /** Garante a diária cheia de 8h mesmo com menos horas (padrão: true) */
   diaria_minima?: boolean | null;
+  /** Empeleita: registra apenas o horário, sem gerar valor */
+  empeleita?: boolean | null;
 };
 
 export type DiaristaTarifa = {
@@ -100,16 +102,26 @@ export function usaDiariaMinima(a: ApontamentoInput): boolean {
   return a.diaria_minima == null ? true : !!a.diaria_minima;
 }
 
+export function isEmpeleita(a: ApontamentoInput): boolean {
+  return !!a.empeleita;
+}
+
+/** Empeleita: mantém horas/horários mas zera qualquer valor. */
+function zerarValores<T extends CalcResult>(r: T): T {
+  return { ...r, diaria: 0, extra: 0, refeicoes: 0, total: 0 };
+}
+
 export function calcularApontamento(a: ApontamentoInput, t: DiaristaTarifa): CalcResult {
   const bruto = minutosEntre(a.hora_inicial, a.hora_final);
   const minutosTrab = Math.max(0, bruto - (Number(a.intervalo_minutos) || 0));
-  return montarResultado(
+  const res = montarResultado(
     minutosTrab,
     valorHoraDoLocal(a.local, t),
     a.extra_manual ?? 0,
     valorRefeicoes(a, t),
     usaDiariaMinima(a),
   );
+  return isEmpeleita(a) ? zerarValores(res) : res;
 }
 
 
@@ -124,6 +136,8 @@ export type EventoApontamento = {
   hora_inicial?: string | null;
   hora_final?: string | null;
   intervalo_minutos?: number | null;
+  /** Eventos com o mesmo bloco compartilham o horário e dividem as horas igualmente */
+  bloco?: number | null;
 };
 
 export type RateioEvento = {
@@ -181,26 +195,48 @@ export function calcularApontamentoComEventos(
   const lista = (eventos ?? []).filter((e) => (e.evento_nome ?? "").trim() !== "");
 
   if (modo === "horarios" && lista.length > 0) {
-    const minutosPorEvento = lista.map((e) =>
-      Math.max(
-        0,
-        minutosEntre(e.hora_inicial || "00:00", e.hora_final || "00:00") -
-          (Number(e.intervalo_minutos) || 0),
-      ),
-    );
-    const totalMin = minutosPorEvento.reduce((acc, m) => acc + m, 0);
+    // Agrupa por bloco: eventos do mesmo bloco compartilham o horário e
+    // dividem as horas (e o valor) em partes iguais.
+    const blocos = new Map<number, number>(); // bloco -> minutos do bloco
+    lista.forEach((e, i) => {
+      const b = e.bloco ?? i;
+      if (blocos.has(b)) return;
+      blocos.set(
+        b,
+        Math.max(
+          0,
+          minutosEntre(e.hora_inicial || "00:00", e.hora_final || "00:00") -
+            (Number(e.intervalo_minutos) || 0),
+        ),
+      );
+    });
+    const qtdPorBloco = new Map<number, number>();
+    lista.forEach((e, i) => {
+      const b = e.bloco ?? i;
+      qtdPorBloco.set(b, (qtdPorBloco.get(b) ?? 0) + 1);
+    });
+
+    const minutosPorEvento = lista.map((e, i) => {
+      const b = e.bloco ?? i;
+      const min = blocos.get(b) ?? 0;
+      const n = qtdPorBloco.get(b) ?? 1;
+      return Math.round(min / n);
+    });
+    const totalMin = Array.from(blocos.values()).reduce((acc, m) => acc + m, 0);
+    const somaRateio = minutosPorEvento.reduce((acc, m) => acc + m, 0) || 1;
     const base = montarResultado(totalMin, valorHora, a.extra_manual ?? 0, valorRefeicoes(a, t), usaDiariaMinima(a));
+    const baseFinal = isEmpeleita(a) ? zerarValores(base) : base;
     let acumulado = 0;
     const rateio = lista.map((e, i) => {
       const min = minutosPorEvento[i] ?? 0;
       const ultimo = i === lista.length - 1;
       const valor = ultimo
-        ? Number((base.total - acumulado).toFixed(2))
-        : Number((totalMin > 0 ? (base.total * min) / totalMin : 0).toFixed(2));
+        ? Number((baseFinal.total - acumulado).toFixed(2))
+        : Number(((baseFinal.total * min) / somaRateio).toFixed(2));
       acumulado += valor;
       return { evento_nome: e.evento_nome, minutos: min, horasLabel: formatHoras(min), valor };
     });
-    return { ...base, rateio };
+    return { ...baseFinal, rateio };
   }
 
   if (modo === "igual" && lista.length > 0) {

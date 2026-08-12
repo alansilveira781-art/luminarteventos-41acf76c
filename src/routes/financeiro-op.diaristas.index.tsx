@@ -96,6 +96,7 @@ type Apontamento = {
   almoco: boolean | null;
   janta: boolean | null;
   diaria_minima: boolean | null;
+  empeleita: boolean | null;
   fechamento_id: string | null;
 };
 
@@ -104,6 +105,7 @@ type EventoLinha = {
   hora_inicial: string;
   hora_final: string;
   intervalo_minutos: number;
+  bloco: number;
 };
 
 type ApontamentoEventoRow = EventoLinha & {
@@ -128,13 +130,16 @@ type ApontamentoForm = {
   almoco: boolean;
   janta: boolean;
   diaria_minima: boolean;
+  empeleita: boolean;
 };
 
-const emptyEvento = (): EventoLinha => ({
+const emptyEvento = (bloco = 0, horas?: Partial<EventoLinha>): EventoLinha => ({
   evento_nome: "",
   hora_inicial: "08:00",
   hora_final: "12:00",
   intervalo_minutos: 0,
+  bloco,
+  ...horas,
 });
 
 const emptyApontamento = (): ApontamentoForm => ({
@@ -152,6 +157,7 @@ const emptyApontamento = (): ApontamentoForm => ({
   almoco: false,
   janta: false,
   diaria_minima: true,
+  empeleita: false,
 });
 
 function fmtBRL(v: number) {
@@ -276,6 +282,7 @@ function useApontamentoEventos() {
           hora_inicial: (r.hora_inicial ?? "").slice(0, 5),
           hora_final: (r.hora_final ?? "").slice(0, 5),
           intervalo_minutos: r.intervalo_minutos ?? 0,
+          bloco: r.bloco ?? r.ordem ?? 0,
         };
         const list = map.get(row.apontamento_id) ?? [];
         list.push(row);
@@ -382,6 +389,7 @@ function ApontamentoTab() {
         almoco: !!payload.almoco,
         janta: !!payload.janta,
         diaria_minima: !!payload.diaria_minima,
+        empeleita: !!payload.empeleita,
       };
 
       let apontamentoId = payload.id;
@@ -414,6 +422,7 @@ function ApontamentoTab() {
               intervalo_minutos:
                 payload.modo_divisao === "horarios" ? Number(e.intervalo_minutos) || 0 : 0,
               ordem: i,
+              bloco: payload.modo_divisao === "horarios" ? (e.bloco ?? i) : i,
             })),
           );
         if (error) throw error;
@@ -473,6 +482,48 @@ function ApontamentoTab() {
       ...prev,
       eventos: prev.eventos.map((e, idx) => (idx === i ? { ...e, ...patch } : e)),
     }));
+
+  // Blocos de horário (modo "horarios"): um mesmo horário pode ter vários projetos
+  const blocos = useMemo(() => {
+    const ordem: number[] = [];
+    for (const e of editing.eventos) if (!ordem.includes(e.bloco)) ordem.push(e.bloco);
+    return ordem;
+  }, [editing.eventos]);
+
+  const setBlocoHoras = (bloco: number, patch: Partial<EventoLinha>) =>
+    setEditing((prev) => ({
+      ...prev,
+      eventos: prev.eventos.map((e) => (e.bloco === bloco ? { ...e, ...patch } : e)),
+    }));
+
+  const addBloco = () =>
+    setEditing((prev) => {
+      const novo = prev.eventos.reduce((m, e) => Math.max(m, e.bloco), -1) + 1;
+      return { ...prev, eventos: [...prev.eventos, emptyEvento(novo)] };
+    });
+
+  const addProjetoNoBloco = (bloco: number) =>
+    setEditing((prev) => {
+      const base = prev.eventos.find((e) => e.bloco === bloco);
+      return {
+        ...prev,
+        eventos: [
+          ...prev.eventos,
+          emptyEvento(bloco, {
+            hora_inicial: base?.hora_inicial ?? "08:00",
+            hora_final: base?.hora_final ?? "12:00",
+            intervalo_minutos: base?.intervalo_minutos ?? 0,
+          }),
+        ],
+      };
+    });
+
+  const removeBloco = (bloco: number) =>
+    setEditing((prev) => ({ ...prev, eventos: prev.eventos.filter((e) => e.bloco !== bloco) }));
+
+  const removeEvento = (idx: number) =>
+    setEditing((prev) => ({ ...prev, eventos: prev.eventos.filter((_, i) => i !== idx) }));
+
 
   return (
     <div className="space-y-4">
@@ -592,6 +643,11 @@ function ApontamentoTab() {
                         <td className="py-2 px-3 font-medium">{nomeExib(d)}</td>
                         <td className="py-2 px-3">
                           {a.projeto ?? "—"}
+                          {a.empeleita && (
+                            <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-amber-600">
+                              empeleita
+                            </span>
+                          )}
                           {dividido && (
                             <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
                               {a.modo_divisao === "horarios" ? "por horários" : "dividido"}
@@ -642,11 +698,13 @@ function ApontamentoTab() {
                                   almoco: !!a.almoco,
                                   janta: !!a.janta,
                                   diaria_minima: a.diaria_minima !== false,
-                                  eventos: evs.map((e) => ({
+                                  empeleita: !!a.empeleita,
+                                  eventos: evs.map((e, i) => ({
                                     evento_nome: e.evento_nome,
                                     hora_inicial: e.hora_inicial || "08:00",
                                     hora_final: e.hora_final || "12:00",
                                     intervalo_minutos: e.intervalo_minutos,
+                                    bloco: e.bloco ?? i,
                                   })),
                                 });
                                 setOpen(true);
@@ -752,7 +810,7 @@ function ApontamentoTab() {
                           ? []
                           : prev.eventos.length >= 2
                             ? prev.eventos
-                            : [emptyEvento(), emptyEvento()],
+                            : [emptyEvento(0), emptyEvento(1)],
                     }));
                   }}
                 >
@@ -823,6 +881,21 @@ function ApontamentoTab() {
                   onCheckedChange={(v) => setEditing({ ...editing, diaria_minima: v })}
                 />
               </div>
+              <div className="sm:col-span-2 flex items-start justify-between gap-4 rounded-md border border-border p-3">
+                <div>
+                  <Label htmlFor="empeleita">Empreitada (empeleita)</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {editing.empeleita
+                      ? "Não contabiliza valores — as horas ficam apenas como registro visual."
+                      : "Pagamento normal por horas/diária."}
+                  </p>
+                </div>
+                <Switch
+                  id="empeleita"
+                  checked={editing.empeleita}
+                  onCheckedChange={(v) => setEditing({ ...editing, empeleita: v })}
+                />
+              </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Refeições</Label>
                 <div className="flex flex-wrap items-center gap-6">
@@ -865,60 +938,111 @@ function ApontamentoTab() {
               <div className="rounded-md border border-border p-3 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm font-medium">Eventos do dia</div>
+                    <div className="text-sm font-medium">
+                      {editing.modo_divisao === "horarios" ? "Blocos de horário" : "Eventos do dia"}
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       {editing.modo_divisao === "horarios"
-                        ? "Informe o horário trabalhado em cada evento."
+                        ? "Informe cada faixa de horário e os projetos trabalhados nela. Com mais de um projeto no mesmo horário, o tempo e o valor são divididos igualmente entre eles."
                         : "O valor total do dia será dividido em partes iguais entre os eventos."}
                     </div>
                   </div>
                   <Button size="sm" variant="outline"
-                    onClick={() => setEditing((p) => ({ ...p, eventos: [...p.eventos, emptyEvento()] }))}
+                    onClick={() =>
+                      editing.modo_divisao === "horarios"
+                        ? addBloco()
+                        : setEditing((p) => ({
+                            ...p,
+                            eventos: [...p.eventos, emptyEvento(p.eventos.length)],
+                          }))
+                    }
                   >
-                    <Plus className="h-4 w-4 mr-1" /> Adicionar evento
+                    <Plus className="h-4 w-4 mr-1" />
+                    {editing.modo_divisao === "horarios" ? "Adicionar bloco" : "Adicionar evento"}
                   </Button>
                 </div>
 
-                {editing.eventos.map((ev, i) => (
-                  <div key={i} className="rounded-md border border-border/60 p-2 space-y-2">
-                    <div className="flex items-start gap-2">
-                      <div className="flex-1 space-y-1.5">
-                        <Label className="text-xs">Evento {i + 1}</Label>
-                        <EventoSheetCombobox
-                          value={ev.evento_nome || null}
-                          onChange={(v) => setEvento(i, { evento_nome: v ?? "" })}
-                        />
+                {editing.modo_divisao === "horarios"
+                  ? blocos.map((bloco, bi) => {
+                      const base = editing.eventos.find((e) => e.bloco === bloco);
+                      return (
+                        <div key={bloco} className="rounded-md border border-border/60 p-2 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                              Bloco {bi + 1}
+                            </Label>
+                            <Button size="icon" variant="ghost"
+                              className="h-7 w-7 text-destructive hover:text-destructive"
+                              onClick={() => removeBloco(bloco)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Início</Label>
+                              <Input type="time" value={base?.hora_inicial ?? "08:00"}
+                                onChange={(e) => setBlocoHoras(bloco, { hora_inicial: e.target.value })} />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Fim</Label>
+                              <Input type="time" value={base?.hora_final ?? "12:00"}
+                                onChange={(e) => setBlocoHoras(bloco, { hora_final: e.target.value })} />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Intervalo (min)</Label>
+                              <Input type="number" min={0} value={base?.intervalo_minutos ?? 0}
+                                onChange={(e) =>
+                                  setBlocoHoras(bloco, { intervalo_minutos: Number(e.target.value) || 0 })
+                                } />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            {editing.eventos.map((ev, i) =>
+                              ev.bloco !== bloco ? null : (
+                                <div key={i} className="flex items-end gap-2">
+                                  <div className="flex-1 space-y-1">
+                                    <Label className="text-xs">Projeto</Label>
+                                    <EventoSheetCombobox
+                                      value={ev.evento_nome || null}
+                                      onChange={(v) => setEvento(i, { evento_nome: v ?? "" })}
+                                    />
+                                  </div>
+                                  <Button size="icon" variant="ghost"
+                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                    onClick={() => removeEvento(i)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ),
+                            )}
+                            <Button size="sm" variant="ghost" onClick={() => addProjetoNoBloco(bloco)}>
+                              <Plus className="h-4 w-4 mr-1" /> Adicionar projeto neste bloco
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  : editing.eventos.map((ev, i) => (
+                      <div key={i} className="rounded-md border border-border/60 p-2">
+                        <div className="flex items-end gap-2">
+                          <div className="flex-1 space-y-1.5">
+                            <Label className="text-xs">Evento {i + 1}</Label>
+                            <EventoSheetCombobox
+                              value={ev.evento_nome || null}
+                              onChange={(v) => setEvento(i, { evento_nome: v ?? "" })}
+                            />
+                          </div>
+                          <Button size="icon" variant="ghost"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => removeEvento(i)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <Button size="icon" variant="ghost"
-                        className="h-8 w-8 mt-6 text-destructive hover:text-destructive"
-                        onClick={() =>
-                          setEditing((p) => ({ ...p, eventos: p.eventos.filter((_, idx) => idx !== i) }))
-                        }
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    {editing.modo_divisao === "horarios" && (
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="space-y-1">
-                          <Label className="text-xs">Início</Label>
-                          <Input type="time" value={ev.hora_inicial}
-                            onChange={(e) => setEvento(i, { hora_inicial: e.target.value })} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Fim</Label>
-                          <Input type="time" value={ev.hora_final}
-                            onChange={(e) => setEvento(i, { hora_final: e.target.value })} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Intervalo (min)</Label>
-                          <Input type="number" min={0} value={ev.intervalo_minutos}
-                            onChange={(e) => setEvento(i, { intervalo_minutos: Number(e.target.value) || 0 })} />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                    ))}
               </div>
             )}
 
