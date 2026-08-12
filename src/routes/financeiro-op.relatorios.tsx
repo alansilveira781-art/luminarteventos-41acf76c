@@ -420,8 +420,9 @@ function CartoesReport() {
     doc.text(`Total Geral: ${brl(totalGeral)}`, pageWidth - 40, y + 36, { align: "right" });
 
     const periodoSlug = periodoLabel.replace(/[^\w]+/g, "-").toLowerCase();
-    const cartaoSlug = (cartao || "cartao").replace(/[^\w]+/g, "-").toLowerCase();
-    doc.save(`relatorio-cartao-${cartaoSlug}-${periodoSlug}.pdf`);
+    const cartaoSlug = (formaLabel || "pagamentos").replace(/[^\w]+/g, "-").toLowerCase();
+    doc.save(`relatorio-pagamentos-${cartaoSlug}-${periodoSlug}.pdf`);
+
   };
 
   return (
