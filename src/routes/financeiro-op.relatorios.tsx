@@ -99,21 +99,55 @@ function RelatoriosPage() {
 
 /* -------------------- Cartões (relatório existente) -------------------- */
 
+const TODAS = "__todas__";
+const SEM_FORMA = "__sem_forma__";
+
+const normForma = (s: string | null | undefined) =>
+  String(s ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+
 function CartoesReport() {
   const [cartao, setCartao] = useState<string>("");
   const [preset, setPreset] = useState<PeriodoPreset>(PERIODO_MES_DEFAULT.preset);
   const [periodo, setPeriodo] = useState<Periodo>(PERIODO_MES_DEFAULT.periodo);
   const [statusPreset, setStatusPreset] = useState<StatusPreset>("padrao");
 
-
-  const { data: cartoes = [] } = useQuery({
-    queryKey: ["condicoes_pagamento"],
-    queryFn: async () => {
-      const { data, error } = await sb.from("condicoes_pagamento").select("nome").order("nome");
-      if (error) throw error;
-      return (data ?? []).map((r: any) => r.nome as string).filter(Boolean);
+  // Formas disponíveis: cadastro + formas realmente usadas nos cards,
+  // agrupadas por chave normalizada (PIX/Pix = mesma forma).
+  const { data: formas = [] } = useQuery({
+    queryKey: ["financeiro-relatorio-formas"],
+    queryFn: async (): Promise<{ key: string; label: string }[]> => {
+      const [cond, pc, pd] = await Promise.all([
+        sb.from("condicoes_pagamento").select("nome"),
+        fetchAllRows<any>("compra_pagamentos", "forma"),
+        fetchAllRows<any>("demanda_pagamentos", "forma"),
+      ]);
+      if ((cond as any).error) throw (cond as any).error;
+      const nomes = [
+        ...((cond as any).data ?? []).map((r: any) => r.nome),
+        ...pc.map((r) => r.forma),
+        ...pd.map((r) => r.forma),
+      ].filter((n: any) => n && String(n).trim());
+      const map = new Map<string, string>();
+      for (const n of nomes) {
+        const k = normForma(n);
+        if (!map.has(k)) map.set(k, String(n).trim());
+      }
+      return [...map.entries()]
+        .map(([key, label]) => ({ key, label }))
+        .sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
     },
   });
+
+  const formaLabel = useMemo(() => {
+    if (cartao === TODAS) return "Todas as formas";
+    if (cartao === SEM_FORMA) return "Sem forma informada";
+    return formas.find((f) => f.key === cartao)?.label ?? cartao;
+  }, [cartao, formas]);
 
   const periodoLabel = useMemo(() => {
     if (!periodo.from && !periodo.to) return "Todos os períodos";
@@ -126,54 +160,71 @@ function CartoesReport() {
     queryKey: ["financeiro-relatorio-cartoes", cartao],
     enabled: !!cartao,
     queryFn: async (): Promise<CartoesData> => {
-      // Formas de pagamento deste cartão (uma compra pode ser dividida em
-      // vários cartões: cada linha entra pelo seu próprio valor).
+      // Formas de pagamento lançadas nos cards (um card pode ser dividido em
+      // várias formas: cada linha entra pelo seu próprio valor).
       const [pagC, pagD] = await Promise.all([
-        sb.from("compra_pagamentos").select("compra_id, valor, parcelamento").eq("forma", cartao),
-        sb.from("demanda_pagamentos").select("demanda_id, valor, parcelamento").eq("forma", cartao),
+        fetchAllRows<any>("compra_pagamentos", "compra_id, valor, parcelamento, forma"),
+        fetchAllRows<any>("demanda_pagamentos", "demanda_id, valor, parcelamento, forma"),
       ]);
-      if ((pagC as any).error) throw (pagC as any).error;
-      if ((pagD as any).error) throw (pagD as any).error;
 
-      const pagPorCompra = new Map<string, { valor: number; parcelamento: string | null }>();
-      for (const p of ((pagC as any).data ?? []) as any[]) {
-        const cur = pagPorCompra.get(p.compra_id);
-        pagPorCompra.set(p.compra_id, {
-          valor: Number(cur?.valor ?? 0) + Number(p.valor ?? 0),
-          parcelamento: cur?.parcelamento ?? p.parcelamento ?? null,
-        });
+      type Agg = { valor: number; parcelamento: string | null; formas: string[] };
+      const agrupar = (linhas: any[], idKey: string) => {
+        const m = new Map<string, Agg>();
+        for (const p of linhas) {
+          const id = p[idKey];
+          if (!id) continue;
+          const k = normForma(p.forma);
+          if (cartao !== TODAS && cartao !== SEM_FORMA && k !== cartao) continue;
+          if (cartao === SEM_FORMA && k !== "") continue;
+          const cur = m.get(id) ?? { valor: 0, parcelamento: null, formas: [] };
+          cur.valor += Number(p.valor ?? 0);
+          cur.parcelamento = cur.parcelamento ?? p.parcelamento ?? null;
+          const label = String(p.forma ?? "").trim();
+          if (label && !cur.formas.includes(label)) cur.formas.push(label);
+          m.set(id, cur);
+        }
+        return m;
+      };
+
+      // Cards que possuem qualquer linha de pagamento (para "sem forma").
+      const comPagamentoC = new Set(pagC.map((p) => p.compra_id).filter(Boolean));
+      const comPagamentoD = new Set(pagD.map((p) => p.demanda_id).filter(Boolean));
+
+      const pagPorCompra = agrupar(pagC, "compra_id");
+      const pagPorDemanda = agrupar(pagD, "demanda_id");
+
+      const selectCompras =
+        "id, numero, titulo, solicitante, comprador, observacoes, valor_total, data_compra, data_solicitacao, created_at, parcelamento, condicao_pagamento, status";
+      const selectDemandas =
+        "id, numero, titulo, solicitante, comprador, descritivo, observacoes, valor_total, data_compra, data_solicitacao, created_at, parcelamento, condicao_pagamento, status";
+
+      let compras: any[] = [];
+      let demandas: any[] = [];
+
+      if (cartao === SEM_FORMA) {
+        // Cards sem nenhuma linha de pagamento (ou só com forma em branco).
+        const [todasC, todasD] = await Promise.all([
+          fetchAllRows<any>("compras", selectCompras),
+          fetchAllRows<any>("demandas", selectDemandas),
+        ]);
+        compras = todasC.filter((c) => !comPagamentoC.has(c.id) || pagPorCompra.has(c.id));
+        demandas = todasD.filter((d) => !comPagamentoD.has(d.id) || pagPorDemanda.has(d.id));
+      } else {
+        const idsCompras = [...pagPorCompra.keys()];
+        const idsDemandas = [...pagPorDemanda.keys()];
+        const [comprasRes, demandasRes] = await Promise.all([
+          idsCompras.length
+            ? sb.from("compras").select(selectCompras).in("id", idsCompras)
+            : Promise.resolve({ data: [], error: null }),
+          idsDemandas.length
+            ? sb.from("demandas").select(selectDemandas).in("id", idsDemandas)
+            : Promise.resolve({ data: [], error: null }),
+        ]);
+        if ((comprasRes as any).error) throw (comprasRes as any).error;
+        if ((demandasRes as any).error) throw (demandasRes as any).error;
+        compras = ((comprasRes as any).data ?? []) as any[];
+        demandas = ((demandasRes as any).data ?? []) as any[];
       }
-      const pagPorDemanda = new Map<string, { valor: number; parcelamento: string | null }>();
-      for (const p of ((pagD as any).data ?? []) as any[]) {
-        const cur = pagPorDemanda.get(p.demanda_id);
-        pagPorDemanda.set(p.demanda_id, {
-          valor: Number(cur?.valor ?? 0) + Number(p.valor ?? 0),
-          parcelamento: cur?.parcelamento ?? p.parcelamento ?? null,
-        });
-      }
-
-      const idsCompras = [...pagPorCompra.keys()];
-      const idsDemandas = [...pagPorDemanda.keys()];
-
-      const [comprasRes, demandasRes] = await Promise.all([
-        idsCompras.length
-          ? sb
-              .from("compras")
-              .select("id, numero, titulo, solicitante, comprador, observacoes, valor_total, data_compra, data_solicitacao, created_at, parcelamento, status")
-              .in("id", idsCompras)
-          : Promise.resolve({ data: [], error: null }),
-        idsDemandas.length
-          ? sb
-              .from("demandas")
-              .select("id, numero, titulo, solicitante, comprador, descritivo, observacoes, valor_total, data_compra, data_solicitacao, created_at, parcelamento, status")
-              .in("id", idsDemandas)
-          : Promise.resolve({ data: [], error: null }),
-      ]);
-      if ((comprasRes as any).error) throw (comprasRes as any).error;
-      if ((demandasRes as any).error) throw (demandasRes as any).error;
-
-      const compras = ((comprasRes as any).data ?? []) as any[];
-      const demandas = ((demandasRes as any).data ?? []) as any[];
 
       const compraIds = compras.map((c) => c.id);
       const demandaIds = demandas.map((d) => d.id);
@@ -209,34 +260,45 @@ function CartoesReport() {
         return v ? String(v).slice(0, 10) : null;
       };
 
-      const cRows: Row[] = compras.map((c) => ({
-        tipo: "COMPRA",
-        numero: c.numero,
-        id: c.id,
-        titulo: c.titulo,
-        solicitante: c.solicitante,
-        comprador: c.comprador,
-        descritivo_fallback: c.observacoes ?? c.titulo ?? null,
-        valor_total: pagPorCompra.get(c.id)?.valor ?? c.valor_total,
-        parcelamento: pagPorCompra.get(c.id)?.parcelamento ?? c.parcelamento ?? null,
-        status: c.status ?? null,
-        dataRef: dataRef(c),
-        itens: groupC.get(c.id) ?? [],
-      }));
-      const dRows: Row[] = demandas.map((d) => ({
-        tipo: "DEMANDA",
-        numero: d.numero,
-        id: d.id,
-        titulo: d.titulo,
-        solicitante: d.solicitante,
-        comprador: d.comprador,
-        descritivo_fallback: d.descritivo ?? d.observacoes ?? d.titulo ?? null,
-        valor_total: pagPorDemanda.get(d.id)?.valor ?? d.valor_total,
-        parcelamento: pagPorDemanda.get(d.id)?.parcelamento ?? d.parcelamento ?? null,
-        status: d.status ?? null,
-        dataRef: dataRef(d),
-        itens: groupD.get(d.id) ?? [],
-      }));
+      const formaTexto = (agg: Agg | undefined, card: any) =>
+        agg && agg.formas.length ? agg.formas.join(" + ") : (card.condicao_pagamento ?? null);
+
+      const cRows: Row[] = compras.map((c) => {
+        const agg = pagPorCompra.get(c.id);
+        return {
+          tipo: "COMPRA" as const,
+          numero: c.numero,
+          id: c.id,
+          titulo: c.titulo,
+          solicitante: c.solicitante,
+          comprador: c.comprador,
+          descritivo_fallback: c.observacoes ?? c.titulo ?? null,
+          valor_total: agg ? agg.valor : c.valor_total,
+          parcelamento: agg?.parcelamento ?? c.parcelamento ?? null,
+          forma: formaTexto(agg, c),
+          status: c.status ?? null,
+          dataRef: dataRef(c),
+          itens: groupC.get(c.id) ?? [],
+        };
+      });
+      const dRows: Row[] = demandas.map((d) => {
+        const agg = pagPorDemanda.get(d.id);
+        return {
+          tipo: "DEMANDA" as const,
+          numero: d.numero,
+          id: d.id,
+          titulo: d.titulo,
+          solicitante: d.solicitante,
+          comprador: d.comprador,
+          descritivo_fallback: d.descritivo ?? d.observacoes ?? d.titulo ?? null,
+          valor_total: agg ? agg.valor : d.valor_total,
+          parcelamento: agg?.parcelamento ?? d.parcelamento ?? null,
+          forma: formaTexto(agg, d),
+          status: d.status ?? null,
+          dataRef: dataRef(d),
+          itens: groupD.get(d.id) ?? [],
+        };
+      });
 
       const all = [...cRows, ...dRows].sort((a, b) => {
         if (a.tipo !== b.tipo) return a.tipo < b.tipo ? -1 : 1;
@@ -249,20 +311,24 @@ function CartoesReport() {
 
   const todas = data?.rows ?? [];
 
-  const rows = useMemo(() => {
+  const { rows, foraPorStatus, foraPorPeriodo } = useMemo(() => {
     const fromYmd = periodo.from ? format(periodo.from, "yyyy-MM-dd") : null;
     const toYmd = periodo.to ? format(periodo.to, "yyyy-MM-dd") : null;
     const statuses = STATUS_PRESETS[statusPreset].statuses;
-    return todas.filter((r) => {
-      if (statuses && !statuses.includes(String(r.status ?? ""))) return false;
+    let fs = 0;
+    let fp = 0;
+    const out = todas.filter((r) => {
+      if (statuses && !statuses.includes(String(r.status ?? ""))) { fs++; return false; }
       if (fromYmd || toYmd) {
-        if (!r.dataRef) return false;
-        if (fromYmd && r.dataRef < fromYmd) return false;
-        if (toYmd && r.dataRef > toYmd) return false;
+        if (!r.dataRef) { fp++; return false; }
+        if (fromYmd && r.dataRef < fromYmd) { fp++; return false; }
+        if (toYmd && r.dataRef > toYmd) { fp++; return false; }
       }
       return true;
     });
+    return { rows: out, foraPorStatus: fs, foraPorPeriodo: fp };
   }, [todas, periodo, statusPreset]);
+
 
   const foraDoFiltro = (data?.total ?? 0) - rows.length;
 
