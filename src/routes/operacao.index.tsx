@@ -40,6 +40,7 @@ import {
   type Ordem,
   type OrdemSetor,
   type Setor,
+  calcularPrazosRoteiro,
 } from "@/lib/operacao";
 
 export const Route = createFileRoute("/operacao/")({ component: OperacaoQuadro });
