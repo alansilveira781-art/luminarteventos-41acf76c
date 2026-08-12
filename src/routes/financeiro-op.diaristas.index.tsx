@@ -649,11 +649,13 @@ function ApontamentoTab() {
                                   almoco: !!a.almoco,
                                   janta: !!a.janta,
                                   diaria_minima: a.diaria_minima !== false,
-                                  eventos: evs.map((e) => ({
+                                  empeleita: !!a.empeleita,
+                                  eventos: evs.map((e, i) => ({
                                     evento_nome: e.evento_nome,
                                     hora_inicial: e.hora_inicial || "08:00",
                                     hora_final: e.hora_final || "12:00",
                                     intervalo_minutos: e.intervalo_minutos,
+                                    bloco: e.bloco ?? i,
                                   })),
                                 });
                                 setOpen(true);
