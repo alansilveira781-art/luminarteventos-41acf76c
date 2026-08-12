@@ -962,6 +962,86 @@ function ApontamentoTab() {
           </div>
         )}
       </Card>
+      )}
+
+      {/* Detalhe do apontamento (visão semanal) */}
+      <Dialog open={!!detalhe} onOpenChange={(v) => !v && setDetalheId(null)}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalhes do apontamento</DialogTitle>
+          </DialogHeader>
+          {detalhe && (() => {
+            const d = diaristasMap.get(detalhe.diarista_id);
+            const evs = eventosMap?.get(detalhe.id) ?? [];
+            const calc = calcDe(detalhe);
+            const modo = (detalhe.modo_divisao ?? "unico") as ModoDivisao;
+            return (
+              <div className="space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-2">
+                  <Info label="Diarista" value={nomeExib(d)} />
+                  <Info label="Data" value={fmtDate(detalhe.data)} />
+                  <Info label="Projeto" value={detalhe.projeto || "—"} />
+                  <Info label="Local" value={detalhe.local} />
+                  <Info label="Horário" value={intervaloExibicao(detalhe, evs, modo).label} />
+                  <Info label="Intervalo" value={`${detalhe.intervalo_minutos}min`} />
+                  <Info label="Horas" value={calc?.horasLabel ?? "—"} />
+                  <Info label="Situação" value={detalhe.fechamento_id ? "Pago" : "Em aberto"} />
+                  {detalhe.empeleita && <Info label="Empeleita" value="Sim" />}
+                  {(detalhe.almoco || detalhe.janta) && (
+                    <Info
+                      label="Refeições"
+                      value={[detalhe.almoco ? "Almoço" : null, detalhe.janta ? "Janta" : null].filter(Boolean).join(" · ")}
+                    />
+                  )}
+                </div>
+
+                {verValores && calc && (
+                  <div className="rounded-md border border-border p-3 space-y-1">
+                    <Linha label="Diária" value={fmtBRL(calc.diaria)} />
+                    <Linha label="Extra" value={fmtBRL(calc.extra)} />
+                    <Linha label="Total" value={fmtBRL(calc.total)} bold />
+                  </div>
+                )}
+
+                {(calc?.rateio?.length ?? 0) > 0 && (
+                  <div className="space-y-1">
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Eventos</div>
+                    {(calc?.rateio ?? []).map((r, i) => (
+                      <div key={i} className="flex items-center justify-between gap-3 text-xs">
+                        <span className="font-medium">{r.evento_nome}</span>
+                        <span className="tabular-nums text-muted-foreground">
+                          {r.horasLabel}{verValores ? ` · ${fmtBRL(r.valor)}` : ""}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {detalhe.obs && (
+                  <div className="text-xs text-muted-foreground whitespace-pre-wrap">{detalhe.obs}</div>
+                )}
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" size="sm"
+                    onClick={() => { const a = detalhe; setDetalheId(null); abrirEdicao(a); }}
+                  >
+                    <Pencil className="h-4 w-4 mr-1" /> Editar
+                  </Button>
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive"
+                    onClick={() => {
+                      if (confirm("Excluir este apontamento?")) { remove.mutate(detalhe.id); setDetalheId(null); }
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" /> Excluir
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+
 
       {/* Dialog Novo/Editar */}
       <Dialog open={open} onOpenChange={setOpen}>
