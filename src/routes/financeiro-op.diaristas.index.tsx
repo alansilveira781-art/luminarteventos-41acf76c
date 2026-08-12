@@ -597,6 +597,24 @@ function ApontamentoTab() {
 
   return (
     <div className="space-y-4">
+      {/* Visualização */}
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          variant={visao === "tabela" ? "default" : "outline"}
+          onClick={() => setVisao("tabela")}
+        >
+          <List className="h-4 w-4 mr-1" /> Tabela
+        </Button>
+        <Button
+          size="sm"
+          variant={visao === "semana" ? "default" : "outline"}
+          onClick={() => setVisao("semana")}
+        >
+          <LayoutGrid className="h-4 w-4 mr-1" /> Semana
+        </Button>
+      </div>
+
       {/* Filtros */}
       <Card className="p-4">
         <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-7 items-end">
