@@ -96,6 +96,7 @@ type Apontamento = {
   almoco: boolean | null;
   janta: boolean | null;
   diaria_minima: boolean | null;
+  empeleita: boolean | null;
   fechamento_id: string | null;
 };
 
@@ -104,6 +105,7 @@ type EventoLinha = {
   hora_inicial: string;
   hora_final: string;
   intervalo_minutos: number;
+  bloco: number;
 };
 
 type ApontamentoEventoRow = EventoLinha & {
