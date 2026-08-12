@@ -643,6 +643,11 @@ function ApontamentoTab() {
                         <td className="py-2 px-3 font-medium">{nomeExib(d)}</td>
                         <td className="py-2 px-3">
                           {a.projeto ?? "—"}
+                          {a.empeleita && (
+                            <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-amber-600">
+                              empeleita
+                            </span>
+                          )}
                           {dividido && (
                             <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
                               {a.modo_divisao === "horarios" ? "por horários" : "dividido"}
