@@ -389,6 +389,7 @@ function ApontamentoTab() {
         almoco: !!payload.almoco,
         janta: !!payload.janta,
         diaria_minima: !!payload.diaria_minima,
+        empeleita: !!payload.empeleita,
       };
 
       let apontamentoId = payload.id;
