@@ -659,13 +659,46 @@ function ApontamentoTab() {
             <Input value={fProjeto} onChange={(e) => setFProjeto(e.target.value)} placeholder="Filtrar" />
           </div>
           <div className="space-y-1">
-            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">De</Label>
-            <Input type="date" value={fDe} onChange={(e) => setFDe(e.target.value)} />
+            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Situação</Label>
+            <Select value={fSituacao} onValueChange={(v) => setFSituacao(v as typeof fSituacao)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas</SelectItem>
+                <SelectItem value="aberto">Em aberto</SelectItem>
+                <SelectItem value="pago">Pagas</SelectItem>
+                <SelectItem value="empeleita">Empeleita</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <div className="space-y-1">
-            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Até</Label>
-            <Input type="date" value={fAte} onChange={(e) => setFAte(e.target.value)} />
-          </div>
+          {visao === "tabela" ? (
+            <>
+              <div className="space-y-1">
+                <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">De</Label>
+                <Input type="date" value={fDe} onChange={(e) => setFDe(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Até</Label>
+                <Input type="date" value={fAte} onChange={(e) => setFAte(e.target.value)} />
+              </div>
+            </>
+          ) : (
+            <div className="space-y-1 col-span-2">
+              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Semana</Label>
+              <div className="flex items-center gap-1">
+                <Button type="button" variant="outline" size="icon" className="h-9 w-9"
+                  onClick={() => setSemanaRef((d) => subWeeks(d, 1))} aria-label="Semana anterior">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="flex-1 text-center text-xs font-medium tabular-nums">
+                  {format(semana.ini, "dd/MM")} – {format(semana.fim, "dd/MM/yy")}
+                </span>
+                <Button type="button" variant="outline" size="icon" className="h-9 w-9"
+                  onClick={() => setSemanaRef((d) => addWeeks(d, 1))} aria-label="Próxima semana">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
           <div>
             <Button
               className="w-full"
@@ -677,7 +710,90 @@ function ApontamentoTab() {
         </div>
       </Card>
 
+      {/* Visão semanal em cards */}
+      {visao === "semana" && (
+        isLoading ? (
+          <Card className="p-6 flex justify-center text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />
+          </Card>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {semana.dias.map((dia) => {
+              const ymd = format(dia, "yyyy-MM-dd");
+              const itens = porDia.get(ymd) ?? [];
+              const totalDia = itens.reduce((acc, a) => acc + (calcDe(a)?.total ?? 0), 0);
+              return (
+                <Card key={ymd} className="p-3 space-y-2">
+                  <div className="flex items-baseline justify-between">
+                    <div>
+                      <div className="text-sm font-semibold capitalize">
+                        {format(dia, "EEEE", { locale: ptBR })}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground tabular-nums">
+                        {format(dia, "dd/MM/yyyy")}
+                      </div>
+                    </div>
+                    <span className="text-[11px] text-muted-foreground">{itens.length}</span>
+                  </div>
+                  <div className="space-y-1">
+                    {itens.length === 0 ? (
+                      <div className="text-xs text-muted-foreground py-2">Sem lançamentos.</div>
+                    ) : itens.map((a) => {
+                      const calc = calcDe(a);
+                      return (
+                        <button
+                          key={a.id}
+                          type="button"
+                          onClick={() => setDetalheId(a.id)}
+                          className="w-full rounded-md border border-border/60 px-2 py-1.5 text-left hover:bg-muted/50"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-medium truncate">
+                              {nomeExib(diaristasMap.get(a.diarista_id))}
+                            </span>
+                            <span className="text-[11px] tabular-nums text-muted-foreground">
+                              {calc?.horasLabel ?? "—"}
+                            </span>
+                          </div>
+                          <div className="mt-0.5 flex items-center justify-between gap-2">
+                            <span className="text-[11px] text-muted-foreground truncate">
+                              {a.projeto || "—"}
+                            </span>
+                            {verValores && (
+                              <span className="text-[11px] tabular-nums font-semibold">
+                                {calc ? fmtBRL(calc.total) : "—"}
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            <span className={`rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${a.fechamento_id ? "bg-emerald-500/15 text-emerald-600" : "bg-muted text-muted-foreground"}`}>
+                              {a.fechamento_id ? "pago" : "em aberto"}
+                            </span>
+                            {a.empeleita && (
+                              <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-amber-600">
+                                empeleita
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {verValores && itens.length > 0 && (
+                    <div className="border-t border-border pt-1.5 flex items-center justify-between text-xs font-semibold">
+                      <span>Total</span>
+                      <span className="tabular-nums">{fmtBRL(totalDia)}</span>
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+        )
+      )}
+
       {/* Tabela */}
+      {visao === "tabela" && (
       <Card className="p-4">
         {isLoading ? (
           <div className="p-6 flex justify-center text-muted-foreground">
