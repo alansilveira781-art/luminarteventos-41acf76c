@@ -136,6 +136,8 @@ export type EventoApontamento = {
   hora_inicial?: string | null;
   hora_final?: string | null;
   intervalo_minutos?: number | null;
+  /** Eventos com o mesmo bloco compartilham o horário e dividem as horas igualmente */
+  bloco?: number | null;
 };
 
 export type RateioEvento = {
