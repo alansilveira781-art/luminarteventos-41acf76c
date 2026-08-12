@@ -476,11 +476,18 @@ function ApontamentoTab() {
       if (!matchDepto(diaristasMap.get(a.diarista_id), fDepto)) return false;
       if (fLocal !== "todos" && a.local !== fLocal) return false;
       if (fProjeto && !(a.projeto ?? "").toLowerCase().includes(fProjeto.toLowerCase())) return false;
-      if (fDe && a.data < fDe) return false;
-      if (fAte && a.data > fAte) return false;
+      if (fSituacao === "aberto" && a.fechamento_id) return false;
+      if (fSituacao === "pago" && !a.fechamento_id) return false;
+      if (fSituacao === "empeleita" && !a.empeleita) return false;
+      if (visao === "semana") {
+        if (a.data < semana.iniYmd || a.data > semana.fimYmd) return false;
+      } else {
+        if (fDe && a.data < fDe) return false;
+        if (fAte && a.data > fAte) return false;
+      }
       return true;
     });
-  }, [apontamentos, fDiarista, fDepto, diaristasMap, fLocal, fProjeto, fDe, fAte, somenteProprios, user?.id]);
+  }, [apontamentos, fDiarista, fDepto, diaristasMap, fLocal, fProjeto, fDe, fAte, fSituacao, visao, semana, somenteProprios, user?.id]);
 
   const calcDe = (a: Apontamento) => {
     const d = diaristasMap.get(a.diarista_id);
@@ -488,6 +495,51 @@ function ApontamentoTab() {
     const evs = eventosMap?.get(a.id) ?? [];
     return calcularApontamentoComEventos(a, tarifaDe(d), (a.modo_divisao ?? "unico") as ModoDivisao, evs);
   };
+
+  const porDia = useMemo(() => {
+    const m = new Map<string, Apontamento[]>();
+    for (const a of filtered) {
+      const arr = m.get(a.data);
+      if (arr) arr.push(a);
+      else m.set(a.data, [a]);
+    }
+    return m;
+  }, [filtered]);
+
+  const detalhe = useMemo(
+    () => filtered.find((a) => a.id === detalheId) ?? null,
+    [filtered, detalheId],
+  );
+
+  const abrirEdicao = (a: Apontamento) => {
+    const evs = eventosMap?.get(a.id) ?? [];
+    setEditing({
+      id: a.id,
+      diarista_id: a.diarista_id,
+      projeto: a.projeto ?? "",
+      data: a.data,
+      hora_inicial: a.hora_inicial.slice(0, 5),
+      hora_final: a.hora_final.slice(0, 5),
+      intervalo_minutos: a.intervalo_minutos,
+      local: (a.local as Local) ?? "Fortaleza",
+      obs: a.obs ?? "",
+      extra_manual: Number(a.extra_manual) || 0,
+      modo_divisao: (a.modo_divisao ?? "unico") as ModoDivisao,
+      almoco: !!a.almoco,
+      janta: !!a.janta,
+      diaria_minima: a.diaria_minima !== false,
+      empeleita: !!a.empeleita,
+      eventos: evs.map((e, i) => ({
+        evento_nome: e.evento_nome,
+        hora_inicial: e.hora_inicial || "08:00",
+        hora_final: e.hora_final || "12:00",
+        intervalo_minutos: e.intervalo_minutos,
+        bloco: e.bloco ?? i,
+      })),
+    });
+    setOpen(true);
+  };
+
 
   // preview em tempo real no formulário
   const previewDiarista = diaristasMap.get(editing.diarista_id);
