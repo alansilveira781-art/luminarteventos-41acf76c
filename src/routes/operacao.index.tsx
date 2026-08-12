@@ -604,6 +604,24 @@ function NovaOrdemDialog({
                 );
               })}
             </div>
+            <div className="flex items-center justify-between gap-2 mt-1">
+              <p className="text-[11px] text-muted-foreground">
+                {dataInicio
+                  ? "Prazos gerados pelo tempo médio de cada setor — podem ser editados."
+                  : "Informe a data de início para gerar os prazos automaticamente."}
+              </p>
+              {Object.keys(prazosManuais).length > 0 && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 text-[11px]"
+                  onClick={() => setPrazosManuais({})}
+                >
+                  Recalcular prazos
+                </Button>
+              )}
+            </div>
             {prazo && (
               <p className="text-[11px] text-muted-foreground mt-1">
                 Prazos por setor limitados ao prazo final da ordem.
