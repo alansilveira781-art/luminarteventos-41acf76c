@@ -130,13 +130,16 @@ type ApontamentoForm = {
   almoco: boolean;
   janta: boolean;
   diaria_minima: boolean;
+  empeleita: boolean;
 };
 
-const emptyEvento = (): EventoLinha => ({
+const emptyEvento = (bloco = 0, horas?: Partial<EventoLinha>): EventoLinha => ({
   evento_nome: "",
   hora_inicial: "08:00",
   hora_final: "12:00",
   intervalo_minutos: 0,
+  bloco,
+  ...horas,
 });
 
 const emptyApontamento = (): ApontamentoForm => ({
