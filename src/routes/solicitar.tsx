@@ -213,7 +213,6 @@ function SolicitarPage() {
     return (
       it.descricao.trim().length === 0
       || !(Number(it.quantidade) > 0)
-      || (it.evento_projeto ?? "").trim().length === 0
     );
   }
 
@@ -741,7 +740,7 @@ function SolicitarPage() {
                             </div>
                             <div className="space-y-2 pt-1">
                               <Label className="text-[11px] font-medium text-muted-foreground">
-                                Evento / Projeto <span className="text-destructive">*</span>
+                                Evento / Projeto (opcional)
                               </Label>
                               <EventoPublicCombobox
                                 value={it.evento_projeto || null}
