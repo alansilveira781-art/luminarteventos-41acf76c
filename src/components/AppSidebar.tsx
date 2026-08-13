@@ -80,6 +80,7 @@ const allItems: NavItem[] = [
   { title: "Relatórios", url: "/relatorios", icon: BarChart3, group: "Estoque", module: "estoque" },
   { title: "Dashboard", url: "/compras/dashboard", icon: BarChart3, group: "Compras", module: "compras" },
   { title: "Quadro de Compras", url: "/compras", icon: KanbanSquare, group: "Compras", module: "compras" },
+  { title: "Relatórios", url: "/compras/relatorios", icon: FileBarChart, group: "Compras", module: "compras" },
   { title: "Configurações", url: "/compras/configuracoes", icon: Settings, group: "Compras", module: "compras", moduleAdminOnly: "compras" },
   { title: "Dashboard", url: "/financeiro/dashboard", icon: BarChart3, group: "Despesas", module: "financeiro" },
   { title: "Quadro de Despesas", url: "/financeiro", icon: KanbanSquare, group: "Despesas", module: "financeiro" },
