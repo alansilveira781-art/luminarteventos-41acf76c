@@ -213,7 +213,6 @@ function SolicitarPage() {
     return (
       it.descricao.trim().length === 0
       || !(Number(it.quantidade) > 0)
-      || (it.evento_projeto ?? "").trim().length === 0
     );
   }
 
