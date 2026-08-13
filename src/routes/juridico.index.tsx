@@ -211,9 +211,24 @@ function QuadroContratos() {
 
 
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-        <div className="flex gap-3 overflow-auto pb-4 max-h-[calc(100vh-180px)] items-start">
+        <div className="flex gap-3 overflow-x-auto pb-4 items-start">
           {STATUSES.map((s) => (
-            <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={byStatus[s.key]?.length ?? 0}>
+            <Column
+              key={s.key}
+              statusKey={s.key}
+              label={s.label}
+              color={s.color}
+              count={byStatus[s.key]?.length ?? 0}
+              footer={
+                <button
+                  type="button"
+                  onClick={() => { setDefaultStatus(s.key); setNovoOpen(true); }}
+                  className="w-full text-xs text-muted-foreground hover:text-foreground py-1.5 rounded border border-dashed border-border hover:border-primary"
+                >
+                  + adicionar
+                </button>
+              }
+            >
               {(byStatus[s.key] ?? []).map((c) => (
                 <Card
                   key={c.id}
@@ -222,13 +237,6 @@ function QuadroContratos() {
                   onDelete={() => onDelete(c.id)}
                 />
               ))}
-              <button
-                type="button"
-                onClick={() => { setDefaultStatus(s.key); setNovoOpen(true); }}
-                className="w-full text-xs text-muted-foreground hover:text-foreground py-1.5 rounded border border-dashed border-border hover:border-primary"
-              >
-                + adicionar
-              </button>
             </Column>
           ))}
         </div>
@@ -270,23 +278,24 @@ function QuadroContratos() {
   );
 }
 
-function Column({ statusKey, label, color, count, children }: {
-  statusKey: string; label: string; color: string; count: number; children: React.ReactNode;
+function Column({ statusKey, label, color, count, children, footer }: {
+  statusKey: string; label: string; color: string; count: number; children: React.ReactNode; footer?: React.ReactNode;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: statusKey });
   return (
     <div
       ref={setNodeRef}
-      className={`flex-shrink-0 w-72 rounded-lg border bg-muted/30 ${isOver ? "border-primary ring-2 ring-primary/30" : "border-border"}`}
+      className={`flex-shrink-0 w-72 rounded-lg border bg-muted/30 flex flex-col max-h-[calc(100vh-200px)] ${isOver ? "border-primary ring-2 ring-primary/30" : "border-border"}`}
     >
-      <div className="px-3 py-2 border-b border-border flex items-center justify-between">
+      <div className="px-3 py-2 border-b border-border flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <span className={`h-2 w-2 rounded-full ${color}`} />
           <span className="text-xs font-semibold truncate">{label}</span>
         </div>
         <span className="text-[10px] text-muted-foreground">{count}</span>
       </div>
-      <div className="p-2 space-y-2 min-h-[120px]">{children}</div>
+      <div className="p-2 space-y-2 min-h-[120px] flex-1 overflow-y-auto">{children}</div>
+      {footer && <div className="p-2 pt-0 shrink-0">{footer}</div>}
     </div>
   );
 }
