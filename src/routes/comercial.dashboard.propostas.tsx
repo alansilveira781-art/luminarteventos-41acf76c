@@ -1,3 +1,4 @@
+import { useChartTooltipTrigger } from "@/hooks/useIsTouch";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { Card } from "@/components/ui/card";
@@ -23,6 +24,7 @@ const brlShort = (v: number) =>
   v >= 1_000_000 ? `R$ ${(v / 1_000_000).toFixed(2)} Mi` : v >= 1_000 ? `R$ ${(v / 1_000).toFixed(0)} Mil` : `R$ ${v.toFixed(0)}`;
 
 function PropostasDashboard() {
+  const tooltipTrigger = useChartTooltipTrigger();
   const { rows, filtros, setFiltros } = useDashboard();
   const { propostas } = useComercial();
 
@@ -68,7 +70,7 @@ function PropostasDashboard() {
               <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
               <XAxis dataKey="mes" />
               <YAxis allowDecimals={false} />
-              <Tooltip />
+              <Tooltip trigger={tooltipTrigger} />
               <Legend />
               <Line type="monotone" dataKey="criadas" name="Criadas" stroke="hsl(var(--chart-1))" strokeWidth={2} />
               <Line type="monotone" dataKey="fechadas" name="Fechadas" stroke="hsl(var(--chart-2))" strokeWidth={2} />
@@ -85,7 +87,7 @@ function PropostasDashboard() {
               <BarChart data={ranking} layout="vertical" margin={{ left: 30 }}>
                 <XAxis type="number" tickFormatter={brlShort} hide />
                 <YAxis dataKey="nome" type="category" width={110} />
-                <Tooltip formatter={(v: number) => brl(v)} />
+                <Tooltip trigger={tooltipTrigger} formatter={(v: number) => brl(v)} />
                 <Bar dataKey="valor" fill="hsl(var(--foreground))" radius={[0, 4, 4, 0]}>
                   <LabelList dataKey="valor" position="right" formatter={(v: number) => brlShort(v)} fontSize={11} />
                 </Bar>

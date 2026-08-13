@@ -12,6 +12,9 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle,
+} from "@/components/ui/sheet";
 import { PageHeader } from "@/components/PageHeader";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -134,6 +137,7 @@ function VendasPage() {
   const [editing, setEditing] = useState<VendaRow | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [detalhe, setDetalhe] = useState<VendaRow | null>(null);
 
   const { data: vendedores = [], isLoading: loadingVendedores } = useVendedores();
   const { data: cerimoniais = [], isLoading: loadingCerimoniais } = useCerimoniais();
@@ -663,8 +667,12 @@ function VendasPage() {
                   const id = r.id;
                   const checked = id ? sel.selected.has(id) : false;
                   return (
-                    <tr key={id ?? `${r.dataRegistro}-${r.nomeEvento}`} className="border-t border-border/50 hover:bg-muted/30">
-                      <td className="px-3 py-2">
+                    <tr
+                      key={id ?? `${r.dataRegistro}-${r.nomeEvento}`}
+                      className="border-t border-border/50 hover:bg-muted/30 cursor-pointer"
+                      onClick={() => setDetalhe(r)}
+                    >
+                      <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                         {id && (
                           <Checkbox
                             checked={checked}
@@ -689,7 +697,7 @@ function VendasPage() {
                       <Td className="text-right">{brl(r.desconto || 0)}</Td>
                       <Td className="text-right font-semibold">{brl(r.valorFinal || 0)}</Td>
                       <Td className="text-right">{brl(r.valorBV || 0)}</Td>
-                      <td className="px-3 py-2 text-right whitespace-nowrap">
+                      <td className="px-3 py-2 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         {id && (
                           <>
                             <Button variant="ghost" size="icon" onClick={() => openEdit(r)} title="Editar">
@@ -763,6 +771,85 @@ function VendasPage() {
         onSubmit={(patch) => bulkMut.mutate(patch)}
         title="Editar vendas em massa"
       />
+
+      <Sheet open={!!detalhe} onOpenChange={(v) => { if (!v) setDetalhe(null); }}>
+        <SheetContent className="overflow-y-auto sm:max-w-lg">
+          {detalhe && (
+            <>
+              <SheetHeader>
+                <SheetTitle>{detalhe.nomeEvento || "Venda"}</SheetTitle>
+              </SheetHeader>
+
+              <div className="mt-4 space-y-4 text-sm">
+                <DetalheSecao titulo="Evento">
+                  <DetalheItem label="Data do evento" value={formatDateOrLegacy(detalhe.dataEvento)} />
+                  <DetalheItem label="Data de registro" value={formatDate(detalhe.dataRegistro)} />
+                  <DetalheItem label="Tipo" value={detalhe.tipo ?? "—"} />
+                  <DetalheItem label="Local" value={detalhe.local ?? "—"} />
+                  <DetalheItem label="Cidade" value={detalhe.cidade ?? "—"} />
+                  <DetalheItem label="Estado" value={detalhe.estado ?? "—"} />
+                  <DetalheItem label="Salão" value={detalhe.salao ?? "—"} />
+                  <DetalheItem label="Tipo de evento" value={detalhe.tipoEvento ?? "—"} />
+                  <DetalheItem label="Classificação" value={detalhe.classificacao ?? "—"} />
+                  <DetalheItem label="Quantidade" value={String(detalhe.quantidade ?? 0)} />
+                </DetalheSecao>
+
+                <DetalheSecao titulo="Atendimento">
+                  <DetalheItem label="Consultor" value={detalhe.consultor ?? "—"} />
+                  <DetalheItem label="Gestor" value={detalhe.gestor ?? "—"} />
+                  <DetalheItem label="Cerimonial" value={detalhe.cerimonial ?? "—"} />
+                  <DetalheItem label="Decorador" value={detalhe.decorador ?? "—"} />
+                  <DetalheItem label="Empresa" value={detalhe.empresa ?? "—"} />
+                </DetalheSecao>
+
+                <DetalheSecao titulo="Valores">
+                  <DetalheItem label="Valor da proposta" value={brl(detalhe.valorProposta || 0)} />
+                  <DetalheItem label="Desconto" value={brl(detalhe.desconto || 0)} />
+                  <DetalheItem label="Percentual" value={`${Number(detalhe.percentual || 0).toLocaleString("pt-BR")}%`} />
+                  <DetalheItem label="Valor final" value={brl(detalhe.valorFinal || 0)} />
+                  <DetalheItem label="Valor BV" value={brl(detalhe.valorBV || 0)} />
+                  <DetalheItem label="Comissão" value={brl(detalhe.valorComissao || 0)} />
+                  <DetalheItem label="Comissão do gestor" value={brl(detalhe.comissaoGestor || 0)} />
+                  <DetalheItem label="Tipo de comissão" value={detalhe.tipoComissao ?? "—"} />
+                </DetalheSecao>
+
+                <div className="flex justify-end gap-2 pt-2 border-t border-border">
+                  <Button
+                    variant="outline"
+                    onClick={() => { const r = detalhe; setDetalhe(null); openEdit(r); }}
+                  >
+                    <Pencil className="h-4 w-4 mr-2" /> Editar
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => { const r = detalhe; setDetalhe(null); handleDeleteOne(r); }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" /> Excluir
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+function DetalheSecao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-border p-3">
+      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">{titulo}</div>
+      <div className="space-y-1.5">{children}</div>
+    </div>
+  );
+}
+
+function DetalheItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-3">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-right font-medium">{value}</span>
     </div>
   );
 }
