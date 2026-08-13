@@ -1539,6 +1539,7 @@ export type Database = {
           aprovacao_operacao_em: string | null
           aprovacao_operacao_motivo: string | null
           aprovacao_operacao_por: string | null
+          categoria_conta_azul: string | null
           comprador: string | null
           condicao_pagamento: string | null
           created_at: string
@@ -1581,6 +1582,7 @@ export type Database = {
           aprovacao_operacao_em?: string | null
           aprovacao_operacao_motivo?: string | null
           aprovacao_operacao_por?: string | null
+          categoria_conta_azul?: string | null
           comprador?: string | null
           condicao_pagamento?: string | null
           created_at?: string
@@ -1623,6 +1625,7 @@ export type Database = {
           aprovacao_operacao_em?: string | null
           aprovacao_operacao_motivo?: string | null
           aprovacao_operacao_por?: string | null
+          categoria_conta_azul?: string | null
           comprador?: string | null
           condicao_pagamento?: string | null
           created_at?: string
@@ -2401,6 +2404,7 @@ export type Database = {
           aprovacao_operacao_em: string | null
           aprovacao_operacao_motivo: string | null
           aprovacao_operacao_por: string | null
+          categoria_conta_azul: string | null
           categoria_external_id: string | null
           comprador: string | null
           condicao_pagamento: string | null
@@ -2444,6 +2448,7 @@ export type Database = {
           aprovacao_operacao_em?: string | null
           aprovacao_operacao_motivo?: string | null
           aprovacao_operacao_por?: string | null
+          categoria_conta_azul?: string | null
           categoria_external_id?: string | null
           comprador?: string | null
           condicao_pagamento?: string | null
@@ -2487,6 +2492,7 @@ export type Database = {
           aprovacao_operacao_em?: string | null
           aprovacao_operacao_motivo?: string | null
           aprovacao_operacao_por?: string | null
+          categoria_conta_azul?: string | null
           categoria_external_id?: string | null
           comprador?: string | null
           condicao_pagamento?: string | null
