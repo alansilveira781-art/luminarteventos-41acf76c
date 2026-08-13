@@ -189,8 +189,13 @@ export function CompraDialog({
 
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setPendingFiles([]);
+      setPendingComprovantes([]);
+      return;
+    }
     setPendingFiles([]);
+    setPendingComprovantes([]);
     if (!compraId) {
       setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10), tem_nf: true, numeros_nf: [] });
       setItens([]);
@@ -362,6 +367,7 @@ export function CompraDialog({
     onSuccess: async () => {
       toast.success("Compra salva");
       setPendingFiles([]);
+      setPendingComprovantes([]);
       await qc.refetchQueries({ queryKey: ["compras"] });
       qc.invalidateQueries({ queryKey: ["compras-receber"] });
       onOpenChange(false);
