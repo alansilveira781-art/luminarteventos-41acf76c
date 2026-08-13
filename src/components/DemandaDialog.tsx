@@ -297,6 +297,7 @@ export function DemandaDialog({
     onSuccess: async () => {
       toast.success("Demanda salva");
       setPendingFiles([]);
+      setPendingComprovantes([]);
       await qc.refetchQueries({ queryKey: ["demandas"] });
       onOpenChange(false);
     },
