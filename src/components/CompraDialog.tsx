@@ -367,6 +367,7 @@ export function CompraDialog({
     onSuccess: async () => {
       toast.success("Compra salva");
       setPendingFiles([]);
+      setPendingComprovantes([]);
       await qc.refetchQueries({ queryKey: ["compras"] });
       qc.invalidateQueries({ queryKey: ["compras-receber"] });
       onOpenChange(false);
