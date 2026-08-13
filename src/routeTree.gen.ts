@@ -81,6 +81,7 @@ import { Route as ContabilProjecaoRouteImport } from './routes/contabil.projecao
 import { Route as ContabilNotasRouteImport } from './routes/contabil.notas'
 import { Route as ContabilConfiguracaoRouteImport } from './routes/contabil.configuracao'
 import { Route as ContabilApuracoesRouteImport } from './routes/contabil.apuracoes'
+import { Route as ComprasRelatoriosRouteImport } from './routes/compras.relatorios'
 import { Route as ComprasDashboardRouteImport } from './routes/compras.dashboard'
 import { Route as ComprasConfiguracoesRouteImport } from './routes/compras.configuracoes'
 import { Route as ComercialVendasRouteImport } from './routes/comercial.vendas'
@@ -486,6 +487,11 @@ const ContabilApuracoesRoute = ContabilApuracoesRouteImport.update({
   path: '/apuracoes',
   getParentRoute: () => ContabilRoute,
 } as any)
+const ComprasRelatoriosRoute = ComprasRelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
+  getParentRoute: () => ComprasRoute,
+} as any)
 const ComprasDashboardRoute = ComprasDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -764,6 +770,7 @@ export interface FileRoutesByFullPath {
   '/comercial/vendas': typeof ComercialVendasRoute
   '/compras/configuracoes': typeof ComprasConfiguracoesRoute
   '/compras/dashboard': typeof ComprasDashboardRoute
+  '/compras/relatorios': typeof ComprasRelatoriosRoute
   '/contabil/apuracoes': typeof ContabilApuracoesRoute
   '/contabil/configuracao': typeof ContabilConfiguracaoRoute
   '/contabil/notas': typeof ContabilNotasRoute
@@ -869,6 +876,7 @@ export interface FileRoutesByTo {
   '/comercial/vendas': typeof ComercialVendasRoute
   '/compras/configuracoes': typeof ComprasConfiguracoesRoute
   '/compras/dashboard': typeof ComprasDashboardRoute
+  '/compras/relatorios': typeof ComprasRelatoriosRoute
   '/contabil/apuracoes': typeof ContabilApuracoesRoute
   '/contabil/configuracao': typeof ContabilConfiguracaoRoute
   '/contabil/notas': typeof ContabilNotasRoute
@@ -987,6 +995,7 @@ export interface FileRoutesById {
   '/comercial/vendas': typeof ComercialVendasRoute
   '/compras/configuracoes': typeof ComprasConfiguracoesRoute
   '/compras/dashboard': typeof ComprasDashboardRoute
+  '/compras/relatorios': typeof ComprasRelatoriosRoute
   '/contabil/apuracoes': typeof ContabilApuracoesRoute
   '/contabil/configuracao': typeof ContabilConfiguracaoRoute
   '/contabil/notas': typeof ContabilNotasRoute
@@ -1106,6 +1115,7 @@ export interface FileRouteTypes {
     | '/comercial/vendas'
     | '/compras/configuracoes'
     | '/compras/dashboard'
+    | '/compras/relatorios'
     | '/contabil/apuracoes'
     | '/contabil/configuracao'
     | '/contabil/notas'
@@ -1211,6 +1221,7 @@ export interface FileRouteTypes {
     | '/comercial/vendas'
     | '/compras/configuracoes'
     | '/compras/dashboard'
+    | '/compras/relatorios'
     | '/contabil/apuracoes'
     | '/contabil/configuracao'
     | '/contabil/notas'
@@ -1328,6 +1339,7 @@ export interface FileRouteTypes {
     | '/comercial/vendas'
     | '/compras/configuracoes'
     | '/compras/dashboard'
+    | '/compras/relatorios'
     | '/contabil/apuracoes'
     | '/contabil/configuracao'
     | '/contabil/notas'
@@ -1958,6 +1970,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContabilApuracoesRouteImport
       parentRoute: typeof ContabilRoute
     }
+    '/compras/relatorios': {
+      id: '/compras/relatorios'
+      path: '/relatorios'
+      fullPath: '/compras/relatorios'
+      preLoaderRoute: typeof ComprasRelatoriosRouteImport
+      parentRoute: typeof ComprasRoute
+    }
     '/compras/dashboard': {
       id: '/compras/dashboard'
       path: '/dashboard'
@@ -2334,12 +2353,14 @@ const ComercialRouteWithChildren = ComercialRoute._addFileChildren(
 interface ComprasRouteChildren {
   ComprasConfiguracoesRoute: typeof ComprasConfiguracoesRoute
   ComprasDashboardRoute: typeof ComprasDashboardRoute
+  ComprasRelatoriosRoute: typeof ComprasRelatoriosRoute
   ComprasIndexRoute: typeof ComprasIndexRoute
 }
 
 const ComprasRouteChildren: ComprasRouteChildren = {
   ComprasConfiguracoesRoute: ComprasConfiguracoesRoute,
   ComprasDashboardRoute: ComprasDashboardRoute,
+  ComprasRelatoriosRoute: ComprasRelatoriosRoute,
   ComprasIndexRoute: ComprasIndexRoute,
 }
 
