@@ -142,8 +142,13 @@ export function DemandaDialog({
   });
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setPendingFiles([]);
+      setPendingComprovantes([]);
+      return;
+    }
     setPendingFiles([]);
+    setPendingComprovantes([]);
     if (!demandaId) {
       setForm({ status: defaultStatus, data_solicitacao: new Date().toISOString().slice(0, 10), tem_nf: true, numeros_nf: [] });
       setItens([]);
