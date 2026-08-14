@@ -956,7 +956,14 @@ function ApontamentoTab() {
                             <div className="space-y-1">
                               {(calc?.rateio ?? []).map((r, i) => (
                                 <div key={i} className="flex items-center justify-between gap-4 text-xs">
-                                  <span className="font-medium">{r.evento_nome}</span>
+                                  <span className="font-medium">
+                                    {r.evento_nome}
+                                    {r.empeleita && (
+                                      <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-600">
+                                        empreitada
+                                      </span>
+                                    )}
+                                  </span>
                                   <span className="tabular-nums text-muted-foreground">
                                     {r.horasLabel}
                                     {verValores ? ` · ${fmtBRL(r.valor)}` : ""}
