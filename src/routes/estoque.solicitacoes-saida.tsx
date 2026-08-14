@@ -446,13 +446,18 @@ function ValidacaoForm({
                   </label>
                   <div className="flex items-center gap-1">
                     <div className="flex-1">
-                      <ItemSearchSelect
-                        itens={itens}
-                        value={l.item_id}
-                        onChange={(v: string) => setL(i, { item_id: v })}
-                        showStock
-                        disabled={readOnly}
-                      />
+                      {readOnly ? (
+                        <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+                          {it ? `${it.codigo ?? ""} ${it.nome}`.trim() : "Não associado"}
+                        </div>
+                      ) : (
+                        <ItemSearchSelect
+                          itens={itens}
+                          value={l.item_id}
+                          onChange={(v: string) => setL(i, { item_id: v })}
+                          showStock
+                        />
+                      )}
                     </div>
                     {!readOnly && l.item_id && (
                       <Button
