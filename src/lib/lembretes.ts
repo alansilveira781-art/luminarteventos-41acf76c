@@ -161,3 +161,15 @@ export function estaAtrasada(t: LembreteTarefa): boolean {
   if (t.status !== "pendente" || t.dia_inteiro) return false;
   return new Date(t.data_hora).getTime() < Date.now();
 }
+
+/** Retorna o timestamp em que o lembrete da tarefa deve ser disparado. */
+export function horarioLembrete(t: LembreteTarefa): number {
+  return new Date(t.data_hora).getTime() - (t.lembrete_min || 0) * 60_000;
+}
+
+/** Verifica se o lembrete da tarefa já chegou e ainda não foi notificado. */
+export function lembreteVenceu(t: LembreteTarefa): boolean {
+  if (t.status !== "pendente") return false;
+  if (t.notificada_em) return false;
+  return horarioLembrete(t) <= Date.now();
+}
