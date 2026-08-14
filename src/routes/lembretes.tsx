@@ -216,9 +216,11 @@ function LembretesPage() {
         <TabsList>
           <TabsTrigger value="hoje">Hoje</TabsTrigger>
           <TabsTrigger value="semana">Semana</TabsTrigger>
+          <TabsTrigger value="calendario">Calendário</TabsTrigger>
           <TabsTrigger value="todas">Todas</TabsTrigger>
           <TabsTrigger value="projetos">Projetos</TabsTrigger>
         </TabsList>
+
 
         <TabsContent value="hoje" className="mt-4">
           <HojeView
