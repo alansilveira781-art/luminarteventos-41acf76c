@@ -4109,6 +4109,101 @@ export type Database = {
         }
         Relationships: []
       }
+      lembretes_projetos: {
+        Row: {
+          ativo: boolean
+          cor: string
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          cor?: string
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          ativo?: boolean
+          cor?: string
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      lembretes_tarefas: {
+        Row: {
+          concluida_em: string | null
+          created_at: string
+          data_hora: string
+          descricao: string | null
+          dia_inteiro: boolean
+          duracao_min: number
+          id: string
+          lembrete_min: number
+          notificada_em: string | null
+          prioridade: string
+          projeto_id: string | null
+          recorrencia: string
+          status: string
+          titulo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          concluida_em?: string | null
+          created_at?: string
+          data_hora: string
+          descricao?: string | null
+          dia_inteiro?: boolean
+          duracao_min?: number
+          id?: string
+          lembrete_min?: number
+          notificada_em?: string | null
+          prioridade?: string
+          projeto_id?: string | null
+          recorrencia?: string
+          status?: string
+          titulo: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          concluida_em?: string | null
+          created_at?: string
+          data_hora?: string
+          descricao?: string | null
+          dia_inteiro?: boolean
+          duracao_min?: number
+          id?: string
+          lembrete_min?: number
+          notificada_em?: string | null
+          prioridade?: string
+          projeto_id?: string | null
+          recorrencia?: string
+          status?: string
+          titulo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lembretes_tarefas_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "lembretes_projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       modulos: {
         Row: {
           ativo: boolean
@@ -5142,6 +5237,7 @@ export type Database = {
           created_at: string
           display_name: string | null
           email: string | null
+          fuso_horario: string
           id: string
           is_expectador_eventos: boolean
           updated_at: string
@@ -5150,6 +5246,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           email?: string | null
+          fuso_horario?: string
           id: string
           is_expectador_eventos?: boolean
           updated_at?: string
@@ -5158,6 +5255,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           email?: string | null
+          fuso_horario?: string
           id?: string
           is_expectador_eventos?: boolean
           updated_at?: string
