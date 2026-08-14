@@ -200,8 +200,10 @@ export function calcularApontamentoComEventos(
     // Agrupa por bloco: eventos do mesmo bloco compartilham o horário e
     // dividem as horas (e o valor) em partes iguais.
     const blocos = new Map<number, number>(); // bloco -> minutos do bloco
+    const blocoEmpeleita = new Map<number, boolean>();
     lista.forEach((e, i) => {
       const b = e.bloco ?? i;
+      if (e.empeleita) blocoEmpeleita.set(b, true);
       if (blocos.has(b)) return;
       blocos.set(
         b,
@@ -224,19 +226,35 @@ export function calcularApontamentoComEventos(
       const n = qtdPorBloco.get(b) ?? 1;
       return Math.round(min / n);
     });
-    const totalMin = Array.from(blocos.values()).reduce((acc, m) => acc + m, 0);
-    const somaRateio = minutosPorEvento.reduce((acc, m) => acc + m, 0) || 1;
+    const ehEmpeleita = lista.map((e, i) => !!blocoEmpeleita.get(e.bloco ?? i));
+    // Apenas blocos normais entram no cálculo do valor do dia.
+    let totalMin = 0;
+    blocos.forEach((min, b) => {
+      if (!blocoEmpeleita.get(b)) totalMin += min;
+    });
+    const somaRateio =
+      minutosPorEvento.reduce((acc, m, i) => acc + (ehEmpeleita[i] ? 0 : m), 0) || 1;
     const base = montarResultado(totalMin, valorHora, a.extra_manual ?? 0, valorRefeicoes(a, t), usaDiariaMinima(a));
     const baseFinal = isEmpeleita(a) ? zerarValores(base) : base;
+    const ultimoPago = ehEmpeleita.lastIndexOf(false);
     let acumulado = 0;
     const rateio = lista.map((e, i) => {
       const min = minutosPorEvento[i] ?? 0;
-      const ultimo = i === lista.length - 1;
-      const valor = ultimo
-        ? Number((baseFinal.total - acumulado).toFixed(2))
-        : Number(((baseFinal.total * min) / somaRateio).toFixed(2));
-      acumulado += valor;
-      return { evento_nome: e.evento_nome, minutos: min, horasLabel: formatHoras(min), valor };
+      let valor = 0;
+      if (!ehEmpeleita[i]) {
+        valor =
+          i === ultimoPago
+            ? Number((baseFinal.total - acumulado).toFixed(2))
+            : Number(((baseFinal.total * min) / somaRateio).toFixed(2));
+        acumulado += valor;
+      }
+      return {
+        evento_nome: e.evento_nome,
+        minutos: min,
+        horasLabel: formatHoras(min),
+        valor,
+        empeleita: ehEmpeleita[i],
+      };
     });
     return { ...baseFinal, rateio };
   }
