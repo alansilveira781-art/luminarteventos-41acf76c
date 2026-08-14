@@ -19,13 +19,14 @@ export const Route = createFileRoute("/api/public/hooks/enviar-lembretes")({
           return new Response("VAPID not configured", { status: 500 });
         }
 
-        // Tarefas pendentes cujo horário do lembrete já passou e ainda não foram notificadas.
-        const { data: tarefas, error } = await supabaseAdmin
+        // Tarefas pendentes ainda não notificadas. Filtra em memória pelo horário
+        // do lembrete (data_hora - lembrete_min), já que o PostgREST não permite
+        // expressões por coluna de forma simples.
+        const { data: tarefasBrutas, error } = await supabaseAdmin
           .from("lembretes_tarefas")
-          .select("id, user_id, titulo, data_hora, dia_inteiro, lembrete_min, projeto_id, lembretes_projetos(nome)")
+          .select("id, user_id, titulo, data_hora, dia_inteiro, lembrete_min, projeto_id, notificada_em, status, lembretes_projetos(nome)")
           .is("notificada_em", null)
-          .eq("status", "pendente")
-          .lte("data_hora", new Date(Date.now() + 60_000).toISOString());
+          .eq("status", "pendente");
 
         if (error) {
           console.error("[enviar-lembretes] erro ao buscar tarefas:", error);
@@ -35,7 +36,9 @@ export const Route = createFileRoute("/api/public/hooks/enviar-lembretes")({
           });
         }
 
-        if (!tarefas || tarefas.length === 0) {
+        const tarefas = (tarefasBrutas ?? []).filter((t) => lembreteVenceu(t as any));
+
+        if (tarefas.length === 0) {
           return new Response(JSON.stringify({ sent: 0, total: 0 }), {
             status: 200,
             headers: { "Content-Type": "application/json" },
