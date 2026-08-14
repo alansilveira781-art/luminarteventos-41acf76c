@@ -126,6 +126,7 @@ function AppShell() {
     pathname === "/auth" ||
     pathname === "/solicitar" ||
     pathname === "/solicitar-contrato" ||
+    pathname === "/solicitar-saida" ||
     pathname === "/calendario-publico"
   )
     return <Outlet />;
