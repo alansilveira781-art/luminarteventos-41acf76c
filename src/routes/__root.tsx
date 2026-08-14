@@ -109,6 +109,9 @@ function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   useEstoqueRealtimeSync();
 
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
 
   if (loading) {
     return (
