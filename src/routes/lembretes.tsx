@@ -151,7 +151,7 @@ function LembretesPage() {
           window.focus();
           setTarefaDialog({ open: true, tarefa: t });
         };
-        if (somAtivo) playNotificationSound();
+        if (somAtivo) void playNotificationSound();
       }
       // Marca todas como notificadas de uma vez.
       const ids = pendentes.map((t) => t.id);
