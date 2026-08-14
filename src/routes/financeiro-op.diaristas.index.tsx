@@ -141,6 +141,7 @@ const emptyEvento = (bloco = 0, horas?: Partial<EventoLinha>): EventoLinha => ({
   hora_final: "12:00",
   intervalo_minutos: 0,
   bloco,
+  empeleita: false,
   ...horas,
 });
 
