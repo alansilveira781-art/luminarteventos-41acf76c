@@ -181,25 +181,34 @@ export function linhasDoCard(card: CardMin, filtroForma?: (forma: string | null)
       (o) => normForma(o.forma) === normForma(p.forma) && (o.parcelamento ?? "") === (p.parcelamento ?? ""),
     ).length;
     const expandir = n > 1 && jaExpandida < n;
+    const cartao = ehCartaoCredito(p.forma);
     const valores = expandir ? distribuir(Number(p.valor ?? 0), n) : [Number(p.valor ?? 0)];
     valores.forEach((v, i) => {
-      const venc = expandir
+      const idx = expandir ? i : indiceParcela(pags, p);
+      // Cartão de crédito: a fatura vence sempre no mês seguinte à compra —
+      // 1ª parcela +1 mês, 2ª +2 meses, e assim por diante (inclusive à vista).
+      const venc = cartao
         ? competencia
-          ? somarDias(competencia, 30 * i)
+          ? somarMeses(competencia, idx + 1)
           : null
-        : (p.data_pagamento ? String(p.data_pagamento).slice(0, 10) : null)
-          ?? (competencia ? somarDias(competencia, 30 * indiceParcela(pags, p)) : null);
+        : expandir
+          ? competencia
+            ? somarDias(competencia, 30 * i)
+            : null
+          : (p.data_pagamento ? String(p.data_pagamento).slice(0, 10) : null)
+            ?? (competencia ? somarDias(competencia, 30 * idx) : null);
       out.push({
         ...base,
         vencimento: venc,
         pagamento: !expandir && p.pago ? String(p.pago_em ?? p.data_pagamento ?? venc ?? "").slice(0, 10) || null : null,
         valor: -Math.abs(Number(v || 0)),
-        parcelaLabel: expandir ? `${i + 1}/${n}` : n > 1 ? `${indiceParcela(pags, p) + 1}/${n}` : "1/1",
+        parcelaLabel: expandir ? `${i + 1}/${n}` : n > 1 ? `${idx + 1}/${n}` : "1/1",
       });
     });
   }
   return out;
 }
+
 
 /** Posição da linha entre as parcelas da mesma forma/parcelamento. */
 function indiceParcela(pags: PagamentoMin[], p: PagamentoMin): number {
