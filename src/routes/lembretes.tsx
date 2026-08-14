@@ -22,16 +22,21 @@ import {
   PRIORIDADES,
   STATUSES,
   addDays,
+  addMonths,
   dataPorExtenso,
   estaAtrasada,
   formatarDataHora,
   horaLocal,
+  mesPorExtenso,
+  monthGrid,
   startOfDay,
+  startOfMonth,
   toDateKey,
   weekDays,
   type LembreteProjeto,
   type LembreteTarefa,
 } from "@/lib/lembretes";
+
 
 export const Route = createFileRoute("/lembretes")({
   head: () => ({
