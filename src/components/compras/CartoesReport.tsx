@@ -434,7 +434,7 @@ export default function CartoesReport() {
         </div>
 
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
+        <div className="overflow-auto rounded-lg border max-h-[calc(100vh-180px)]">
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>
