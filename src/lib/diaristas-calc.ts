@@ -138,6 +138,8 @@ export type EventoApontamento = {
   intervalo_minutos?: number | null;
   /** Eventos com o mesmo bloco compartilham o horário e dividem as horas igualmente */
   bloco?: number | null;
+  /** Bloco de empreitada: registra as horas mas não gera valor nem entra no cálculo do dia */
+  empeleita?: boolean | null;
 };
 
 export type RateioEvento = {
