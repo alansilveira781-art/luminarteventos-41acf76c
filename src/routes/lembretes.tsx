@@ -565,6 +565,12 @@ function LinhaTarefa({
               Alta
             </Badge>
           )}
+          {t.serie_id && (
+            <Badge variant="outline" className="text-[10px] gap-1">
+              <Repeat className="h-3 w-3" />
+              {rotuloRecorrencia(t)}
+            </Badge>
+          )}
         </div>
         <div className="mt-0.5 flex flex-wrap items-center gap-3">
           <ProjetoTag projeto={projeto} />
