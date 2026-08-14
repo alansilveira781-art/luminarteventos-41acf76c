@@ -107,6 +107,7 @@ type EventoLinha = {
   hora_final: string;
   intervalo_minutos: number;
   bloco: number;
+  empeleita: boolean;
 };
 
 type ApontamentoEventoRow = EventoLinha & {
