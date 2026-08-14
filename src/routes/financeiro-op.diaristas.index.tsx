@@ -931,6 +931,7 @@ function ApontamentoTab() {
                                     hora_final: e.hora_final || "12:00",
                                     intervalo_minutos: e.intervalo_minutos,
                                     bloco: e.bloco ?? i,
+                                    empeleita: !!e.empeleita,
                                   })),
                                 });
                                 setOpen(true);
