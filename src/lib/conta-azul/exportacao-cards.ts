@@ -87,6 +87,21 @@ export function somarDias(iso: string, dias: number): string {
   return dt.toISOString().slice(0, 10);
 }
 
+/** Soma meses mantendo o dia; se o mês não tiver o dia, usa o último dia dele. */
+export function somarMeses(iso: string, meses: number): string {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  const alvo = new Date(Date.UTC(y, (m || 1) - 1 + meses, 1));
+  const ultimo = new Date(Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth() + 1, 0)).getUTCDate();
+  alvo.setUTCDate(Math.min(d || 1, ultimo));
+  return alvo.toISOString().slice(0, 10);
+}
+
+/** Formas de pagamento em cartão de crédito (vencem no mês seguinte). */
+export function ehCartaoCredito(forma: string | null | undefined): boolean {
+  return normForma(forma).includes("cartao");
+}
+
+
 export function formatarDataBR(iso: string | null | undefined): string {
   if (!iso) return "";
   const [y, m, d] = iso.slice(0, 10).split("-");
