@@ -55,6 +55,7 @@ import {
   Boxes as BoxesIcon,
   Activity,
   ClipboardCheck as ClipboardCheckIcon,
+  BellRing,
 
 } from "lucide-react";
 import logo from "@/assets/luminart-logo-white.png";
@@ -68,6 +69,7 @@ type NavItem = { title: string; url: string; icon: any; group: string; module?: 
 const allItems: NavItem[] = [
   { title: "Início", url: "/", icon: LayoutDashboard, group: "Visão geral" },
   { title: "Meus Pedidos", url: "/meus-pedidos", icon: ClipboardList, group: "Visão geral" },
+  { title: "Lembretes", url: "/lembretes", icon: BellRing, group: "Visão geral" },
   { title: "Calendário de Eventos", url: "/calendario-publico", icon: CalendarDays, group: "Visão geral", expectadorEventos: true },
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, group: "Estoque", module: "estoque" },
   { title: "Estoque", url: "/estoque", icon: Package, group: "Estoque", module: "estoque" },

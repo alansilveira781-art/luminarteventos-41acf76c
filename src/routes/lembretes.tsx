@@ -47,6 +47,7 @@ export const Route = createFileRoute("/lembretes")({
 
 const sb = supabase as any;
 const TODOS = "__todos__";
+const SEM_PROJETO = "__sem__";
 
 function useProjetos(userId: string | undefined) {
   return useQuery({
@@ -520,7 +521,10 @@ function TodasView({
     const termo = busca.trim().toLowerCase();
     return tarefas.filter((t) => {
       if (termo && !t.titulo.toLowerCase().includes(termo)) return false;
-      if (projeto !== TODOS && (t.projeto_id ?? "") !== projeto) return false;
+      if (projeto !== TODOS) {
+        const alvo = projeto === SEM_PROJETO ? null : projeto;
+        if ((t.projeto_id ?? null) !== alvo) return false;
+      }
       if (status !== TODOS && t.status !== status) return false;
       const key = toDateKey(new Date(t.data_hora));
       if (de && key < de) return false;
@@ -545,7 +549,7 @@ function TodasView({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={TODOS}>Todos</SelectItem>
-                <SelectItem value="">Sem projeto</SelectItem>
+                <SelectItem value={SEM_PROJETO}>Sem projeto</SelectItem>
                 {projetos.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.nome}
