@@ -1,10 +1,12 @@
 import { Outlet, Link, createRootRouteWithContext, HeadContent, Scripts, useRouterState, Navigate } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { AppSidebar, AppTopBar } from "@/components/AppSidebar";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useEstoqueRealtimeSync } from "@/hooks/useEstoqueRealtimeSync";
+import { registerServiceWorker } from "@/lib/sw-register";
 
 import appCss from "../styles.css?url";
 
