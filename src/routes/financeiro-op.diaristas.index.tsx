@@ -1428,7 +1428,14 @@ function ApontamentoTab() {
                     <div className="mt-3 space-y-1 border-t border-border pt-2">
                       {preview.rateio.map((r, i) => (
                         <div key={i} className="flex items-center justify-between gap-3 text-xs">
-                          <span>{r.evento_nome || `Evento ${i + 1}`}</span>
+                          <span>
+                            {r.evento_nome || `Evento ${i + 1}`}
+                            {r.empeleita && (
+                              <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-600">
+                                empreitada
+                              </span>
+                            )}
+                          </span>
                           <span className="tabular-nums text-muted-foreground">
                             {r.horasLabel}
                             {verValores ? ` · ${fmtBRL(r.valor)}` : ""}
