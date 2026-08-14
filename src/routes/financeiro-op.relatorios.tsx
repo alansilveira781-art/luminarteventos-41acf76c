@@ -1,9 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { Printer, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -15,11 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import {
-  PeriodoFilter, PERIODO_MES_DEFAULT, type Periodo, type PeriodoPreset,
-} from "@/components/PeriodoFilter";
 import { toast } from "sonner";
-import { fetchAllRows } from "@/lib/fetch-all";
 
 import { useDreEstrutura } from "@/hooks/useDreEstrutura";
 import {
@@ -35,28 +29,6 @@ const sb = supabase as any;
 export const Route = createFileRoute("/financeiro-op/relatorios")({
   component: RelatoriosPage,
 });
-
-const STATUS_PRESETS = {
-  padrao: {
-    label: "Finalizado + A receber",
-    statuses: ["finalizado", "a_receber"] as string[] | null,
-  },
-  abertos: {
-    label: "Incluir em aberto",
-    statuses: [
-      "finalizado",
-      "a_receber",
-      "em_andamento",
-      "aprovada",
-      "pendente_aprovacao",
-      "analise",
-      "solicitacao",
-    ] as string[] | null,
-  },
-  todos: { label: "Todos os status", statuses: null as string[] | null },
-} as const;
-
-type StatusPreset = keyof typeof STATUS_PRESETS;
 
 const brl = (v: number | null | undefined) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v ?? 0));
