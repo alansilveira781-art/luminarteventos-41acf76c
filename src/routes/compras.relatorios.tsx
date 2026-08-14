@@ -43,11 +43,16 @@ function RelatoriosComprasPage() {
       <Tabs defaultValue="conta-azul">
         <TabsList>
           <TabsTrigger value="conta-azul">Importação Conta Azul</TabsTrigger>
+          <TabsTrigger value="cartoes">Cartões</TabsTrigger>
         </TabsList>
         <TabsContent value="conta-azul">
           <ContaAzulExport />
         </TabsContent>
+        <TabsContent value="cartoes">
+          <CartoesReport />
+        </TabsContent>
       </Tabs>
+
     </div>
   );
 }
