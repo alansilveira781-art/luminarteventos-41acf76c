@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { buildPushPayload } from "@block65/webcrypto-web-push";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireProjectApiKey } from "@/lib/public-endpoint-auth";
+import { lembreteVenceu } from "@/lib/lembretes";
 
 export const VAPID_PUBLIC_KEY =
   "BLrAMB5j4yyM2glgoeCxm76pn4n21HHeRMy57LofyqmNSZlAvSELhsVjdLUBZGwQOb5LuwjwiAwyXlmmXRI2x08";
