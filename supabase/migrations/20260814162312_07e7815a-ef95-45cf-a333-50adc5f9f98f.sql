@@ -1,0 +1,1 @@
+ALTER TABLE public.diarista_apontamento_eventos ADD COLUMN IF NOT EXISTS empeleita boolean NOT NULL DEFAULT false;

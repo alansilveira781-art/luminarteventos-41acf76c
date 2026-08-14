@@ -107,6 +107,7 @@ type EventoLinha = {
   hora_final: string;
   intervalo_minutos: number;
   bloco: number;
+  empeleita: boolean;
 };
 
 type ApontamentoEventoRow = EventoLinha & {
@@ -140,6 +141,7 @@ const emptyEvento = (bloco = 0, horas?: Partial<EventoLinha>): EventoLinha => ({
   hora_final: "12:00",
   intervalo_minutos: 0,
   bloco,
+  empeleita: false,
   ...horas,
 });
 
@@ -302,6 +304,7 @@ function useApontamentoEventos() {
           hora_final: (r.hora_final ?? "").slice(0, 5),
           intervalo_minutos: r.intervalo_minutos ?? 0,
           bloco: r.bloco ?? r.ordem ?? 0,
+          empeleita: !!r.empeleita,
         };
         const list = map.get(row.apontamento_id) ?? [];
         list.push(row);
@@ -459,6 +462,7 @@ function ApontamentoTab() {
                 payload.modo_divisao === "horarios" ? Number(e.intervalo_minutos) || 0 : 0,
               ordem: i,
               bloco: payload.modo_divisao === "horarios" ? (e.bloco ?? i) : i,
+              empeleita: payload.modo_divisao === "horarios" ? !!e.empeleita : false,
             })),
           );
         if (error) throw error;
@@ -553,6 +557,7 @@ function ApontamentoTab() {
         hora_final: e.hora_final || "12:00",
         intervalo_minutos: e.intervalo_minutos,
         bloco: e.bloco ?? i,
+        empeleita: !!e.empeleita,
       })),
     });
     setOpen(true);
@@ -927,6 +932,7 @@ function ApontamentoTab() {
                                     hora_final: e.hora_final || "12:00",
                                     intervalo_minutos: e.intervalo_minutos,
                                     bloco: e.bloco ?? i,
+                                    empeleita: !!e.empeleita,
                                   })),
                                 });
                                 setOpen(true);
@@ -950,7 +956,14 @@ function ApontamentoTab() {
                             <div className="space-y-1">
                               {(calc?.rateio ?? []).map((r, i) => (
                                 <div key={i} className="flex items-center justify-between gap-4 text-xs">
-                                  <span className="font-medium">{r.evento_nome}</span>
+                                  <span className="font-medium">
+                                    {r.evento_nome}
+                                    {r.empeleita && (
+                                      <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-600">
+                                        empreitada
+                                      </span>
+                                    )}
+                                  </span>
                                   <span className="tabular-nums text-muted-foreground">
                                     {r.horasLabel}
                                     {verValores ? ` · ${fmtBRL(r.valor)}` : ""}
@@ -1026,7 +1039,14 @@ function ApontamentoTab() {
                     <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Eventos</div>
                     {(calc?.rateio ?? []).map((r, i) => (
                       <div key={i} className="flex items-center justify-between gap-3 text-xs">
-                        <span className="font-medium">{r.evento_nome}</span>
+                        <span className="font-medium">
+                          {r.evento_nome}
+                          {r.empeleita && (
+                            <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-600">
+                              empreitada
+                            </span>
+                          )}
+                        </span>
                         <span className="tabular-nums text-muted-foreground">
                           {r.horasLabel}{verValores ? ` · ${fmtBRL(r.valor)}` : ""}
                         </span>
@@ -1269,17 +1289,36 @@ function ApontamentoTab() {
                       const base = editing.eventos.find((e) => e.bloco === bloco);
                       return (
                         <div key={bloco} className="rounded-md border border-border/60 p-2 space-y-2">
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between gap-2">
                             <Label className="text-xs uppercase tracking-wide text-muted-foreground">
                               Bloco {bi + 1}
+                              {base?.empeleita && (
+                                <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal text-amber-600">
+                                  empreitada
+                                </span>
+                              )}
                             </Label>
-                            <Button size="icon" variant="ghost"
-                              className="h-7 w-7 text-destructive hover:text-destructive"
-                              onClick={() => removeBloco(bloco)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                                Empreitada
+                                <Switch
+                                  checked={!!base?.empeleita}
+                                  onCheckedChange={(v) => setBlocoHoras(bloco, { empeleita: v })}
+                                />
+                              </label>
+                              <Button size="icon" variant="ghost"
+                                className="h-7 w-7 text-destructive hover:text-destructive"
+                                onClick={() => removeBloco(bloco)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
+                          {base?.empeleita && (
+                            <p className="text-[11px] text-muted-foreground">
+                              As horas deste bloco ficam apenas como registro — não entram no cálculo do valor do dia.
+                            </p>
+                          )}
                           <div className="grid grid-cols-3 gap-2">
                             <div className="space-y-1">
                               <Label className="text-xs">Início</Label>
@@ -1389,7 +1428,14 @@ function ApontamentoTab() {
                     <div className="mt-3 space-y-1 border-t border-border pt-2">
                       {preview.rateio.map((r, i) => (
                         <div key={i} className="flex items-center justify-between gap-3 text-xs">
-                          <span>{r.evento_nome || `Evento ${i + 1}`}</span>
+                          <span>
+                            {r.evento_nome || `Evento ${i + 1}`}
+                            {r.empeleita && (
+                              <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-600">
+                                empreitada
+                              </span>
+                            )}
+                          </span>
                           <span className="tabular-nums text-muted-foreground">
                             {r.horasLabel}
                             {verValores ? ` · ${fmtBRL(r.valor)}` : ""}

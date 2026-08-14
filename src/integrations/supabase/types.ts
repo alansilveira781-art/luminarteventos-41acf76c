@@ -2553,6 +2553,7 @@ export type Database = {
           apontamento_id: string
           bloco: number
           created_at: string
+          empeleita: boolean
           evento_id: string | null
           evento_nome: string
           hora_final: string | null
@@ -2565,6 +2566,7 @@ export type Database = {
           apontamento_id: string
           bloco?: number
           created_at?: string
+          empeleita?: boolean
           evento_id?: string | null
           evento_nome: string
           hora_final?: string | null
@@ -2577,6 +2579,7 @@ export type Database = {
           apontamento_id?: string
           bloco?: number
           created_at?: string
+          empeleita?: boolean
           evento_id?: string | null
           evento_nome?: string
           hora_final?: string | null
