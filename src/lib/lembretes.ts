@@ -175,12 +175,15 @@ export function lembreteVenceu(t: LembreteTarefa): boolean {
 }
 
 /** Toca um beep curto usando Web Audio API (sem arquivo externo). */
-export function playNotificationSound() {
+export async function playNotificationSound() {
   if (typeof window === "undefined") return;
   try {
     const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
+    if (ctx.state === "suspended") {
+      await ctx.resume();
+    }
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
