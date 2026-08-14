@@ -1275,17 +1275,36 @@ function ApontamentoTab() {
                       const base = editing.eventos.find((e) => e.bloco === bloco);
                       return (
                         <div key={bloco} className="rounded-md border border-border/60 p-2 space-y-2">
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between gap-2">
                             <Label className="text-xs uppercase tracking-wide text-muted-foreground">
                               Bloco {bi + 1}
+                              {base?.empeleita && (
+                                <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal text-amber-600">
+                                  empreitada
+                                </span>
+                              )}
                             </Label>
-                            <Button size="icon" variant="ghost"
-                              className="h-7 w-7 text-destructive hover:text-destructive"
-                              onClick={() => removeBloco(bloco)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                                Empreitada
+                                <Switch
+                                  checked={!!base?.empeleita}
+                                  onCheckedChange={(v) => setBlocoHoras(bloco, { empeleita: v })}
+                                />
+                              </label>
+                              <Button size="icon" variant="ghost"
+                                className="h-7 w-7 text-destructive hover:text-destructive"
+                                onClick={() => removeBloco(bloco)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
+                          {base?.empeleita && (
+                            <p className="text-[11px] text-muted-foreground">
+                              As horas deste bloco ficam apenas como registro — não entram no cálculo do valor do dia.
+                            </p>
+                          )}
                           <div className="grid grid-cols-3 gap-2">
                             <div className="space-y-1">
                               <Label className="text-xs">Início</Label>
