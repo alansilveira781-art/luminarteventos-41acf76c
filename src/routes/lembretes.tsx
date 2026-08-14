@@ -243,6 +243,19 @@ function LembretesPage() {
           />
         </TabsContent>
 
+        <TabsContent value="calendario" className="mt-4">
+          <CalendarioView
+            carregando={carregando}
+            tarefas={tarefas}
+            projetoPorId={projetoPorId}
+            onToggle={toggleConcluida}
+            onEditar={(t) => setTarefaDialog({ open: true, tarefa: t })}
+            onNova={(d) => setTarefaDialog({ open: true, tarefa: null, data: d })}
+          />
+        </TabsContent>
+
+
+
         <TabsContent value="todas" className="mt-4">
           <TodasView
             carregando={carregando}
