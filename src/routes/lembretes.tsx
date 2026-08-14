@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,9 +13,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2, Volume2, VolumeX, Bell } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { PushNotificationsToggle } from "@/components/PushNotificationsToggle";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { TarefaDialog, type TarefaFormValues } from "@/components/lembretes/TarefaDialog";
 import { ProjetoDialog } from "@/components/lembretes/ProjetoDialog";
 import {
@@ -27,8 +29,10 @@ import {
   estaAtrasada,
   formatarDataHora,
   horaLocal,
+  lembreteVenceu,
   mesPorExtenso,
   monthGrid,
+  playNotificationSound,
   startOfDay,
   startOfMonth,
   toDateKey,
@@ -36,6 +40,7 @@ import {
   type LembreteProjeto,
   type LembreteTarefa,
 } from "@/lib/lembretes";
+import { notificationPermission, pushSupported } from "@/lib/push";
 
 
 export const Route = createFileRoute("/lembretes")({
