@@ -11,8 +11,11 @@ import {
   RECORRENCIAS,
   combinarDataHora,
   dataLocal,
+  descreverRecorrencia,
+  gerarOcorrencias,
   horaLocal,
   toDateKey,
+  type FimRecorrencia,
   type LembreteProjeto,
   type LembretePrioridade,
   type LembreteRecorrencia,
@@ -28,6 +31,9 @@ export type TarefaFormValues = {
   duracao_min: number;
   lembrete_min: number;
   recorrencia: LembreteRecorrencia;
+  recorrencia_intervalo: number;
+  recorrencia_fim: string | null;
+  recorrencia_qtd: number | null;
   prioridade: LembretePrioridade;
 };
 
@@ -59,6 +65,10 @@ export function TarefaDialog({
   const [duracao, setDuracao] = useState(30);
   const [lembrete, setLembrete] = useState(15);
   const [recorrencia, setRecorrencia] = useState<LembreteRecorrencia>("nenhuma");
+  const [intervalo, setIntervalo] = useState(1);
+  const [fimTipo, setFimTipo] = useState<FimRecorrencia["tipo"]>("qtd");
+  const [fimQtd, setFimQtd] = useState(10);
+  const [fimData, setFimData] = useState("");
   const [prioridade, setPrioridade] = useState<LembretePrioridade>("normal");
   const [erro, setErro] = useState<string | null>(null);
 
@@ -75,6 +85,10 @@ export function TarefaDialog({
       setDuracao(tarefa.duracao_min);
       setLembrete(tarefa.lembrete_min);
       setRecorrencia(tarefa.recorrencia);
+      setIntervalo(tarefa.recorrencia_intervalo ?? 1);
+      setFimTipo(tarefa.recorrencia_fim ? "ate" : tarefa.recorrencia_qtd ? "qtd" : "qtd");
+      setFimQtd(tarefa.recorrencia_qtd ?? 10);
+      setFimData(tarefa.recorrencia_fim ?? "");
       setPrioridade(tarefa.prioridade);
     } else {
       setTitulo("");
@@ -86,11 +100,28 @@ export function TarefaDialog({
       setDuracao(30);
       setLembrete(15);
       setRecorrencia("nenhuma");
+      setIntervalo(1);
+      setFimTipo("qtd");
+      setFimQtd(10);
+      setFimData("");
       setPrioridade("normal");
     }
   }, [open, tarefa, dataPadrao]);
 
   const ativos = projetos.filter((p) => p.ativo || p.id === tarefa?.projeto_id);
+
+  const fim: FimRecorrencia =
+    fimTipo === "ate" ? { tipo: "ate", ate: fimData } : fimTipo === "qtd" ? { tipo: "qtd", qtd: fimQtd } : { tipo: "nunca" };
+
+  const previa =
+    recorrencia !== "nenhuma" && data && (fimTipo !== "ate" || fimData)
+      ? descreverRecorrencia(
+          recorrencia,
+          intervalo,
+          fim,
+          gerarOcorrencias(combinarDataHora(data, hora, diaInteiro), recorrencia, intervalo, fim).length,
+        )
+      : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -105,6 +136,8 @@ export function TarefaDialog({
             e.preventDefault();
             if (!titulo.trim()) return setErro("Informe o título da tarefa.");
             if (!data) return setErro("Informe a data da tarefa.");
+            if (recorrencia !== "nenhuma" && fimTipo === "ate" && !fimData)
+              return setErro("Informe a data limite da repetição.");
             setErro(null);
             onSubmit({
               titulo: titulo.trim(),
@@ -115,6 +148,9 @@ export function TarefaDialog({
               duracao_min: diaInteiro ? 0 : Number(duracao) || 0,
               lembrete_min: Number(lembrete) || 0,
               recorrencia,
+              recorrencia_intervalo: recorrencia === "nenhuma" ? 1 : Math.max(1, Number(intervalo) || 1),
+              recorrencia_fim: recorrencia !== "nenhuma" && fimTipo === "ate" ? fimData : null,
+              recorrencia_qtd: recorrencia !== "nenhuma" && fimTipo === "qtd" ? Math.max(1, Number(fimQtd) || 1) : null,
               prioridade,
             });
           }}
@@ -223,6 +259,64 @@ export function TarefaDialog({
               </Select>
             </div>
           </div>
+
+          {recorrencia !== "nenhuma" && (
+            <div className="space-y-3 rounded-md border p-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="t-int">A cada</Label>
+                  <Input
+                    id="t-int"
+                    type="number"
+                    min={1}
+                    value={intervalo}
+                    onChange={(e) => setIntervalo(Number(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Termina</Label>
+                  <Select value={fimTipo} onValueChange={(v) => setFimTipo(v as FimRecorrencia["tipo"])}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="qtd">Depois de N vezes</SelectItem>
+                      <SelectItem value="ate">Em uma data</SelectItem>
+                      <SelectItem value="nunca">Nunca (1 ano)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {fimTipo === "qtd" && (
+                <div className="space-y-2">
+                  <Label htmlFor="t-qtd">Número de ocorrências</Label>
+                  <Input
+                    id="t-qtd"
+                    type="number"
+                    min={1}
+                    max={200}
+                    value={fimQtd}
+                    onChange={(e) => setFimQtd(Number(e.target.value))}
+                  />
+                </div>
+              )}
+
+              {fimTipo === "ate" && (
+                <div className="space-y-2">
+                  <Label htmlFor="t-ate">Repetir até</Label>
+                  <Input id="t-ate" type="date" value={fimData} onChange={(e) => setFimData(e.target.value)} />
+                </div>
+              )}
+
+              {previa && <p className="text-xs text-muted-foreground">{previa}</p>}
+              {tarefa && (
+                <p className="text-xs text-muted-foreground">
+                  Alterar a repetição de uma tarefa já criada não gera novas ocorrências.
+                </p>
+              )}
+            </div>
+          )}
 
           {erro && <p className="text-sm text-destructive">{erro}</p>}
 

@@ -23,6 +23,10 @@ export type LembreteTarefa = {
   duracao_min: number;
   lembrete_min: number;
   recorrencia: LembreteRecorrencia;
+  recorrencia_intervalo?: number | null;
+  recorrencia_fim?: string | null;
+  recorrencia_qtd?: number | null;
+  serie_id?: string | null;
   prioridade: LembretePrioridade;
   status: LembreteStatus;
   concluida_em: string | null;
@@ -197,4 +201,102 @@ export async function playNotificationSound() {
   } catch {
     // ignore
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Recorrência                                                         */
+/* ------------------------------------------------------------------ */
+
+export const MAX_OCORRENCIAS = 200;
+
+/** Soma meses preservando o dia quando possível (31/01 + 1 mês = 28/02). */
+function addMonthsKeepDay(base: Date, n: number): Date {
+  const dia = base.getDate();
+  const x = new Date(base);
+  x.setDate(1);
+  x.setMonth(x.getMonth() + n);
+  const ultimoDia = new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate();
+  x.setDate(Math.min(dia, ultimoDia));
+  x.setHours(base.getHours(), base.getMinutes(), 0, 0);
+  return x;
+}
+
+export type FimRecorrencia =
+  | { tipo: "qtd"; qtd: number }
+  | { tipo: "ate"; ate: string }
+  | { tipo: "nunca" };
+
+/**
+ * Gera as datas de uma série a partir da data inicial (inclusive).
+ * Limitada a MAX_OCORRENCIAS; "nunca" gera 1 ano de ocorrências.
+ */
+export function gerarOcorrencias(
+  inicio: Date,
+  recorrencia: LembreteRecorrencia,
+  intervalo: number,
+  fim: FimRecorrencia,
+): Date[] {
+  if (recorrencia === "nenhuma") return [inicio];
+  const passo = Math.max(1, Math.floor(intervalo) || 1);
+
+  let limiteQtd = MAX_OCORRENCIAS;
+  let limiteData: Date | null = null;
+
+  if (fim.tipo === "qtd") {
+    limiteQtd = Math.min(MAX_OCORRENCIAS, Math.max(1, Math.floor(fim.qtd) || 1));
+  } else if (fim.tipo === "ate") {
+    const [y, m, d] = fim.ate.split("-").map(Number);
+    limiteData = new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1, 23, 59, 59, 999);
+  } else {
+    limiteData = addMonthsKeepDay(inicio, 12);
+  }
+
+  const datas: Date[] = [];
+  for (let i = 0; i < MAX_OCORRENCIAS; i++) {
+    let atual: Date;
+    if (recorrencia === "diaria") atual = addDays(inicio, i * passo);
+    else if (recorrencia === "semanal") atual = addDays(inicio, i * passo * 7);
+    else atual = addMonthsKeepDay(inicio, i * passo);
+
+    if (recorrencia !== "mensal") {
+      atual.setHours(inicio.getHours(), inicio.getMinutes(), 0, 0);
+    }
+    if (limiteData && atual.getTime() > limiteData.getTime()) break;
+    datas.push(atual);
+    if (datas.length >= limiteQtd) break;
+  }
+
+  return datas.length > 0 ? datas : [inicio];
+}
+
+export function descreverRecorrencia(
+  recorrencia: LembreteRecorrencia,
+  intervalo: number,
+  fim: FimRecorrencia,
+  qtdGerada?: number,
+): string {
+  if (recorrencia === "nenhuma") return "Não se repete";
+  const n = Math.max(1, Math.floor(intervalo) || 1);
+  const unidade =
+    recorrencia === "diaria" ? (n === 1 ? "dia" : "dias") :
+    recorrencia === "semanal" ? (n === 1 ? "semana" : "semanas") :
+    n === 1 ? "mês" : "meses";
+  const base = n === 1 ? `A cada ${unidade}` : `A cada ${n} ${unidade}`;
+
+  let sufixo = "";
+  if (fim.tipo === "qtd") sufixo = `, ${Math.max(1, fim.qtd)} vezes`;
+  else if (fim.tipo === "ate" && fim.ate) {
+    const [y, m, d] = fim.ate.split("-");
+    sufixo = `, até ${d}/${m}/${y}`;
+  } else sufixo = ", por 1 ano";
+
+  const total = qtdGerada != null ? ` — ${qtdGerada} tarefa${qtdGerada === 1 ? "" : "s"}` : "";
+  return `${base}${sufixo}${total}`;
+}
+
+export function rotuloRecorrencia(t: LembreteTarefa): string {
+  const r = RECORRENCIAS.find((x) => x.value === t.recorrencia);
+  const n = t.recorrencia_intervalo ?? 1;
+  if (!r || t.recorrencia === "nenhuma") return "";
+  return n > 1 ? `${r.label} (a cada ${n})` : r.label;
 }

@@ -37,10 +37,26 @@ import {
   startOfMonth,
   toDateKey,
   weekDays,
+  gerarOcorrencias,
+  rotuloRecorrencia,
+  type FimRecorrencia,
   type LembreteProjeto,
   type LembreteTarefa,
 } from "@/lib/lembretes";
 import { pushSupported } from "@/lib/push";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+type EscopoSerie = "esta" | "serie";
+
 
 
 export const Route = createFileRoute("/lembretes")({
@@ -168,19 +184,63 @@ function LembretesPage() {
   const invalidarProjetos = () => qc.invalidateQueries({ queryKey: ["lembretes", "projetos"] });
 
   const salvarTarefa = useMutation({
-    mutationFn: async (values: TarefaFormValues) => {
-      if (tarefaDialog.tarefa) {
-        const { error } = await sb.from("lembretes_tarefas").update(values).eq("id", tarefaDialog.tarefa.id);
-        if (error) throw error;
-      } else {
-        const { error } = await sb.from("lembretes_tarefas").insert({ ...values, user_id: user!.id });
-        if (error) throw error;
+    mutationFn: async ({ values, escopo }: { values: TarefaFormValues; escopo: EscopoSerie }) => {
+      const atual = tarefaDialog.tarefa;
+      if (atual) {
+        if (escopo === "serie" && atual.serie_id) {
+          // Aplica os campos comuns nesta e nas próximas ocorrências,
+          // preservando a data/hora individual de cada uma.
+          const { data_hora: _dh, ...comuns } = values;
+          const { error } = await sb
+            .from("lembretes_tarefas")
+            .update(comuns)
+            .eq("serie_id", atual.serie_id)
+            .gte("data_hora", atual.data_hora);
+          if (error) throw error;
+          const { error: e2 } = await sb
+            .from("lembretes_tarefas")
+            .update({ data_hora: values.data_hora })
+            .eq("id", atual.id);
+          if (e2) throw e2;
+        } else {
+          const { error } = await sb.from("lembretes_tarefas").update(values).eq("id", atual.id);
+          if (error) throw error;
+        }
+        return;
       }
+
+      const fim: FimRecorrencia =
+        values.recorrencia === "nenhuma"
+          ? { tipo: "nunca" }
+          : values.recorrencia_fim
+            ? { tipo: "ate", ate: values.recorrencia_fim }
+            : values.recorrencia_qtd
+              ? { tipo: "qtd", qtd: values.recorrencia_qtd }
+              : { tipo: "nunca" };
+
+      const datas = gerarOcorrencias(
+        new Date(values.data_hora),
+        values.recorrencia,
+        values.recorrencia_intervalo,
+        fim,
+      );
+      const serieId = datas.length > 1 ? crypto.randomUUID() : null;
+
+      const linhas = datas.map((d) => ({
+        ...values,
+        data_hora: d.toISOString(),
+        serie_id: serieId,
+        user_id: user!.id,
+      }));
+
+      const { error } = await sb.from("lembretes_tarefas").insert(linhas);
+      if (error) throw error;
+      return linhas.length;
     },
-    onSuccess: () => {
+    onSuccess: (qtd) => {
       setTarefaDialog({ open: false, tarefa: null });
       invalidarTarefas();
-      toast.success("Tarefa salva.");
+      toast.success(typeof qtd === "number" && qtd > 1 ? `${qtd} tarefas criadas.` : "Tarefa salva.");
     },
     onError: (e: any) => toast.error(e?.message ?? "Não foi possível salvar a tarefa."),
   });
@@ -195,8 +255,17 @@ function LembretesPage() {
   });
 
   const excluirTarefa = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await sb.from("lembretes_tarefas").delete().eq("id", id);
+    mutationFn: async ({ tarefa, escopo }: { tarefa: LembreteTarefa; escopo: EscopoSerie }) => {
+      if (escopo === "serie" && tarefa.serie_id) {
+        const { error } = await sb
+          .from("lembretes_tarefas")
+          .delete()
+          .eq("serie_id", tarefa.serie_id)
+          .gte("data_hora", tarefa.data_hora);
+        if (error) throw error;
+        return;
+      }
+      const { error } = await sb.from("lembretes_tarefas").delete().eq("id", tarefa.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -205,6 +274,40 @@ function LembretesPage() {
     },
     onError: (e: any) => toast.error(e?.message ?? "Não foi possível excluir a tarefa."),
   });
+
+  // Escolha "somente esta / esta e as próximas" para tarefas de série.
+  const [escopoDialog, setEscopoDialog] = useState<
+    | { open: false }
+    | { open: true; tipo: "salvar"; tarefa: LembreteTarefa; values: TarefaFormValues }
+    | { open: true; tipo: "excluir"; tarefa: LembreteTarefa }
+  >({ open: false });
+
+  const pedirEscopoOuSalvar = (values: TarefaFormValues) => {
+    const atual = tarefaDialog.tarefa;
+    if (atual?.serie_id) {
+      setEscopoDialog({ open: true, tipo: "salvar", tarefa: atual, values });
+      return;
+    }
+    salvarTarefa.mutate({ values, escopo: "esta" });
+  };
+
+  const pedirEscopoOuExcluir = (tarefa: LembreteTarefa) => {
+    if (tarefa.serie_id) {
+      setEscopoDialog({ open: true, tipo: "excluir", tarefa });
+      return;
+    }
+    excluirTarefa.mutate({ tarefa, escopo: "esta" });
+  };
+
+  const aplicarEscopo = (escopo: EscopoSerie) => {
+    if (!escopoDialog.open) return;
+    if (escopoDialog.tipo === "salvar") {
+      salvarTarefa.mutate({ values: escopoDialog.values, escopo });
+    } else {
+      excluirTarefa.mutate({ tarefa: escopoDialog.tarefa, escopo });
+    }
+    setEscopoDialog({ open: false });
+  };
 
   const salvarProjeto = useMutation({
     mutationFn: async (values: { nome: string; cor: string; ativo: boolean }) => {
@@ -352,7 +455,10 @@ function LembretesPage() {
             projetos={projetos}
             projetoPorId={projetoPorId}
             onEditar={(t) => setTarefaDialog({ open: true, tarefa: t })}
-            onExcluir={(id) => excluirTarefa.mutate(id)}
+            onExcluir={(id) => {
+              const t = tarefas.find((x) => x.id === id);
+              if (t) pedirEscopoOuExcluir(t);
+            }}
           />
         </TabsContent>
 
@@ -374,8 +480,28 @@ function LembretesPage() {
         dataPadrao={tarefaDialog.data}
         projetos={projetos}
         saving={salvarTarefa.isPending}
-        onSubmit={(v) => salvarTarefa.mutate(v)}
+        onSubmit={pedirEscopoOuSalvar}
       />
+
+      <AlertDialog open={escopoDialog.open} onOpenChange={(v) => !v && setEscopoDialog({ open: false })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tarefa repetida</AlertDialogTitle>
+            <AlertDialogDescription>
+              {escopoDialog.open && escopoDialog.tipo === "excluir"
+                ? "Excluir somente esta tarefa ou esta e as próximas da série?"
+                : "Aplicar a alteração somente nesta tarefa ou nesta e nas próximas da série?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <Button variant="outline" onClick={() => aplicarEscopo("esta")}>
+              Somente esta
+            </Button>
+            <AlertDialogAction onClick={() => aplicarEscopo("serie")}>Esta e as próximas</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ProjetoDialog
         open={projetoDialog.open}
