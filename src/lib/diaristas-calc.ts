@@ -147,6 +147,8 @@ export type RateioEvento = {
   minutos: number;
   horasLabel: string;
   valor: number;
+  /** Bloco de empreitada: horas registradas sem valor */
+  empeleita?: boolean;
 };
 
 export type CalcComEventos = CalcResult & { rateio: RateioEvento[] };
