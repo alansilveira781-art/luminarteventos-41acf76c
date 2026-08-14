@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SolicitarSaidaRouteImport } from './routes/solicitar-saida'
 import { Route as SolicitarContratoRouteImport } from './routes/solicitar-contrato'
 import { Route as SolicitarRouteImport } from './routes/solicitar'
 import { Route as SolicitantesRouteImport } from './routes/solicitantes'
@@ -129,6 +130,11 @@ import { Route as ApiPublicContaazulCronRouteImport } from './routes/api/public/
 import { Route as ApiContaazulOauthPrepareRouteImport } from './routes/api/contaazul/oauth.prepare'
 import { Route as ApiContaazulOauthCallbackRouteImport } from './routes/api/contaazul/oauth.callback'
 
+const SolicitarSaidaRoute = SolicitarSaidaRouteImport.update({
+  id: '/solicitar-saida',
+  path: '/solicitar-saida',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SolicitarContratoRoute = SolicitarContratoRouteImport.update({
   id: '/solicitar-contrato',
   path: '/solicitar-contrato',
@@ -773,6 +779,7 @@ export interface FileRoutesByFullPath {
   '/solicitantes': typeof SolicitantesRoute
   '/solicitar': typeof SolicitarRoute
   '/solicitar-contrato': typeof SolicitarContratoRoute
+  '/solicitar-saida': typeof SolicitarSaidaRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/dados': typeof AdminDadosRoute
@@ -883,6 +890,7 @@ export interface FileRoutesByTo {
   '/solicitantes': typeof SolicitantesRoute
   '/solicitar': typeof SolicitarRoute
   '/solicitar-contrato': typeof SolicitarContratoRoute
+  '/solicitar-saida': typeof SolicitarSaidaRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/dados': typeof AdminDadosRoute
@@ -1004,6 +1012,7 @@ export interface FileRoutesById {
   '/solicitantes': typeof SolicitantesRoute
   '/solicitar': typeof SolicitarRoute
   '/solicitar-contrato': typeof SolicitarContratoRoute
+  '/solicitar-saida': typeof SolicitarSaidaRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/dados': typeof AdminDadosRoute
@@ -1127,6 +1136,7 @@ export interface FileRouteTypes {
     | '/solicitantes'
     | '/solicitar'
     | '/solicitar-contrato'
+    | '/solicitar-saida'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin/dados'
@@ -1237,6 +1247,7 @@ export interface FileRouteTypes {
     | '/solicitantes'
     | '/solicitar'
     | '/solicitar-contrato'
+    | '/solicitar-saida'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin/dados'
@@ -1357,6 +1368,7 @@ export interface FileRouteTypes {
     | '/solicitantes'
     | '/solicitar'
     | '/solicitar-contrato'
+    | '/solicitar-saida'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin/dados'
@@ -1479,6 +1491,7 @@ export interface RootRouteChildren {
   SolicitantesRoute: typeof SolicitantesRoute
   SolicitarRoute: typeof SolicitarRoute
   SolicitarContratoRoute: typeof SolicitarContratoRoute
+  SolicitarSaidaRoute: typeof SolicitarSaidaRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   EstoqueItemIdRoute: typeof EstoqueItemIdRoute
@@ -1506,6 +1519,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/solicitar-saida': {
+      id: '/solicitar-saida'
+      path: '/solicitar-saida'
+      fullPath: '/solicitar-saida'
+      preLoaderRoute: typeof SolicitarSaidaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/solicitar-contrato': {
       id: '/solicitar-contrato'
       path: '/solicitar-contrato'
@@ -2623,6 +2643,7 @@ const rootRouteChildren: RootRouteChildren = {
   SolicitantesRoute: SolicitantesRoute,
   SolicitarRoute: SolicitarRoute,
   SolicitarContratoRoute: SolicitarContratoRoute,
+  SolicitarSaidaRoute: SolicitarSaidaRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
