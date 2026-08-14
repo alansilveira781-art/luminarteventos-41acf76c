@@ -4266,6 +4266,10 @@ export type Database = {
           prioridade: string
           projeto_id: string | null
           recorrencia: string
+          recorrencia_fim: string | null
+          recorrencia_intervalo: number
+          recorrencia_qtd: number | null
+          serie_id: string | null
           status: string
           titulo: string
           updated_at: string
@@ -4284,6 +4288,10 @@ export type Database = {
           prioridade?: string
           projeto_id?: string | null
           recorrencia?: string
+          recorrencia_fim?: string | null
+          recorrencia_intervalo?: number
+          recorrencia_qtd?: number | null
+          serie_id?: string | null
           status?: string
           titulo: string
           updated_at?: string
@@ -4302,6 +4310,10 @@ export type Database = {
           prioridade?: string
           projeto_id?: string | null
           recorrencia?: string
+          recorrencia_fim?: string | null
+          recorrencia_intervalo?: number
+          recorrencia_qtd?: number | null
+          serie_id?: string | null
           status?: string
           titulo?: string
           updated_at?: string
