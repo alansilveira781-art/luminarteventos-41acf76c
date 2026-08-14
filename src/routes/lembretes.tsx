@@ -128,6 +128,42 @@ function LembretesPage() {
     [projetos],
   );
 
+  // Polling de 60s para disparar notificações de lembretes.
+  useEffect(() => {
+    if (!pushSupported() || Notification.permission !== "granted") return;
+
+    const notificar = async () => {
+      const pendentes = tarefas.filter((t) => lembreteVenceu(t));
+      if (pendentes.length === 0) return;
+
+      const agora = new Date().toISOString();
+      for (const t of pendentes) {
+        const projeto = t.projeto_id ? projetoPorId[t.projeto_id] : undefined;
+        const hora = t.dia_inteiro ? "dia inteiro" : horaLocal(t.data_hora);
+        const body = `${hora}${projeto ? ` · ${projeto.nome}` : ""}`;
+        const notification = new Notification(t.titulo, {
+          body,
+          icon: "/app-icon-192.png",
+          badge: "/app-icon-192.png",
+          tag: t.id,
+        });
+        notification.onclick = () => {
+          window.focus();
+          setTarefaDialog({ open: true, tarefa: t });
+        };
+        if (somAtivo) playNotificationSound();
+      }
+      // Marca todas como notificadas de uma vez.
+      const ids = pendentes.map((t) => t.id);
+      await sb.from("lembretes_tarefas").update({ notificada_em: agora }).in("id", ids);
+      invalidarTarefas();
+    };
+
+    notificar();
+    const interval = setInterval(notificar, 60_000);
+    return () => clearInterval(interval);
+  }, [tarefas, projetoPorId, somAtivo]);
+
   const invalidarTarefas = () => qc.invalidateQueries({ queryKey: ["lembretes", "tarefas"] });
   const invalidarProjetos = () => qc.invalidateQueries({ queryKey: ["lembretes", "projetos"] });
 
