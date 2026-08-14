@@ -20,6 +20,7 @@ import { Route as OperacaoRouteImport } from './routes/operacao'
 import { Route as NotificacoesRouteImport } from './routes/notificacoes'
 import { Route as MeusPedidosRouteImport } from './routes/meus-pedidos'
 import { Route as McpRouteImport } from './routes/mcp'
+import { Route as LembretesRouteImport } from './routes/lembretes'
 import { Route as JuridicoRouteImport } from './routes/juridico'
 import { Route as FornecedoresRouteImport } from './routes/fornecedores'
 import { Route as FinanceiroOpRouteImport } from './routes/financeiro-op'
@@ -179,6 +180,11 @@ const MeusPedidosRoute = MeusPedidosRouteImport.update({
 const McpRoute = McpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LembretesRoute = LembretesRouteImport.update({
+  id: '/lembretes',
+  path: '/lembretes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JuridicoRoute = JuridicoRouteImport.update({
@@ -742,6 +748,7 @@ export interface FileRoutesByFullPath {
   '/financeiro-op': typeof FinanceiroOpRouteWithChildren
   '/fornecedores': typeof FornecedoresRoute
   '/juridico': typeof JuridicoRouteWithChildren
+  '/lembretes': typeof LembretesRoute
   '/mcp': typeof McpRoute
   '/meus-pedidos': typeof MeusPedidosRoute
   '/notificacoes': typeof NotificacoesRoute
@@ -852,6 +859,7 @@ export interface FileRoutesByTo {
   '/devolucoes': typeof DevolucoesRoute
   '/entradas': typeof EntradasRoute
   '/fornecedores': typeof FornecedoresRoute
+  '/lembretes': typeof LembretesRoute
   '/mcp': typeof McpRoute
   '/meus-pedidos': typeof MeusPedidosRoute
   '/notificacoes': typeof NotificacoesRoute
@@ -967,6 +975,7 @@ export interface FileRoutesById {
   '/financeiro-op': typeof FinanceiroOpRouteWithChildren
   '/fornecedores': typeof FornecedoresRoute
   '/juridico': typeof JuridicoRouteWithChildren
+  '/lembretes': typeof LembretesRoute
   '/mcp': typeof McpRoute
   '/meus-pedidos': typeof MeusPedidosRoute
   '/notificacoes': typeof NotificacoesRoute
@@ -1087,6 +1096,7 @@ export interface FileRouteTypes {
     | '/financeiro-op'
     | '/fornecedores'
     | '/juridico'
+    | '/lembretes'
     | '/mcp'
     | '/meus-pedidos'
     | '/notificacoes'
@@ -1197,6 +1207,7 @@ export interface FileRouteTypes {
     | '/devolucoes'
     | '/entradas'
     | '/fornecedores'
+    | '/lembretes'
     | '/mcp'
     | '/meus-pedidos'
     | '/notificacoes'
@@ -1311,6 +1322,7 @@ export interface FileRouteTypes {
     | '/financeiro-op'
     | '/fornecedores'
     | '/juridico'
+    | '/lembretes'
     | '/mcp'
     | '/meus-pedidos'
     | '/notificacoes'
@@ -1430,6 +1442,7 @@ export interface RootRouteChildren {
   FinanceiroOpRoute: typeof FinanceiroOpRouteWithChildren
   FornecedoresRoute: typeof FornecedoresRoute
   JuridicoRoute: typeof JuridicoRouteWithChildren
+  LembretesRoute: typeof LembretesRoute
   McpRoute: typeof McpRoute
   MeusPedidosRoute: typeof MeusPedidosRoute
   NotificacoesRoute: typeof NotificacoesRoute
@@ -1541,6 +1554,13 @@ declare module '@tanstack/react-router' {
       path: '/mcp'
       fullPath: '/mcp'
       preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lembretes': {
+      id: '/lembretes'
+      path: '/lembretes'
+      fullPath: '/lembretes'
+      preLoaderRoute: typeof LembretesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/juridico': {
@@ -2550,6 +2570,7 @@ const rootRouteChildren: RootRouteChildren = {
   FinanceiroOpRoute: FinanceiroOpRouteWithChildren,
   FornecedoresRoute: FornecedoresRoute,
   JuridicoRoute: JuridicoRouteWithChildren,
+  LembretesRoute: LembretesRoute,
   McpRoute: McpRoute,
   MeusPedidosRoute: MeusPedidosRoute,
   NotificacoesRoute: NotificacoesRoute,
