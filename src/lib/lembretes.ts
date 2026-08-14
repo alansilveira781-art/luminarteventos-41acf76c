@@ -173,3 +173,25 @@ export function lembreteVenceu(t: LembreteTarefa): boolean {
   if (t.notificada_em) return false;
   return horarioLembrete(t) <= Date.now();
 }
+
+/** Toca um beep curto usando Web Audio API (sem arquivo externo). */
+export function playNotificationSound() {
+  if (typeof window === "undefined") return;
+  try {
+    const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.15);
+  } catch {
+    // ignore
+  }
+}
