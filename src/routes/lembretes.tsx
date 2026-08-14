@@ -249,18 +249,49 @@ function LembretesPage() {
   const carregando = projetosQ.isLoading || tarefasQ.isLoading;
   const erro = projetosQ.error || tarefasQ.error;
 
+  const podeNotificar = pushSupported() && permStatus === "granted";
+
   return (
     <div>
       <PageHeader
         title="Lembretes"
         description={dataPorExtenso(new Date())}
         actions={
-          <Button onClick={() => setTarefaDialog({ open: true, tarefa: null })}>
-            <Plus className="h-4 w-4" />
-            <span className="ml-1.5">Nova tarefa</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            {pushSupported() && (
+              <Button
+                size="icon"
+                variant="ghost"
+                title={somAtivo ? "Desativar som dos lembretes" : "Ativar som dos lembretes"}
+                onClick={() => setSomAtivo((v) => !v)}
+              >
+                {somAtivo ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+              </Button>
+            )}
+            <PushNotificationsToggle />
+            <Button onClick={() => setTarefaDialog({ open: true, tarefa: null })}>
+              <Plus className="h-4 w-4" />
+              <span className="ml-1.5">Nova tarefa</span>
+            </Button>
+          </div>
         }
       />
+
+      {permBanner && pushSupported() && (
+        <Card className="p-3 mb-4 border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20">
+          <div className="flex items-start gap-3">
+            <Bell className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm text-amber-900 dark:text-amber-100">
+                As notificações de lembretes estão bloqueadas. Para receber avisos no navegador, permita as notificações nas configurações deste site.
+              </p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setPermBanner(false)}>
+              Entendi
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {erro && (
         <Card className="p-4 mb-4 border-destructive/40">
