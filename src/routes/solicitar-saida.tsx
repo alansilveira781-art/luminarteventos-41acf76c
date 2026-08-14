@@ -127,35 +127,36 @@ function SolicitarSaidaPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background p-4 md:p-8">
-      <div className="mx-auto max-w-3xl space-y-6">
+    <main className="min-h-screen bg-background p-3 sm:p-4 md:p-8">
+      <div className="mx-auto w-full max-w-3xl space-y-5 sm:space-y-6">
         <header className="space-y-1">
           <div className="flex items-center gap-2 text-primary">
-            <PackageMinus className="h-5 w-5" />
+            <PackageMinus className="h-5 w-5 shrink-0" />
             <span className="text-xs font-medium uppercase tracking-wider">Grupo Luminart · Estoque</span>
           </div>
-          <h1 className="text-2xl font-semibold">Retirada de material</h1>
+          <h1 className="text-xl font-semibold sm:text-2xl">Retirada de material</h1>
           <p className="text-sm text-muted-foreground">
             Registre aqui a retirada de compensado, MDF e outros materiais. A saída será validada pelo estoque.
           </p>
         </header>
 
-        <form onSubmit={enviar} className="space-y-6">
-          <Card className="p-5 space-y-4">
+        <form onSubmit={enviar} className="space-y-5 sm:space-y-6">
+          <Card className="p-4 sm:p-5 space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-1.5">
                 <Label>Data de retirada*</Label>
                 <Input
                   type="date"
                   required
+                  className="h-11 w-full"
                   value={dataRetirada}
                   onChange={(e) => setDataRetirada(e.target.value)}
                 />
               </div>
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-1.5">
                 <Label>Solicitante*</Label>
                 <Select value={solicitanteId} onValueChange={setSolicitanteId}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-11 w-full">
                     <SelectValue placeholder="Selecione…" />
                   </SelectTrigger>
                   <SelectContent>
@@ -170,10 +171,10 @@ function SolicitarSaidaPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-1.5">
                 <Label>É para um evento?*</Label>
                 <Select value={isEvento} onValueChange={(v) => setIsEvento(v as "sim" | "nao")}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-11 w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -182,7 +183,7 @@ function SolicitarSaidaPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-1.5">
                 {isEvento === "sim" ? (
                   <>
                     <Label>Evento / Projeto*</Label>
@@ -192,6 +193,7 @@ function SolicitarSaidaPage() {
                   <>
                     <Label>Para onde vai o material?*</Label>
                     <Input
+                      className="h-11"
                       value={finalidade}
                       onChange={(e) => setFinalidade(e.target.value)}
                       placeholder="Ex.: manutenção da sede, marcenaria…"
@@ -202,54 +204,62 @@ function SolicitarSaidaPage() {
             </div>
           </Card>
 
-          <Card className="p-5 space-y-3">
-            <div className="flex items-center justify-between">
+          <Card className="p-4 sm:p-5 space-y-3">
+            <div className="flex items-center justify-between gap-2">
               <h2 className="text-sm font-semibold">Materiais retirados</h2>
-              <Button type="button" size="sm" variant="outline" onClick={addRow}>
+              <Button type="button" size="sm" variant="outline" className="shrink-0" onClick={addRow}>
                 <Plus className="h-3 w-3 mr-1" /> Adicionar
               </Button>
             </div>
             {materiais.map((m, i) => (
-              <div key={i} className="grid grid-cols-12 gap-2 items-end">
-                <div className="col-span-8 space-y-1.5">
-                  {i === 0 && <Label className="text-xs">Descrição do material*</Label>}
+              <div
+                key={i}
+                className="rounded-lg border p-3 sm:border-0 sm:p-0 sm:grid sm:grid-cols-12 sm:gap-2 sm:items-end"
+              >
+                <div className="min-w-0 space-y-1.5 sm:col-span-8">
+                  <Label className={i === 0 ? "text-xs" : "text-xs sm:sr-only"}>Descrição do material*</Label>
                   <Input
+                    className="h-11 w-full"
                     value={m.descricao}
                     onChange={(e) => setRow(i, { descricao: e.target.value })}
                     placeholder="Ex.: Compensado 15mm 2,20 x 1,60"
                   />
                 </div>
-                <div className="col-span-3 space-y-1.5">
-                  {i === 0 && <Label className="text-xs">Qtde*</Label>}
-                  <Input
-                    inputMode="decimal"
-                    value={m.quantidade}
-                    onChange={(e) => setRow(i, { quantidade: e.target.value })}
-                    className="text-right"
-                  />
-                </div>
-                <div className="col-span-1 flex justify-end">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => remRow(i)}
-                    disabled={materiais.length === 1}
-                  >
-                    <Trash2 className="h-4 w-4 text-muted-foreground" />
-                  </Button>
+                <div className="mt-3 flex items-end gap-2 sm:mt-0 sm:contents">
+                  <div className="min-w-0 flex-1 space-y-1.5 sm:col-span-3">
+                    <Label className={i === 0 ? "text-xs" : "text-xs sm:sr-only"}>Qtde*</Label>
+                    <Input
+                      inputMode="decimal"
+                      value={m.quantidade}
+                      onChange={(e) => setRow(i, { quantidade: e.target.value })}
+                      className="h-11 w-full text-right"
+                    />
+                  </div>
+                  <div className="shrink-0 sm:col-span-1 sm:flex sm:justify-end">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-11 w-11"
+                      onClick={() => remRow(i)}
+                      disabled={materiais.length === 1}
+                      aria-label="Remover material"
+                    >
+                      <Trash2 className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}
           </Card>
 
-          <Card className="p-5 space-y-1.5">
+          <Card className="p-4 sm:p-5 space-y-1.5">
             <Label>Observações</Label>
             <Textarea rows={3} value={observacoes} onChange={(e) => setObservacoes(e.target.value)} />
           </Card>
 
           <div className="flex justify-end">
-            <Button type="submit" size="lg" disabled={enviando}>
+            <Button type="submit" size="lg" className="w-full sm:w-auto" disabled={enviando}>
               {enviando ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Enviando…
