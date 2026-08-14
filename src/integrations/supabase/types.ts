@@ -2822,6 +2822,116 @@ export type Database = {
           },
         ]
       }
+      estoque_solicitacoes_saida: {
+        Row: {
+          created_at: string
+          data_retirada: string
+          evento_projeto: string | null
+          finalidade_livre: string | null
+          id: string
+          is_evento: boolean
+          motivo_recusa: string | null
+          numero: number
+          observacoes: string | null
+          requisicao_numero: number | null
+          solicitante_id: string | null
+          solicitante_nome: string | null
+          status: string
+          updated_at: string
+          validado_em: string | null
+          validado_por: string | null
+        }
+        Insert: {
+          created_at?: string
+          data_retirada: string
+          evento_projeto?: string | null
+          finalidade_livre?: string | null
+          id?: string
+          is_evento?: boolean
+          motivo_recusa?: string | null
+          numero?: number
+          observacoes?: string | null
+          requisicao_numero?: number | null
+          solicitante_id?: string | null
+          solicitante_nome?: string | null
+          status?: string
+          updated_at?: string
+          validado_em?: string | null
+          validado_por?: string | null
+        }
+        Update: {
+          created_at?: string
+          data_retirada?: string
+          evento_projeto?: string | null
+          finalidade_livre?: string | null
+          id?: string
+          is_evento?: boolean
+          motivo_recusa?: string | null
+          numero?: number
+          observacoes?: string | null
+          requisicao_numero?: number | null
+          solicitante_id?: string | null
+          solicitante_nome?: string | null
+          status?: string
+          updated_at?: string
+          validado_em?: string | null
+          validado_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estoque_solicitacoes_saida_solicitante_id_fkey"
+            columns: ["solicitante_id"]
+            isOneToOne: false
+            referencedRelation: "solicitantes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      estoque_solicitacoes_saida_itens: {
+        Row: {
+          created_at: string
+          descricao: string
+          id: string
+          item_id: string | null
+          quantidade: number
+          solicitacao_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          descricao: string
+          id?: string
+          item_id?: string | null
+          quantidade?: number
+          solicitacao_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string
+          id?: string
+          item_id?: string | null
+          quantidade?: number
+          solicitacao_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estoque_solicitacoes_saida_itens_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "itens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estoque_solicitacoes_saida_itens_solicitacao_id_fkey"
+            columns: ["solicitacao_id"]
+            isOneToOne: false
+            referencedRelation: "estoque_solicitacoes_saida"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       eventos: {
         Row: {
           cidade: string | null

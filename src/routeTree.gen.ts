@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SolicitarSaidaRouteImport } from './routes/solicitar-saida'
 import { Route as SolicitarContratoRouteImport } from './routes/solicitar-contrato'
 import { Route as SolicitarRouteImport } from './routes/solicitar'
 import { Route as SolicitantesRouteImport } from './routes/solicitantes'
@@ -72,6 +73,7 @@ import { Route as FinanceiroOpQuadroRouteImport } from './routes/financeiro-op.q
 import { Route as FinanceiroOpDashboardRouteImport } from './routes/financeiro-op.dashboard'
 import { Route as FinanceiroOpContaAzulRouteImport } from './routes/financeiro-op.conta-azul'
 import { Route as EventosConfiguracoesRouteImport } from './routes/eventos.configuracoes'
+import { Route as EstoqueSolicitacoesSaidaRouteImport } from './routes/estoque.solicitacoes-saida'
 import { Route as EstoqueAReceberRouteImport } from './routes/estoque.a-receber'
 import { Route as EstoqueItemIdRouteImport } from './routes/estoque.$itemId'
 import { Route as ContabilTomadoresRouteImport } from './routes/contabil.tomadores'
@@ -110,6 +112,7 @@ import { Route as ComercialDashboardRelatoriosRouteImport } from './routes/comer
 import { Route as ComercialDashboardPropostasRouteImport } from './routes/comercial.dashboard.propostas'
 import { Route as ComercialDashboardPainelRouteImport } from './routes/comercial.dashboard.painel'
 import { Route as ComercialDashboardIndicadoresRouteImport } from './routes/comercial.dashboard.indicadores'
+import { Route as ApiPublicSolicitarSaidaRouteImport } from './routes/api/public/solicitar-saida'
 import { Route as ApiPublicSolicitarContratoRouteImport } from './routes/api/public/solicitar-contrato'
 import { Route as ApiPublicSolicitarRouteImport } from './routes/api/public/solicitar'
 import { Route as ApiPublicSendPushRouteImport } from './routes/api/public/send-push'
@@ -128,6 +131,11 @@ import { Route as ApiPublicContaazulCronRouteImport } from './routes/api/public/
 import { Route as ApiContaazulOauthPrepareRouteImport } from './routes/api/contaazul/oauth.prepare'
 import { Route as ApiContaazulOauthCallbackRouteImport } from './routes/api/contaazul/oauth.callback'
 
+const SolicitarSaidaRoute = SolicitarSaidaRouteImport.update({
+  id: '/solicitar-saida',
+  path: '/solicitar-saida',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SolicitarContratoRoute = SolicitarContratoRouteImport.update({
   id: '/solicitar-contrato',
   path: '/solicitar-contrato',
@@ -443,6 +451,12 @@ const EventosConfiguracoesRoute = EventosConfiguracoesRouteImport.update({
   path: '/configuracoes',
   getParentRoute: () => EventosRoute,
 } as any)
+const EstoqueSolicitacoesSaidaRoute =
+  EstoqueSolicitacoesSaidaRouteImport.update({
+    id: '/estoque/solicitacoes-saida',
+    path: '/estoque/solicitacoes-saida',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const EstoqueAReceberRoute = EstoqueAReceberRouteImport.update({
   id: '/estoque/a-receber',
   path: '/estoque/a-receber',
@@ -645,6 +659,11 @@ const ComercialDashboardIndicadoresRoute =
     path: '/indicadores',
     getParentRoute: () => ComercialDashboardRoute,
   } as any)
+const ApiPublicSolicitarSaidaRoute = ApiPublicSolicitarSaidaRouteImport.update({
+  id: '/api/public/solicitar-saida',
+  path: '/api/public/solicitar-saida',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicSolicitarContratoRoute =
   ApiPublicSolicitarContratoRouteImport.update({
     id: '/api/public/solicitar-contrato',
@@ -767,6 +786,7 @@ export interface FileRoutesByFullPath {
   '/solicitantes': typeof SolicitantesRoute
   '/solicitar': typeof SolicitarRoute
   '/solicitar-contrato': typeof SolicitarContratoRoute
+  '/solicitar-saida': typeof SolicitarSaidaRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/dados': typeof AdminDadosRoute
@@ -795,6 +815,7 @@ export interface FileRoutesByFullPath {
   '/contabil/tomadores': typeof ContabilTomadoresRoute
   '/estoque/$itemId': typeof EstoqueItemIdRoute
   '/estoque/a-receber': typeof EstoqueAReceberRoute
+  '/estoque/solicitacoes-saida': typeof EstoqueSolicitacoesSaidaRoute
   '/eventos/configuracoes': typeof EventosConfiguracoesRoute
   '/financeiro-op/conta-azul': typeof FinanceiroOpContaAzulRoute
   '/financeiro-op/dashboard': typeof FinanceiroOpDashboardRoute
@@ -844,6 +865,7 @@ export interface FileRoutesByFullPath {
   '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
   '/api/public/solicitar-contrato': typeof ApiPublicSolicitarContratoRoute
+  '/api/public/solicitar-saida': typeof ApiPublicSolicitarSaidaRoute
   '/comercial/dashboard/indicadores': typeof ComercialDashboardIndicadoresRoute
   '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
   '/comercial/dashboard/propostas': typeof ComercialDashboardPropostasRoute
@@ -876,6 +898,7 @@ export interface FileRoutesByTo {
   '/solicitantes': typeof SolicitantesRoute
   '/solicitar': typeof SolicitarRoute
   '/solicitar-contrato': typeof SolicitarContratoRoute
+  '/solicitar-saida': typeof SolicitarSaidaRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/dados': typeof AdminDadosRoute
@@ -903,6 +926,7 @@ export interface FileRoutesByTo {
   '/contabil/tomadores': typeof ContabilTomadoresRoute
   '/estoque/$itemId': typeof EstoqueItemIdRoute
   '/estoque/a-receber': typeof EstoqueAReceberRoute
+  '/estoque/solicitacoes-saida': typeof EstoqueSolicitacoesSaidaRoute
   '/eventos/configuracoes': typeof EventosConfiguracoesRoute
   '/financeiro-op/conta-azul': typeof FinanceiroOpContaAzulRoute
   '/financeiro-op/dashboard': typeof FinanceiroOpDashboardRoute
@@ -952,6 +976,7 @@ export interface FileRoutesByTo {
   '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
   '/api/public/solicitar-contrato': typeof ApiPublicSolicitarContratoRoute
+  '/api/public/solicitar-saida': typeof ApiPublicSolicitarSaidaRoute
   '/comercial/dashboard/indicadores': typeof ComercialDashboardIndicadoresRoute
   '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
   '/comercial/dashboard/propostas': typeof ComercialDashboardPropostasRoute
@@ -996,6 +1021,7 @@ export interface FileRoutesById {
   '/solicitantes': typeof SolicitantesRoute
   '/solicitar': typeof SolicitarRoute
   '/solicitar-contrato': typeof SolicitarContratoRoute
+  '/solicitar-saida': typeof SolicitarSaidaRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/dados': typeof AdminDadosRoute
@@ -1024,6 +1050,7 @@ export interface FileRoutesById {
   '/contabil/tomadores': typeof ContabilTomadoresRoute
   '/estoque/$itemId': typeof EstoqueItemIdRoute
   '/estoque/a-receber': typeof EstoqueAReceberRoute
+  '/estoque/solicitacoes-saida': typeof EstoqueSolicitacoesSaidaRoute
   '/eventos/configuracoes': typeof EventosConfiguracoesRoute
   '/financeiro-op/conta-azul': typeof FinanceiroOpContaAzulRoute
   '/financeiro-op/dashboard': typeof FinanceiroOpDashboardRoute
@@ -1073,6 +1100,7 @@ export interface FileRoutesById {
   '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
   '/api/public/solicitar-contrato': typeof ApiPublicSolicitarContratoRoute
+  '/api/public/solicitar-saida': typeof ApiPublicSolicitarSaidaRoute
   '/comercial/dashboard/indicadores': typeof ComercialDashboardIndicadoresRoute
   '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
   '/comercial/dashboard/propostas': typeof ComercialDashboardPropostasRoute
@@ -1118,6 +1146,7 @@ export interface FileRouteTypes {
     | '/solicitantes'
     | '/solicitar'
     | '/solicitar-contrato'
+    | '/solicitar-saida'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin/dados'
@@ -1146,6 +1175,7 @@ export interface FileRouteTypes {
     | '/contabil/tomadores'
     | '/estoque/$itemId'
     | '/estoque/a-receber'
+    | '/estoque/solicitacoes-saida'
     | '/eventos/configuracoes'
     | '/financeiro-op/conta-azul'
     | '/financeiro-op/dashboard'
@@ -1195,6 +1225,7 @@ export interface FileRouteTypes {
     | '/api/public/send-push'
     | '/api/public/solicitar'
     | '/api/public/solicitar-contrato'
+    | '/api/public/solicitar-saida'
     | '/comercial/dashboard/indicadores'
     | '/comercial/dashboard/painel'
     | '/comercial/dashboard/propostas'
@@ -1227,6 +1258,7 @@ export interface FileRouteTypes {
     | '/solicitantes'
     | '/solicitar'
     | '/solicitar-contrato'
+    | '/solicitar-saida'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin/dados'
@@ -1254,6 +1286,7 @@ export interface FileRouteTypes {
     | '/contabil/tomadores'
     | '/estoque/$itemId'
     | '/estoque/a-receber'
+    | '/estoque/solicitacoes-saida'
     | '/eventos/configuracoes'
     | '/financeiro-op/conta-azul'
     | '/financeiro-op/dashboard'
@@ -1303,6 +1336,7 @@ export interface FileRouteTypes {
     | '/api/public/send-push'
     | '/api/public/solicitar'
     | '/api/public/solicitar-contrato'
+    | '/api/public/solicitar-saida'
     | '/comercial/dashboard/indicadores'
     | '/comercial/dashboard/painel'
     | '/comercial/dashboard/propostas'
@@ -1346,6 +1380,7 @@ export interface FileRouteTypes {
     | '/solicitantes'
     | '/solicitar'
     | '/solicitar-contrato'
+    | '/solicitar-saida'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin/dados'
@@ -1374,6 +1409,7 @@ export interface FileRouteTypes {
     | '/contabil/tomadores'
     | '/estoque/$itemId'
     | '/estoque/a-receber'
+    | '/estoque/solicitacoes-saida'
     | '/eventos/configuracoes'
     | '/financeiro-op/conta-azul'
     | '/financeiro-op/dashboard'
@@ -1423,6 +1459,7 @@ export interface FileRouteTypes {
     | '/api/public/send-push'
     | '/api/public/solicitar'
     | '/api/public/solicitar-contrato'
+    | '/api/public/solicitar-saida'
     | '/comercial/dashboard/indicadores'
     | '/comercial/dashboard/painel'
     | '/comercial/dashboard/propostas'
@@ -1467,10 +1504,12 @@ export interface RootRouteChildren {
   SolicitantesRoute: typeof SolicitantesRoute
   SolicitarRoute: typeof SolicitarRoute
   SolicitarContratoRoute: typeof SolicitarContratoRoute
+  SolicitarSaidaRoute: typeof SolicitarSaidaRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   EstoqueItemIdRoute: typeof EstoqueItemIdRoute
   EstoqueAReceberRoute: typeof EstoqueAReceberRoute
+  EstoqueSolicitacoesSaidaRoute: typeof EstoqueSolicitacoesSaidaRoute
   EstoqueIndexRoute: typeof EstoqueIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -1485,6 +1524,7 @@ export interface RootRouteChildren {
   ApiPublicSendPushRoute: typeof ApiPublicSendPushRoute
   ApiPublicSolicitarRoute: typeof ApiPublicSolicitarRoute
   ApiPublicSolicitarContratoRoute: typeof ApiPublicSolicitarContratoRoute
+  ApiPublicSolicitarSaidaRoute: typeof ApiPublicSolicitarSaidaRoute
   ApiContaazulOauthCallbackRoute: typeof ApiContaazulOauthCallbackRoute
   ApiContaazulOauthPrepareRoute: typeof ApiContaazulOauthPrepareRoute
   ApiPublicContaazulCronRoute: typeof ApiPublicContaazulCronRoute
@@ -1493,6 +1533,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/solicitar-saida': {
+      id: '/solicitar-saida'
+      path: '/solicitar-saida'
+      fullPath: '/solicitar-saida'
+      preLoaderRoute: typeof SolicitarSaidaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/solicitar-contrato': {
       id: '/solicitar-contrato'
       path: '/solicitar-contrato'
@@ -1934,6 +1981,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventosConfiguracoesRouteImport
       parentRoute: typeof EventosRoute
     }
+    '/estoque/solicitacoes-saida': {
+      id: '/estoque/solicitacoes-saida'
+      path: '/estoque/solicitacoes-saida'
+      fullPath: '/estoque/solicitacoes-saida'
+      preLoaderRoute: typeof EstoqueSolicitacoesSaidaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/estoque/a-receber': {
       id: '/estoque/a-receber'
       path: '/estoque/a-receber'
@@ -2199,6 +2253,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/comercial/dashboard/indicadores'
       preLoaderRoute: typeof ComercialDashboardIndicadoresRouteImport
       parentRoute: typeof ComercialDashboardRoute
+    }
+    '/api/public/solicitar-saida': {
+      id: '/api/public/solicitar-saida'
+      path: '/api/public/solicitar-saida'
+      fullPath: '/api/public/solicitar-saida'
+      preLoaderRoute: typeof ApiPublicSolicitarSaidaRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/solicitar-contrato': {
       id: '/api/public/solicitar-contrato'
@@ -2603,11 +2664,13 @@ const rootRouteChildren: RootRouteChildren = {
   SolicitantesRoute: SolicitantesRoute,
   SolicitarRoute: SolicitarRoute,
   SolicitarContratoRoute: SolicitarContratoRoute,
+  SolicitarSaidaRoute: SolicitarSaidaRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   EstoqueItemIdRoute: EstoqueItemIdRoute,
   EstoqueAReceberRoute: EstoqueAReceberRoute,
+  EstoqueSolicitacoesSaidaRoute: EstoqueSolicitacoesSaidaRoute,
   EstoqueIndexRoute: EstoqueIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
@@ -2622,6 +2685,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicSendPushRoute: ApiPublicSendPushRoute,
   ApiPublicSolicitarRoute: ApiPublicSolicitarRoute,
   ApiPublicSolicitarContratoRoute: ApiPublicSolicitarContratoRoute,
+  ApiPublicSolicitarSaidaRoute: ApiPublicSolicitarSaidaRoute,
   ApiContaazulOauthCallbackRoute: ApiContaazulOauthCallbackRoute,
   ApiContaazulOauthPrepareRoute: ApiContaazulOauthPrepareRoute,
   ApiPublicContaazulCronRoute: ApiPublicContaazulCronRoute,

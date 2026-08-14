@@ -77,6 +77,7 @@ const allItems: NavItem[] = [
   { title: "Fornecedores", url: "/fornecedores", icon: Truck, group: "Estoque", module: "estoque" },
   { title: "Entradas", url: "/entradas", icon: ArrowDownToLine, group: "Estoque", module: "estoque" },
   { title: "Saídas", url: "/saidas", icon: ArrowUpFromLine, group: "Estoque", module: "estoque" },
+  { title: "Solicitações de saída", url: "/estoque/solicitacoes-saida", icon: ClipboardList, group: "Estoque", module: "estoque" },
   { title: "Devoluções", url: "/devolucoes", icon: Undo2, group: "Estoque", module: "estoque" },
   { title: "A receber", url: "/estoque/a-receber", icon: PackageCheck, group: "Estoque", module: "estoque" },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3, group: "Estoque", module: "estoque" },
