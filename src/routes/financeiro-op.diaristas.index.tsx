@@ -462,6 +462,7 @@ function ApontamentoTab() {
                 payload.modo_divisao === "horarios" ? Number(e.intervalo_minutos) || 0 : 0,
               ordem: i,
               bloco: payload.modo_divisao === "horarios" ? (e.bloco ?? i) : i,
+              empeleita: payload.modo_divisao === "horarios" ? !!e.empeleita : false,
             })),
           );
         if (error) throw error;
