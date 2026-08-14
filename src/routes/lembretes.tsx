@@ -40,7 +40,7 @@ import {
   type LembreteProjeto,
   type LembreteTarefa,
 } from "@/lib/lembretes";
-import { notificationPermission, pushSupported } from "@/lib/push";
+import { pushSupported } from "@/lib/push";
 
 
 export const Route = createFileRoute("/lembretes")({
