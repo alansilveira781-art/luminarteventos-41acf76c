@@ -22,16 +22,21 @@ import {
   PRIORIDADES,
   STATUSES,
   addDays,
+  addMonths,
   dataPorExtenso,
   estaAtrasada,
   formatarDataHora,
   horaLocal,
+  mesPorExtenso,
+  monthGrid,
   startOfDay,
+  startOfMonth,
   toDateKey,
   weekDays,
   type LembreteProjeto,
   type LembreteTarefa,
 } from "@/lib/lembretes";
+
 
 export const Route = createFileRoute("/lembretes")({
   head: () => ({
@@ -211,9 +216,11 @@ function LembretesPage() {
         <TabsList>
           <TabsTrigger value="hoje">Hoje</TabsTrigger>
           <TabsTrigger value="semana">Semana</TabsTrigger>
+          <TabsTrigger value="calendario">Calendário</TabsTrigger>
           <TabsTrigger value="todas">Todas</TabsTrigger>
           <TabsTrigger value="projetos">Projetos</TabsTrigger>
         </TabsList>
+
 
         <TabsContent value="hoje" className="mt-4">
           <HojeView
@@ -235,6 +242,19 @@ function LembretesPage() {
             onNova={(d) => setTarefaDialog({ open: true, tarefa: null, data: d })}
           />
         </TabsContent>
+
+        <TabsContent value="calendario" className="mt-4">
+          <CalendarioView
+            carregando={carregando}
+            tarefas={tarefas}
+            projetoPorId={projetoPorId}
+            onToggle={toggleConcluida}
+            onEditar={(t) => setTarefaDialog({ open: true, tarefa: t })}
+            onNova={(d) => setTarefaDialog({ open: true, tarefa: null, data: d })}
+          />
+        </TabsContent>
+
+
 
         <TabsContent value="todas" className="mt-4">
           <TodasView
@@ -495,6 +515,169 @@ function SemanaView({
     </div>
   );
 }
+
+const DOW = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+
+function CalendarioView({
+  carregando,
+  tarefas,
+  projetoPorId,
+  onToggle,
+  onEditar,
+  onNova,
+}: {
+  carregando: boolean;
+  tarefas: LembreteTarefa[];
+  projetoPorId: Record<string, LembreteProjeto>;
+  onToggle: (t: LembreteTarefa) => void;
+  onEditar: (t: LembreteTarefa) => void;
+  onNova: (d: Date) => void;
+}) {
+  const [mesRef, setMesRef] = useState(() => startOfMonth(new Date()));
+  const [diaSel, setDiaSel] = useState(() => startOfDay(new Date()));
+  const hoje = toDateKey(new Date());
+  const dias = useMemo(() => monthGrid(mesRef), [mesRef]);
+
+  const porDia = useMemo(() => {
+    const map: Record<string, LembreteTarefa[]> = {};
+    for (const t of tarefas) {
+      const k = toDateKey(new Date(t.data_hora));
+      (map[k] ||= []).push(t);
+    }
+    for (const k of Object.keys(map)) {
+      map[k].sort((a, b) => {
+        if (a.dia_inteiro !== b.dia_inteiro) return a.dia_inteiro ? -1 : 1;
+        return a.data_hora.localeCompare(b.data_hora);
+      });
+    }
+    return map;
+  }, [tarefas]);
+
+  const selKey = toDateKey(diaSel);
+  const doDia = porDia[selKey] ?? [];
+
+  if (carregando) return <Card className="p-6 text-sm text-muted-foreground">Carregando tarefas…</Card>;
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <Card className="p-3">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <p className="text-sm font-medium">{mesPorExtenso(mesRef)}</p>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setMesRef(addMonths(mesRef, -1))} aria-label="Mês anterior">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setMesRef(startOfMonth(new Date()));
+                setDiaSel(startOfDay(new Date()));
+              }}
+            >
+              Hoje
+            </Button>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setMesRef(addMonths(mesRef, 1))} aria-label="Próximo mês">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-7 gap-1 pb-1">
+          {DOW.map((d) => (
+            <div key={d} className="px-1 text-center text-[11px] uppercase tracking-wide text-muted-foreground">
+              {d}
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7 gap-1">
+          {dias.map((d) => {
+            const key = toDateKey(d);
+            const lista = porDia[key] ?? [];
+            const foraDoMes = d.getMonth() !== mesRef.getMonth();
+            const temAtrasada = lista.some((t) => estaAtrasada(t));
+            return (
+              <button
+                type="button"
+                key={key}
+                onClick={() => setDiaSel(startOfDay(d))}
+                onDoubleClick={() => onNova(d)}
+                className={cn(
+                  "flex min-h-[92px] flex-col rounded-md border p-1 text-left transition-colors hover:bg-muted/50",
+                  foraDoMes && "opacity-45",
+                  key === hoje && "border-primary",
+                  key === selKey && "ring-2 ring-primary",
+                )}
+              >
+                <div className="mb-1 flex items-center justify-between px-0.5">
+                  <span className={cn("text-xs tabular-nums", key === hoje && "font-semibold text-primary")}>
+                    {d.getDate()}
+                  </span>
+                  {temAtrasada && <span className="h-1.5 w-1.5 rounded-full bg-destructive" />}
+                </div>
+                <div className="space-y-0.5">
+                  {lista.slice(0, 3).map((t) => {
+                    const projeto = t.projeto_id ? projetoPorId[t.projeto_id] : undefined;
+                    const concluida = t.status === "concluida";
+                    return (
+                      <div key={t.id} className="flex items-center gap-1">
+                        <span
+                          className="h-1.5 w-1.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: projeto?.cor ?? "hsl(var(--muted-foreground))" }}
+                        />
+                        <span
+                          className={cn(
+                            "truncate text-[11px]",
+                            concluida && "line-through text-muted-foreground",
+                            !concluida && estaAtrasada(t) && "text-destructive",
+                          )}
+                        >
+                          {t.dia_inteiro ? "" : `${horaLocal(t.data_hora)} `}
+                          {t.titulo}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  {lista.length > 3 && (
+                    <span className="px-0.5 text-[10px] text-muted-foreground">+{lista.length - 3} mais</span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </Card>
+
+      <Card className="flex flex-col">
+        <div className="flex items-start justify-between gap-2 border-b px-4 py-3">
+          <p className="text-sm font-medium">{dataPorExtenso(diaSel)}</p>
+          <Button size="sm" variant="outline" onClick={() => onNova(diaSel)}>
+            <Plus className="h-4 w-4" />
+            <span className="ml-1">Nova</span>
+          </Button>
+        </div>
+        {doDia.length === 0 ? (
+          <Vazio>Sem tarefas neste dia.</Vazio>
+        ) : (
+          <div className="max-h-[60vh] overflow-auto">
+            {doDia.map((t) => (
+              <LinhaTarefa
+                key={t.id}
+                t={t}
+                projeto={t.projeto_id ? projetoPorId[t.projeto_id] : undefined}
+                onToggle={onToggle}
+                onEditar={onEditar}
+              />
+            ))}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+
 
 function TodasView({
   carregando,

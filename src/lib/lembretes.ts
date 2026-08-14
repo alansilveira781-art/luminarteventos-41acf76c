@@ -92,6 +92,38 @@ export function weekDays(base: Date): Date[] {
   return Array.from({ length: 7 }, (_, i) => addDays(inicio, i));
 }
 
+export function startOfMonth(d: Date): Date {
+  const x = startOfDay(d);
+  x.setDate(1);
+  return x;
+}
+
+export function addMonths(d: Date, n: number): Date {
+  const x = startOfMonth(d);
+  x.setMonth(x.getMonth() + n);
+  return x;
+}
+
+/** Grade do mês (segunda a domingo), sempre completa nas bordas. */
+export function monthGrid(base: Date): Date[] {
+  const inicio = startOfWeek(startOfMonth(base));
+  const fimMes = addMonths(base, 1);
+  const dias: Date[] = [];
+  let cur = inicio;
+  while (cur < fimMes || dias.length % 7 !== 0) {
+    dias.push(cur);
+    cur = addDays(cur, 1);
+    if (dias.length > 42) break;
+  }
+  return dias;
+}
+
+export function mesPorExtenso(d: Date): string {
+  const txt = d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  return txt.charAt(0).toUpperCase() + txt.slice(1);
+}
+
+
 /** Combina data (yyyy-mm-dd) e hora (HH:mm) em Date local */
 export function combinarDataHora(data: string, hora: string | null, diaInteiro: boolean): Date {
   const [y, m, d] = data.split("-").map(Number);
