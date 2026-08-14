@@ -161,3 +161,40 @@ export function estaAtrasada(t: LembreteTarefa): boolean {
   if (t.status !== "pendente" || t.dia_inteiro) return false;
   return new Date(t.data_hora).getTime() < Date.now();
 }
+
+/** Retorna o timestamp em que o lembrete da tarefa deve ser disparado. */
+export function horarioLembrete(t: LembreteTarefa): number {
+  return new Date(t.data_hora).getTime() - (t.lembrete_min || 0) * 60_000;
+}
+
+/** Verifica se o lembrete da tarefa já chegou e ainda não foi notificado. */
+export function lembreteVenceu(t: LembreteTarefa): boolean {
+  if (t.status !== "pendente") return false;
+  if (t.notificada_em) return false;
+  return horarioLembrete(t) <= Date.now();
+}
+
+/** Toca um beep curto usando Web Audio API (sem arquivo externo). */
+export async function playNotificationSound() {
+  if (typeof window === "undefined") return;
+  try {
+    const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    if (ctx.state === "suspended") {
+      await ctx.resume();
+    }
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.15);
+  } catch {
+    // ignore
+  }
+}

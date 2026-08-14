@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,9 +13,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2, Volume2, VolumeX, Bell } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { PushNotificationsToggle } from "@/components/PushNotificationsToggle";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { TarefaDialog, type TarefaFormValues } from "@/components/lembretes/TarefaDialog";
 import { ProjetoDialog } from "@/components/lembretes/ProjetoDialog";
 import {
@@ -27,8 +29,10 @@ import {
   estaAtrasada,
   formatarDataHora,
   horaLocal,
+  lembreteVenceu,
   mesPorExtenso,
   monthGrid,
+  playNotificationSound,
   startOfDay,
   startOfMonth,
   toDateKey,
@@ -36,6 +40,7 @@ import {
   type LembreteProjeto,
   type LembreteTarefa,
 } from "@/lib/lembretes";
+import { pushSupported } from "@/lib/push";
 
 
 export const Route = createFileRoute("/lembretes")({
@@ -98,6 +103,23 @@ function LembretesPage() {
     open: false,
     projeto: null,
   });
+  const [somAtivo, setSomAtivo] = usePersistedState("lembretes-som", true);
+  const [permBanner, setPermBanner] = useState(false);
+  const [permStatus, setPermStatus] = useState<NotificationPermission | "unsupported">("unsupported");
+
+  // Solicita permissão na primeira visita e atualiza status.
+  useEffect(() => {
+    if (!pushSupported()) return;
+    setPermStatus(Notification.permission);
+    if (Notification.permission === "default") {
+      Notification.requestPermission().then((p) => {
+        setPermStatus(p);
+        setPermBanner(p === "denied");
+      });
+    } else if (Notification.permission === "denied") {
+      setPermBanner(true);
+    }
+  }, []);
 
   const projetos = projetosQ.data ?? [];
   const tarefas = tarefasQ.data ?? [];
@@ -105,6 +127,42 @@ function LembretesPage() {
     () => Object.fromEntries(projetos.map((p) => [p.id, p])) as Record<string, LembreteProjeto>,
     [projetos],
   );
+
+  // Polling de 60s para disparar notificações de lembretes.
+  useEffect(() => {
+    if (!pushSupported() || Notification.permission !== "granted") return;
+
+    const notificar = async () => {
+      const pendentes = tarefas.filter((t) => lembreteVenceu(t));
+      if (pendentes.length === 0) return;
+
+      const agora = new Date().toISOString();
+      for (const t of pendentes) {
+        const projeto = t.projeto_id ? projetoPorId[t.projeto_id] : undefined;
+        const hora = t.dia_inteiro ? "dia inteiro" : horaLocal(t.data_hora);
+        const body = `${hora}${projeto ? ` · ${projeto.nome}` : ""}`;
+        const notification = new Notification(t.titulo, {
+          body,
+          icon: "/app-icon-192.png",
+          badge: "/app-icon-192.png",
+          tag: t.id,
+        });
+        notification.onclick = () => {
+          window.focus();
+          setTarefaDialog({ open: true, tarefa: t });
+        };
+        if (somAtivo) void playNotificationSound();
+      }
+      // Marca todas como notificadas de uma vez.
+      const ids = pendentes.map((t) => t.id);
+      await sb.from("lembretes_tarefas").update({ notificada_em: agora }).in("id", ids);
+      invalidarTarefas();
+    };
+
+    notificar();
+    const interval = setInterval(notificar, 60_000);
+    return () => clearInterval(interval);
+  }, [tarefas, projetoPorId, somAtivo]);
 
   const invalidarTarefas = () => qc.invalidateQueries({ queryKey: ["lembretes", "tarefas"] });
   const invalidarProjetos = () => qc.invalidateQueries({ queryKey: ["lembretes", "projetos"] });
@@ -191,18 +249,49 @@ function LembretesPage() {
   const carregando = projetosQ.isLoading || tarefasQ.isLoading;
   const erro = projetosQ.error || tarefasQ.error;
 
+  const podeNotificar = pushSupported() && permStatus === "granted";
+
   return (
     <div>
       <PageHeader
         title="Lembretes"
         description={dataPorExtenso(new Date())}
         actions={
-          <Button onClick={() => setTarefaDialog({ open: true, tarefa: null })}>
-            <Plus className="h-4 w-4" />
-            <span className="ml-1.5">Nova tarefa</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            {pushSupported() && (
+              <Button
+                size="icon"
+                variant="ghost"
+                title={somAtivo ? "Desativar som dos lembretes" : "Ativar som dos lembretes"}
+                onClick={() => setSomAtivo((v) => !v)}
+              >
+                {somAtivo ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+              </Button>
+            )}
+            <PushNotificationsToggle />
+            <Button onClick={() => setTarefaDialog({ open: true, tarefa: null })}>
+              <Plus className="h-4 w-4" />
+              <span className="ml-1.5">Nova tarefa</span>
+            </Button>
+          </div>
         }
       />
+
+      {permBanner && pushSupported() && (
+        <Card className="p-3 mb-4 border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20">
+          <div className="flex items-start gap-3">
+            <Bell className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm text-amber-900 dark:text-amber-100">
+                As notificações de lembretes estão bloqueadas. Para receber avisos no navegador, permita as notificações nas configurações deste site.
+              </p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setPermBanner(false)}>
+              Entendi
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {erro && (
         <Card className="p-4 mb-4 border-destructive/40">

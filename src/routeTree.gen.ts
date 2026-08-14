@@ -123,6 +123,7 @@ import { Route as ApiContaazulReprocessarFalhasRouteImport } from './routes/api/
 import { Route as ApiContaazulHistoricoRouteImport } from './routes/api/contaazul/historico'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
+import { Route as ApiPublicHooksEnviarLembretesRouteImport } from './routes/api/public/hooks/enviar-lembretes'
 import { Route as ApiPublicContaazulCronRouteImport } from './routes/api/public/contaazul/cron'
 import { Route as ApiContaazulOauthPrepareRouteImport } from './routes/api/contaazul/oauth.prepare'
 import { Route as ApiContaazulOauthCallbackRouteImport } from './routes/api/contaazul/oauth.callback'
@@ -714,6 +715,12 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksEnviarLembretesRoute =
+  ApiPublicHooksEnviarLembretesRouteImport.update({
+    id: '/api/public/hooks/enviar-lembretes',
+    path: '/api/public/hooks/enviar-lembretes',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicContaazulCronRoute = ApiPublicContaazulCronRouteImport.update({
   id: '/api/public/contaazul/cron',
   path: '/api/public/contaazul/cron',
@@ -850,6 +857,7 @@ export interface FileRoutesByFullPath {
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
   '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
   '/api/public/contaazul/cron': typeof ApiPublicContaazulCronRoute
+  '/api/public/hooks/enviar-lembretes': typeof ApiPublicHooksEnviarLembretesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -957,6 +965,7 @@ export interface FileRoutesByTo {
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
   '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
   '/api/public/contaazul/cron': typeof ApiPublicContaazulCronRoute
+  '/api/public/hooks/enviar-lembretes': typeof ApiPublicHooksEnviarLembretesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -1077,6 +1086,7 @@ export interface FileRoutesById {
   '/api/contaazul/oauth/callback': typeof ApiContaazulOauthCallbackRoute
   '/api/contaazul/oauth/prepare': typeof ApiContaazulOauthPrepareRoute
   '/api/public/contaazul/cron': typeof ApiPublicContaazulCronRoute
+  '/api/public/hooks/enviar-lembretes': typeof ApiPublicHooksEnviarLembretesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -1198,6 +1208,7 @@ export interface FileRouteTypes {
     | '/api/contaazul/oauth/callback'
     | '/api/contaazul/oauth/prepare'
     | '/api/public/contaazul/cron'
+    | '/api/public/hooks/enviar-lembretes'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1305,6 +1316,7 @@ export interface FileRouteTypes {
     | '/api/contaazul/oauth/callback'
     | '/api/contaazul/oauth/prepare'
     | '/api/public/contaazul/cron'
+    | '/api/public/hooks/enviar-lembretes'
   id:
     | '__root__'
     | '/'
@@ -1424,6 +1436,7 @@ export interface FileRouteTypes {
     | '/api/contaazul/oauth/callback'
     | '/api/contaazul/oauth/prepare'
     | '/api/public/contaazul/cron'
+    | '/api/public/hooks/enviar-lembretes'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1475,6 +1488,7 @@ export interface RootRouteChildren {
   ApiContaazulOauthCallbackRoute: typeof ApiContaazulOauthCallbackRoute
   ApiContaazulOauthPrepareRoute: typeof ApiContaazulOauthPrepareRoute
   ApiPublicContaazulCronRoute: typeof ApiPublicContaazulCronRoute
+  ApiPublicHooksEnviarLembretesRoute: typeof ApiPublicHooksEnviarLembretesRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -2277,6 +2291,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/enviar-lembretes': {
+      id: '/api/public/hooks/enviar-lembretes'
+      path: '/api/public/hooks/enviar-lembretes'
+      fullPath: '/api/public/hooks/enviar-lembretes'
+      preLoaderRoute: typeof ApiPublicHooksEnviarLembretesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/contaazul/cron': {
       id: '/api/public/contaazul/cron'
       path: '/api/public/contaazul/cron'
@@ -2604,6 +2625,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiContaazulOauthCallbackRoute: ApiContaazulOauthCallbackRoute,
   ApiContaazulOauthPrepareRoute: ApiContaazulOauthPrepareRoute,
   ApiPublicContaazulCronRoute: ApiPublicContaazulCronRoute,
+  ApiPublicHooksEnviarLembretesRoute: ApiPublicHooksEnviarLembretesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
