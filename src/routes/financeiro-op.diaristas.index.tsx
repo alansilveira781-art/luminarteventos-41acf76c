@@ -304,6 +304,7 @@ function useApontamentoEventos() {
           hora_final: (r.hora_final ?? "").slice(0, 5),
           intervalo_minutos: r.intervalo_minutos ?? 0,
           bloco: r.bloco ?? r.ordem ?? 0,
+          empeleita: !!r.empeleita,
         };
         const list = map.get(row.apontamento_id) ?? [];
         list.push(row);
