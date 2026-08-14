@@ -15,6 +15,8 @@ import {
 } from "@/components/PeriodoFilter";
 import { toast } from "sonner";
 import { fetchAllRows } from "@/lib/fetch-all";
+import CartoesReport from "@/components/compras/CartoesReport";
+
 import {
   CA_EXPORT_HEADERS, formatarDataBR, linhaParaPlanilha, linhasDoCard, normForma,
   type CardMin, type LinhaExport, type PagamentoMin,
