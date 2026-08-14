@@ -110,6 +110,7 @@ import { Route as ComercialDashboardRelatoriosRouteImport } from './routes/comer
 import { Route as ComercialDashboardPropostasRouteImport } from './routes/comercial.dashboard.propostas'
 import { Route as ComercialDashboardPainelRouteImport } from './routes/comercial.dashboard.painel'
 import { Route as ComercialDashboardIndicadoresRouteImport } from './routes/comercial.dashboard.indicadores'
+import { Route as ApiPublicSolicitarSaidaRouteImport } from './routes/api/public/solicitar-saida'
 import { Route as ApiPublicSolicitarContratoRouteImport } from './routes/api/public/solicitar-contrato'
 import { Route as ApiPublicSolicitarRouteImport } from './routes/api/public/solicitar'
 import { Route as ApiPublicSendPushRouteImport } from './routes/api/public/send-push'
@@ -645,6 +646,11 @@ const ComercialDashboardIndicadoresRoute =
     path: '/indicadores',
     getParentRoute: () => ComercialDashboardRoute,
   } as any)
+const ApiPublicSolicitarSaidaRoute = ApiPublicSolicitarSaidaRouteImport.update({
+  id: '/api/public/solicitar-saida',
+  path: '/api/public/solicitar-saida',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicSolicitarContratoRoute =
   ApiPublicSolicitarContratoRouteImport.update({
     id: '/api/public/solicitar-contrato',
@@ -844,6 +850,7 @@ export interface FileRoutesByFullPath {
   '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
   '/api/public/solicitar-contrato': typeof ApiPublicSolicitarContratoRoute
+  '/api/public/solicitar-saida': typeof ApiPublicSolicitarSaidaRoute
   '/comercial/dashboard/indicadores': typeof ComercialDashboardIndicadoresRoute
   '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
   '/comercial/dashboard/propostas': typeof ComercialDashboardPropostasRoute
@@ -952,6 +959,7 @@ export interface FileRoutesByTo {
   '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
   '/api/public/solicitar-contrato': typeof ApiPublicSolicitarContratoRoute
+  '/api/public/solicitar-saida': typeof ApiPublicSolicitarSaidaRoute
   '/comercial/dashboard/indicadores': typeof ComercialDashboardIndicadoresRoute
   '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
   '/comercial/dashboard/propostas': typeof ComercialDashboardPropostasRoute
@@ -1073,6 +1081,7 @@ export interface FileRoutesById {
   '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/api/public/solicitar': typeof ApiPublicSolicitarRoute
   '/api/public/solicitar-contrato': typeof ApiPublicSolicitarContratoRoute
+  '/api/public/solicitar-saida': typeof ApiPublicSolicitarSaidaRoute
   '/comercial/dashboard/indicadores': typeof ComercialDashboardIndicadoresRoute
   '/comercial/dashboard/painel': typeof ComercialDashboardPainelRoute
   '/comercial/dashboard/propostas': typeof ComercialDashboardPropostasRoute
@@ -1195,6 +1204,7 @@ export interface FileRouteTypes {
     | '/api/public/send-push'
     | '/api/public/solicitar'
     | '/api/public/solicitar-contrato'
+    | '/api/public/solicitar-saida'
     | '/comercial/dashboard/indicadores'
     | '/comercial/dashboard/painel'
     | '/comercial/dashboard/propostas'
@@ -1303,6 +1313,7 @@ export interface FileRouteTypes {
     | '/api/public/send-push'
     | '/api/public/solicitar'
     | '/api/public/solicitar-contrato'
+    | '/api/public/solicitar-saida'
     | '/comercial/dashboard/indicadores'
     | '/comercial/dashboard/painel'
     | '/comercial/dashboard/propostas'
@@ -1423,6 +1434,7 @@ export interface FileRouteTypes {
     | '/api/public/send-push'
     | '/api/public/solicitar'
     | '/api/public/solicitar-contrato'
+    | '/api/public/solicitar-saida'
     | '/comercial/dashboard/indicadores'
     | '/comercial/dashboard/painel'
     | '/comercial/dashboard/propostas'
@@ -1485,6 +1497,7 @@ export interface RootRouteChildren {
   ApiPublicSendPushRoute: typeof ApiPublicSendPushRoute
   ApiPublicSolicitarRoute: typeof ApiPublicSolicitarRoute
   ApiPublicSolicitarContratoRoute: typeof ApiPublicSolicitarContratoRoute
+  ApiPublicSolicitarSaidaRoute: typeof ApiPublicSolicitarSaidaRoute
   ApiContaazulOauthCallbackRoute: typeof ApiContaazulOauthCallbackRoute
   ApiContaazulOauthPrepareRoute: typeof ApiContaazulOauthPrepareRoute
   ApiPublicContaazulCronRoute: typeof ApiPublicContaazulCronRoute
@@ -2200,6 +2213,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ComercialDashboardIndicadoresRouteImport
       parentRoute: typeof ComercialDashboardRoute
     }
+    '/api/public/solicitar-saida': {
+      id: '/api/public/solicitar-saida'
+      path: '/api/public/solicitar-saida'
+      fullPath: '/api/public/solicitar-saida'
+      preLoaderRoute: typeof ApiPublicSolicitarSaidaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/solicitar-contrato': {
       id: '/api/public/solicitar-contrato'
       path: '/api/public/solicitar-contrato'
@@ -2622,6 +2642,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicSendPushRoute: ApiPublicSendPushRoute,
   ApiPublicSolicitarRoute: ApiPublicSolicitarRoute,
   ApiPublicSolicitarContratoRoute: ApiPublicSolicitarContratoRoute,
+  ApiPublicSolicitarSaidaRoute: ApiPublicSolicitarSaidaRoute,
   ApiContaazulOauthCallbackRoute: ApiContaazulOauthCallbackRoute,
   ApiContaazulOauthPrepareRoute: ApiContaazulOauthPrepareRoute,
   ApiPublicContaazulCronRoute: ApiPublicContaazulCronRoute,
