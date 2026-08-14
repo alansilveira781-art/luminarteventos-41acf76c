@@ -73,6 +73,7 @@ import { Route as FinanceiroOpQuadroRouteImport } from './routes/financeiro-op.q
 import { Route as FinanceiroOpDashboardRouteImport } from './routes/financeiro-op.dashboard'
 import { Route as FinanceiroOpContaAzulRouteImport } from './routes/financeiro-op.conta-azul'
 import { Route as EventosConfiguracoesRouteImport } from './routes/eventos.configuracoes'
+import { Route as EstoqueSolicitacoesSaidaRouteImport } from './routes/estoque.solicitacoes-saida'
 import { Route as EstoqueAReceberRouteImport } from './routes/estoque.a-receber'
 import { Route as EstoqueItemIdRouteImport } from './routes/estoque.$itemId'
 import { Route as ContabilTomadoresRouteImport } from './routes/contabil.tomadores'
@@ -450,6 +451,12 @@ const EventosConfiguracoesRoute = EventosConfiguracoesRouteImport.update({
   path: '/configuracoes',
   getParentRoute: () => EventosRoute,
 } as any)
+const EstoqueSolicitacoesSaidaRoute =
+  EstoqueSolicitacoesSaidaRouteImport.update({
+    id: '/estoque/solicitacoes-saida',
+    path: '/estoque/solicitacoes-saida',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const EstoqueAReceberRoute = EstoqueAReceberRouteImport.update({
   id: '/estoque/a-receber',
   path: '/estoque/a-receber',
@@ -808,6 +815,7 @@ export interface FileRoutesByFullPath {
   '/contabil/tomadores': typeof ContabilTomadoresRoute
   '/estoque/$itemId': typeof EstoqueItemIdRoute
   '/estoque/a-receber': typeof EstoqueAReceberRoute
+  '/estoque/solicitacoes-saida': typeof EstoqueSolicitacoesSaidaRoute
   '/eventos/configuracoes': typeof EventosConfiguracoesRoute
   '/financeiro-op/conta-azul': typeof FinanceiroOpContaAzulRoute
   '/financeiro-op/dashboard': typeof FinanceiroOpDashboardRoute
@@ -918,6 +926,7 @@ export interface FileRoutesByTo {
   '/contabil/tomadores': typeof ContabilTomadoresRoute
   '/estoque/$itemId': typeof EstoqueItemIdRoute
   '/estoque/a-receber': typeof EstoqueAReceberRoute
+  '/estoque/solicitacoes-saida': typeof EstoqueSolicitacoesSaidaRoute
   '/eventos/configuracoes': typeof EventosConfiguracoesRoute
   '/financeiro-op/conta-azul': typeof FinanceiroOpContaAzulRoute
   '/financeiro-op/dashboard': typeof FinanceiroOpDashboardRoute
@@ -1041,6 +1050,7 @@ export interface FileRoutesById {
   '/contabil/tomadores': typeof ContabilTomadoresRoute
   '/estoque/$itemId': typeof EstoqueItemIdRoute
   '/estoque/a-receber': typeof EstoqueAReceberRoute
+  '/estoque/solicitacoes-saida': typeof EstoqueSolicitacoesSaidaRoute
   '/eventos/configuracoes': typeof EventosConfiguracoesRoute
   '/financeiro-op/conta-azul': typeof FinanceiroOpContaAzulRoute
   '/financeiro-op/dashboard': typeof FinanceiroOpDashboardRoute
@@ -1165,6 +1175,7 @@ export interface FileRouteTypes {
     | '/contabil/tomadores'
     | '/estoque/$itemId'
     | '/estoque/a-receber'
+    | '/estoque/solicitacoes-saida'
     | '/eventos/configuracoes'
     | '/financeiro-op/conta-azul'
     | '/financeiro-op/dashboard'
@@ -1275,6 +1286,7 @@ export interface FileRouteTypes {
     | '/contabil/tomadores'
     | '/estoque/$itemId'
     | '/estoque/a-receber'
+    | '/estoque/solicitacoes-saida'
     | '/eventos/configuracoes'
     | '/financeiro-op/conta-azul'
     | '/financeiro-op/dashboard'
@@ -1397,6 +1409,7 @@ export interface FileRouteTypes {
     | '/contabil/tomadores'
     | '/estoque/$itemId'
     | '/estoque/a-receber'
+    | '/estoque/solicitacoes-saida'
     | '/eventos/configuracoes'
     | '/financeiro-op/conta-azul'
     | '/financeiro-op/dashboard'
@@ -1496,6 +1509,7 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   EstoqueItemIdRoute: typeof EstoqueItemIdRoute
   EstoqueAReceberRoute: typeof EstoqueAReceberRoute
+  EstoqueSolicitacoesSaidaRoute: typeof EstoqueSolicitacoesSaidaRoute
   EstoqueIndexRoute: typeof EstoqueIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -1966,6 +1980,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/eventos/configuracoes'
       preLoaderRoute: typeof EventosConfiguracoesRouteImport
       parentRoute: typeof EventosRoute
+    }
+    '/estoque/solicitacoes-saida': {
+      id: '/estoque/solicitacoes-saida'
+      path: '/estoque/solicitacoes-saida'
+      fullPath: '/estoque/solicitacoes-saida'
+      preLoaderRoute: typeof EstoqueSolicitacoesSaidaRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/estoque/a-receber': {
       id: '/estoque/a-receber'
@@ -2649,6 +2670,7 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   EstoqueItemIdRoute: EstoqueItemIdRoute,
   EstoqueAReceberRoute: EstoqueAReceberRoute,
+  EstoqueSolicitacoesSaidaRoute: EstoqueSolicitacoesSaidaRoute,
   EstoqueIndexRoute: EstoqueIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
