@@ -10,8 +10,8 @@ import {
   PieChart, Pie, Cell, Legend, CartesianGrid, BarChart,
 } from "recharts";
 import { fetchAllRows } from "@/lib/fetch-all";
-import {
 import { CHART_SERIES, CHART_BASE, CHART_ACCENT } from "@/lib/financeiro/chart-colors";
+import {
   bucketDe, diffDays, escolherGranularidade, faixaHoraria, diaDaSemana,
   granularidadeLabel, granularidadeLabelPlural,
   type Granularidade, type GranularidadeOpt,
