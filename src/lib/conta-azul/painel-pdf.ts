@@ -132,12 +132,26 @@ export function gerarPainelPdf(input: PainelPdfInput): void {
   // Gráficos + análises
   input.graficos.forEach((g) => {
     const temLegenda = !!g.legenda?.length;
-    const imgW = temLegenda ? (pw - M * 2) * 0.55 : pw - M * 2;
-    const imgH = g.imagem ? Math.min(temLegenda ? 70 : 85, (g.imagem.h / g.imagem.w) * imgW) : 0;
+    const larguraBase = temLegenda ? (pw - M * 2) * 0.55 : pw - M * 2;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     const textoLinhas = doc.splitTextToSize(g.texto, pw - M * 2) as string[];
     const legH = temLegenda ? g.legenda!.length * 4.6 + 2 : 0;
+    // Altura máxima disponível: sobra da página menos título, texto e respiro.
+    const reservado = 8 + 4 + textoLinhas.length * 4 + 8;
+    const alturaMax = Math.max(40, ph - M * 2 - reservado);
+    // Mantém a proporção: se não couber na altura, reduz largura e altura juntas.
+    let imgW = larguraBase;
+    let imgH = 0;
+    if (g.imagem) {
+      const ratio = g.imagem.h / g.imagem.w;
+      imgH = ratio * imgW;
+      if (imgH > alturaMax) {
+        const k = alturaMax / imgH;
+        imgW *= k;
+        imgH *= k;
+      }
+    }
     const blocoH = 8 + Math.max(imgH, legH) + 4 + textoLinhas.length * 4 + 6;
     quebra(blocoH);
     doc.setFont("helvetica", "bold");
@@ -147,6 +161,7 @@ export function gerarPainelPdf(input: PainelPdfInput): void {
     if (g.imagem) {
       doc.addImage(g.imagem.dataUrl, "PNG", M, y, imgW, imgH, undefined, "FAST");
     }
+
     if (temLegenda) {
       let ly = y + 4;
       const lx = M + imgW + 4;
