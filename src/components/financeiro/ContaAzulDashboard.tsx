@@ -738,7 +738,9 @@ function PainelFinanceiro() {
           </div>
         </Card>
       </div>
+      </div>
     </div>
+
   );
 }
 
