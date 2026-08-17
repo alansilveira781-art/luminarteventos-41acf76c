@@ -501,9 +501,53 @@ function PainelFinanceiro() {
   const linhaLucro = useMemo(() => linhasDre.find((r) => r.id === "LU"), [linhasDre]);
   const linhasDreSemLucro = useMemo(() => linhasDre.filter((r) => r.id !== "LU"), [linhasDre]);
 
+  // Linhas para impressão: sempre expandidas (independente do estado da tela).
+  const linhasPrint = useMemo(() => {
+    const out: { kind: "header" | "calc" | "detail"; id: string; label: string; valor: number; pct: number }[] = [];
+    const pct = (v: number) => (rb > 0 ? v / rb : 0);
+    for (const line of dreEstrutura) {
+      const v = totais[line.id] ?? 0;
+      if (line.kind === "sum") {
+        out.push({ kind: "header", id: line.id, label: GROUP_LABEL[line.id] ?? line.label, valor: v, pct: pct(v) });
+        const det = grupos.get(line.id);
+        if (det) {
+          Array.from(det.entries())
+            .sort((a, b) => (planoMap.get(a[0])?.nome ?? "").localeCompare(planoMap.get(b[0])?.nome ?? "", "pt-BR"))
+            .forEach(([catId, valor]) => {
+              const signed = valor * line.sign;
+              out.push({ kind: "detail", id: `${line.id}:${catId}`, label: planoMap.get(catId)?.nome ?? "Sem categoria", valor: signed, pct: pct(signed) });
+            });
+        }
+      } else {
+        out.push({ kind: "calc", id: line.id, label: GROUP_LABEL[line.id] ?? line.label, valor: v, pct: pct(v) });
+      }
+    }
+    return out;
+  }, [totais, grupos, planoMap, rb, dreEstrutura]);
+
+  const [printMode, setPrintMode] = useState<"analitico" | "estrategico" | null>(null);
+
+  const imprimir = (modo: "analitico" | "estrategico") => {
+    setPrintMode(modo);
+    document.body.classList.add("printing-painel");
+    const cleanup = () => {
+      document.body.classList.remove("printing-painel");
+      setPrintMode(null);
+      window.removeEventListener("afterprint", cleanup);
+    };
+    window.addEventListener("afterprint", cleanup);
+    setTimeout(() => {
+      window.print();
+      setTimeout(cleanup, 1500);
+    }, 60);
+  };
+
+  const periodoLabel = `${mes > 0 ? MESES[mes] : "Ano completo"} / ${anoEfetivo}`;
+
   const toggleGroup = (id: string) => setCollapsed((c) => ({ ...c, [id]: !c[id] }));
   const onClickCategoria = (catId: string) =>
     setCategoriaSel((cur) => (cur === catId ? null : catId));
+
 
   return (
     <div className="space-y-4">
