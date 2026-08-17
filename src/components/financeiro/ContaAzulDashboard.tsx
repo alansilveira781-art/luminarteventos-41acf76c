@@ -568,7 +568,7 @@ function PainelFinanceiro() {
   const exportarPdf = async () => {
     setGerandoPdf(true);
     try {
-      const capturar = async (ref: React.RefObject<HTMLDivElement>) => {
+      const capturar = async (ref: { current: HTMLDivElement | null }) => {
         const svg = ref.current?.querySelector("svg") as SVGSVGElement | null;
         return svg ? await svgParaPng(svg) : null;
       };
