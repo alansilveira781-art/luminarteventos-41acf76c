@@ -505,11 +505,70 @@ function PainelFinanceiro() {
   const onClickCategoria = (catId: string) =>
     setCategoriaSel((cur) => (cur === catId ? null : catId));
 
+  const imprimirPainel = () => {
+    const prevCollapsed = collapsed;
+    setCollapsed({});
+    setTimeout(() => {
+      const area = document.querySelector(".painel-print-area") as HTMLElement | null;
+      if (!area) { window.print(); return; }
+      const portal = document.createElement("div");
+      portal.className = "print-portal";
+      const clone = area.cloneNode(true) as HTMLElement;
+      clone.style.position = "static";
+      portal.appendChild(clone);
+      document.body.appendChild(portal);
+      document.body.classList.add("printing-painel");
+      const cleanup = () => {
+        document.body.classList.remove("printing-painel");
+        portal.remove();
+        window.removeEventListener("afterprint", cleanup);
+        setCollapsed(prevCollapsed);
+      };
+      window.addEventListener("afterprint", cleanup);
+      window.print();
+      setTimeout(cleanup, 1500);
+    }, 200);
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-3 items-end justify-between">
+      <style>{`
+        @media print {
+          @page { size: A4 landscape; margin: 10mm; }
+          html, body { background: white !important; }
+          body.printing-painel > *:not(.print-portal) { display: none !important; }
+          body.printing-painel .print-portal,
+          body.printing-painel .print-portal * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          body.printing-painel .print-portal { font-size: 9pt; }
+          body.printing-painel .print-portal .max-h-\\[600px\\] {
+            max-height: none !important;
+            overflow: visible !important;
+          }
+          body.printing-painel .print-portal .overflow-hidden { overflow: visible !important; }
+          body.printing-painel .print-portal .grid > *,
+          body.printing-painel .print-portal button {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+          body.printing-painel .print-portal .lg\\:grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+          body.printing-painel .print-portal .lg\\:col-span-2 { grid-column: span 2 / span 2 !important; }
+          body.printing-painel .print-portal .lg\\:col-span-3 { grid-column: span 3 / span 3 !important; }
+          body.printing-painel .print-portal [class*="shadow"] { box-shadow: none !important; }
+          .painel-print-header {
+            padding: 0 0 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 8px;
+          }
+          .painel-print-header h1 { font-size: 14pt; font-weight: 700; margin: 0; }
+          .painel-print-header .sub { font-size: 9pt; color: #555; }
+        }
+      `}</style>
+      <div className="flex flex-wrap gap-3 items-end justify-between print:hidden">
         <h2 className="text-xl font-bold">Painel Financeiro</h2>
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-end">
           <div className="w-32">
             <label className="text-xs text-muted-foreground">Ano</label>
             <Select value={String(anoEfetivo)} onValueChange={(v) => setAno(Number(v))}>
@@ -524,6 +583,19 @@ function PainelFinanceiro() {
               <SelectContent>{MESES.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}</SelectContent>
             </Select>
           </div>
+          <Button variant="outline" onClick={imprimirPainel}>
+            <Printer className="h-4 w-4 mr-2" />
+            Imprimir
+          </Button>
+        </div>
+      </div>
+
+      <div className="painel-print-area space-y-4">
+      <div className="hidden print:block painel-print-header">
+        <h1>Painel Financeiro — {MESES[mes]}/{anoEfetivo}</h1>
+        <div className="sub">
+          Luminarte Eventos · Emitido em {new Date().toLocaleString("pt-BR")}
+          {categoriaSel ? <> · Filtro de categoria: <strong>{categoriaSelNome}</strong></> : null}
         </div>
       </div>
 
@@ -666,7 +738,9 @@ function PainelFinanceiro() {
           </div>
         </Card>
       </div>
+      </div>
     </div>
+
   );
 }
 
