@@ -23,6 +23,7 @@ import { Loader2, Printer, ChevronsUpDown } from "lucide-react";
 import { normalize } from "@/lib/utils";
 import { buildPrefixIndex, grupoDoPlanoNome, isTransferencia, DRE_STRUCTURE, type DreGroupId } from "@/lib/conta-azul/dre";
 import { useDreEstrutura } from "@/hooks/useDreEstrutura";
+import { CHART_POSITIVE, CHART_NEGATIVE, CHART_NEUTRAL, CHART_ACCENT } from "@/lib/financeiro/chart-colors";
 
 const sb = supabase as any;
 
@@ -528,10 +529,10 @@ export function IndicadoresEventos() {
             <YAxis fontSize={11} tickFormatter={(v) => brl(Number(v))} width={90} />
             <Tooltip formatter={(v: any) => brlFull(Number(v))} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Line type="monotone" dataKey="Receita" stroke="#10b981" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="Custos" stroke="#f59e0b" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="Despesas" stroke="#ef4444" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="Lucro" stroke="#6366f1" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="Receita" stroke={CHART_POSITIVE} strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="Custos" stroke={CHART_NEUTRAL} strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="Despesas" stroke={CHART_NEGATIVE} strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="Lucro" stroke={CHART_ACCENT} strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </Card>
@@ -585,10 +586,10 @@ export function IndicadoresEventos() {
                 <YAxis fontSize={11} tickFormatter={(v) => brl(Number(v))} width={90} />
                 <Tooltip formatter={(v: any) => brlFull(Number(v))} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="Receita" fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Custos" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Despesas" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Lucro" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Receita" fill={CHART_POSITIVE} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Custos" fill={CHART_NEUTRAL} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Despesas" fill={CHART_NEGATIVE} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Lucro" fill={CHART_ACCENT} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </>

@@ -12,6 +12,7 @@ import {
 import { fetchAllRows } from "@/lib/fetch-all";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { UberAnalises } from "@/components/financeiro/UberAnalises";
+import { CHART_SERIES, CHART_BASE } from "@/lib/financeiro/chart-colors";
 
 export function UberDashboard() {
   return (
@@ -45,7 +46,7 @@ type Corrida = {
   detalhamento: string | null;
 };
 
-const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#06b6d4", "#8b5cf6", "#ec4899", "#84cc16"];
+const COLORS = CHART_SERIES;
 const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtN = (n: number) => n.toLocaleString("pt-BR");
 
@@ -396,7 +397,7 @@ function UberPainel() {
                 <XAxis dataKey="mes" fontSize={11} tickFormatter={mesLabel} />
                 <YAxis fontSize={11} />
                 <Tooltip formatter={(v: any) => fmt(Number(v))} labelFormatter={(l: any) => mesLabel(String(l))} />
-                <Bar dataKey="valor" fill="#0f172a" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="valor" fill={CHART_BASE} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
