@@ -1193,7 +1193,7 @@ function ApontamentoTab() {
                   <Label htmlFor="diaria-minima">Garantir diária de 8h</Label>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {editing.diaria_minima
-                      ? "Menos de 8h paga a diária cheia; acima de 8h paga as horas extras."
+                      ? "Paga em diárias fechadas de 8h, arredondando para cima (ex.: 15h30 = 2 diárias)."
                       : "Paga estritamente as horas trabalhadas (valor/hora × horas)."}
                   </p>
                 </div>

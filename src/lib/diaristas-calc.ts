@@ -1,8 +1,8 @@
 // Cálculo centralizado para apontamentos de diaristas.
 // Regras:
 // - Horas trabalhadas = (final - inicial) - intervalo (em minutos), com virada de meia-noite.
-// - Diária cheia = valor/hora x 8 (mínimo garantido, mesmo com < 8h).
-// - Excedente > 8h é pago por hora ao valor/hora do local.
+// - Diária cheia = valor/hora x 8.
+// - Com "diária mínima" ligada, paga em diárias fechadas de 8h (arredonda p/ cima).
 // - Total = diária + extra manual.
 // Trabalha exclusivamente com componentes hora/minuto para evitar problemas de fuso.
 
@@ -16,7 +16,7 @@ export type ApontamentoInput = {
   extra_manual?: number | null;
   almoco?: boolean | null;
   janta?: boolean | null;
-  /** Garante a diária cheia de 8h mesmo com menos horas (padrão: true) */
+  /** Paga em diárias fechadas de 8h, arredondando para cima (padrão: true) */
   diaria_minima?: boolean | null;
   /** Empeleita: registra apenas o horário, sem gerar valor */
   empeleita?: boolean | null;
@@ -81,8 +81,9 @@ function montarResultado(
 ): CalcResult {
   const horasTrab = minutosTrab / 60;
   const diariaCheia = valorHora * 8;
+  // Com a regra ligada, paga em diárias fechadas de 8h (arredonda para cima).
   const diaria = diariaMinima
-    ? (horasTrab <= 8 ? diariaCheia : diariaCheia + (horasTrab - 8) * valorHora)
+    ? Math.max(1, Math.ceil(horasTrab / 8)) * diariaCheia
     : horasTrab * valorHora;
   const extra = Number(extraManual) || 0;
   const ref = Number(refeicoes) || 0;
