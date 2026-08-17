@@ -157,7 +157,10 @@ export function gerarPainelPdf(input: PainelPdfInput): void {
         doc.setFillColor(r, gg, b);
         doc.rect(lx, ly - 2.4, 2.6, 2.6, "F");
         doc.setTextColor(17, 24, 39);
-        const nome = doc.splitTextToSize(it.nome, pw - M - lx - 30)[0] as string;
+        const maxNome = pw - M - lx - 26;
+        let nome = it.nome;
+        while (doc.getTextWidth(nome) > maxNome && nome.length > 4) nome = nome.slice(0, -2);
+        if (nome !== it.nome) nome = `${nome}...`;
         doc.text(nome, lx + 4, ly);
         doc.text(it.valor, pw - M, ly, { align: "right" });
         ly += 4.6;
