@@ -200,45 +200,68 @@ function LembretesPage() {
   const invalidarProjetos = () => qc.invalidateQueries({ queryKey: ["lembretes", "projetos"] });
 
   const salvarTarefa = useMutation({
-    mutationFn: async ({ values, escopo }: { values: TarefaFormValues; escopo: EscopoSerie }) => {
-      const atual = tarefaDialog.tarefa;
+    mutationFn: async ({
+      values,
+      escopo,
+      atual,
+    }: {
+      values: TarefaFormValues;
+      escopo: EscopoSerie;
+      atual: LembreteTarefa | null;
+    }): Promise<{ acao: "criada" | "atualizada" | "regerada"; qtd: number }> => {
       if (atual) {
-        if (escopo === "serie" && atual.serie_id) {
-          // Aplica os campos comuns nesta e nas próximas ocorrências,
-          // preservando a data/hora individual de cada uma.
+        const emSerie = escopo !== "esta" && !!atual.serie_id;
+
+        // Mudou a frequência: regera a programação do escopo escolhido.
+        if (emSerie && mudouRecorrencia(atual, values)) {
+          let del = sb.from("lembretes_tarefas").delete().eq("serie_id", atual.serie_id!);
+          if (escopo === "futuras") del = del.gte("data_hora", atual.data_hora);
+          const { error: eDel } = await del;
+          if (eDel) throw eDel;
+
+          const datas = gerarOcorrencias(
+            new Date(values.data_hora),
+            values.recorrencia,
+            values.recorrencia_intervalo,
+            fimDaRecorrencia(values),
+          );
+          const serieId = datas.length > 1 ? (atual.serie_id ?? crypto.randomUUID()) : null;
+          const linhas = datas.map((d) => ({
+            ...values,
+            data_hora: d.toISOString(),
+            serie_id: serieId,
+            user_id: user!.id,
+          }));
+          const { error } = await sb.from("lembretes_tarefas").insert(linhas);
+          if (error) throw error;
+          return { acao: "regerada", qtd: linhas.length };
+        }
+
+        if (emSerie) {
+          // Aplica os campos comuns no escopo, preservando a data/hora de cada ocorrência.
           const { data_hora: _dh, ...comuns } = values;
-          const { error } = await sb
-            .from("lembretes_tarefas")
-            .update(comuns)
-            .eq("serie_id", atual.serie_id)
-            .gte("data_hora", atual.data_hora);
+          let upd = sb.from("lembretes_tarefas").update(comuns).eq("serie_id", atual.serie_id!);
+          if (escopo === "futuras") upd = upd.gte("data_hora", atual.data_hora);
+          const { data, error } = await upd.select("id");
           if (error) throw error;
           const { error: e2 } = await sb
             .from("lembretes_tarefas")
             .update({ data_hora: values.data_hora })
             .eq("id", atual.id);
           if (e2) throw e2;
-        } else {
-          const { error } = await sb.from("lembretes_tarefas").update(values).eq("id", atual.id);
-          if (error) throw error;
+          return { acao: "atualizada", qtd: data?.length ?? 1 };
         }
-        return;
-      }
 
-      const fim: FimRecorrencia =
-        values.recorrencia === "nenhuma"
-          ? { tipo: "nunca" }
-          : values.recorrencia_fim
-            ? { tipo: "ate", ate: values.recorrencia_fim }
-            : values.recorrencia_qtd
-              ? { tipo: "qtd", qtd: values.recorrencia_qtd }
-              : { tipo: "nunca" };
+        const { error } = await sb.from("lembretes_tarefas").update(values).eq("id", atual.id);
+        if (error) throw error;
+        return { acao: "atualizada", qtd: 1 };
+      }
 
       const datas = gerarOcorrencias(
         new Date(values.data_hora),
         values.recorrencia,
         values.recorrencia_intervalo,
-        fim,
+        fimDaRecorrencia(values),
       );
       const serieId = datas.length > 1 ? crypto.randomUUID() : null;
 
@@ -251,7 +274,7 @@ function LembretesPage() {
 
       const { error } = await sb.from("lembretes_tarefas").insert(linhas);
       if (error) throw error;
-      return linhas.length;
+      return { acao: "criada", qtd: linhas.length };
     },
     onSuccess: (qtd) => {
       setTarefaDialog({ open: false, tarefa: null });
