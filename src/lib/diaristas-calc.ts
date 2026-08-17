@@ -1,8 +1,8 @@
 // Cálculo centralizado para apontamentos de diaristas.
 // Regras:
 // - Horas trabalhadas = (final - inicial) - intervalo (em minutos), com virada de meia-noite.
-// - Diária cheia = valor/hora x 8 (mínimo garantido, mesmo com < 8h).
-// - Excedente > 8h é pago por hora ao valor/hora do local.
+// - Diária cheia = valor/hora x 8.
+// - Com "diária mínima" ligada, paga em diárias fechadas de 8h (arredonda p/ cima).
 // - Total = diária + extra manual.
 // Trabalha exclusivamente com componentes hora/minuto para evitar problemas de fuso.
 
