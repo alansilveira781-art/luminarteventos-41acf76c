@@ -565,30 +565,49 @@ function PainelFinanceiro() {
   const onClickCategoria = (catId: string) =>
     setCategoriaSel((cur) => (cur === catId ? null : catId));
 
-  const imprimirPainel = () => {
-    const prevCollapsed = collapsed;
-    setCollapsed({});
-    setTimeout(() => {
-      const area = document.querySelector(".painel-print-area") as HTMLElement | null;
-      if (!area) { window.print(); return; }
-      const portal = document.createElement("div");
-      portal.className = "print-portal";
-      const clone = area.cloneNode(true) as HTMLElement;
-      clone.style.position = "static";
-      portal.appendChild(clone);
-      document.body.appendChild(portal);
-      document.body.classList.add("printing-painel");
-      const cleanup = () => {
-        document.body.classList.remove("printing-painel");
-        portal.remove();
-        window.removeEventListener("afterprint", cleanup);
-        setCollapsed(prevCollapsed);
+  const exportarPdf = async () => {
+    setGerandoPdf(true);
+    try {
+      const capturar = async (ref: React.RefObject<HTMLDivElement>) => {
+        const svg = ref.current?.querySelector("svg") as SVGSVGElement | null;
+        return svg ? await svgParaPng(svg) : null;
       };
-      window.addEventListener("afterprint", cleanup);
-      window.print();
-      setTimeout(cleanup, 1500);
-    }, 200);
+      const [imgPie, imgCv] = await Promise.all([capturar(pieRef), capturar(cvRef)]);
+      gerarPainelPdf({
+        ano: anoEfetivo,
+        mes,
+        kpis: [
+          { label: "Receita Bruta", value: fmtMoney(rb), sub: `% Receita LY: ${yoyRb === null ? "—" : fmtPct(yoyRb)}` },
+          { label: "Pot. de Vendas", value: fmtMoney(pv), sub: `% PV: ${fmtPct(rb ? pv / rb : 0)}` },
+          { label: "Despesas", value: fmtMoney(desp), sub: `% Despesa: ${fmtPct(rb ? desp / rb : 0)}` },
+          { label: "Custos", value: fmtMoney(custos), sub: `% Custos: ${fmtPct(rb ? custos / rb : 0)}` },
+          { label: "Lucro", value: fmtMoney(lucro), sub: `% Lucro: ${fmtPct(rb ? lucro / rb : 0)}` },
+        ],
+        graficos: [
+          { titulo: "Receitas do período", texto: textoRec, imagem: imgPie },
+          { titulo: "Custos Variáveis (CV)", texto: textoCV, imagem: imgCv },
+        ],
+        faturamento: {
+          linhas: [
+            [`Faturado (vendas registradas em ${labelPeriodo(anoEfetivo, mes)})`, fmtMoney(comparativo.faturado)],
+            ["Recebido no período (Receita Bruta)", fmtMoney(comparativo.recebido)],
+            ["Conversão em caixa no mês", comparativo.conversao === null ? "—" : fmtPct(comparativo.conversao)],
+            ["Saldo previsto para meses seguintes", fmtMoney(comparativo.aReceber)],
+            ["Quantidade de vendas", String(comparativo.qtdVendas)],
+          ],
+          texto: textoFat,
+        },
+        dre: linhasDre
+          .filter((l) => l.kind !== "detail")
+          .map((l) => ({ label: l.label, valor: l.valor, pct: l.pct, forte: l.kind === "calc" })),
+      });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao gerar o PDF");
+    } finally {
+      setGerandoPdf(false);
+    }
   };
+
 
   return (
     <div className="space-y-4">
