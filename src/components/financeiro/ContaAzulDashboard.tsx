@@ -22,6 +22,7 @@ import { listVendasDb } from "@/lib/comercial/vendas-db.functions";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { IndicadoresEventos } from "@/components/financeiro/IndicadoresEventos";
+import { CHART_SERIES, CHART_POSITIVE, CHART_NEGATIVE, CHART_ACCENT, CHART_BASE } from "@/lib/financeiro/chart-colors";
 
 
 
@@ -66,7 +67,7 @@ const fmtMoney = (n: number) =>
 const fmtPct = (n: number) =>
   `${(n * 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 
-const PIE_COLORS = ["#2563eb", "#16a34a", "#f59e0b", "#db2777", "#0891b2", "#7c3aed", "#dc2626", "#65a30d", "#94a3b8"];
+const PIE_COLORS = CHART_SERIES;
 
 const YEARS = Array.from({ length: new Date().getFullYear() - 2022 }, (_, i) => 2023 + i);
 const MESES = [
@@ -768,7 +769,7 @@ function PainelFinanceiro() {
                     tickFormatter={(v: string) => (v.length > 28 ? `${v.slice(0, 28)}…` : v)}
                   />
                   <Tooltip formatter={(v: any) => fmtMoney(Number(v))} />
-                  <Bar dataKey="valor" fill="#f97316" isAnimationActive={false} radius={[0, 3, 3, 0]}>
+                  <Bar dataKey="valor" fill={CHART_ACCENT} isAnimationActive={false} radius={[0, 3, 3, 0]}>
                     <LabelList dataKey="valor" position="right" formatter={(v: any) => fmtMoney(Number(v))} style={{ fontSize: 10, fill: "#6b7280" }} />
                   </Bar>
                 </BarChart>
@@ -1829,9 +1830,9 @@ function FluxoCaixa() {
               <YAxis fontSize={10} />
               <Tooltip formatter={(v: any) => fmtMoney(Number(v))} />
               <Legend />
-              <Bar dataKey="receber" fill="#10b981" name="Receber" />
-              <Bar dataKey="pagar" fill="#ef4444" name="Pagar" />
-              <Line type="monotone" dataKey="acumulado" stroke="#3b82f6" name="Acumulado" dot={false} strokeWidth={2} />
+              <Bar dataKey="receber" fill={CHART_POSITIVE} name="Receber" />
+              <Bar dataKey="pagar" fill={CHART_NEGATIVE} name="Pagar" />
+              <Line type="monotone" dataKey="acumulado" stroke={CHART_BASE} name="Acumulado" dot={false} strokeWidth={2} />
             </ComposedChart>
           </ResponsiveContainer>
         </Card>
@@ -1845,9 +1846,9 @@ function FluxoCaixa() {
             <XAxis type="number" fontSize={10} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
             <YAxis type="category" dataKey="nome" width={160} fontSize={10} />
             <Tooltip formatter={(v: any) => fmtMoney(Number(v))} />
-            <Bar dataKey="valor" fill="#10b981">
+            <Bar dataKey="valor" fill={CHART_POSITIVE}>
               {saldos.map((s, i) => (
-                <rect key={i} fill={s.valor >= 0 ? "#10b981" : "#ef4444"} />
+                <rect key={i} fill={s.valor >= 0 ? CHART_POSITIVE : CHART_NEGATIVE} />
               ))}
             </Bar>
           </BarChart>

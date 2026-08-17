@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import { fetchAllRows } from "@/lib/fetch-all";
 import {
+import { CHART_SERIES, CHART_BASE, CHART_ACCENT } from "@/lib/financeiro/chart-colors";
   bucketDe, diffDays, escolherGranularidade, faixaHoraria, diaDaSemana,
   granularidadeLabel, granularidadeLabelPlural,
   type Granularidade, type GranularidadeOpt,
@@ -31,7 +32,7 @@ type Corrida = {
   detalhamento: string | null;
 };
 
-const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#06b6d4", "#8b5cf6", "#ec4899", "#84cc16"];
+const COLORS = CHART_SERIES;
 const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtN = (n: number) => n.toLocaleString("pt-BR");
 const fmtData = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("pt-BR");
@@ -321,8 +322,8 @@ export function UberAnalises() {
                   <YAxis yAxisId="right" orientation="right" fontSize={10} allowDecimals={false} />
                   <Tooltip formatter={(v: any, n: any) => (n === "valor" ? fmt(Number(v)) : fmtN(Number(v)))} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar yAxisId="left" dataKey="valor" name="Valor" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                  <Line yAxisId="right" type="monotone" dataKey="corridas" name="Corridas" stroke="#f59e0b" strokeWidth={2} dot />
+                  <Bar yAxisId="left" dataKey="valor" name="Valor" fill={CHART_BASE} radius={[4, 4, 0, 0]} />
+                  <Line yAxisId="right" type="monotone" dataKey="corridas" name="Corridas" stroke={CHART_ACCENT} strokeWidth={2} dot />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -330,8 +331,8 @@ export function UberAnalises() {
 
           {/* Ranks em gráfico */}
           <div className="grid gap-4 lg:grid-cols-2">
-            <RankChart title="Rank por pessoa (R$)" data={porPessoa.slice(0, 10)} color="#10b981" />
-            <RankChart title="Rank de projetos solicitados (R$)" data={porProjeto.slice(0, 10)} color="#8b5cf6" />
+            <RankChart title="Rank por pessoa (R$)" data={porPessoa.slice(0, 10)} color={CHART_BASE} />
+            <RankChart title="Rank de projetos solicitados (R$)" data={porProjeto.slice(0, 10)} color={CHART_ACCENT} />
           </div>
 
           {/* Tabelas de rank */}
@@ -366,7 +367,7 @@ export function UberAnalises() {
                     <XAxis dataKey="label" fontSize={10} />
                     <YAxis fontSize={10} allowDecimals={false} />
                     <Tooltip formatter={(v: any, n: any) => (n === "valor" ? fmt(Number(v)) : fmtN(Number(v)))} />
-                    <Bar dataKey="corridas" name="Corridas" fill="#06b6d4" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="corridas" name="Corridas" fill={CHART_ACCENT} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
