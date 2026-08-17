@@ -47,7 +47,18 @@ export async function svgParaPng(svg: SVGSVGElement, escala = 2): Promise<{ data
 }
 
 export type PainelPdfKpi = { label: string; value: string; sub: string };
-export type PainelPdfGrafico = { titulo: string; texto: string; imagem: { dataUrl: string; w: number; h: number } | null };
+export type PainelPdfLegenda = { nome: string; valor: string; cor: string };
+export type PainelPdfGrafico = {
+  titulo: string;
+  texto: string;
+  imagem: { dataUrl: string; w: number; h: number } | null;
+  legenda?: PainelPdfLegenda[];
+};
+
+const hexRgb = (hex: string): [number, number, number] => {
+  const h = hex.replace("#", "");
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+};
 export type PainelPdfDreLinha = { label: string; valor: number; pct: number; forte: boolean };
 
 export type PainelPdfInput = {
@@ -120,18 +131,39 @@ export function gerarPainelPdf(input: PainelPdfInput): void {
 
   // Gráficos + análises
   input.graficos.forEach((g) => {
-    const imgH = g.imagem ? Math.min(85, (g.imagem.h / g.imagem.w) * (pw - M * 2)) : 0;
-    const textoLinhas = doc.splitTextToSize(g.texto, pw - M * 2 - 4);
-    const blocoH = 8 + imgH + 4 + textoLinhas.length * 4 + 6;
+    const temLegenda = !!g.legenda?.length;
+    const imgW = temLegenda ? (pw - M * 2) * 0.55 : pw - M * 2;
+    const imgH = g.imagem ? Math.min(temLegenda ? 70 : 85, (g.imagem.h / g.imagem.w) * imgW) : 0;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    const textoLinhas = doc.splitTextToSize(g.texto, pw - M * 2) as string[];
+    const legH = temLegenda ? g.legenda!.length * 4.6 + 2 : 0;
+    const blocoH = 8 + Math.max(imgH, legH) + 4 + textoLinhas.length * 4 + 6;
     quebra(blocoH);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.text(g.titulo, M, y);
     y += 4;
     if (g.imagem) {
-      doc.addImage(g.imagem.dataUrl, "PNG", M, y, pw - M * 2, imgH, undefined, "FAST");
-      y += imgH + 3;
+      doc.addImage(g.imagem.dataUrl, "PNG", M, y, imgW, imgH, undefined, "FAST");
     }
+    if (temLegenda) {
+      let ly = y + 4;
+      const lx = M + imgW + 4;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      g.legenda!.forEach((it) => {
+        const [r, gg, b] = hexRgb(it.cor);
+        doc.setFillColor(r, gg, b);
+        doc.rect(lx, ly - 2.4, 2.6, 2.6, "F");
+        doc.setTextColor(17, 24, 39);
+        const nome = doc.splitTextToSize(it.nome, pw - M - lx - 30)[0] as string;
+        doc.text(nome, lx + 4, ly);
+        doc.text(it.valor, pw - M, ly, { align: "right" });
+        ly += 4.6;
+      });
+    }
+    y += Math.max(imgH, legH) + 3;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(55, 65, 81);
@@ -156,7 +188,9 @@ export function gerarPainelPdf(input: PainelPdfInput): void {
     body: input.faturamento.linhas,
   });
   y = (doc as any).lastAutoTable.finalY + 4;
-  const fatLinhas = doc.splitTextToSize(input.faturamento.texto, pw - M * 2);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  const fatLinhas = doc.splitTextToSize(input.faturamento.texto, pw - M * 2) as string[];
   quebra(fatLinhas.length * 4 + 6);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
