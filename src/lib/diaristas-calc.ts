@@ -16,7 +16,7 @@ export type ApontamentoInput = {
   extra_manual?: number | null;
   almoco?: boolean | null;
   janta?: boolean | null;
-  /** Garante a diária cheia de 8h mesmo com menos horas (padrão: true) */
+  /** Paga em diárias fechadas de 8h, arredondando para cima (padrão: true) */
   diaria_minima?: boolean | null;
   /** Empeleita: registra apenas o horário, sem gerar valor */
   empeleita?: boolean | null;
