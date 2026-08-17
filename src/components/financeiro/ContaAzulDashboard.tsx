@@ -571,12 +571,11 @@ function PainelFinanceiro() {
   const exportarPdf = async () => {
     setGerandoPdf(true);
     try {
-      const capturar = async (ref: { current: HTMLDivElement | null }, escala = 2) => {
+      const capturar = async (ref: { current: HTMLDivElement | null }) => {
         const svg = ref.current?.querySelector("svg") as SVGSVGElement | null;
-        return svg ? await svgParaPng(svg, escala) : null;
+        return svg ? await svgParaPng(svg) : null;
       };
-      const [imgPie, imgCv] = await Promise.all([capturar(pieRef), capturar(cvRef, 3)]);
-
+      const [imgPie, imgCv] = await Promise.all([capturar(pieRef), capturar(cvRef)]);
       gerarPainelPdf({
         ano: anoEfetivo,
         mes,
