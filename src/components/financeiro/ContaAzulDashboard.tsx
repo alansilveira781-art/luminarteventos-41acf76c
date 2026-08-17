@@ -554,9 +554,13 @@ function PainelFinanceiro() {
       <style>{`
         @media print {
           @page { size: A4 portrait; margin: 12mm; }
-          body.printing-painel > *:not(.print-painel-portal) { display: none !important; }
-          body.printing-painel .painel-print-root { display: none !important; }
-          body.printing-painel .print-painel-portal { display: block !important; }
+          body.printing-painel { visibility: hidden !important; }
+          body.printing-painel .print-painel-portal {
+            visibility: visible !important;
+            display: block !important;
+            position: absolute; left: 0; top: 0; width: 100%;
+          }
+          body.printing-painel .print-painel-portal * { visibility: visible !important; }
           .print-painel-portal { display: none; }
           .print-painel-portal, .print-painel-portal * {
             -webkit-print-color-adjust: exact !important;
