@@ -547,16 +547,19 @@ function LembretesPage() {
             <AlertDialogTitle>Tarefa repetida</AlertDialogTitle>
             <AlertDialogDescription>
               {escopoDialog.open && escopoDialog.tipo === "excluir"
-                ? "Excluir somente esta tarefa ou esta e as próximas da série?"
-                : "Aplicar a alteração somente nesta tarefa ou nesta e nas próximas da série?"}
+                ? "Esta tarefa faz parte de uma repetição. O que deseja excluir?"
+                : "Esta tarefa faz parte de uma repetição. Onde aplicar a alteração?"}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
+            <AlertDialogCancel className="mt-0">Cancelar</AlertDialogCancel>
             <Button variant="outline" onClick={() => aplicarEscopo("esta")}>
               Somente esta
             </Button>
-            <AlertDialogAction onClick={() => aplicarEscopo("serie")}>Esta e as próximas</AlertDialogAction>
+            <Button variant="outline" onClick={() => aplicarEscopo("futuras")}>
+              Esta e as próximas
+            </Button>
+            <AlertDialogAction onClick={() => aplicarEscopo("todas")}>Toda a série</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
