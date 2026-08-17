@@ -586,7 +586,16 @@ function PainelFinanceiro() {
           { label: "Lucro", value: fmtMoney(lucro), sub: `% Lucro: ${fmtPct(rb ? lucro / rb : 0)}` },
         ],
         graficos: [
-          { titulo: "Receitas do período", texto: textoRec, imagem: imgPie },
+          {
+            titulo: "Receitas do período",
+            texto: textoRec,
+            imagem: imgPie,
+            legenda: receitasFatias.map((f, i) => ({
+              nome: f.nome,
+              valor: fmtMoney(f.valor),
+              cor: PIE_COLORS[i % PIE_COLORS.length],
+            })),
+          },
           { titulo: "Custos Variáveis (CV)", texto: textoCV, imagem: imgCv },
         ],
         faturamento: {
