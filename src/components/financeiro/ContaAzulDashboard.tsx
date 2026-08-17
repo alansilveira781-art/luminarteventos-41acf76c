@@ -6,13 +6,19 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-  ComposedChart, Line, Legend,
+  ComposedChart, Line, Legend, PieChart, Pie, Cell, LabelList,
 } from "recharts";
-import { PiggyBank as Piggy, Building2, BarChart3, Sprout, Users, X, ChevronRight, ChevronDown, Printer, RefreshCw, Loader2 } from "lucide-react";
+import { PiggyBank as Piggy, Building2, BarChart3, Sprout, Users, X, ChevronRight, ChevronDown, Printer, RefreshCw, Loader2, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DRE_STRUCTURE, grupoDoPlanoNome, isTransferencia, buildPrefixIndex, calcularDRECaixa, inPeriodo, montarLinhasPorCentro, type DreGroupId, type DreLine } from "@/lib/conta-azul/dre";
 import { useDreEstrutura } from "@/hooks/useDreEstrutura";
 import { agruparParcelamentos, type GroupedLancRow } from "@/lib/conta-azul/agrupar-parcelas";
+import {
+  fatiasDoGrupo, comOutros, textoReceitas, textoCustosVariaveis,
+  compararFaturamento, textoFaturamento, periodoAnterior, labelPeriodo,
+} from "@/lib/conta-azul/painel-analises";
+import { gerarPainelPdf, svgParaPng } from "@/lib/conta-azul/painel-pdf";
+import { listVendasDb } from "@/lib/comercial/vendas-db.functions";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { IndicadoresEventos } from "@/components/financeiro/IndicadoresEventos";
