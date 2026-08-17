@@ -434,6 +434,60 @@ function PainelFinanceiro() {
   const rbAnt = totaisAnt.RB ?? 0;
   const yoyRb = rbAnt > 0 ? (rb - rbAnt) / rbAnt : null;
 
+  // ----- Período anterior (mês anterior) para as análises automáticas -----
+  const prevPer = useMemo(() => periodoAnterior(anoEfetivo, mes), [anoEfetivo, mes]);
+  const prevData = useContaAzulData(prevPer.ano, prevPer.mes);
+  const { totais: totaisPrev, grupos: gruposPrev } = useMemo(
+    () =>
+      calcularDRECaixa(
+        prevData.pagar.data ?? [],
+        prevData.receber.data ?? [],
+        planoMap,
+        prevPer.ano,
+        prevPer.mes,
+        dreEstrutura,
+      ),
+    [prevData.pagar.data, prevData.receber.data, planoMap, prevPer, dreEstrutura],
+  );
+
+  const receitasFatias = useMemo(() => comOutros(fatiasDoGrupo(grupos, "RB", planoMap)), [grupos, planoMap]);
+  const receitasFatiasPrev = useMemo(() => fatiasDoGrupo(gruposPrev, "RB", planoMap), [gruposPrev, planoMap]);
+  const cvFatias = useMemo(() => fatiasDoGrupo(grupos, "CV", planoMap), [grupos, planoMap]);
+  const cvFatiasPrev = useMemo(() => fatiasDoGrupo(gruposPrev, "CV", planoMap), [gruposPrev, planoMap]);
+
+  const textoRec = useMemo(
+    () => textoReceitas(fatiasDoGrupo(grupos, "RB", planoMap), receitasFatiasPrev, anoEfetivo, mes),
+    [grupos, planoMap, receitasFatiasPrev, anoEfetivo, mes],
+  );
+  const textoCV = useMemo(
+    () => textoCustosVariaveis(cvFatias, cvFatiasPrev, rb, anoEfetivo, mes),
+    [cvFatias, cvFatiasPrev, rb, anoEfetivo, mes],
+  );
+
+  // ----- Faturamento (Vendas) x Recebimento -----
+  const vendasQ = useQuery({
+    queryKey: ["comercial-vendas-db"],
+    queryFn: () => listVendasDb(),
+    staleTime: 5 * 60 * 1000,
+  });
+  const comparativo = useMemo(
+    () =>
+      compararFaturamento(
+        (vendasQ.data?.rows ?? []).map((v) => ({ dataRegistro: v.dataRegistro, valorFinal: v.valorFinal })),
+        rb,
+        totaisPrev.RB ?? 0,
+        anoEfetivo,
+        mes,
+      ),
+    [vendasQ.data, rb, totaisPrev, anoEfetivo, mes],
+  );
+  const textoFat = useMemo(() => textoFaturamento(comparativo, anoEfetivo, mes), [comparativo, anoEfetivo, mes]);
+
+  const pieRef = useRef<HTMLDivElement>(null);
+  const cvRef = useRef<HTMLDivElement>(null);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
+
+
   // Lançamentos do período (regime de caixa, sem transferências)
   const lancamentos = useMemo<LancRow[]>(() => {
     const list: LancRow[] = [];
