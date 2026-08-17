@@ -276,10 +276,16 @@ function LembretesPage() {
       if (error) throw error;
       return { acao: "criada", qtd: linhas.length };
     },
-    onSuccess: (qtd) => {
+    onSuccess: (r) => {
       setTarefaDialog({ open: false, tarefa: null });
       invalidarTarefas();
-      toast.success(typeof qtd === "number" && qtd > 1 ? `${qtd} tarefas criadas.` : "Tarefa salva.");
+      if (r.qtd > 1) {
+        const sufixo =
+          r.acao === "criada" ? "criadas" : r.acao === "regerada" ? "reprogramadas" : "atualizadas";
+        toast.success(`${r.qtd} ocorrências ${sufixo}.`);
+      } else {
+        toast.success("Tarefa salva.");
+      }
     },
     onError: (e: any) => toast.error(e?.message ?? "Não foi possível salvar a tarefa."),
   });
@@ -295,26 +301,25 @@ function LembretesPage() {
 
   const excluirTarefa = useMutation({
     mutationFn: async ({ tarefa, escopo }: { tarefa: LembreteTarefa; escopo: EscopoSerie }) => {
-      if (escopo === "serie" && tarefa.serie_id) {
-        const { error } = await sb
-          .from("lembretes_tarefas")
-          .delete()
-          .eq("serie_id", tarefa.serie_id)
-          .gte("data_hora", tarefa.data_hora);
+      if (escopo !== "esta" && tarefa.serie_id) {
+        let del = sb.from("lembretes_tarefas").delete().eq("serie_id", tarefa.serie_id);
+        if (escopo === "futuras") del = del.gte("data_hora", tarefa.data_hora);
+        const { data, error } = await del.select("id");
         if (error) throw error;
-        return;
+        return data?.length ?? 1;
       }
       const { error } = await sb.from("lembretes_tarefas").delete().eq("id", tarefa.id);
       if (error) throw error;
+      return 1;
     },
-    onSuccess: () => {
+    onSuccess: (qtd) => {
       invalidarTarefas();
-      toast.success("Tarefa excluída.");
+      toast.success(qtd > 1 ? `${qtd} ocorrências excluídas.` : "Tarefa excluída.");
     },
     onError: (e: any) => toast.error(e?.message ?? "Não foi possível excluir a tarefa."),
   });
 
-  // Escolha "somente esta / esta e as próximas" para tarefas de série.
+  // Escolha de escopo (somente esta / esta e as próximas / toda a série).
   const [escopoDialog, setEscopoDialog] = useState<
     | { open: false }
     | { open: true; tipo: "salvar"; tarefa: LembreteTarefa; values: TarefaFormValues }
@@ -324,14 +329,17 @@ function LembretesPage() {
   const pedirEscopoOuSalvar = (values: TarefaFormValues) => {
     const atual = tarefaDialog.tarefa;
     if (atual?.serie_id) {
+      // Fecha o modal de edição antes de abrir a pergunta, evitando diálogos aninhados.
+      setTarefaDialog({ open: false, tarefa: null });
       setEscopoDialog({ open: true, tipo: "salvar", tarefa: atual, values });
       return;
     }
-    salvarTarefa.mutate({ values, escopo: "esta" });
+    salvarTarefa.mutate({ values, escopo: "esta", atual: atual ?? null });
   };
 
   const pedirEscopoOuExcluir = (tarefa: LembreteTarefa) => {
     if (tarefa.serie_id) {
+      setTarefaDialog({ open: false, tarefa: null });
       setEscopoDialog({ open: true, tipo: "excluir", tarefa });
       return;
     }
@@ -341,12 +349,23 @@ function LembretesPage() {
   const aplicarEscopo = (escopo: EscopoSerie) => {
     if (!escopoDialog.open) return;
     if (escopoDialog.tipo === "salvar") {
-      salvarTarefa.mutate({ values: escopoDialog.values, escopo });
+      salvarTarefa.mutate({ values: escopoDialog.values, escopo, atual: escopoDialog.tarefa });
     } else {
       excluirTarefa.mutate({ tarefa: escopoDialog.tarefa, escopo });
     }
     setEscopoDialog({ open: false });
   };
+
+  // Garante que a página volte a aceitar cliques após fechar qualquer diálogo.
+  useEffect(() => {
+    if (!escopoDialog.open && !tarefaDialog.open) {
+      const t = setTimeout(() => {
+        if (document.body.style.pointerEvents === "none") document.body.style.pointerEvents = "";
+      }, 300);
+      return () => clearTimeout(t);
+    }
+    return;
+  }, [escopoDialog.open, tarefaDialog.open]);
 
   const salvarProjeto = useMutation({
     mutationFn: async (values: { nome: string; cor: string; ativo: boolean }) => {
