@@ -55,7 +55,23 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-type EscopoSerie = "esta" | "serie";
+type EscopoSerie = "esta" | "futuras" | "todas";
+
+function mudouRecorrencia(atual: LembreteTarefa, v: TarefaFormValues): boolean {
+  return (
+    atual.recorrencia !== v.recorrencia ||
+    (atual.recorrencia_intervalo ?? 1) !== (v.recorrencia_intervalo ?? 1) ||
+    (atual.recorrencia_fim ?? null) !== (v.recorrencia_fim ?? null) ||
+    (atual.recorrencia_qtd ?? null) !== (v.recorrencia_qtd ?? null)
+  );
+}
+
+function fimDaRecorrencia(values: TarefaFormValues): FimRecorrencia {
+  if (values.recorrencia === "nenhuma") return { tipo: "nunca" };
+  if (values.recorrencia_fim) return { tipo: "ate", ate: values.recorrencia_fim };
+  if (values.recorrencia_qtd) return { tipo: "qtd", qtd: values.recorrencia_qtd };
+  return { tipo: "nunca" };
+}
 
 
 
