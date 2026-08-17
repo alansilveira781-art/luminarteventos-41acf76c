@@ -501,155 +501,15 @@ function PainelFinanceiro() {
   const linhaLucro = useMemo(() => linhasDre.find((r) => r.id === "LU"), [linhasDre]);
   const linhasDreSemLucro = useMemo(() => linhasDre.filter((r) => r.id !== "LU"), [linhasDre]);
 
-  // Linhas para impressão: sempre expandidas (independente do estado da tela).
-  const linhasPrint = useMemo(() => {
-    const out: { kind: "header" | "calc" | "detail"; id: string; label: string; valor: number; pct: number }[] = [];
-    const pct = (v: number) => (rb > 0 ? v / rb : 0);
-    for (const line of dreEstrutura) {
-      const v = totais[line.id] ?? 0;
-      if (line.kind === "sum") {
-        out.push({ kind: "header", id: line.id, label: GROUP_LABEL[line.id] ?? line.label, valor: v, pct: pct(v) });
-        const det = grupos.get(line.id);
-        if (det) {
-          Array.from(det.entries())
-            .sort((a, b) => (planoMap.get(a[0])?.nome ?? "").localeCompare(planoMap.get(b[0])?.nome ?? "", "pt-BR"))
-            .forEach(([catId, valor]) => {
-              const signed = valor * line.sign;
-              out.push({ kind: "detail", id: `${line.id}:${catId}`, label: planoMap.get(catId)?.nome ?? "Sem categoria", valor: signed, pct: pct(signed) });
-            });
-        }
-      } else {
-        out.push({ kind: "calc", id: line.id, label: GROUP_LABEL[line.id] ?? line.label, valor: v, pct: pct(v) });
-      }
-    }
-    return out;
-  }, [totais, grupos, planoMap, rb, dreEstrutura]);
-
-  const [printMode, setPrintMode] = useState<"analitico" | "estrategico" | null>(null);
-
-  const imprimir = (modo: "analitico" | "estrategico") => {
-    setPrintMode(modo);
-    document.body.classList.add("printing-painel");
-    const cleanup = () => {
-      document.body.classList.remove("printing-painel");
-      setPrintMode(null);
-      window.removeEventListener("afterprint", cleanup);
-    };
-    window.addEventListener("afterprint", cleanup);
-    setTimeout(() => {
-      window.print();
-      setTimeout(cleanup, 1500);
-    }, 60);
-  };
-
-  const periodoLabel = `${mes > 0 ? MESES[mes] : "Ano completo"} / ${anoEfetivo}`;
-
   const toggleGroup = (id: string) => setCollapsed((c) => ({ ...c, [id]: !c[id] }));
   const onClickCategoria = (catId: string) =>
     setCategoriaSel((cur) => (cur === catId ? null : catId));
 
-
   return (
-    <div className="space-y-4 painel-print-root">
-      <style>{`
-        @media print {
-          @page { size: A4 portrait; margin: 12mm; }
-          body.printing-painel { visibility: hidden !important; }
-          body.printing-painel .print-painel-portal {
-            visibility: visible !important;
-            display: block !important;
-            position: absolute; left: 0; top: 0; width: 100%;
-          }
-          body.printing-painel .print-painel-portal * { visibility: visible !important; }
-          .print-painel-portal { display: none; }
-          .print-painel-portal, .print-painel-portal * {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            color: #000 !important;
-            font-family: system-ui, sans-serif;
-          }
-          .print-painel-portal h1 { font-size: 14pt; margin: 0; }
-          .print-painel-portal .sub { font-size: 9pt; color: #555 !important; }
-          .print-painel-portal table { width: 100%; border-collapse: collapse; font-size: 9pt; }
-          .print-painel-portal th, .print-painel-portal td { padding: 3px 6px; border-bottom: 1px solid #ddd; }
-          .print-painel-portal thead th { background: #eee !important; font-size: 8pt; text-transform: uppercase; text-align: left; }
-          .print-painel-portal tr.hdr td { font-weight: 700; background: #f5f5f5 !important; }
-          .print-painel-portal tr.calc td { font-weight: 700; background: #e8e8e8 !important; }
-          .print-painel-portal tr.det td:first-child { padding-left: 18px; font-size: 8.5pt; }
-          .print-painel-portal .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-          .print-painel-portal .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 10px 0; }
-          .print-painel-portal .kpi { border: 1px solid #ccc; padding: 6px; }
-          .print-painel-portal .kpi .k { font-size: 7.5pt; text-transform: uppercase; color: #555 !important; }
-          .print-painel-portal .kpi .v { font-size: 10pt; font-weight: 700; }
-        }
-      `}</style>
-
-      <div className="print-painel-portal">
-        <div style={{ borderBottom: "2px solid #000", paddingBottom: 6, marginBottom: 8 }}>
-          <h1>DRE — {printMode === "estrategico" ? "Relatório Estratégico" : "Relatório Analítico"}</h1>
-          <div className="sub">Período: {periodoLabel} · Regime de caixa · Emitido em {new Date().toLocaleString("pt-BR")}</div>
-        </div>
-
-        <div className="kpis">
-          <div className="kpi"><div className="k">Receita Bruta</div><div className="v">{fmtMoney(rb)}</div></div>
-          <div className="kpi"><div className="k">Pot. de Vendas</div><div className="v">{fmtMoney(pv)}</div></div>
-          <div className="kpi"><div className="k">Despesas</div><div className="v">{fmtMoney(desp)}</div></div>
-          <div className="kpi"><div className="k">Custos</div><div className="v">{fmtMoney(custos)}</div></div>
-          <div className="kpi"><div className="k">Lucro</div><div className="v">{fmtMoney(lucro)} ({fmtPct(rb ? lucro / rb : 0)})</div></div>
-        </div>
-
-        <table>
-          <thead>
-            <tr><th>Demonstrativo</th><th className="num">Valores</th><th className="num">% RB</th></tr>
-          </thead>
-          <tbody>
-            {(printMode === "estrategico" ? linhasPrint.filter((r) => r.kind !== "detail") : linhasPrint).map((r) => (
-              <tr key={r.id} className={r.kind === "header" ? "hdr" : r.kind === "calc" ? "calc" : "det"}>
-                <td>{r.label}</td>
-                <td className="num">{fmtMoney(r.valor)}</td>
-                <td className="num">{fmtPct(r.pct)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {printMode === "analitico" && (
-          <>
-            <h1 style={{ marginTop: 14, fontSize: "11pt" }}>
-              Lançamentos do período {categoriaSel ? `· ${categoriaSelNome}` : ""} ({lancFiltrados.length})
-            </h1>
-            <table style={{ marginTop: 4 }}>
-              <thead>
-                <tr><th>Data</th><th>Fornecedor/Cliente</th><th>Descrição</th><th className="num">Valor</th></tr>
-              </thead>
-              <tbody>
-                {lancFiltrados.map((l, i) => (
-                  <tr key={i}>
-                    <td>{l.data?.slice(0, 10) ?? "—"}</td>
-                    <td>{l.nome ?? "—"}</td>
-                    <td>{l.descricao ?? "—"}</td>
-                    <td className="num">{fmtMoney(l.valor)}</td>
-                  </tr>
-                ))}
-                <tr className="calc">
-                  <td colSpan={3}>Total</td>
-                  <td className="num">{fmtMoney(totalLanc)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </>
-        )}
-      </div>
-
+    <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end justify-between">
         <h2 className="text-xl font-bold">Painel Financeiro</h2>
-        <div className="flex gap-3 items-end">
-          <Button variant="outline" size="sm" onClick={() => imprimir("analitico")}>
-            <Printer className="h-4 w-4 mr-2" /> Analítico
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => imprimir("estrategico")}>
-            <Printer className="h-4 w-4 mr-2" /> Estratégico
-          </Button>
+        <div className="flex gap-3">
           <div className="w-32">
             <label className="text-xs text-muted-foreground">Ano</label>
             <Select value={String(anoEfetivo)} onValueChange={(v) => setAno(Number(v))}>
@@ -666,7 +526,6 @@ function PainelFinanceiro() {
           </div>
         </div>
       </div>
-
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <KpiCard
