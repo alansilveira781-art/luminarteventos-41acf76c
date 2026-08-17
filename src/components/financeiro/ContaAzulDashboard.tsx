@@ -662,9 +662,9 @@ function PainelFinanceiro() {
               <SelectContent>{MESES.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <Button variant="outline" onClick={imprimirPainel}>
-            <Printer className="h-4 w-4 mr-2" />
-            Imprimir
+          <Button variant="outline" onClick={exportarPdf} disabled={gerandoPdf}>
+            {gerandoPdf ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileDown className="h-4 w-4 mr-2" />}
+            Exportar PDF
           </Button>
         </div>
       </div>
