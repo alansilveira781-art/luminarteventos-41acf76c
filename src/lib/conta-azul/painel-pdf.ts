@@ -164,7 +164,7 @@ export function gerarPainelPdf(input: PainelPdfInput): void {
 
     if (temLegenda) {
       let ly = y + 4;
-      const lx = M + imgW + 4;
+      const lx = M + larguraBase + 4;
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
       g.legenda!.forEach((it) => {
