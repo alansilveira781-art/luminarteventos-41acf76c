@@ -66,6 +66,8 @@ const fmtMoney = (n: number) =>
 const fmtPct = (n: number) =>
   `${(n * 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 
+const PIE_COLORS = ["#2563eb", "#16a34a", "#f59e0b", "#db2777", "#0891b2", "#7c3aed", "#dc2626", "#65a30d", "#94a3b8"];
+
 const YEARS = Array.from({ length: new Date().getFullYear() - 2022 }, (_, i) => 2023 + i);
 const MESES = [
   "Todos", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
