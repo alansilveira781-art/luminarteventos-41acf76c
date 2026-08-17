@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -6,13 +6,19 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-  ComposedChart, Line, Legend,
+  ComposedChart, Line, Legend, PieChart, Pie, Cell, LabelList,
 } from "recharts";
-import { PiggyBank as Piggy, Building2, BarChart3, Sprout, Users, X, ChevronRight, ChevronDown, Printer, RefreshCw, Loader2 } from "lucide-react";
+import { PiggyBank as Piggy, Building2, BarChart3, Sprout, Users, X, ChevronRight, ChevronDown, Printer, RefreshCw, Loader2, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DRE_STRUCTURE, grupoDoPlanoNome, isTransferencia, buildPrefixIndex, calcularDRECaixa, inPeriodo, montarLinhasPorCentro, type DreGroupId, type DreLine } from "@/lib/conta-azul/dre";
 import { useDreEstrutura } from "@/hooks/useDreEstrutura";
 import { agruparParcelamentos, type GroupedLancRow } from "@/lib/conta-azul/agrupar-parcelas";
+import {
+  fatiasDoGrupo, comOutros, textoReceitas, textoCustosVariaveis,
+  compararFaturamento, textoFaturamento, periodoAnterior, labelPeriodo,
+} from "@/lib/conta-azul/painel-analises";
+import { gerarPainelPdf, svgParaPng } from "@/lib/conta-azul/painel-pdf";
+import { listVendasDb } from "@/lib/comercial/vendas-db.functions";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { IndicadoresEventos } from "@/components/financeiro/IndicadoresEventos";
@@ -59,6 +65,8 @@ const fmtMoney = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 });
 const fmtPct = (n: number) =>
   `${(n * 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+
+const PIE_COLORS = ["#2563eb", "#16a34a", "#f59e0b", "#db2777", "#0891b2", "#7c3aed", "#dc2626", "#65a30d", "#94a3b8"];
 
 const YEARS = Array.from({ length: new Date().getFullYear() - 2022 }, (_, i) => 2023 + i);
 const MESES = [
@@ -428,6 +436,60 @@ function PainelFinanceiro() {
   const rbAnt = totaisAnt.RB ?? 0;
   const yoyRb = rbAnt > 0 ? (rb - rbAnt) / rbAnt : null;
 
+  // ----- Período anterior (mês anterior) para as análises automáticas -----
+  const prevPer = useMemo(() => periodoAnterior(anoEfetivo, mes), [anoEfetivo, mes]);
+  const prevData = useContaAzulData(prevPer.ano, prevPer.mes);
+  const { totais: totaisPrev, grupos: gruposPrev } = useMemo(
+    () =>
+      calcularDRECaixa(
+        prevData.pagar.data ?? [],
+        prevData.receber.data ?? [],
+        planoMap,
+        prevPer.ano,
+        prevPer.mes,
+        dreEstrutura,
+      ),
+    [prevData.pagar.data, prevData.receber.data, planoMap, prevPer, dreEstrutura],
+  );
+
+  const receitasFatias = useMemo(() => comOutros(fatiasDoGrupo(grupos, "RB", planoMap)), [grupos, planoMap]);
+  const receitasFatiasPrev = useMemo(() => fatiasDoGrupo(gruposPrev, "RB", planoMap), [gruposPrev, planoMap]);
+  const cvFatias = useMemo(() => fatiasDoGrupo(grupos, "CV", planoMap), [grupos, planoMap]);
+  const cvFatiasPrev = useMemo(() => fatiasDoGrupo(gruposPrev, "CV", planoMap), [gruposPrev, planoMap]);
+
+  const textoRec = useMemo(
+    () => textoReceitas(fatiasDoGrupo(grupos, "RB", planoMap), receitasFatiasPrev, anoEfetivo, mes),
+    [grupos, planoMap, receitasFatiasPrev, anoEfetivo, mes],
+  );
+  const textoCV = useMemo(
+    () => textoCustosVariaveis(cvFatias, cvFatiasPrev, rb, anoEfetivo, mes),
+    [cvFatias, cvFatiasPrev, rb, anoEfetivo, mes],
+  );
+
+  // ----- Faturamento (Vendas) x Recebimento -----
+  const vendasQ = useQuery({
+    queryKey: ["comercial-vendas-db"],
+    queryFn: () => listVendasDb(),
+    staleTime: 5 * 60 * 1000,
+  });
+  const comparativo = useMemo(
+    () =>
+      compararFaturamento(
+        (vendasQ.data?.rows ?? []).map((v) => ({ dataRegistro: v.dataRegistro, valorFinal: v.valorFinal })),
+        rb,
+        totaisPrev.RB ?? 0,
+        anoEfetivo,
+        mes,
+      ),
+    [vendasQ.data, rb, totaisPrev, anoEfetivo, mes],
+  );
+  const textoFat = useMemo(() => textoFaturamento(comparativo, anoEfetivo, mes), [comparativo, anoEfetivo, mes]);
+
+  const pieRef = useRef<HTMLDivElement>(null);
+  const cvRef = useRef<HTMLDivElement>(null);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
+
+
   // Lançamentos do período (regime de caixa, sem transferências)
   const lancamentos = useMemo<LancRow[]>(() => {
     const list: LancRow[] = [];
@@ -505,30 +567,58 @@ function PainelFinanceiro() {
   const onClickCategoria = (catId: string) =>
     setCategoriaSel((cur) => (cur === catId ? null : catId));
 
-  const imprimirPainel = () => {
-    const prevCollapsed = collapsed;
-    setCollapsed({});
-    setTimeout(() => {
-      const area = document.querySelector(".painel-print-area") as HTMLElement | null;
-      if (!area) { window.print(); return; }
-      const portal = document.createElement("div");
-      portal.className = "print-portal";
-      const clone = area.cloneNode(true) as HTMLElement;
-      clone.style.position = "static";
-      portal.appendChild(clone);
-      document.body.appendChild(portal);
-      document.body.classList.add("printing-painel");
-      const cleanup = () => {
-        document.body.classList.remove("printing-painel");
-        portal.remove();
-        window.removeEventListener("afterprint", cleanup);
-        setCollapsed(prevCollapsed);
+  const exportarPdf = async () => {
+    setGerandoPdf(true);
+    try {
+      const capturar = async (ref: { current: HTMLDivElement | null }) => {
+        const svg = ref.current?.querySelector("svg") as SVGSVGElement | null;
+        return svg ? await svgParaPng(svg) : null;
       };
-      window.addEventListener("afterprint", cleanup);
-      window.print();
-      setTimeout(cleanup, 1500);
-    }, 200);
+      const [imgPie, imgCv] = await Promise.all([capturar(pieRef), capturar(cvRef)]);
+      gerarPainelPdf({
+        ano: anoEfetivo,
+        mes,
+        kpis: [
+          { label: "Receita Bruta", value: fmtMoney(rb), sub: `% Receita LY: ${yoyRb === null ? "—" : fmtPct(yoyRb)}` },
+          { label: "Pot. de Vendas", value: fmtMoney(pv), sub: `% PV: ${fmtPct(rb ? pv / rb : 0)}` },
+          { label: "Despesas", value: fmtMoney(desp), sub: `% Despesa: ${fmtPct(rb ? desp / rb : 0)}` },
+          { label: "Custos", value: fmtMoney(custos), sub: `% Custos: ${fmtPct(rb ? custos / rb : 0)}` },
+          { label: "Lucro", value: fmtMoney(lucro), sub: `% Lucro: ${fmtPct(rb ? lucro / rb : 0)}` },
+        ],
+        graficos: [
+          {
+            titulo: "Receitas do período",
+            texto: textoRec,
+            imagem: imgPie,
+            legenda: receitasFatias.map((f, i) => ({
+              nome: f.nome,
+              valor: fmtMoney(f.valor),
+              cor: PIE_COLORS[i % PIE_COLORS.length],
+            })),
+          },
+          { titulo: "Custos Variáveis (CV)", texto: textoCV, imagem: imgCv },
+        ],
+        faturamento: {
+          linhas: [
+            [`Faturado (vendas registradas em ${labelPeriodo(anoEfetivo, mes)})`, fmtMoney(comparativo.faturado)],
+            ["Recebido no período (Receita Bruta)", fmtMoney(comparativo.recebido)],
+            ["Conversão em caixa no mês", comparativo.conversao === null ? "—" : fmtPct(comparativo.conversao)],
+            ["Saldo previsto para meses seguintes", fmtMoney(comparativo.aReceber)],
+            ["Quantidade de vendas", String(comparativo.qtdVendas)],
+          ],
+          texto: textoFat,
+        },
+        dre: linhasDre
+          .filter((l) => l.kind !== "detail")
+          .map((l) => ({ label: l.label, valor: l.valor, pct: l.pct, forte: l.kind === "calc" })),
+      });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao gerar o PDF");
+    } finally {
+      setGerandoPdf(false);
+    }
   };
+
 
   return (
     <div className="space-y-4">
@@ -583,9 +673,9 @@ function PainelFinanceiro() {
               <SelectContent>{MESES.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <Button variant="outline" onClick={imprimirPainel}>
-            <Printer className="h-4 w-4 mr-2" />
-            Imprimir
+          <Button variant="outline" onClick={exportarPdf} disabled={gerandoPdf}>
+            {gerandoPdf ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileDown className="h-4 w-4 mr-2" />}
+            Exportar PDF
           </Button>
         </div>
       </div>
@@ -627,6 +717,99 @@ function PainelFinanceiro() {
           subColor={lucro >= 0 ? "text-emerald-600" : "text-rose-600"}
         />
       </div>
+
+      {/* Gráficos e análises automáticas */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="p-4">
+          <div className="text-sm font-semibold mb-2">Receitas do período</div>
+          <div ref={pieRef} className="h-[260px]">
+            {receitasFatias.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Sem receitas no período</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={receitasFatias}
+                    dataKey="valor"
+                    nameKey="nome"
+                    cx="40%"
+                    cy="50%"
+                    outerRadius={92}
+                    isAnimationActive={false}
+                  >
+                    {receitasFatias.map((f, i) => (
+                      <Cell key={f.catId} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v: any, n: any) => [fmtMoney(Number(v)), n]} />
+                  <Legend layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ fontSize: 11, maxWidth: 190 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{textoRec}</p>
+        </Card>
+
+        <Card className="p-4">
+          <div className="text-sm font-semibold mb-2">Custos Variáveis (CV)</div>
+          <div ref={cvRef} style={{ height: Math.max(260, cvFatias.length * 28 + 40) }}>
+            {cvFatias.length === 0 ? (
+              <div className="h-[260px] flex items-center justify-center text-sm text-muted-foreground">Sem custos variáveis no período</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={cvFatias} layout="vertical" margin={{ left: 8, right: 60, top: 8, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <XAxis type="number" tickFormatter={(v) => fmtMoney(Number(v))} tick={{ fontSize: 10 }} />
+                  <YAxis
+                    type="category"
+                    dataKey="nome"
+                    width={200}
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v: string) => (v.length > 28 ? `${v.slice(0, 28)}…` : v)}
+                  />
+                  <Tooltip formatter={(v: any) => fmtMoney(Number(v))} />
+                  <Bar dataKey="valor" fill="#f97316" isAnimationActive={false} radius={[0, 3, 3, 0]}>
+                    <LabelList dataKey="valor" position="right" formatter={(v: any) => fmtMoney(Number(v))} style={{ fontSize: 10, fill: "#6b7280" }} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{textoCV}</p>
+        </Card>
+      </div>
+
+      {/* Faturamento x Recebimento */}
+      <Card className="p-4">
+        <div className="text-sm font-semibold mb-3">Faturamento (Vendas) x Recebimento — {labelPeriodo(anoEfetivo, mes)}</div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="rounded-md border p-3">
+            <div className="text-xs text-muted-foreground">Faturado no mês</div>
+            <div className="text-lg font-bold tabular-nums">{fmtMoney(comparativo.faturado)}</div>
+            <div className="text-xs text-muted-foreground">{comparativo.qtdVendas} venda(s)</div>
+          </div>
+          <div className="rounded-md border p-3">
+            <div className="text-xs text-muted-foreground">Recebido no mês</div>
+            <div className="text-lg font-bold tabular-nums text-emerald-600">{fmtMoney(comparativo.recebido)}</div>
+            <div className="text-xs text-muted-foreground">Receita Bruta realizada</div>
+          </div>
+          <div className="rounded-md border p-3">
+            <div className="text-xs text-muted-foreground">Conversão em caixa</div>
+            <div className="text-lg font-bold tabular-nums">{comparativo.conversao === null ? "—" : fmtPct(comparativo.conversao)}</div>
+            <div className="mt-1 h-2 rounded bg-muted overflow-hidden">
+              <div
+                className="h-full bg-emerald-500"
+                style={{ width: `${Math.min(100, Math.max(0, (comparativo.conversao ?? 0) * 100))}%` }}
+              />
+            </div>
+          </div>
+          <div className="rounded-md border p-3">
+            <div className="text-xs text-muted-foreground">Fica para os próximos meses</div>
+            <div className="text-lg font-bold tabular-nums text-amber-600">{fmtMoney(comparativo.aReceber)}</div>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground mt-3 leading-relaxed">{textoFat}</p>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* DRE */}
