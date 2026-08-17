@@ -707,6 +707,99 @@ function PainelFinanceiro() {
         />
       </div>
 
+      {/* Gráficos e análises automáticas */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="p-4">
+          <div className="text-sm font-semibold mb-2">Receitas do período</div>
+          <div ref={pieRef} className="h-[260px]">
+            {receitasFatias.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Sem receitas no período</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={receitasFatias}
+                    dataKey="valor"
+                    nameKey="nome"
+                    cx="40%"
+                    cy="50%"
+                    outerRadius={92}
+                    isAnimationActive={false}
+                  >
+                    {receitasFatias.map((f, i) => (
+                      <Cell key={f.catId} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v: any, n: any) => [fmtMoney(Number(v)), n]} />
+                  <Legend layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ fontSize: 11, maxWidth: 190 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{textoRec}</p>
+        </Card>
+
+        <Card className="p-4">
+          <div className="text-sm font-semibold mb-2">Custos Variáveis (CV)</div>
+          <div ref={cvRef} style={{ height: Math.max(260, cvFatias.length * 28 + 40) }}>
+            {cvFatias.length === 0 ? (
+              <div className="h-[260px] flex items-center justify-center text-sm text-muted-foreground">Sem custos variáveis no período</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={cvFatias} layout="vertical" margin={{ left: 8, right: 60, top: 8, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <XAxis type="number" tickFormatter={(v) => fmtMoney(Number(v))} tick={{ fontSize: 10 }} />
+                  <YAxis
+                    type="category"
+                    dataKey="nome"
+                    width={200}
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v: string) => (v.length > 28 ? `${v.slice(0, 28)}…` : v)}
+                  />
+                  <Tooltip formatter={(v: any) => fmtMoney(Number(v))} />
+                  <Bar dataKey="valor" fill="#f97316" isAnimationActive={false} radius={[0, 3, 3, 0]}>
+                    <LabelList dataKey="valor" position="right" formatter={(v: any) => fmtMoney(Number(v))} style={{ fontSize: 10, fill: "#6b7280" }} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{textoCV}</p>
+        </Card>
+      </div>
+
+      {/* Faturamento x Recebimento */}
+      <Card className="p-4">
+        <div className="text-sm font-semibold mb-3">Faturamento (Vendas) x Recebimento — {labelPeriodo(anoEfetivo, mes)}</div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="rounded-md border p-3">
+            <div className="text-xs text-muted-foreground">Faturado no mês</div>
+            <div className="text-lg font-bold tabular-nums">{fmtMoney(comparativo.faturado)}</div>
+            <div className="text-xs text-muted-foreground">{comparativo.qtdVendas} venda(s)</div>
+          </div>
+          <div className="rounded-md border p-3">
+            <div className="text-xs text-muted-foreground">Recebido no mês</div>
+            <div className="text-lg font-bold tabular-nums text-emerald-600">{fmtMoney(comparativo.recebido)}</div>
+            <div className="text-xs text-muted-foreground">Receita Bruta realizada</div>
+          </div>
+          <div className="rounded-md border p-3">
+            <div className="text-xs text-muted-foreground">Conversão em caixa</div>
+            <div className="text-lg font-bold tabular-nums">{comparativo.conversao === null ? "—" : fmtPct(comparativo.conversao)}</div>
+            <div className="mt-1 h-2 rounded bg-muted overflow-hidden">
+              <div
+                className="h-full bg-emerald-500"
+                style={{ width: `${Math.min(100, Math.max(0, (comparativo.conversao ?? 0) * 100))}%` }}
+              />
+            </div>
+          </div>
+          <div className="rounded-md border p-3">
+            <div className="text-xs text-muted-foreground">Fica para os próximos meses</div>
+            <div className="text-lg font-bold tabular-nums text-amber-600">{fmtMoney(comparativo.aReceber)}</div>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground mt-3 leading-relaxed">{textoFat}</p>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* DRE */}
         <Card className="p-0 overflow-hidden lg:col-span-2">
