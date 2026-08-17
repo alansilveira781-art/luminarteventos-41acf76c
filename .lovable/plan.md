@@ -1,33 +1,32 @@
-# Impressão da DRE do mês no Painel Financeiro
+# Diaristas: "Garantir diária de 8h" também arredonda para cima
 
-Hoje só a Análise Detalhada permite imprimir. O Painel Financeiro (aba Dashboard do Financeiro) passa a gerar dois relatórios em PDF do mês/ano selecionado.
+Hoje o botão só age quando a pessoa trabalha menos de 8h (paga a diária cheia). Acima de 8h ele paga diária + horas extras avulsas.
 
-## Botões
+## Novo comportamento
 
-Ao lado dos seletores de Ano e Mês, um botão "Exportar PDF" com duas opções:
+Com o botão ligado, o pagamento passa a ser sempre em diárias fechadas de 8h, arredondando para cima:
 
-- Relatório Analítico
-- Relatório Estratégico
+- 6h trabalhadas → 1 diária (como hoje)
+- 8h → 1 diária
+- 9h → 2 diárias
+- 15h30 (08:00 às 23:30) → 2 diárias
+- 17h → 3 diárias
 
-## Relatório Analítico
+Ou seja, nunca mais "horas a mais" soltas: completa a próxima diária.
 
-- Cabeçalho: "Grupo Luminart — DRE (regime de caixa)", mês/ano e data de geração.
-- Tabela do Demonstrativo com todos os grupos abertos, mostrando as categorias de cada grupo, as linhas de resultado e a linha de Lucro, com colunas Demonstrativo / Valores / %.
-- Tabela de Lançamentos do período: Data, Fornecedor/Cliente, Descrição, Valor, com linha de total.
-- Rodapé com numeração de páginas.
+Com o botão desligado nada muda: paga estritamente valor/hora × horas trabalhadas.
 
-## Relatório Estratégico
+Refeições (almoço/janta) e o valor extra manual continuam somando por fora, e blocos de empreitada continuam sem gerar valor.
 
-- Mesmo cabeçalho.
-- Faixa de indicadores: Receita Bruta (com % vs. ano anterior), Potencial de Vendas, Despesas, Custos e Lucro, com os respectivos percentuais sobre a Receita Bruta.
-- DRE resumido: apenas as linhas de grupo e de resultado (sem abrir categorias, sem lançamentos), com valores e %.
-- Rodapé com numeração de páginas.
+## Onde aparece
 
-Os dois relatórios respeitam exatamente o mês/ano selecionados na tela e os mesmos números exibidos nos cartões e no Demonstrativo.
+- Cálculo do dia no lançamento e no resumo.
+- Fechamento semanal e relatórios em PDF (usam o mesmo cálculo, então acompanham automaticamente).
+- O texto de apoio do switch passa a explicar: "Paga em diárias fechadas de 8h, arredondando para cima (ex.: 15h30 = 2 diárias)."
 
 ## Detalhes técnicos
 
-- Novo arquivo `src/lib/conta-azul/dre-relatorio.ts` com `gerarDrePdf({ tipo: "analitico" | "estrategico", ano, mes, kpis, linhas, lancamentos })`, usando `jspdf` + `jspdf-autotable` (já usados em `src/lib/comercial/vendas-relatorio.ts`), carregados sob demanda.
-- Em `PainelFinanceiro` (`src/components/financeiro/ContaAzulDashboard.tsx`): montar as linhas do DRE sempre expandidas para o analítico (independente do estado `collapsed` da tela) e passar `lancamentos` completos (não o filtro de categoria ativo).
-- Nome do arquivo: `dre-analitico-2026-08.pdf` / `dre-estrategico-2026-08.pdf`.
-- Sem mudanças de banco, de cálculo do DRE ou do layout da tela.
+- `src/lib/diaristas-calc.ts`, função `montarResultado`: com `diariaMinima`, `diaria = Math.max(1, Math.ceil(horasTrab / 8)) * valorHora * 8`; sem ela, mantém `horasTrab * valorHora`.
+- O rateio entre eventos continua proporcional às horas de cada bloco, agora sobre o total já arredondado.
+- Ajuste do texto do switch em `src/routes/financeiro-op.diaristas.index.tsx`.
+- Sem mudanças de banco. Lançamentos antigos serão recalculados na exibição conforme a regra nova.
