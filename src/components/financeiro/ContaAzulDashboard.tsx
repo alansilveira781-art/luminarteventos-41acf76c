@@ -720,7 +720,7 @@ function PainelFinanceiro() {
       </div>
 
       {/* Gráficos e análises automáticas */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="p-4">
           <div className="text-sm font-semibold mb-2">Receitas do período</div>
           <div ref={pieRef} className="h-[260px]">
@@ -751,22 +751,22 @@ function PainelFinanceiro() {
           <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{textoRec}</p>
         </Card>
 
-        <Card className="p-4 self-start">
+        <Card className="p-4">
           <div className="text-sm font-semibold mb-2">Custos Variáveis (CV)</div>
-          <div ref={cvRef} style={{ height: Math.max(320, cvFatias.length * 34 + 60) }}>
+          <div ref={cvRef} style={{ height: Math.max(260, cvFatias.length * 28 + 40) }}>
             {cvFatias.length === 0 ? (
               <div className="h-[260px] flex items-center justify-center text-sm text-muted-foreground">Sem custos variáveis no período</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={cvFatias} layout="vertical" margin={{ left: 8, right: 70, top: 8, bottom: 8 }} barCategoryGap="20%">
+                <BarChart data={cvFatias} layout="vertical" margin={{ left: 8, right: 60, top: 8, bottom: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" tickFormatter={(v) => fmtMoney(Number(v))} tick={{ fontSize: 10 }} />
                   <YAxis
                     type="category"
                     dataKey="nome"
-                    width={220}
-                    tick={{ fontSize: 11 }}
-                    tickFormatter={(v: string) => (v.length > 32 ? `${v.slice(0, 32)}…` : v)}
+                    width={200}
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v: string) => (v.length > 28 ? `${v.slice(0, 28)}…` : v)}
                   />
                   <Tooltip formatter={(v: any) => fmtMoney(Number(v))} />
                   <Bar dataKey="valor" fill={CHART_ACCENT} isAnimationActive={false} radius={[0, 3, 3, 0]}>
