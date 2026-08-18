@@ -389,6 +389,7 @@ function PatrimonioRelatorios() {
           </div>
         )}
       </Card>
+      )}
     </div>
   );
 }
