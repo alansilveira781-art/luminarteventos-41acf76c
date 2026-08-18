@@ -51,6 +51,8 @@ function PatrimonioRelatorios() {
   const [estado, setEstado] = useState("__all");
   const [loc, setLoc] = useState("__all");
   const [agrupar, setAgrupar] = useState<"categoria" | "subcategoria" | "nenhum">("categoria");
+  const [modo, setModo] = useState<"detalhado" | "consolidado">("detalhado");
+  const [ordem, setOrdem] = useState<"quantidade" | "nome">("quantidade");
   const [q, setQ] = useState("");
   const qd = useDebouncedValue(q, 300);
   const [gerando, setGerando] = useState(false);
