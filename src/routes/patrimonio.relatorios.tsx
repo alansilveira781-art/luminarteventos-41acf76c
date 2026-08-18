@@ -279,18 +279,75 @@ function PatrimonioRelatorios() {
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Agrupar no PDF por</Label>
-          <Select value={agrupar} onValueChange={(v) => setAgrupar(v as typeof agrupar)}>
+          <Label className="text-xs text-muted-foreground">Visualização</Label>
+          <Select value={modo} onValueChange={(v) => setModo(v as typeof modo)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="categoria">Categoria</SelectItem>
-              <SelectItem value="subcategoria">Subcategoria</SelectItem>
-              <SelectItem value="nenhum">Sem agrupamento</SelectItem>
+              <SelectItem value="detalhado">Detalhado</SelectItem>
+              <SelectItem value="consolidado">Consolidado por nome</SelectItem>
             </SelectContent>
           </Select>
         </div>
+        {modo === "detalhado" ? (
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Agrupar no PDF por</Label>
+            <Select value={agrupar} onValueChange={(v) => setAgrupar(v as typeof agrupar)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="categoria">Categoria</SelectItem>
+                <SelectItem value="subcategoria">Subcategoria</SelectItem>
+                <SelectItem value="nenhum">Sem agrupamento</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Ordenar por</Label>
+            <Select value={ordem} onValueChange={(v) => setOrdem(v as typeof ordem)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="quantidade">Maior quantidade</SelectItem>
+                <SelectItem value="nome">Nome (A–Z)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </Card>
 
+      {modo === "consolidado" ? (
+        <Card className="overflow-auto">
+          <table className="w-full text-sm">
+            <thead className="text-xs uppercase tracking-wider text-muted-foreground bg-muted/40 sticky top-0">
+              <tr>
+                <th className="px-2 py-2 text-left">Item</th>
+                <th className="px-2 py-2 text-left">Categoria</th>
+                <th className="px-2 py-2 text-left">Subcategoria</th>
+                <th className="px-2 py-2 text-right">Registros</th>
+                <th className="px-2 py-2 text-right">Qtd. total</th>
+                <th className="px-2 py-2 text-right">Valor unit. médio</th>
+                <th className="px-2 py-2 text-right">Valor total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr><td colSpan={7} className="px-2 py-8 text-center text-muted-foreground">Carregando…</td></tr>
+              ) : consolidado.length === 0 ? (
+                <tr><td colSpan={7} className="px-2 py-8 text-center text-muted-foreground">Nenhum item com os filtros atuais.</td></tr>
+              ) : consolidado.map((l) => (
+                <tr key={l.nome} className="border-t border-border">
+                  <td className="px-2 py-1.5 font-medium">{l.nome}</td>
+                  <td className="px-2 py-1.5">{l.categoria}</td>
+                  <td className="px-2 py-1.5">{l.subcategoria}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{l.registros}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{l.quantidade.toLocaleString("pt-BR")}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{brl(l.valorMedio)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{brl(l.valorTotal)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      ) : (
       <Card className="overflow-auto">
         <table className="w-full text-sm">
           <thead className="text-xs uppercase tracking-wider text-muted-foreground bg-muted/40 sticky top-0">
