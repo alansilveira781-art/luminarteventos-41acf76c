@@ -192,6 +192,7 @@ export async function gerarRelatorioPatrimonioPdf(params: RelatorioPatrimonioPar
 
 export type RelatorioPatConsolidadoLinha = {
   nome: string;
+  especificacao?: string | null;
   categoria: string;
   subcategoria: string;
   registros: number;
