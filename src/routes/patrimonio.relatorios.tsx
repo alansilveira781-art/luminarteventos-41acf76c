@@ -12,7 +12,7 @@ import { FileDown, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { normalize } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { gerarRelatorioPatrimonioPdf } from "@/lib/patrimonio/relatorio-pdf";
+import { gerarRelatorioPatrimonioPdf, gerarRelatorioPatrimonioConsolidadoPdf } from "@/lib/patrimonio/relatorio-pdf";
 
 export const Route = createFileRoute("/patrimonio/relatorios")({
   head: () => ({
@@ -51,6 +51,8 @@ function PatrimonioRelatorios() {
   const [estado, setEstado] = useState("__all");
   const [loc, setLoc] = useState("__all");
   const [agrupar, setAgrupar] = useState<"categoria" | "subcategoria" | "nenhum">("categoria");
+  const [modo, setModo] = useState<"detalhado" | "consolidado">("detalhado");
+  const [ordem, setOrdem] = useState<"quantidade" | "nome">("quantidade");
   const [q, setQ] = useState("");
   const qd = useDebouncedValue(q, 300);
   const [gerando, setGerando] = useState(false);
@@ -116,6 +118,51 @@ function PatrimonioRelatorios() {
     });
   }, [itens, cat, sub, estado, loc, qd]);
 
+  const consolidado = useMemo(() => {
+    type G = {
+      nomes: Map<string, number>;
+      categorias: Set<string>;
+      subcategorias: Set<string>;
+      registros: number;
+      quantidade: number;
+      valorTotal: number;
+    };
+    const map = new Map<string, G>();
+    for (const i of filtrados) {
+      const chave = normalize(i.nome ?? "").replace(/\s+/g, " ").trim() || "—";
+      let g = map.get(chave);
+      if (!g) {
+        g = { nomes: new Map(), categorias: new Set(), subcategorias: new Set(), registros: 0, quantidade: 0, valorTotal: 0 };
+        map.set(chave, g);
+      }
+      const nome = (i.nome ?? "—").trim();
+      g.nomes.set(nome, (g.nomes.get(nome) ?? 0) + 1);
+      if (i.categoria) g.categorias.add(i.categoria);
+      if (i.subcategoria) g.subcategorias.add(i.subcategoria);
+      const qtd = Number(i.quantidade || 0);
+      g.registros += 1;
+      g.quantidade += qtd;
+      g.valorTotal += Number(i.valor || 0) * (qtd || 1);
+    }
+    const linhas = [...map.values()].map((g) => {
+      const nome = [...g.nomes.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
+      const uniq = (s: Set<string>) => (s.size === 0 ? "—" : s.size === 1 ? [...s][0] : "Vários");
+      return {
+        nome,
+        categoria: uniq(g.categorias),
+        subcategoria: uniq(g.subcategorias),
+        registros: g.registros,
+        quantidade: g.quantidade,
+        valorTotal: g.valorTotal,
+        valorMedio: g.quantidade > 0 ? g.valorTotal / g.quantidade : 0,
+      };
+    });
+    linhas.sort((a, b) =>
+      ordem === "nome" ? a.nome.localeCompare(b.nome, "pt-BR") : b.quantidade - a.quantidade || a.nome.localeCompare(b.nome, "pt-BR"),
+    );
+    return linhas;
+  }, [filtrados, ordem]);
+
   const totais = useMemo(() => {
     let qtd = 0;
     let valor = 0;
@@ -132,16 +179,22 @@ function PatrimonioRelatorios() {
       return;
     }
     setGerando(true);
+    const filtros = [
+      cat === "__all" ? "Todas as categorias" : `Categoria: ${cat}`,
+      sub === "__all" ? null : `Subcategoria: ${sub}`,
+      estado === "__all" ? null : `Estado: ${estado}`,
+      loc === "__all" ? null : `Localização: ${loc}`,
+      qd ? `Busca: "${qd}"` : null,
+    ].filter(Boolean) as string[];
     try {
+      if (modo === "consolidado") {
+        await gerarRelatorioPatrimonioConsolidadoPdf({ filtros, linhas: consolidado });
+        toast.success("Relatório gerado.");
+        return;
+      }
       await gerarRelatorioPatrimonioPdf({
         agruparPor: agrupar,
-        filtros: [
-          cat === "__all" ? "Todas as categorias" : `Categoria: ${cat}`,
-          sub === "__all" ? null : `Subcategoria: ${sub}`,
-          estado === "__all" ? null : `Estado: ${estado}`,
-          loc === "__all" ? null : `Localização: ${loc}`,
-          qd ? `Busca: "${qd}"` : null,
-        ].filter(Boolean) as string[],
+        filtros,
         itens: filtrados.map((i) => ({
           cod: i.cod,
           id_item: i.id_item,
@@ -226,18 +279,75 @@ function PatrimonioRelatorios() {
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Agrupar no PDF por</Label>
-          <Select value={agrupar} onValueChange={(v) => setAgrupar(v as typeof agrupar)}>
+          <Label className="text-xs text-muted-foreground">Visualização</Label>
+          <Select value={modo} onValueChange={(v) => setModo(v as typeof modo)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="categoria">Categoria</SelectItem>
-              <SelectItem value="subcategoria">Subcategoria</SelectItem>
-              <SelectItem value="nenhum">Sem agrupamento</SelectItem>
+              <SelectItem value="detalhado">Detalhado</SelectItem>
+              <SelectItem value="consolidado">Consolidado por nome</SelectItem>
             </SelectContent>
           </Select>
         </div>
+        {modo === "detalhado" ? (
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Agrupar no PDF por</Label>
+            <Select value={agrupar} onValueChange={(v) => setAgrupar(v as typeof agrupar)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="categoria">Categoria</SelectItem>
+                <SelectItem value="subcategoria">Subcategoria</SelectItem>
+                <SelectItem value="nenhum">Sem agrupamento</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Ordenar por</Label>
+            <Select value={ordem} onValueChange={(v) => setOrdem(v as typeof ordem)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="quantidade">Maior quantidade</SelectItem>
+                <SelectItem value="nome">Nome (A–Z)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </Card>
 
+      {modo === "consolidado" ? (
+        <Card className="overflow-auto">
+          <table className="w-full text-sm">
+            <thead className="text-xs uppercase tracking-wider text-muted-foreground bg-muted/40 sticky top-0">
+              <tr>
+                <th className="px-2 py-2 text-left">Item</th>
+                <th className="px-2 py-2 text-left">Categoria</th>
+                <th className="px-2 py-2 text-left">Subcategoria</th>
+                <th className="px-2 py-2 text-right">Registros</th>
+                <th className="px-2 py-2 text-right">Qtd. total</th>
+                <th className="px-2 py-2 text-right">Valor unit. médio</th>
+                <th className="px-2 py-2 text-right">Valor total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr><td colSpan={7} className="px-2 py-8 text-center text-muted-foreground">Carregando…</td></tr>
+              ) : consolidado.length === 0 ? (
+                <tr><td colSpan={7} className="px-2 py-8 text-center text-muted-foreground">Nenhum item com os filtros atuais.</td></tr>
+              ) : consolidado.map((l) => (
+                <tr key={l.nome} className="border-t border-border">
+                  <td className="px-2 py-1.5 font-medium">{l.nome}</td>
+                  <td className="px-2 py-1.5">{l.categoria}</td>
+                  <td className="px-2 py-1.5">{l.subcategoria}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{l.registros}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{l.quantidade.toLocaleString("pt-BR")}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{brl(l.valorMedio)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{brl(l.valorTotal)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      ) : (
       <Card className="overflow-auto">
         <table className="w-full text-sm">
           <thead className="text-xs uppercase tracking-wider text-muted-foreground bg-muted/40 sticky top-0">
@@ -279,6 +389,7 @@ function PatrimonioRelatorios() {
           </div>
         )}
       </Card>
+      )}
     </div>
   );
 }

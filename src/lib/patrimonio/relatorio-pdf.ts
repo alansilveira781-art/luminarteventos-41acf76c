@@ -189,3 +189,107 @@ export async function gerarRelatorioPatrimonioPdf(params: RelatorioPatrimonioPar
   const stamp = agora.toISOString().slice(0, 10);
   doc.save(`relatorio-patrimonio-${stamp}.pdf`);
 }
+
+export type RelatorioPatConsolidadoLinha = {
+  nome: string;
+  categoria: string;
+  subcategoria: string;
+  registros: number;
+  quantidade: number;
+  valorMedio: number;
+  valorTotal: number;
+};
+
+export async function gerarRelatorioPatrimonioConsolidadoPdf(params: {
+  filtros?: string[];
+  linhas: RelatorioPatConsolidadoLinha[];
+}) {
+  const { default: jsPDF } = await import("jspdf");
+  const autoTable = (await import("jspdf-autotable")).default;
+
+  const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const marginX = 12;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text("Grupo Luminart — Patrimônio por item", marginX, 15);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  let y = 21;
+  const filtros = (params.filtros ?? []).filter(Boolean);
+  if (filtros.length) {
+    const linhas = doc.splitTextToSize(`Filtros: ${filtros.join("  ·  ")}`, pageW - marginX * 2);
+    doc.text(linhas, marginX, y);
+    y += linhas.length * 4;
+  }
+  const agora = new Date();
+  doc.setTextColor(120);
+  doc.text(
+    `Gerado em ${agora.toLocaleDateString("pt-BR")} às ${agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`,
+    marginX,
+    y,
+  );
+  doc.setTextColor(0);
+  y += 4;
+
+  let totQtd = 0;
+  let totValor = 0;
+  const body: any[] = params.linhas.map((l) => {
+    totQtd += l.quantidade;
+    totValor += l.valorTotal;
+    return [
+      l.nome,
+      l.categoria,
+      String(l.registros),
+      num(l.quantidade),
+      brl(l.valorMedio),
+      brl(l.valorTotal),
+    ];
+  });
+
+  body.push([
+    {
+      content: `TOTAL GERAL (${params.linhas.length} ${params.linhas.length === 1 ? "item" : "itens"})`,
+      colSpan: 3,
+      styles: { fontStyle: "bold", halign: "right", fillColor: [55, 55, 55], textColor: 255 },
+    },
+    { content: num(totQtd), styles: { fontStyle: "bold", halign: "right", fillColor: [55, 55, 55], textColor: 255 } },
+    { content: "", styles: { fillColor: [55, 55, 55] } },
+    { content: brl(totValor), styles: { fontStyle: "bold", halign: "right", fillColor: [55, 55, 55], textColor: 255 } },
+  ]);
+
+  autoTable(doc, {
+    startY: y + 4,
+    head: [["Item", "Categoria", "Reg.", "Qtd.", "Valor unit. médio", "Valor total"]],
+    body,
+    theme: "grid",
+    styles: { fontSize: 8, cellPadding: 1.6, overflow: "linebreak" },
+    headStyles: { fillColor: [55, 55, 55], textColor: 255, fontSize: 8, fontStyle: "bold" },
+    columnStyles: {
+      0: { cellWidth: 68 },
+      1: { cellWidth: 34 },
+      2: { cellWidth: 14, halign: "right" },
+      3: { cellWidth: 20, halign: "right" },
+      4: { cellWidth: 26, halign: "right" },
+      5: { cellWidth: 24, halign: "right" },
+    },
+    margin: { left: marginX, right: marginX, bottom: 14 },
+  });
+
+  const pages = doc.getNumberOfPages();
+  for (let p = 1; p <= pages; p++) {
+    doc.setPage(p);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(130);
+    doc.text("Grupo Luminart — Patrimônio por item", marginX, pageH - 7);
+    doc.text(`Página ${p} de ${pages}`, pageW - marginX, pageH - 7, { align: "right" });
+  }
+  doc.setTextColor(0);
+
+  const stamp = agora.toISOString().slice(0, 10);
+  doc.save(`relatorio-patrimonio-consolidado-${stamp}.pdf`);
+}
