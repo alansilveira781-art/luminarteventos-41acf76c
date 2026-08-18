@@ -343,8 +343,11 @@ function PatrimonioRelatorios() {
               ) : consolidado.length === 0 ? (
                 <tr><td colSpan={7} className="px-2 py-8 text-center text-muted-foreground">Nenhum item com os filtros atuais.</td></tr>
               ) : consolidado.map((l) => (
-                <tr key={l.nome} className="border-t border-border">
-                  <td className="px-2 py-1.5 font-medium">{l.nome}</td>
+               <tr key={`${l.nome}|${l.especificacao}`} className="border-t border-border">
+                  <td className="px-2 py-1.5 font-medium">
+                    {l.nome}
+                    {l.especificacao && <span className="font-normal text-muted-foreground"> · {l.especificacao}</span>}
+                  </td>
                   <td className="px-2 py-1.5">{l.categoria}</td>
                   <td className="px-2 py-1.5">{l.subcategoria}</td>
                   <td className="px-2 py-1.5 text-right tabular-nums">{l.registros}</td>
