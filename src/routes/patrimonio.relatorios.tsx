@@ -116,6 +116,51 @@ function PatrimonioRelatorios() {
     });
   }, [itens, cat, sub, estado, loc, qd]);
 
+  const consolidado = useMemo(() => {
+    type G = {
+      nomes: Map<string, number>;
+      categorias: Set<string>;
+      subcategorias: Set<string>;
+      registros: number;
+      quantidade: number;
+      valorTotal: number;
+    };
+    const map = new Map<string, G>();
+    for (const i of filtrados) {
+      const chave = normalize(i.nome ?? "").replace(/\s+/g, " ").trim() || "—";
+      let g = map.get(chave);
+      if (!g) {
+        g = { nomes: new Map(), categorias: new Set(), subcategorias: new Set(), registros: 0, quantidade: 0, valorTotal: 0 };
+        map.set(chave, g);
+      }
+      const nome = (i.nome ?? "—").trim();
+      g.nomes.set(nome, (g.nomes.get(nome) ?? 0) + 1);
+      if (i.categoria) g.categorias.add(i.categoria);
+      if (i.subcategoria) g.subcategorias.add(i.subcategoria);
+      const qtd = Number(i.quantidade || 0);
+      g.registros += 1;
+      g.quantidade += qtd;
+      g.valorTotal += Number(i.valor || 0) * (qtd || 1);
+    }
+    const linhas = [...map.values()].map((g) => {
+      const nome = [...g.nomes.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
+      const uniq = (s: Set<string>) => (s.size === 0 ? "—" : s.size === 1 ? [...s][0] : "Vários");
+      return {
+        nome,
+        categoria: uniq(g.categorias),
+        subcategoria: uniq(g.subcategorias),
+        registros: g.registros,
+        quantidade: g.quantidade,
+        valorTotal: g.valorTotal,
+        valorMedio: g.quantidade > 0 ? g.valorTotal / g.quantidade : 0,
+      };
+    });
+    linhas.sort((a, b) =>
+      ordem === "nome" ? a.nome.localeCompare(b.nome, "pt-BR") : b.quantidade - a.quantidade || a.nome.localeCompare(b.nome, "pt-BR"),
+    );
+    return linhas;
+  }, [filtrados, ordem]);
+
   const totais = useMemo(() => {
     let qtd = 0;
     let valor = 0;
