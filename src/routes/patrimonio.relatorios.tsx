@@ -12,7 +12,7 @@ import { FileDown, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { normalize } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { gerarRelatorioPatrimonioPdf } from "@/lib/patrimonio/relatorio-pdf";
+import { gerarRelatorioPatrimonioPdf, gerarRelatorioPatrimonioConsolidadoPdf } from "@/lib/patrimonio/relatorio-pdf";
 
 export const Route = createFileRoute("/patrimonio/relatorios")({
   head: () => ({
