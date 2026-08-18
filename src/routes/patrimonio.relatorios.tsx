@@ -150,9 +150,11 @@ function PatrimonioRelatorios() {
     }
     const linhas = [...map.values()].map((g) => {
       const nome = [...g.nomes.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
+      const especificacao = [...g.especs.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
       const uniq = (s: Set<string>) => (s.size === 0 ? "—" : s.size === 1 ? [...s][0] : "Vários");
       return {
         nome,
+        especificacao,
         categoria: uniq(g.categorias),
         subcategoria: uniq(g.subcategorias),
         registros: g.registros,
