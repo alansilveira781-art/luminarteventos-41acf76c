@@ -192,6 +192,7 @@ export async function gerarRelatorioPatrimonioPdf(params: RelatorioPatrimonioPar
 
 export type RelatorioPatConsolidadoLinha = {
   nome: string;
+  especificacao?: string | null;
   categoria: string;
   subcategoria: string;
   registros: number;
@@ -241,7 +242,7 @@ export async function gerarRelatorioPatrimonioConsolidadoPdf(params: {
     totQtd += l.quantidade;
     totValor += l.valorTotal;
     return [
-      l.nome,
+      [l.nome ?? "—", l.especificacao].filter(Boolean).join(" · "),
       l.categoria,
       String(l.registros),
       num(l.quantidade),

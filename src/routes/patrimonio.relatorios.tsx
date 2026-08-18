@@ -121,6 +121,7 @@ function PatrimonioRelatorios() {
   const consolidado = useMemo(() => {
     type G = {
       nomes: Map<string, number>;
+      especs: Map<string, number>;
       categorias: Set<string>;
       subcategorias: Set<string>;
       registros: number;
@@ -128,15 +129,18 @@ function PatrimonioRelatorios() {
       valorTotal: number;
     };
     const map = new Map<string, G>();
+    const norm = (v: unknown) => normalize(v ?? "").replace(/\s+/g, " ").trim();
     for (const i of filtrados) {
-      const chave = normalize(i.nome ?? "").replace(/\s+/g, " ").trim() || "—";
+      const chave = `${norm(i.nome) || "—"}|${norm(i.especificacao)}`;
       let g = map.get(chave);
       if (!g) {
-        g = { nomes: new Map(), categorias: new Set(), subcategorias: new Set(), registros: 0, quantidade: 0, valorTotal: 0 };
+        g = { nomes: new Map(), especs: new Map(), categorias: new Set(), subcategorias: new Set(), registros: 0, quantidade: 0, valorTotal: 0 };
         map.set(chave, g);
       }
       const nome = (i.nome ?? "—").trim();
       g.nomes.set(nome, (g.nomes.get(nome) ?? 0) + 1);
+      const esp = (i.especificacao ?? "").trim();
+      if (esp) g.especs.set(esp, (g.especs.get(esp) ?? 0) + 1);
       if (i.categoria) g.categorias.add(i.categoria);
       if (i.subcategoria) g.subcategorias.add(i.subcategoria);
       const qtd = Number(i.quantidade || 0);
@@ -146,9 +150,11 @@ function PatrimonioRelatorios() {
     }
     const linhas = [...map.values()].map((g) => {
       const nome = [...g.nomes.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
+      const especificacao = [...g.especs.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
       const uniq = (s: Set<string>) => (s.size === 0 ? "—" : s.size === 1 ? [...s][0] : "Vários");
       return {
         nome,
+        especificacao,
         categoria: uniq(g.categorias),
         subcategoria: uniq(g.subcategorias),
         registros: g.registros,
@@ -157,8 +163,11 @@ function PatrimonioRelatorios() {
         valorMedio: g.quantidade > 0 ? g.valorTotal / g.quantidade : 0,
       };
     });
+    const rotulo = (l: { nome: string; especificacao: string }) => `${l.nome} ${l.especificacao}`.trim();
     linhas.sort((a, b) =>
-      ordem === "nome" ? a.nome.localeCompare(b.nome, "pt-BR") : b.quantidade - a.quantidade || a.nome.localeCompare(b.nome, "pt-BR"),
+      ordem === "nome"
+        ? rotulo(a).localeCompare(rotulo(b), "pt-BR")
+        : b.quantidade - a.quantidade || rotulo(a).localeCompare(rotulo(b), "pt-BR"),
     );
     return linhas;
   }, [filtrados, ordem]);
@@ -334,8 +343,11 @@ function PatrimonioRelatorios() {
               ) : consolidado.length === 0 ? (
                 <tr><td colSpan={7} className="px-2 py-8 text-center text-muted-foreground">Nenhum item com os filtros atuais.</td></tr>
               ) : consolidado.map((l) => (
-                <tr key={l.nome} className="border-t border-border">
-                  <td className="px-2 py-1.5 font-medium">{l.nome}</td>
+               <tr key={`${l.nome}|${l.especificacao}`} className="border-t border-border">
+                  <td className="px-2 py-1.5 font-medium">
+                    {l.nome}
+                    {l.especificacao && <span className="font-normal text-muted-foreground"> · {l.especificacao}</span>}
+                  </td>
                   <td className="px-2 py-1.5">{l.categoria}</td>
                   <td className="px-2 py-1.5">{l.subcategoria}</td>
                   <td className="px-2 py-1.5 text-right tabular-nums">{l.registros}</td>
