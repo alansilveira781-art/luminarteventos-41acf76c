@@ -163,8 +163,11 @@ function PatrimonioRelatorios() {
         valorMedio: g.quantidade > 0 ? g.valorTotal / g.quantidade : 0,
       };
     });
+    const rotulo = (l: { nome: string; especificacao: string }) => `${l.nome} ${l.especificacao}`.trim();
     linhas.sort((a, b) =>
-      ordem === "nome" ? a.nome.localeCompare(b.nome, "pt-BR") : b.quantidade - a.quantidade || a.nome.localeCompare(b.nome, "pt-BR"),
+      ordem === "nome"
+        ? rotulo(a).localeCompare(rotulo(b), "pt-BR")
+        : b.quantidade - a.quantidade || rotulo(a).localeCompare(rotulo(b), "pt-BR"),
     );
     return linhas;
   }, [filtrados, ordem]);
