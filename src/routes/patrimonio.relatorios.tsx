@@ -179,16 +179,22 @@ function PatrimonioRelatorios() {
       return;
     }
     setGerando(true);
+    const filtros = [
+      cat === "__all" ? "Todas as categorias" : `Categoria: ${cat}`,
+      sub === "__all" ? null : `Subcategoria: ${sub}`,
+      estado === "__all" ? null : `Estado: ${estado}`,
+      loc === "__all" ? null : `Localização: ${loc}`,
+      qd ? `Busca: "${qd}"` : null,
+    ].filter(Boolean) as string[];
     try {
+      if (modo === "consolidado") {
+        await gerarRelatorioPatrimonioConsolidadoPdf({ filtros, linhas: consolidado });
+        toast.success("Relatório gerado.");
+        return;
+      }
       await gerarRelatorioPatrimonioPdf({
         agruparPor: agrupar,
-        filtros: [
-          cat === "__all" ? "Todas as categorias" : `Categoria: ${cat}`,
-          sub === "__all" ? null : `Subcategoria: ${sub}`,
-          estado === "__all" ? null : `Estado: ${estado}`,
-          loc === "__all" ? null : `Localização: ${loc}`,
-          qd ? `Busca: "${qd}"` : null,
-        ].filter(Boolean) as string[],
+        filtros,
         itens: filtrados.map((i) => ({
           cod: i.cod,
           id_item: i.id_item,
