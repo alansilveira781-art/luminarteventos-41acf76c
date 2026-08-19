@@ -187,6 +187,8 @@ function QuadroContratos() {
     const status = overId as Status;
     const card = rows.find((r) => r.id === id);
     if (!card || card.status === status) return;
+    // Retrocesso: sempre pede confirmação e registra o motivo.
+    if (ordemStatus(status) < ordemStatus(card.status)) { setVoltar({ card, to: status }); return; }
     if (status === "criacao") { setCriacaoCard(card); return; }
     if (status === "concluido") { setConcluirCard(card); return; }
     if (status === "assinatura" && !card.clicksign_document_key) { setAssinaturaCard(card); return; }
@@ -196,6 +198,41 @@ function QuadroContratos() {
     const { error } = await sb.from("juridico_contratos").update(patch).eq("id", id);
     if (error) { toast.error(error.message); load(); }
   }
+
+  async function confirmarVolta(motivo: string) {
+    if (!voltar) return;
+    const { card, to } = voltar;
+    const precisaCancelar = card.status === "assinatura" && !!card.clicksign_document_key;
+    try {
+      if (precisaCancelar) {
+        await cancelarAssinaturaFn({ data: { contratoId: card.id, motivo } });
+      }
+      if (!precisaCancelar || to !== "validacao") {
+        const { error } = await sb
+          .from("juridico_contratos")
+          .update({ status: to, ...(to === "assinatura" ? {} : { data_assinatura: null }) })
+          .eq("id", card.id);
+        if (error) throw new Error(error.message);
+      }
+      await sb.from("juridico_historico").insert({
+        contrato_id: card.id,
+        user_id: user?.id ?? null,
+        acao: `voltou o card de ${STATUS_LABELS[card.status]} para ${STATUS_LABELS[to]}`,
+        detalhe: motivo?.trim() || null,
+        status_anterior: card.status,
+        status_novo: to,
+      });
+      toast.success(
+        precisaCancelar ? "Assinatura cancelada e card devolvido" : "Card voltado com registro no histórico",
+      );
+      setVoltar(null);
+      await load();
+    } catch (err: any) {
+      toast.error(err?.message ?? "Não foi possível voltar o card");
+      throw err;
+    }
+  }
+
 
 
   async function aplicarCriacao(patch: Record<string, any>) {
