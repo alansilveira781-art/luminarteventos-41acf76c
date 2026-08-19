@@ -30,7 +30,7 @@ async function call(path: string, init: RequestInit & { method: string }) {
   const text = await res.text();
   if (!res.ok) {
     console.error(`Clicksign ${init.method} ${path} falhou [${res.status}]: ${text}`);
-    throw new Error(`Clicksign [${res.status}]: ${text.slice(0, 500)}`);
+    throw new Error(mensagemErro(res.status, text));
   }
   return text ? JSON.parse(text) : {};
 }
