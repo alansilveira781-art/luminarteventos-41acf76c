@@ -24,6 +24,8 @@ import { EMPRESAS } from "@/lib/empresas";
 import { DefinirCategoriaDialog, CATEGORIAS_CONTRATO } from "@/components/juridico/DefinirCategoriaDialog";
 import { ConcluirContratoWizard } from "@/components/juridico/ConcluirContratoWizard";
 import { EnderecoEditor } from "@/components/juridico/EnderecoEditor";
+import { EnviarAssinaturaDialog } from "@/components/juridico/EnviarAssinaturaDialog";
+
 import { PagamentoEditor } from "@/components/juridico/PagamentoEditor";
 import { toast } from "sonner";
 
