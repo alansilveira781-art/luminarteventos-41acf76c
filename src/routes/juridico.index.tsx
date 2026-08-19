@@ -260,8 +260,11 @@ function QuadroContratos() {
                   card={c}
                   onOpen={() => setEditing(c)}
                   onDelete={() => onDelete(c.id)}
+                  onEnviarAssinatura={() => setAssinaturaCard(c)}
+                  onValidar={() => setConcluirCard(c)}
                 />
               ))}
+
             </Column>
           ))}
         </div>
