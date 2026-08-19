@@ -84,9 +84,9 @@ function signatariosDoContrato(c: any): Signatario[] {
   return out;
 }
 
-async function pdfDoContrato(contrato: any): Promise<{ base64: string; nomeArquivo: string }> {
-  if ((contrato?.corpo_html ?? "").trim()) {
-    return gerarContratoPdfBase64(contrato.titulo ?? "Contrato", contrato.corpo_html);
+async function pdfDoContrato(contrato: any, html: string): Promise<{ base64: string; nomeArquivo: string }> {
+  if ((html ?? "").trim()) {
+    return gerarContratoPdfBase64(contrato.titulo ?? "Contrato", limparCamposVazios(html));
   }
   // Sem corpo próprio: usa o contrato anexado ao card.
   const { data: anexos } = await sb
