@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import timbrado from "@/assets/timbrado-luminart.png.asset.json";
+import { ehCabecalhoClausula } from "./modelo-render";
 
 /** Converte o HTML do contrato em blocos de texto simples preservando parágrafos e listas. */
 export function htmlParaBlocos(html: string): { texto: string; negrito: boolean; titulo: boolean }[] {
@@ -11,6 +12,15 @@ export function htmlParaBlocos(html: string): { texto: string; negrito: boolean;
     if (t) blocos.push({ texto: t, negrito, titulo });
   };
 
+  const pushParagrafo = (el: HTMLElement) => {
+    const texto = el.textContent ?? "";
+    const jaNegrito = !!el.querySelector("strong, b") &&
+      (el.textContent ?? "").trim() ===
+        (el.querySelector("strong, b")?.textContent ?? "").trim();
+    if (ehCabecalhoClausula(texto, jaNegrito)) return push(texto, true, true);
+    push(texto);
+  };
+
   const walk = (node: Node) => {
     node.childNodes.forEach((child) => {
       if (child.nodeType === Node.TEXT_NODE) return;
@@ -18,11 +28,11 @@ export function htmlParaBlocos(html: string): { texto: string; negrito: boolean;
       const tag = el.tagName?.toLowerCase();
       if (!tag) return;
       if (["h1", "h2", "h3"].includes(tag)) return push(el.textContent ?? "", true, true);
-      if (tag === "p" || tag === "blockquote") return push(el.textContent ?? "");
+      if (tag === "p" || tag === "blockquote") return pushParagrafo(el);
       if (tag === "li") return push(`• ${el.textContent ?? ""}`);
       if (["ul", "ol", "div", "table", "tbody", "thead", "tr"].includes(tag)) return walk(el);
       if (tag === "td" || tag === "th") return push(el.textContent ?? "");
-      push(el.textContent ?? "");
+      pushParagrafo(el);
     });
   };
 
@@ -30,6 +40,13 @@ export function htmlParaBlocos(html: string): { texto: string; negrito: boolean;
   if (blocos.length === 0) push(doc.body.textContent ?? "");
   return blocos;
 }
+
+/** Espaçamento padrão do contrato (mm). */
+const ALTURA_LINHA = 5;
+const ALTURA_LINHA_TITULO = 5.6;
+const ESPACO_ANTES_TITULO = 4.5;
+const ESPACO_DEPOIS_TITULO = 2;
+const ESPACO_PARAGRAFO = 2.6;
 
 const RODAPE_LINHAS = [
   "Av. Maestro Lisboa, 2181 — Lagoa Redonda — Fortaleza / CE — CEP 60810-670",
@@ -89,18 +106,34 @@ export async function gerarContratoPdfBase64(
   doc.text(tituloLinhas, margem, y);
   y += tituloLinhas.length * 6 + 4;
 
-  for (const bloco of htmlParaBlocos(html)) {
+  const blocos = htmlParaBlocos(html);
+  blocos.forEach((bloco, i) => {
     doc.setFont("helvetica", bloco.negrito ? "bold" : "normal");
     doc.setFontSize(bloco.titulo ? 11 : 10);
     const linhas = doc.splitTextToSize(bloco.texto, largura);
-    const alturaLinha = bloco.titulo ? 6 : 5;
-    for (const linha of linhas) {
-      quebra(alturaLinha);
+    const alturaLinha = bloco.titulo ? ALTURA_LINHA_TITULO : ALTURA_LINHA;
+
+    if (bloco.titulo && y > topoConteudo) y += ESPACO_ANTES_TITULO;
+
+    // Um cabeçalho nunca fica sozinho no fim da página.
+    const alturaMinima = bloco.titulo
+      ? linhas.length * alturaLinha + ESPACO_DEPOIS_TITULO + ALTURA_LINHA
+      : alturaLinha;
+    quebra(alturaMinima);
+
+    linhas.forEach((linha: string, idx: number) => {
+      if (!(bloco.titulo && idx === 0)) quebra(alturaLinha);
       doc.text(linha, margem, y, { align: "justify", maxWidth: largura });
       y += alturaLinha;
-    }
-    y += bloco.titulo ? 3 : 2;
-  }
+    });
+
+    const proximo = blocos[i + 1];
+    y += bloco.titulo
+      ? ESPACO_DEPOIS_TITULO
+      : proximo?.titulo
+        ? 0
+        : ESPACO_PARAGRAFO;
+  });
 
   // Cabeçalho e rodapé do papel timbrado em todas as páginas.
   const total = doc.getNumberOfPages();
