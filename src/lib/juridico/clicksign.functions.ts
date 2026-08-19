@@ -154,10 +154,17 @@ export const cancelarAssinatura = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    let aviso: string | null = null;
     if (c.clicksign_document_key) {
       const cs = await import("./clicksign.server");
-      await cs.cancelarDocumento(c.clicksign_document_key);
+      try {
+        await cs.cancelarDocumento(c.clicksign_document_key);
+      } catch (err: any) {
+        // Documento já finalizado/cancelado/removido no Clicksign: seguimos com a limpeza local.
+        aviso = String(err?.message ?? err);
+      }
     }
+
 
     await supabaseAdmin.from("juridico_assinaturas").delete().eq("contrato_id", data.contratoId);
 
@@ -178,9 +185,11 @@ export const cancelarAssinatura = createServerFn({ method: "POST" })
     await supabaseAdmin.from("juridico_historico").insert({
       contrato_id: data.contratoId,
       user_id: userId,
-      acao: "cancelou o envio para assinatura (Clicksign)",
-      detalhe: data.motivo?.trim() || undefined,
+      acao: aviso
+        ? "voltou o card de Assinatura (documento não pôde ser cancelado no Clicksign)"
+        : "cancelou o envio para assinatura (Clicksign)",
+      detalhe: [data.motivo?.trim() || null, aviso].filter(Boolean).join(" — ") || undefined,
     });
 
-    return { ok: true as const };
+    return { ok: true as const, aviso };
   });
