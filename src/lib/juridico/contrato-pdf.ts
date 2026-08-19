@@ -150,6 +150,78 @@ export async function gerarContratoPdfBase64(
     }
   };
 
+  type Palavra = { txt: string; bold: boolean };
+
+  /** Quebra os tokens em linhas respeitando a largura disponível. */
+  const quebrarLinhas = (palavras: Palavra[], larguraDisp: number): Palavra[][] => {
+    const linhas: Palavra[][] = [];
+    let atual: Palavra[] = [];
+    let usado = 0;
+    const larguraDe = (p: Palavra) => {
+      doc.setFont("helvetica", p.bold ? "bold" : "normal");
+      return doc.getTextWidth(p.txt);
+    };
+    const espaco = () => {
+      doc.setFont("helvetica", "normal");
+      return doc.getTextWidth(" ");
+    };
+    palavras.forEach((p) => {
+      const w = larguraDe(p);
+      const extra = atual.length ? espaco() + w : w;
+      if (atual.length && usado + extra > larguraDisp) {
+        linhas.push(atual);
+        atual = [p];
+        usado = w;
+      } else {
+        atual.push(p);
+        usado += extra;
+      }
+    });
+    if (atual.length) linhas.push(atual);
+    return linhas;
+  };
+
+  /** Escreve uma linha justificada (a última linha do parágrafo fica alinhada à esquerda). */
+  const escreverLinha = (
+    linha: Palavra[],
+    x: number,
+    larguraDisp: number,
+    justificar: boolean,
+  ) => {
+    doc.setFont("helvetica", "normal");
+    const espacoBase = doc.getTextWidth(" ");
+    const larguraTexto = linha.reduce((acc, p) => {
+      doc.setFont("helvetica", p.bold ? "bold" : "normal");
+      return acc + doc.getTextWidth(p.txt);
+    }, 0);
+    const vaos = linha.length - 1;
+    let espaco = espacoBase;
+    if (justificar && vaos > 0) {
+      const calc = (larguraDisp - larguraTexto) / vaos;
+      // Evita linhas com espaçamento exagerado (palavras muito longas).
+      espaco = calc > espacoBase * 3 ? espacoBase : calc;
+    }
+    let cursor = x;
+    linha.forEach((p) => {
+      doc.setFont("helvetica", p.bold ? "bold" : "normal");
+      doc.text(p.txt, cursor, y);
+      cursor += doc.getTextWidth(p.txt) + espaco;
+    });
+  };
+
+  const tokens = (bloco: BlocoContrato): Palavra[] => {
+    const rotulo = bloco.tipo === "clausula" ? bloco.rotulo : undefined;
+    const bold = bloco.tipo === "titulo";
+    if (rotulo && bloco.texto.trimStart().startsWith(rotulo)) {
+      const resto = bloco.texto.trimStart().slice(rotulo.length).trim();
+      return [
+        ...rotulo.split(/\s+/).filter(Boolean).map((txt) => ({ txt, bold: true })),
+        ...resto.split(/\s+/).filter(Boolean).map((txt) => ({ txt, bold: false })),
+      ];
+    }
+    return bloco.texto.split(/\s+/).filter(Boolean).map((txt) => ({ txt, bold }));
+  };
+
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
   const tituloLinhas = doc.splitTextToSize(titulo || "Contrato", largura);
@@ -158,32 +230,38 @@ export async function gerarContratoPdfBase64(
 
   const blocos = htmlParaBlocos(html);
   blocos.forEach((bloco, i) => {
-    doc.setFont("helvetica", bloco.negrito ? "bold" : "normal");
-    doc.setFontSize(bloco.titulo ? 11 : 10);
-    const linhas = doc.splitTextToSize(bloco.texto, largura);
-    const alturaLinha = bloco.titulo ? ALTURA_LINHA_TITULO : ALTURA_LINHA;
+    const ehTitulo = bloco.tipo === "titulo";
+    doc.setFontSize(ehTitulo ? TAMANHO_TITULO : TAMANHO_CORPO);
+    const recuo = bloco.tipo === "lista" ? RECUO_LISTA * Math.max(1, bloco.nivel ?? 1) : 0;
+    const x = margem + recuo;
+    const larguraDisp = largura - recuo;
+    const alturaLinha = ehTitulo ? ALTURA_LINHA_TITULO : ALTURA_LINHA;
+    const linhas = quebrarLinhas(tokens(bloco), larguraDisp);
 
-    if (bloco.titulo && y > topoConteudo) y += ESPACO_ANTES_TITULO;
+    if (ehTitulo && y > topoConteudo) y += ESPACO_ANTES_TITULO;
 
-    // Um cabeçalho nunca fica sozinho no fim da página.
-    const alturaMinima = bloco.titulo
+    // Um título nunca fica sozinho no fim da página.
+    const alturaMinima = ehTitulo
       ? linhas.length * alturaLinha + ESPACO_DEPOIS_TITULO + ALTURA_LINHA
       : alturaLinha;
     quebra(alturaMinima);
 
-    linhas.forEach((linha: string, idx: number) => {
-      if (!(bloco.titulo && idx === 0)) quebra(alturaLinha);
-      doc.text(linha, margem, y, { align: "justify", maxWidth: largura });
+    linhas.forEach((linha, idx) => {
+      if (!(ehTitulo && idx === 0)) quebra(alturaLinha);
+      escreverLinha(linha, x, larguraDisp, !ehTitulo && idx < linhas.length - 1);
       y += alturaLinha;
     });
 
     const proximo = blocos[i + 1];
-    y += bloco.titulo
+    y += ehTitulo
       ? ESPACO_DEPOIS_TITULO
-      : proximo?.titulo
+      : proximo?.tipo === "titulo"
         ? 0
-        : ESPACO_PARAGRAFO;
+        : proximo?.tipo === "lista" && bloco.tipo === "lista"
+          ? ESPACO_PARAGRAFO / 2
+          : ESPACO_PARAGRAFO;
   });
+
 
   // Cabeçalho e rodapé do papel timbrado em todas as páginas.
   const total = doc.getNumberOfPages();
