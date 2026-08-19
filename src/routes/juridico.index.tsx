@@ -106,8 +106,13 @@ type Contrato = {
   corpo_html: string | null;
   categoria?: string | null;
   variaveis_valores?: Record<string, string> | null;
-
+  clicksign_document_key?: string | null;
+  clicksign_status?: string | null;
+  clicksign_enviado_em?: string | null;
+  clicksign_assinado_em?: string | null;
+  clicksign_erro?: string | null;
 };
+
 
 export function contratoCodigo(c: Pick<Contrato, "tipo" | "numero">) {
   const t = (c.tipo || "contrato").toUpperCase();
