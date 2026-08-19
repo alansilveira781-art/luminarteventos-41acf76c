@@ -337,6 +337,8 @@ export const CAMPOS_OBRIGATORIOS = [
   "valor_total",
   "empresa_razao_social",
   "empresa_cnpj",
+  "representante_legal",
+  "resp_legal_documento",
 ];
 
 /** Lista os campos do modelo que continuam sem valor. */
@@ -346,10 +348,84 @@ export function camposPendentes(html: string, valores: Record<string, any>): str
 
 /** Remove os marcadores que sobraram sem valor (usado antes de gerar o PDF final). */
 export function limparCamposVazios(html: string): string {
-  return sanitizeHtml(
+  return sanitizeHtml(normalizarPontuacao(removerParagrafosVazios(
     (html ?? "")
       .replace(/<mark class="modelo-campo-vazio">\[[^\]]*\]<\/mark>/g, "")
       .replace(RE_COLCHETE, "")
       .replace(RE_CHAVES, ""),
-  );
+  )));
 }
+
+const RE_PLACEHOLDER_ANY = /\[([^\[\]<>\n]{2,60})\]|\{\{\s*([^{}<>\n]{1,60})\s*\}\}/g;
+
+function placeholdersDe(txt: string): string[] {
+  const out: string[] = [];
+  const re = new RegExp(RE_PLACEHOLDER_ANY);
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(txt))) {
+    const k = normalizarCampo(m[1] ?? m[2] ?? "");
+    if (k) out.push(k);
+  }
+  return out;
+}
+
+const temValor = (valores: Record<string, any>, campo: string) =>
+  String(valores?.[campo] ?? "").trim().length > 0;
+
+function removerParagrafosVazios(html: string): string {
+  return (html ?? "")
+    .replace(/<(p|li|h[1-6]|div)([^>]*)>(\s|&nbsp;|<br\s*\/?>)*<\/\1>/gi, "")
+    .replace(/(<br\s*\/?>\s*){3,}/gi, "<br><br>");
+}
+
+function normalizarPontuacao(html: string): string {
+  return (html ?? "")
+    .replace(/[ \t\u00a0]{2,}/g, " ")
+    .replace(/ +([.,;:])/g, "$1")
+    .replace(/(?:[,;]\s*)+\./g, ".")
+    .replace(/\.\s*(?:[,;]\s*)+/g, ". ")
+    .replace(/\s+[eE]\s*\./g, ".")
+    .replace(/(^|>)[\s.,;:]+(<|$)/g, "$1$2");
+}
+
+/**
+ * Remove as frases/linhas do modelo cujos campos estão todos vazios
+ * (testemunhas, 2º representante etc.) antes de renderizar o contrato final.
+ */
+export function limparTrechosOpcionais(html: string, valores: Record<string, any>): string {
+  const blocos = (html ?? "").split(/(<\/p>|<br\s*\/?>|<\/li>|<\/div>|<\/h[1-6]>)/i);
+
+  const limpo = blocos
+    .map((bloco, i) => {
+      if (i % 2 === 1) return bloco; // delimitador
+      const campos = placeholdersDe(bloco);
+      if (!campos.length) return bloco;
+
+      // Bloco inteiro sem nenhum campo preenchido → some (rótulo incluído).
+      if (campos.every((c) => !temValor(valores, c))) {
+        const textoFixo = bloco
+          .replace(/<[^>]+>/g, "")
+          .replace(RE_PLACEHOLDER_ANY, "")
+          .replace(/[\s:;.,\-—_]/g, "");
+        // Só remove quando o que sobra é rótulo curto (ex.: "TESTEMUNHA", "CPF").
+        if (textoFixo.length <= 40) return "";
+      }
+
+      // Caso contrário, remove apenas as frases sem nenhum campo preenchido.
+      return bloco.replace(/[^.!?]*[.!?]+/g, (frase) => {
+        const c = placeholdersDe(frase);
+        if (!c.length) return frase;
+        if (c.some((k) => temValor(valores, k))) return frase;
+        return "";
+      });
+    })
+    .join("");
+
+  return removerParagrafosVazios(limpo);
+}
+
+/** Renderiza o contrato já sem os trechos opcionais vazios (PDF / envio). */
+export function renderizarContratoFinal(html: string, valores: Record<string, string>): string {
+  return limparCamposVazios(renderizarModelo(limparTrechosOpcionais(html, valores), valores));
+}
+
