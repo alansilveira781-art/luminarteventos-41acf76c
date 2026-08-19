@@ -140,6 +140,7 @@ function blocoAssinaturas(c: ContratoDados, empresa?: EmpresaContratada | null):
 }
 
 
+
 const fmtHora = (h?: string | null) => (h ? String(h).slice(0, 5) : "");
 
 /** Texto pronto de um período: "10/09/2026 a 12/09/2026, das 08h00 às 18h00". */
