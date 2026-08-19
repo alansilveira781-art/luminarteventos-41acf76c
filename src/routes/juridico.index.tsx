@@ -132,6 +132,8 @@ function QuadroContratos() {
   const [defaultStatus, setDefaultStatus] = useState<Status>("entrada");
   const [criacaoCard, setCriacaoCard] = useState<Contrato | null>(null);
   const [concluirCard, setConcluirCard] = useState<Contrato | null>(null);
+  const [assinaturaCard, setAssinaturaCard] = useState<Contrato | null>(null);
+
 
 
   const load = async () => {
