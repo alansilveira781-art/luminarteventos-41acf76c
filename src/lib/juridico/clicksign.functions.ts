@@ -185,9 +185,11 @@ export const cancelarAssinatura = createServerFn({ method: "POST" })
     await supabaseAdmin.from("juridico_historico").insert({
       contrato_id: data.contratoId,
       user_id: userId,
-      acao: "cancelou o envio para assinatura (Clicksign)",
-      detalhe: data.motivo?.trim() || undefined,
+      acao: aviso
+        ? "voltou o card de Assinatura (documento não pôde ser cancelado no Clicksign)"
+        : "cancelou o envio para assinatura (Clicksign)",
+      detalhe: [data.motivo?.trim() || null, aviso].filter(Boolean).join(" — ") || undefined,
     });
 
-    return { ok: true as const };
+    return { ok: true as const, aviso };
   });
