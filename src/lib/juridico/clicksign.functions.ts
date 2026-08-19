@@ -154,10 +154,17 @@ export const cancelarAssinatura = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    let aviso: string | null = null;
     if (c.clicksign_document_key) {
       const cs = await import("./clicksign.server");
-      await cs.cancelarDocumento(c.clicksign_document_key);
+      try {
+        await cs.cancelarDocumento(c.clicksign_document_key);
+      } catch (err: any) {
+        // Documento já finalizado/cancelado/removido no Clicksign: seguimos com a limpeza local.
+        aviso = String(err?.message ?? err);
+      }
     }
+
 
     await supabaseAdmin.from("juridico_assinaturas").delete().eq("contrato_id", data.contratoId);
 
