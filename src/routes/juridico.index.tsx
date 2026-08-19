@@ -45,6 +45,7 @@ const STATUSES = [
 ] as const;
 type Status = typeof STATUSES[number]["key"];
 const STATUS_LABELS: Record<string, string> = STATUSES.reduce((a, s) => ({ ...a, [s.key]: s.label }), {});
+const ordemStatus = (s: string) => STATUSES.findIndex((x) => x.key === s);
 
 type Contrato = {
   id: string;
