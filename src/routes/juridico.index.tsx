@@ -337,9 +337,25 @@ function Column({ statusKey, label, color, count, children, footer }: {
   );
 }
 
-function Card({ card, onOpen, onDelete }: { card: Contrato; onOpen: () => void; onDelete: () => void }) {
+const CLICKSIGN_LABEL: Record<string, string> = {
+  enviado: "Aguardando assinaturas",
+  parcial: "Parcialmente assinado",
+  assinado: "Assinado pelo cliente",
+  recusado: "Assinatura recusada",
+  erro: "Erro no envio",
+};
+
+function Card({ card, onOpen, onDelete, onEnviarAssinatura, onValidar }: {
+  card: Contrato;
+  onOpen: () => void;
+  onDelete: () => void;
+  onEnviarAssinatura?: () => void;
+  onValidar?: () => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
+  const cs = card.clicksign_status ?? null;
+  const assinado = cs === "assinado";
   return (
     <div
       ref={setNodeRef}
@@ -347,7 +363,9 @@ function Card({ card, onOpen, onDelete }: { card: Contrato; onOpen: () => void; 
       {...listeners}
       {...attributes}
       onClick={onOpen}
-      className={`rounded-md border border-border bg-card p-2.5 text-xs shadow-sm cursor-grab active:cursor-grabbing ${isDragging ? "opacity-50" : ""}`}
+      className={`rounded-md border p-2.5 text-xs shadow-sm cursor-grab active:cursor-grabbing ${
+        assinado ? "border-amber-500 bg-amber-500/15 ring-1 ring-amber-500/40" : "border-border bg-card"
+      } ${isDragging ? "opacity-50" : ""}`}
     >
       <div className="flex items-start gap-2">
         <span aria-hidden className="text-muted-foreground select-none">⋮⋮</span>
@@ -364,8 +382,46 @@ function Card({ card, onOpen, onDelete }: { card: Contrato; onOpen: () => void; 
             {card.responsavel && <div>Resp.: {card.responsavel}</div>}
             {!!card.valor && <div className="font-medium text-foreground">{brl(card.valor)}</div>}
             {card.proposta_numero && <div>Proposta #{card.proposta_numero}</div>}
-
           </div>
+
+          {cs && (
+            <div
+              className={`mt-1.5 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                assinado
+                  ? "bg-amber-500/25 text-amber-800 dark:text-amber-200"
+                  : cs === "recusado" || cs === "erro"
+                  ? "bg-rose-500/15 text-rose-600"
+                  : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {CLICKSIGN_LABEL[cs] ?? cs}
+            </div>
+          )}
+          {cs === "erro" && card.clicksign_erro && (
+            <div className="text-[10px] text-rose-600 mt-0.5 line-clamp-2">{card.clicksign_erro}</div>
+          )}
+
+          {assinado && onValidar && (
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); onValidar(); }}
+              className="mt-2 w-full rounded bg-amber-500 px-2 py-1 text-[11px] font-semibold text-amber-950 hover:bg-amber-400"
+            >
+              Validar contrato assinado
+            </button>
+          )}
+          {!card.clicksign_document_key && card.status === "assinatura" && onEnviarAssinatura && (
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); onEnviarAssinatura(); }}
+              className="mt-2 w-full rounded border border-dashed border-primary px-2 py-1 text-[11px] font-medium text-primary hover:bg-primary/10"
+            >
+              Enviar para assinatura
+            </button>
+          )}
+
           <div className="flex gap-1 mt-2">
             <button
               type="button"
