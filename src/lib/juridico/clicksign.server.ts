@@ -75,12 +75,20 @@ async function call(path: string, init: RequestInit & { method: string }) {
 
 /** Cria o documento a partir de um PDF em base64 (sem prefixo data:). */
 export async function criarDocumento(nomeArquivo: string, pdfBase64: string) {
-  const safe = nomeArquivo.replace(/[^a-zA-Z0-9._-]/g, "_");
+  // Mantém o nome legível (acentos removidos, espaços e hífens preservados).
+  const safe =
+    nomeArquivo
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9._ -]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim() || "contrato.pdf";
+  const nomeFinal = safe.toLowerCase().endsWith(".pdf") ? safe : `${safe}.pdf`;
   const json = await call("/api/v1/documents", {
     method: "POST",
     body: JSON.stringify({
       document: {
-        path: `/Contratos/${Date.now()}_${safe}`,
+        path: `/Contratos/${Date.now()}/${nomeFinal}`,
         content_base64: `data:application/pdf;base64,${pdfBase64}`,
         deadline_at: null,
         auto_close: true,
