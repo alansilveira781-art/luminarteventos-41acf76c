@@ -106,18 +106,34 @@ export async function gerarContratoPdfBase64(
   doc.text(tituloLinhas, margem, y);
   y += tituloLinhas.length * 6 + 4;
 
-  for (const bloco of htmlParaBlocos(html)) {
+  const blocos = htmlParaBlocos(html);
+  blocos.forEach((bloco, i) => {
     doc.setFont("helvetica", bloco.negrito ? "bold" : "normal");
     doc.setFontSize(bloco.titulo ? 11 : 10);
     const linhas = doc.splitTextToSize(bloco.texto, largura);
-    const alturaLinha = bloco.titulo ? 6 : 5;
-    for (const linha of linhas) {
-      quebra(alturaLinha);
+    const alturaLinha = bloco.titulo ? ALTURA_LINHA_TITULO : ALTURA_LINHA;
+
+    if (bloco.titulo && y > topoConteudo) y += ESPACO_ANTES_TITULO;
+
+    // Um cabeçalho nunca fica sozinho no fim da página.
+    const alturaMinima = bloco.titulo
+      ? linhas.length * alturaLinha + ESPACO_DEPOIS_TITULO + ALTURA_LINHA
+      : alturaLinha;
+    quebra(alturaMinima);
+
+    linhas.forEach((linha: string, idx: number) => {
+      if (!(bloco.titulo && idx === 0)) quebra(alturaLinha);
       doc.text(linha, margem, y, { align: "justify", maxWidth: largura });
       y += alturaLinha;
-    }
-    y += bloco.titulo ? 3 : 2;
-  }
+    });
+
+    const proximo = blocos[i + 1];
+    y += bloco.titulo
+      ? ESPACO_DEPOIS_TITULO
+      : proximo?.titulo
+        ? 0
+        : ESPACO_PARAGRAFO;
+  });
 
   // Cabeçalho e rodapé do papel timbrado em todas as páginas.
   const total = doc.getNumberOfPages();
