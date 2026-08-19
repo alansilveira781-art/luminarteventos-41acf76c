@@ -294,11 +294,19 @@ function PatrimonioRelatorios() {
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Visualização</Label>
-          <Select value={modo} onValueChange={(v) => setModo(v as typeof modo)}>
+          <Select
+            value={modo}
+            onValueChange={(v) => {
+              const m = v as typeof modo;
+              setModo(m);
+              if (m === "conferencia") setOrdem("nome");
+            }}
+          >
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="detalhado">Detalhado</SelectItem>
               <SelectItem value="consolidado">Consolidado por nome</SelectItem>
+              <SelectItem value="conferencia">Conferência (folha de contagem)</SelectItem>
             </SelectContent>
           </Select>
         </div>
