@@ -21,6 +21,44 @@ function token() {
   return t;
 }
 
+/** Traduz os erros da API do Clicksign para mensagens claras ao usuário. */
+function mensagemErro(status: number, corpo: string): string {
+  let detalhes = "";
+  try {
+    const json = JSON.parse(corpo);
+    const errs = json?.errors ?? json?.error;
+    if (Array.isArray(errs)) {
+      detalhes = errs
+        .map((e: any) => (typeof e === "string" ? e : (e?.detail ?? e?.title ?? JSON.stringify(e))))
+        .join("; ");
+    } else if (typeof errs === "string") {
+      detalhes = errs;
+    } else if (errs && typeof errs === "object") {
+      detalhes = Object.entries(errs)
+        .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : String(v)}`)
+        .join("; ");
+    }
+  } catch {
+    detalhes = corpo.slice(0, 200);
+  }
+
+  const ambiente = baseUrl().includes("sandbox") ? "sandbox" : "produção";
+  const base =
+    status === 401 || status === 403
+      ? `Token do Clicksign inválido para o ambiente ${ambiente}. Verifique se o token foi gerado nesse ambiente (Configurações → API) e se ainda está ativo.`
+      : status === 404
+        ? "Recurso não encontrado no Clicksign (documento ou signatário pode ter sido removido)."
+        : status === 422
+          ? "O Clicksign recusou os dados enviados. Confira nome, e-mail e CPF/CNPJ dos signatários e o arquivo do contrato."
+          : status === 429
+            ? "Muitas requisições ao Clicksign em pouco tempo. Tente novamente em alguns instantes."
+            : status >= 500
+              ? "O Clicksign está indisponível no momento. Tente novamente mais tarde."
+              : "Falha na comunicação com o Clicksign.";
+
+  return detalhes ? `${base} (${detalhes})` : base;
+}
+
 async function call(path: string, init: RequestInit & { method: string }) {
   const url = `${baseUrl()}${path}${path.includes("?") ? "&" : "?"}access_token=${encodeURIComponent(token())}`;
   const res = await fetch(url, {
