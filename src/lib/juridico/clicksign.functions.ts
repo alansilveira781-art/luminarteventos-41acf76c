@@ -179,7 +179,7 @@ export const cancelarAssinatura = createServerFn({ method: "POST" })
       contrato_id: data.contratoId,
       user_id: userId,
       acao: "cancelou o envio para assinatura (Clicksign)",
-      detalhe: data.motivo?.trim() || null,
+      detalhe: data.motivo?.trim() || undefined,
     });
 
     return { ok: true as const };
