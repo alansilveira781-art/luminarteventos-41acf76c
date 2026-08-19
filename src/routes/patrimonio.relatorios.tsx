@@ -196,6 +196,11 @@ function PatrimonioRelatorios() {
       qd ? `Busca: "${qd}"` : null,
     ].filter(Boolean) as string[];
     try {
+      if (modo === "conferencia") {
+        await gerarFolhaConferenciaPatrimonioPdf({ filtros, linhas: consolidado });
+        toast.success("Folha de conferência gerada.");
+        return;
+      }
       if (modo === "consolidado") {
         await gerarRelatorioPatrimonioConsolidadoPdf({ filtros, linhas: consolidado });
         toast.success("Relatório gerado.");
