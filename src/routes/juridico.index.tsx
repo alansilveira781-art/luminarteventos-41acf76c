@@ -348,6 +348,15 @@ function QuadroContratos() {
         onEnviado={() => { setAssinaturaCard(null); load(); }}
       />
 
+      <VoltarCardDialog
+        open={!!voltar}
+        onOpenChange={(v) => !v && setVoltar(null)}
+        deLabel={voltar ? STATUS_LABELS[voltar.card.status] : ""}
+        paraLabel={voltar ? STATUS_LABELS[voltar.to] : ""}
+        cancelaAssinatura={!!voltar && voltar.card.status === "assinatura" && !!voltar.card.clicksign_document_key}
+        onConfirm={confirmarVolta}
+      />
+
 
       <ContratoDetalhesDialog
         contrato={editing}
