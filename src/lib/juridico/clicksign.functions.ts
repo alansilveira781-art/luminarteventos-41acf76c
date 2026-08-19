@@ -165,7 +165,7 @@ export const cancelarAssinatura = createServerFn({ method: "POST" })
       .from("juridico_contratos")
       .update({
         clicksign_document_key: null,
-        clicksign_status: null,
+        clicksign_status: "nao_enviado",
         clicksign_enviado_em: null,
         clicksign_assinado_em: null,
         clicksign_erro: null,
