@@ -14,7 +14,7 @@ import {
   CAMPOS_SUGERIDOS,
   camposPendentes,
   limparCamposVazios,
-  renderizarModelo,
+  renderizarContratoFinal,
   variaveisDoContrato,
 } from "@/lib/juridico/modelo-render";
 
@@ -175,7 +175,7 @@ export function EnviarAssinaturaDialog({
 
   const baseHtml = modeloHtml ?? contrato?.corpo_html ?? "";
   const htmlRenderizado = useMemo(
-    () => (baseHtml ? renderizarModelo(baseHtml, valores as Record<string, string>) : ""),
+    () => (baseHtml ? renderizarContratoFinal(baseHtml, valores as Record<string, string>) : ""),
     [baseHtml, valores],
   );
   const pendentes = useMemo(
