@@ -295,6 +295,13 @@ function QuadroContratos() {
         onFinalizado={() => { setConcluirCard(null); load(); }}
       />
 
+      <EnviarAssinaturaDialog
+        contrato={assinaturaCard}
+        open={!!assinaturaCard}
+        onOpenChange={(v) => !v && setAssinaturaCard(null)}
+        onEnviado={() => { setAssinaturaCard(null); load(); }}
+      />
+
 
       <ContratoDetalhesDialog
         contrato={editing}
