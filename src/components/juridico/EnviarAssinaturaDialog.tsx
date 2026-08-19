@@ -9,6 +9,19 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { gerarContratoPdfBase64 } from "@/lib/juridico/contrato-pdf";
 import { enviarParaAssinatura } from "@/lib/juridico/clicksign.functions";
+import {
+  CAMPOS_OBRIGATORIOS,
+  CAMPOS_SUGERIDOS,
+  camposPendentes,
+  limparCamposVazios,
+  renderizarModelo,
+  variaveisDoContrato,
+} from "@/lib/juridico/modelo-render";
+
+const LABEL_CAMPO: Record<string, string> = CAMPOS_SUGERIDOS.reduce(
+  (a: Record<string, string>, c: any) => ({ ...a, [c.campo]: c.label }),
+  {},
+);
 
 const sb = supabase as any;
 
