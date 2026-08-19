@@ -12,7 +12,7 @@ import { FileDown, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { normalize } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { gerarRelatorioPatrimonioPdf, gerarRelatorioPatrimonioConsolidadoPdf } from "@/lib/patrimonio/relatorio-pdf";
+import { gerarRelatorioPatrimonioPdf, gerarRelatorioPatrimonioConsolidadoPdf, gerarFolhaConferenciaPatrimonioPdf } from "@/lib/patrimonio/relatorio-pdf";
 
 export const Route = createFileRoute("/patrimonio/relatorios")({
   head: () => ({
@@ -51,7 +51,7 @@ function PatrimonioRelatorios() {
   const [estado, setEstado] = useState("__all");
   const [loc, setLoc] = useState("__all");
   const [agrupar, setAgrupar] = useState<"categoria" | "subcategoria" | "nenhum">("categoria");
-  const [modo, setModo] = useState<"detalhado" | "consolidado">("detalhado");
+  const [modo, setModo] = useState<"detalhado" | "consolidado" | "conferencia">("detalhado");
   const [ordem, setOrdem] = useState<"quantidade" | "nome">("quantidade");
   const [q, setQ] = useState("");
   const qd = useDebouncedValue(q, 300);
@@ -196,6 +196,11 @@ function PatrimonioRelatorios() {
       qd ? `Busca: "${qd}"` : null,
     ].filter(Boolean) as string[];
     try {
+      if (modo === "conferencia") {
+        await gerarFolhaConferenciaPatrimonioPdf({ filtros, linhas: consolidado });
+        toast.success("Folha de conferência gerada.");
+        return;
+      }
       if (modo === "consolidado") {
         await gerarRelatorioPatrimonioConsolidadoPdf({ filtros, linhas: consolidado });
         toast.success("Relatório gerado.");
@@ -289,11 +294,19 @@ function PatrimonioRelatorios() {
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Visualização</Label>
-          <Select value={modo} onValueChange={(v) => setModo(v as typeof modo)}>
+          <Select
+            value={modo}
+            onValueChange={(v) => {
+              const m = v as typeof modo;
+              setModo(m);
+              if (m === "conferencia") setOrdem("nome");
+            }}
+          >
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="detalhado">Detalhado</SelectItem>
               <SelectItem value="consolidado">Consolidado por nome</SelectItem>
+              <SelectItem value="conferencia">Conferência (folha de contagem)</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -323,7 +336,42 @@ function PatrimonioRelatorios() {
         )}
       </Card>
 
-      {modo === "consolidado" ? (
+      {modo === "conferencia" ? (
+        <Card className="overflow-auto">
+          <table className="w-full text-sm">
+            <thead className="text-xs uppercase tracking-wider text-muted-foreground bg-muted/40 sticky top-0">
+              <tr>
+                <th className="px-2 py-2 text-left">Item</th>
+                <th className="px-2 py-2 text-left">Categoria</th>
+                <th className="px-2 py-2 text-right">Qtd. sistema</th>
+                <th className="px-2 py-2 text-left w-40">Qtd. conferida</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr><td colSpan={4} className="px-2 py-8 text-center text-muted-foreground">Carregando…</td></tr>
+              ) : consolidado.length === 0 ? (
+                <tr><td colSpan={4} className="px-2 py-8 text-center text-muted-foreground">Nenhum item com os filtros atuais.</td></tr>
+              ) : consolidado.map((l) => (
+                <tr key={`${l.nome}|${l.especificacao}`} className="border-t border-border">
+                  <td className="px-2 py-2 font-medium">
+                    {l.nome}
+                    {l.especificacao && <span className="font-normal text-muted-foreground"> · {l.especificacao}</span>}
+                  </td>
+                  <td className="px-2 py-2">{l.categoria}</td>
+                  <td className="px-2 py-2 text-right tabular-nums">{l.quantidade.toLocaleString("pt-BR")}</td>
+                  <td className="px-2 py-2">
+                    <div className="h-6 rounded border border-dashed border-border bg-muted/20" aria-label="Espaço para anotar a quantidade conferida" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="px-3 py-2 text-xs text-muted-foreground border-t border-border">
+            Folha para contagem física — exporte em PDF e preencha a coluna “Qtd. conferida” à mão.
+          </div>
+        </Card>
+      ) : modo === "consolidado" ? (
         <Card className="overflow-auto">
           <table className="w-full text-sm">
             <thead className="text-xs uppercase tracking-wider text-muted-foreground bg-muted/40 sticky top-0">
