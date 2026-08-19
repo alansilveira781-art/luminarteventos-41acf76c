@@ -940,30 +940,8 @@ function ContratoDetalhesDialog({
                 </div>
               </div>
 
-              <EnderecoEditor
-                titulo="Endereço do responsável legal"
-                valor={{
-                  cep: form.resp_legal_cep,
-                  logradouro: form.resp_legal_logradouro,
-                  numero: form.resp_legal_numero,
-                  complemento: form.resp_legal_complemento,
-                  bairro: form.resp_legal_bairro,
-                  cidade: form.resp_legal_cidade,
-                  uf: form.resp_legal_uf,
-                }}
-                onChange={(patch) =>
-                  setForm((f) => ({
-                    ...f,
-                    ...(patch.cep !== undefined ? { resp_legal_cep: patch.cep } : {}),
-                    ...(patch.logradouro !== undefined ? { resp_legal_logradouro: patch.logradouro } : {}),
-                    ...(patch.numero !== undefined ? { resp_legal_numero: patch.numero } : {}),
-                    ...(patch.complemento !== undefined ? { resp_legal_complemento: patch.complemento } : {}),
-                    ...(patch.bairro !== undefined ? { resp_legal_bairro: patch.bairro } : {}),
-                    ...(patch.cidade !== undefined ? { resp_legal_cidade: patch.cidade } : {}),
-                    ...(patch.uf !== undefined ? { resp_legal_uf: patch.uf } : {}),
-                  }))
-                }
-              />
+
+
 
               <div className="rounded-md border border-border p-3 space-y-2">
                 <div className="text-xs font-semibold text-muted-foreground">2º Responsável legal (opcional)</div>
