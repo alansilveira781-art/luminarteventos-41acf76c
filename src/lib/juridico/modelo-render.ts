@@ -477,6 +477,8 @@ export function limparTrechosOpcionais(html: string, valores: Record<string, any
 
 /** Renderiza o contrato já sem os trechos opcionais vazios (PDF / envio). */
 export function renderizarContratoFinal(html: string, valores: Record<string, string>): string {
-  return limparCamposVazios(renderizarModelo(limparTrechosOpcionais(html, valores), valores));
+  return realcarCabecalhos(
+    limparCamposVazios(renderizarModelo(limparTrechosOpcionais(html, valores), valores)),
+  );
 }
 
