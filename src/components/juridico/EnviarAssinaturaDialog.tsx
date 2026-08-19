@@ -84,9 +84,18 @@ function signatariosDoContrato(c: any): Signatario[] {
   return out;
 }
 
+/** Nome do documento no Clicksign: "NOME DO EVENTO - LOCAL". */
+export function nomeDocumentoContrato(c: any): string {
+  const partes = [c?.evento_nome, c?.evento_local]
+    .map((v: any) => String(v ?? "").trim())
+    .filter(Boolean);
+  return (partes.length ? partes.join(" - ") : String(c?.titulo ?? "Contrato")).toUpperCase();
+}
+
 async function pdfDoContrato(contrato: any, html: string): Promise<{ base64: string; nomeArquivo: string }> {
+  const nomeBase = nomeDocumentoContrato(contrato);
   if ((html ?? "").trim()) {
-    return gerarContratoPdfBase64(contrato.titulo ?? "Contrato", limparCamposVazios(html));
+    return gerarContratoPdfBase64(contrato.titulo ?? "Contrato", limparCamposVazios(html), nomeBase);
   }
   // Sem corpo próprio: usa o contrato anexado ao card.
   const { data: anexos } = await sb
@@ -105,7 +114,7 @@ async function pdfDoContrato(contrato: any, html: string): Promise<{ base64: str
   for (let i = 0; i < buffer.length; i += 8192) {
     bin += String.fromCharCode(...buffer.subarray(i, i + 8192));
   }
-  return { base64: btoa(bin), nomeArquivo: anexo.nome ?? "contrato.pdf" };
+  return { base64: btoa(bin), nomeArquivo: `${nomeBase}.pdf` };
 }
 
 export function EnviarAssinaturaDialog({

@@ -63,6 +63,7 @@ async function carregarLogo(): Promise<string | null> {
 export async function gerarContratoPdfBase64(
   titulo: string,
   html: string,
+  nomeBase?: string,
 ): Promise<{ base64: string; nomeArquivo: string }> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const margem = 20;
@@ -124,6 +125,10 @@ export async function gerarContratoPdfBase64(
 
   const dataUri = doc.output("datauristring");
   const base64 = dataUri.slice(dataUri.indexOf(",") + 1);
-  const nomeArquivo = `${(titulo || "contrato").replace(/[^a-zA-Z0-9._ -]/g, "_").slice(0, 60)}.pdf`;
+  const nomeArquivo = `${((nomeBase || titulo || "contrato") as string)
+    .replace(/[\\/:*?"<>|]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80)}.pdf`;
   return { base64, nomeArquivo };
 }
