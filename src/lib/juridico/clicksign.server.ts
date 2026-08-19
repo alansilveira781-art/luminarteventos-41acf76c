@@ -156,3 +156,8 @@ export async function baixarAssinado(documentKey: string): Promise<Uint8Array | 
   }
   return new Uint8Array(await res.arrayBuffer());
 }
+
+/** Cancela (exclui) o documento no Clicksign. */
+export async function cancelarDocumento(documentKey: string) {
+  await call(`/api/v1/documents/${encodeURIComponent(documentKey)}/cancel`, { method: "PATCH" });
+}
