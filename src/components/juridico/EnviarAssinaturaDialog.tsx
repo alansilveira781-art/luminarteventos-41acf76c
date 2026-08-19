@@ -190,9 +190,19 @@ export function EnviarAssinaturaDialog({
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s.email)) return toast.error(`E-mail inválido: ${s.nome}`);
     }
 
+    if (faltamObrigatorios.length > 0) {
+      return toast.error(
+        `Preencha antes de enviar: ${faltamObrigatorios.map((c) => LABEL_CAMPO[c] ?? c).join(", ")}`,
+      );
+    }
+
     setEnviando(true);
     try {
-      const { base64, nomeArquivo } = await pdfDoContrato(contrato);
+      const { base64, nomeArquivo } = await pdfDoContrato(contrato, htmlRenderizado);
+      // Guarda o corpo já preenchido para a impressão local ficar igual ao assinado.
+      if (htmlRenderizado) {
+        await sb.from("juridico_contratos").update({ corpo_html: htmlRenderizado }).eq("id", contrato.id);
+      }
 
       const contratada = limpos.find((s) => s.papel === "contratada");
       if (contratada) {
