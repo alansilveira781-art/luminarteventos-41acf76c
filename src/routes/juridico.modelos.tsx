@@ -200,10 +200,13 @@ function ModeloDialog({ open, onOpenChange, editing, onSave }: {
             <div
               ref={ref}
               contentEditable
-              onInput={(e) => setF((p: any) => ({ ...p, corpo_html: (e.target as HTMLDivElement).innerHTML }))}
-              className="prose prose-sm max-w-none p-3 min-h-[300px] max-h-[55vh] overflow-y-auto focus:outline-none"
+              onInput={() => setF((p: any) => ({ ...p, corpo_html: ref.current?.innerHTML ?? p.corpo_html }))}
+              onBlur={() => setF((p: any) => ({ ...p, corpo_html: ref.current?.innerHTML ?? p.corpo_html }))}
+              onPaste={colar}
+              className="prose prose-sm max-w-none p-3 min-h-[300px] max-h-[55vh] overflow-y-auto focus:outline-none contrato-preview"
               suppressContentEditableWarning
             />
+
           </div>
           {vars.length > 0 && (
             <div className="mt-2 text-xs text-muted-foreground">
