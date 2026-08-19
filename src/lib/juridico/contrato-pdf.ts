@@ -210,27 +210,27 @@ export async function gerarContratoPdfBase64(
     }
   };
 
-  type Palavra = { txt: string; bold: boolean };
+  const larguraDe = (p: Palavra) => {
+    doc.setFont("helvetica", p.bold ? "bold" : "normal");
+    return doc.getTextWidth(p.txt);
+  };
+  const larguraEspaco = () => {
+    doc.setFont("helvetica", "normal");
+    return doc.getTextWidth(" ");
+  };
 
   /** Quebra os tokens em linhas respeitando a largura disponível. */
   const quebrarLinhas = (palavras: Palavra[], larguraDisp: number): Palavra[][] => {
     const linhas: Palavra[][] = [];
     let atual: Palavra[] = [];
     let usado = 0;
-    const larguraDe = (p: Palavra) => {
-      doc.setFont("helvetica", p.bold ? "bold" : "normal");
-      return doc.getTextWidth(p.txt);
-    };
-    const espaco = () => {
-      doc.setFont("helvetica", "normal");
-      return doc.getTextWidth(" ");
-    };
     palavras.forEach((p) => {
       const w = larguraDe(p);
-      const extra = atual.length ? espaco() + w : w;
-      if (atual.length && usado + extra > larguraDisp) {
+      const comEspaco = atual.length > 0 && !p.colar;
+      const extra = comEspaco ? larguraEspaco() + w : w;
+      if (atual.length && !p.colar && usado + extra > larguraDisp) {
         linhas.push(atual);
-        atual = [p];
+        atual = [{ ...p, colar: undefined }];
         usado = w;
       } else {
         atual.push(p);
@@ -248,39 +248,44 @@ export async function gerarContratoPdfBase64(
     larguraDisp: number,
     justificar: boolean,
   ) => {
-    doc.setFont("helvetica", "normal");
-    const espacoBase = doc.getTextWidth(" ");
-    const larguraTexto = linha.reduce((acc, p) => {
-      doc.setFont("helvetica", p.bold ? "bold" : "normal");
-      return acc + doc.getTextWidth(p.txt);
-    }, 0);
-    const vaos = linha.length - 1;
+    const espacoBase = larguraEspaco();
+    const larguraTexto = linha.reduce((acc, p) => acc + larguraDe(p), 0);
+    const vaos = linha.reduce((acc, p, i) => acc + (i > 0 && !p.colar ? 1 : 0), 0);
     let espaco = espacoBase;
     if (justificar && vaos > 0) {
       const calc = (larguraDisp - larguraTexto) / vaos;
       // Evita linhas com espaçamento exagerado (palavras muito longas).
-      espaco = calc > espacoBase * 3 ? espacoBase : calc;
+      espaco = calc > espacoBase * 3 || calc < espacoBase ? espacoBase : calc;
     }
     let cursor = x;
-    linha.forEach((p) => {
+    linha.forEach((p, i) => {
+      if (i > 0 && !p.colar) cursor += espaco;
       doc.setFont("helvetica", p.bold ? "bold" : "normal");
       doc.text(p.txt, cursor, y);
-      cursor += doc.getTextWidth(p.txt) + espaco;
+      cursor += doc.getTextWidth(p.txt);
     });
   };
 
+  /** Palavras do bloco, com o negrito do HTML + o realce do tipo (título / rótulo). */
   const tokens = (bloco: BlocoContrato): Palavra[] => {
+    const base = bloco.palavras.length
+      ? bloco.palavras
+      : bloco.texto.split(/\s+/).filter(Boolean).map((txt) => ({ txt, bold: false }));
+
+    if (bloco.tipo === "titulo") return base.map((p) => ({ ...p, bold: true }));
+
     const rotulo = bloco.tipo === "clausula" ? bloco.rotulo : undefined;
-    const bold = bloco.tipo === "titulo";
-    if (rotulo && bloco.texto.trimStart().startsWith(rotulo)) {
-      const resto = bloco.texto.trimStart().slice(rotulo.length).trim();
-      return [
-        ...rotulo.split(/\s+/).filter(Boolean).map((txt) => ({ txt, bold: true })),
-        ...resto.split(/\s+/).filter(Boolean).map((txt) => ({ txt, bold: false })),
-      ];
-    }
-    return bloco.texto.split(/\s+/).filter(Boolean).map((txt) => ({ txt, bold }));
+    if (!rotulo) return base;
+
+    // Negrita o rótulo inicial ("Cláusula 1ª.") mantendo o resto como está.
+    let restante = rotulo.replace(/\s+/g, "").length;
+    return base.map((p) => {
+      if (restante <= 0) return p;
+      restante -= p.txt.replace(/\s+/g, "").length;
+      return { ...p, bold: true };
+    });
   };
+
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
