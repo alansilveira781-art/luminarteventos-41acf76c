@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { CAMPOS_SUGERIDOS, extrairCampos, sanitizeHtml } from "@/lib/juridico/modelo-render";
+import { CAMPOS_SUGERIDOS, extrairCampos, normalizarHtmlEditor, sanitizeHtml } from "@/lib/juridico/modelo-render";
 
 export const Route = createFileRoute("/juridico/modelos")({ component: ModelosPage });
 
