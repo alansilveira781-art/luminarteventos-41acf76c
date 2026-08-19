@@ -7,17 +7,47 @@ export function htmlParaBlocos(html: string): { texto: string; negrito: boolean;
   const doc = new DOMParser().parseFromString(html ?? "", "text/html");
   const blocos: { texto: string; negrito: boolean; titulo: boolean }[] = [];
 
+  /**
+   * Texto de um elemento preservando as quebras `<br>` como "\n" e
+   * garantindo separação entre elementos inline vizinhos sem espaço.
+   */
+  const textoDe = (el: Node): string => {
+    let out = "";
+    el.childNodes.forEach((child) => {
+      if (child.nodeType === Node.TEXT_NODE) {
+        out += child.nodeValue ?? "";
+        return;
+      }
+      const e = child as HTMLElement;
+      const tag = e.tagName?.toLowerCase();
+      if (tag === "br") {
+        out += "\n";
+        return;
+      }
+      const interno = textoDe(e);
+      if (!interno) return;
+      // Evita "Freitasinscrito" quando não há espaço entre os elementos.
+      if (out && !/[\s(\[{«"'\/-]$/.test(out) && !/^[\s.,;:!?)\]}%»"']/.test(interno)) out += " ";
+      out += interno;
+    });
+    return out;
+  };
+
   const push = (texto: string, negrito = false, titulo = false) => {
-    const t = texto.replace(/\s+/g, " ").trim();
-    if (t) blocos.push({ texto: t, negrito, titulo });
+    texto
+      .split("\n")
+      .map((l) => l.replace(/\s+/g, " ").trim())
+      .filter(Boolean)
+      .forEach((linha, i) => blocos.push({ texto: linha, negrito, titulo: titulo && i === 0 }));
   };
 
   const pushParagrafo = (el: HTMLElement) => {
-    const texto = el.textContent ?? "";
-    const jaNegrito = !!el.querySelector("strong, b") &&
-      (el.textContent ?? "").trim() ===
-        (el.querySelector("strong, b")?.textContent ?? "").trim();
-    if (ehCabecalhoClausula(texto, jaNegrito)) return push(texto, true, true);
+    const texto = textoDe(el);
+    const primeira = texto.split("\n").find((l) => l.trim()) ?? "";
+    const forte = el.querySelector("strong, b");
+    const jaNegrito =
+      !!forte && (el.textContent ?? "").trim() === (forte.textContent ?? "").trim();
+    if (ehCabecalhoClausula(primeira, jaNegrito)) return push(texto, true, true);
     push(texto);
   };
 
@@ -27,17 +57,17 @@ export function htmlParaBlocos(html: string): { texto: string; negrito: boolean;
       const el = child as HTMLElement;
       const tag = el.tagName?.toLowerCase();
       if (!tag) return;
-      if (["h1", "h2", "h3"].includes(tag)) return push(el.textContent ?? "", true, true);
+      if (["h1", "h2", "h3"].includes(tag)) return push(textoDe(el), true, true);
       if (tag === "p" || tag === "blockquote") return pushParagrafo(el);
-      if (tag === "li") return push(`• ${el.textContent ?? ""}`);
+      if (tag === "li") return push(`• ${textoDe(el)}`);
       if (["ul", "ol", "div", "table", "tbody", "thead", "tr"].includes(tag)) return walk(el);
-      if (tag === "td" || tag === "th") return push(el.textContent ?? "");
+      if (tag === "td" || tag === "th") return push(textoDe(el));
       pushParagrafo(el);
     });
   };
 
   walk(doc.body);
-  if (blocos.length === 0) push(doc.body.textContent ?? "");
+  if (blocos.length === 0) push(textoDe(doc.body));
   return blocos;
 }
 
