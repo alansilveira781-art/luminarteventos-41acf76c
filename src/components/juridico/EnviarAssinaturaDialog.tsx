@@ -114,7 +114,7 @@ async function pdfDoContrato(contrato: any, html: string): Promise<{ base64: str
   for (let i = 0; i < buffer.length; i += 8192) {
     bin += String.fromCharCode(...buffer.subarray(i, i + 8192));
   }
-  return { base64: btoa(bin), nomeArquivo: anexo.nome ?? "contrato.pdf" };
+  return { base64: btoa(bin), nomeArquivo: `${nomeBase}.pdf` };
 }
 
 export function EnviarAssinaturaDialog({
