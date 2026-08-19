@@ -249,6 +249,32 @@ export function EnviarAssinaturaDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {htmlRenderizado && (
+          <div className="space-y-2">
+            {pendentes.length > 0 && (
+              <div
+                className={`rounded-md border p-2 text-xs ${
+                  faltamObrigatorios.length ? "border-destructive text-destructive" : "text-muted-foreground"
+                }`}
+              >
+                {faltamObrigatorios.length
+                  ? `Campos obrigatórios sem preenchimento: ${faltamObrigatorios.map((c) => LABEL_CAMPO[c] ?? c).join(", ")}`
+                  : `Campos opcionais sem valor (serão omitidos): ${pendentes.map((c) => LABEL_CAMPO[c] ?? c).join(", ")}`}
+              </div>
+            )}
+            <details className="rounded-md border">
+              <summary className="cursor-pointer px-3 py-2 text-sm font-medium">
+                Pré-visualizar contrato preenchido
+              </summary>
+              <div
+                className="prose prose-sm max-w-none p-3 max-h-72 overflow-y-auto border-t"
+                dangerouslySetInnerHTML={{ __html: htmlRenderizado }}
+              />
+            </details>
+          </div>
+        )}
+
+
         <div className="space-y-3">
           {signatarios.map((s, i) => (
             <div key={i} className="rounded-md border p-3 space-y-2">
