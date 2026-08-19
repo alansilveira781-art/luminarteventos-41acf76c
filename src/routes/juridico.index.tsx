@@ -138,6 +138,8 @@ function QuadroContratos() {
   const [criacaoCard, setCriacaoCard] = useState<Contrato | null>(null);
   const [concluirCard, setConcluirCard] = useState<Contrato | null>(null);
   const [assinaturaCard, setAssinaturaCard] = useState<Contrato | null>(null);
+  const [voltar, setVoltar] = useState<{ card: Contrato; to: Status } | null>(null);
+  const cancelarAssinaturaFn = useServerFn(cancelarAssinatura);
 
 
 
