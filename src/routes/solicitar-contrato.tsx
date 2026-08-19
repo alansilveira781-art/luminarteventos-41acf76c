@@ -263,7 +263,6 @@ function SolicitarContratoPublico() {
       if (!e.resp_legal_telefone && !telOk(form.resp_legal_telefone)) e.resp_legal_telefone = "Telefone inválido";
       if (!e.resp_legal_documento && digitos(form.resp_legal_documento).length !== 11)
         e.resp_legal_documento = "Informe um CPF válido (11 dígitos)";
-      validarEndereco(endResp, "resp_legal");
 
       if (resp2Ativo) {
         req("resp_legal2_nome", form.resp_legal2_nome);
@@ -272,7 +271,6 @@ function SolicitarContratoPublico() {
           e.resp_legal2_documento = "Informe um CPF válido (11 dígitos)";
         if (form.resp_legal2_email && !emailOk(form.resp_legal2_email))
           e.resp_legal2_email = "E-mail inválido";
-        validarEndereco(endResp2, "resp_legal2");
       }
     }
 
@@ -331,12 +329,12 @@ function SolicitarContratoPublico() {
       resp_legal_documento: isPJ ? form.resp_legal_documento.trim() : "",
       resp_legal_email: isPJ ? form.resp_legal_email.trim() : "",
       resp_legal_telefone: isPJ ? form.resp_legal_telefone.trim() : "",
-      resp_legal_endereco: isPJ ? endResp : null,
+      resp_legal_endereco: null,
       resp_legal2_nome: isPJ && resp2Ativo ? form.resp_legal2_nome.trim() : "",
       resp_legal2_documento: isPJ && resp2Ativo ? form.resp_legal2_documento.trim() : "",
       resp_legal2_email: isPJ && resp2Ativo ? form.resp_legal2_email.trim() : "",
       resp_legal2_telefone: isPJ && resp2Ativo ? form.resp_legal2_telefone.trim() : "",
-      resp_legal2_endereco: isPJ && resp2Ativo ? endResp2 : null,
+      resp_legal2_endereco: null,
       testemunhas: testemunhas
         .filter((t) => t.nome.trim())
         .map((t) => ({ nome: t.nome.trim(), documento: t.documento.trim(), email: t.email.trim() })),
@@ -650,7 +648,7 @@ function SolicitarContratoPublico() {
           <Card className="p-5 space-y-4">
             <div>
               <div className="text-sm font-semibold">Responsável Legal</div>
-              <p className="text-xs text-muted-foreground">Pessoa que assina pela empresa. Todos os campos são obrigatórios.</p>
+              <p className="text-xs text-muted-foreground">Pessoa que assina pela empresa: nome, CPF, e-mail e telefone.</p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -673,10 +671,6 @@ function SolicitarContratoPublico() {
                 <Input value={form.resp_legal_telefone} onChange={(e) => set("resp_legal_telefone", e.target.value)} />
                 <Erro msg={erros.resp_legal_telefone} />
               </div>
-            </div>
-            <div className="pt-1">
-              <div className="text-xs font-medium text-muted-foreground mb-2">Endereço completo</div>
-              <EnderecoFields valor={endResp} onChange={setEndResp} erros={erros} prefixo="resp_legal" />
             </div>
 
             {!resp2Ativo ? (
@@ -723,10 +717,6 @@ function SolicitarContratoPublico() {
                     <Label>Telefone</Label>
                     <Input value={form.resp_legal2_telefone} onChange={(e) => set("resp_legal2_telefone", e.target.value)} />
                   </div>
-                </div>
-                <div>
-                  <div className="text-xs font-medium text-muted-foreground mb-2">Endereço completo</div>
-                  <EnderecoFields valor={endResp2} onChange={setEndResp2} erros={erros} prefixo="resp_legal2" />
                 </div>
               </div>
             )}
