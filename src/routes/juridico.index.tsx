@@ -150,6 +150,22 @@ function QuadroContratos() {
 
   useEffect(() => { load(); }, []);
 
+  // Atualiza o quadro quando o webhook do Clicksign muda o contrato.
+  useEffect(() => {
+    const ch = sb
+      .channel("juridico-contratos-clicksign")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "juridico_contratos" },
+        (payload: any) => {
+          const n = payload.new;
+          setRows((rs) => rs.map((r) => (r.id === n.id ? { ...r, ...n } : r)));
+        },
+      )
+      .subscribe();
+    return () => { sb.removeChannel(ch); };
+  }, []);
+
   const byStatus = useMemo(() => {
     const m: Record<Status, Contrato[]> = {} as any;
     STATUSES.forEach((s) => (m[s.key] = []));
@@ -168,12 +184,14 @@ function QuadroContratos() {
     if (!card || card.status === status) return;
     if (status === "criacao") { setCriacaoCard(card); return; }
     if (status === "concluido") { setConcluirCard(card); return; }
+    if (status === "assinatura" && !card.clicksign_document_key) { setAssinaturaCard(card); return; }
     const patch: any = { status };
     if (status === "assinatura" && !card.data_assinatura) patch.data_assinatura = new Date().toISOString().slice(0, 10);
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
     const { error } = await sb.from("juridico_contratos").update(patch).eq("id", id);
     if (error) { toast.error(error.message); load(); }
   }
+
 
   async function aplicarCriacao(patch: Record<string, any>) {
     const id = criacaoCard!.id;
