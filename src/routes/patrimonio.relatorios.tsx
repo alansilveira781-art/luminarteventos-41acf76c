@@ -336,7 +336,42 @@ function PatrimonioRelatorios() {
         )}
       </Card>
 
-      {modo === "consolidado" ? (
+      {modo === "conferencia" ? (
+        <Card className="overflow-auto">
+          <table className="w-full text-sm">
+            <thead className="text-xs uppercase tracking-wider text-muted-foreground bg-muted/40 sticky top-0">
+              <tr>
+                <th className="px-2 py-2 text-left">Item</th>
+                <th className="px-2 py-2 text-left">Categoria</th>
+                <th className="px-2 py-2 text-right">Qtd. sistema</th>
+                <th className="px-2 py-2 text-left w-40">Qtd. conferida</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr><td colSpan={4} className="px-2 py-8 text-center text-muted-foreground">Carregando…</td></tr>
+              ) : consolidado.length === 0 ? (
+                <tr><td colSpan={4} className="px-2 py-8 text-center text-muted-foreground">Nenhum item com os filtros atuais.</td></tr>
+              ) : consolidado.map((l) => (
+                <tr key={`${l.nome}|${l.especificacao}`} className="border-t border-border">
+                  <td className="px-2 py-2 font-medium">
+                    {l.nome}
+                    {l.especificacao && <span className="font-normal text-muted-foreground"> · {l.especificacao}</span>}
+                  </td>
+                  <td className="px-2 py-2">{l.categoria}</td>
+                  <td className="px-2 py-2 text-right tabular-nums">{l.quantidade.toLocaleString("pt-BR")}</td>
+                  <td className="px-2 py-2">
+                    <div className="h-6 rounded border border-dashed border-border bg-muted/20" aria-label="Espaço para anotar a quantidade conferida" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="px-3 py-2 text-xs text-muted-foreground border-t border-border">
+            Folha para contagem física — exporte em PDF e preencha a coluna “Qtd. conferida” à mão.
+          </div>
+        </Card>
+      ) : modo === "consolidado" ? (
         <Card className="overflow-auto">
           <table className="w-full text-sm">
             <thead className="text-xs uppercase tracking-wider text-muted-foreground bg-muted/40 sticky top-0">
