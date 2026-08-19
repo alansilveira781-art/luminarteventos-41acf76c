@@ -1,11 +1,21 @@
 import jsPDF from "jspdf";
 import timbrado from "@/assets/timbrado-luminart.png.asset.json";
-import { ehCabecalhoClausula } from "./modelo-render";
+import { ehTituloSecao, rotuloClausula } from "./modelo-render";
+
+export type BlocoContrato = {
+  texto: string;
+  /** titulo = seção numerada/caixa alta; clausula = "Cláusula 1ª." com rótulo em negrito. */
+  tipo: "titulo" | "clausula" | "paragrafo" | "lista";
+  /** Trecho inicial em negrito (rótulo da cláusula). */
+  rotulo?: string;
+  /** Nível de recuo (listas). */
+  nivel?: number;
+};
 
 /** Converte o HTML do contrato em blocos de texto simples preservando parágrafos e listas. */
-export function htmlParaBlocos(html: string): { texto: string; negrito: boolean; titulo: boolean }[] {
+export function htmlParaBlocos(html: string): BlocoContrato[] {
   const doc = new DOMParser().parseFromString(html ?? "", "text/html");
-  const blocos: { texto: string; negrito: boolean; titulo: boolean }[] = [];
+  const blocos: BlocoContrato[] = [];
 
   /**
    * Texto de um elemento preservando as quebras `<br>` como "\n" e
@@ -33,50 +43,60 @@ export function htmlParaBlocos(html: string): { texto: string; negrito: boolean;
     return out;
   };
 
-  const push = (texto: string, negrito = false, titulo = false) => {
+  const push = (texto: string, tipo: BlocoContrato["tipo"], nivel = 0) => {
     texto
       .split("\n")
       .map((l) => l.replace(/\s+/g, " ").trim())
       .filter(Boolean)
-      .forEach((linha, i) => blocos.push({ texto: linha, negrito, titulo: titulo && i === 0 }));
+      .forEach((linha, i) => {
+        const t = tipo === "titulo" && i > 0 ? "paragrafo" : tipo;
+        const rotulo = t === "clausula" ? (rotuloClausula(linha) ?? undefined) : undefined;
+        blocos.push({ texto: linha, tipo: t, rotulo, nivel });
+      });
   };
 
-  const pushParagrafo = (el: HTMLElement) => {
+  const pushParagrafo = (el: HTMLElement, nivel = 0) => {
     const texto = textoDe(el);
     const primeira = texto.split("\n").find((l) => l.trim()) ?? "";
     const forte = el.querySelector("strong, b");
     const jaNegrito =
       !!forte && (el.textContent ?? "").trim() === (forte.textContent ?? "").trim();
-    if (ehCabecalhoClausula(primeira, jaNegrito)) return push(texto, true, true);
-    push(texto);
+    if (ehTituloSecao(primeira, jaNegrito)) return push(texto, "titulo", nivel);
+    if (rotuloClausula(primeira)) return push(texto, "clausula", nivel);
+    push(texto, nivel > 0 ? "lista" : "paragrafo", nivel);
   };
 
-  const walk = (node: Node) => {
+  const walk = (node: Node, nivel = 0) => {
     node.childNodes.forEach((child) => {
       if (child.nodeType === Node.TEXT_NODE) return;
       const el = child as HTMLElement;
       const tag = el.tagName?.toLowerCase();
       if (!tag) return;
-      if (["h1", "h2", "h3"].includes(tag)) return push(textoDe(el), true, true);
-      if (tag === "p" || tag === "blockquote") return pushParagrafo(el);
-      if (tag === "li") return push(`• ${textoDe(el)}`);
-      if (["ul", "ol", "div", "table", "tbody", "thead", "tr"].includes(tag)) return walk(el);
-      if (tag === "td" || tag === "th") return push(textoDe(el));
-      pushParagrafo(el);
+      if (["h1", "h2", "h3"].includes(tag)) return push(textoDe(el), "titulo", nivel);
+      if (tag === "p" || tag === "blockquote") return pushParagrafo(el, nivel);
+      if (tag === "li") return push(textoDe(el), "lista", Math.max(1, nivel));
+      if (["ul", "ol"].includes(tag)) return walk(el, nivel + 1);
+      if (["div", "table", "tbody", "thead", "tr"].includes(tag)) return walk(el, nivel);
+      if (tag === "td" || tag === "th") return push(textoDe(el), "paragrafo", nivel);
+      pushParagrafo(el, nivel);
     });
   };
 
   walk(doc.body);
-  if (blocos.length === 0) push(textoDe(doc.body));
+  if (blocos.length === 0) push(textoDe(doc.body), "paragrafo");
   return blocos;
 }
 
-/** Espaçamento padrão do contrato (mm). */
-const ALTURA_LINHA = 5;
-const ALTURA_LINHA_TITULO = 5.6;
-const ESPACO_ANTES_TITULO = 4.5;
-const ESPACO_DEPOIS_TITULO = 2;
-const ESPACO_PARAGRAFO = 2.6;
+/** Espaçamento e tipografia padrão do contrato (mm / pt), espelhando o modelo em Word. */
+const TAMANHO_CORPO = 10.5; // ≈ Calibri 11
+const TAMANHO_TITULO = 11;
+const ALTURA_LINHA = 4.7; // entrelinha ~1,15
+const ALTURA_LINHA_TITULO = 5.2;
+const ESPACO_ANTES_TITULO = 4.2; // 12 pt
+const ESPACO_DEPOIS_TITULO = 2.1; // 6 pt
+const ESPACO_PARAGRAFO = 2.1; // 6 pt
+const RECUO_LISTA = 8; // recuo à esquerda dos itens a) b) c)
+
 
 const RODAPE_LINHAS = [
   "Av. Maestro Lisboa, 2181 — Lagoa Redonda — Fortaleza / CE — CEP 60810-670",
