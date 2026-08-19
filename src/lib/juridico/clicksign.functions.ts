@@ -128,3 +128,59 @@ export const sincronizarAssinatura = createServerFn({ method: "POST" })
     const { sincronizarDocumento } = await import("./clicksign-sync.server");
     return sincronizarDocumento(key);
   });
+
+/** Cancela o envio para assinatura e devolve o contrato para Validação. */
+export const cancelarAssinatura = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { contratoId: string; motivo?: string }) => {
+    if (!input?.contratoId) throw new Error("Contrato inválido");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: contrato, error } = await supabase
+      .from("juridico_contratos")
+      .select("id, status, clicksign_document_key, clicksign_status")
+      .eq("id", data.contratoId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!contrato) throw new Error("Contrato não encontrado ou sem permissão");
+
+    const c = contrato as any;
+    if (c.status === "concluido" || c.clicksign_status === "assinado") {
+      throw new Error("Contrato já assinado/concluído — não é possível cancelar a assinatura.");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    if (c.clicksign_document_key) {
+      const cs = await import("./clicksign.server");
+      await cs.cancelarDocumento(c.clicksign_document_key);
+    }
+
+    await supabaseAdmin.from("juridico_assinaturas").delete().eq("contrato_id", data.contratoId);
+
+    const { error: uErr } = await supabaseAdmin
+      .from("juridico_contratos")
+      .update({
+        clicksign_document_key: null,
+        clicksign_status: "nao_enviado",
+        clicksign_enviado_em: null,
+        clicksign_assinado_em: null,
+        clicksign_erro: null,
+        data_assinatura: null,
+        status: "validacao",
+      })
+      .eq("id", data.contratoId);
+    if (uErr) throw new Error(uErr.message);
+
+    await supabaseAdmin.from("juridico_historico").insert({
+      contrato_id: data.contratoId,
+      user_id: userId,
+      acao: "cancelou o envio para assinatura (Clicksign)",
+      detalhe: data.motivo?.trim() || undefined,
+    });
+
+    return { ok: true as const };
+  });
