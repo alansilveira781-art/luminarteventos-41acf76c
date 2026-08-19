@@ -25,6 +25,9 @@ import { DefinirCategoriaDialog, CATEGORIAS_CONTRATO } from "@/components/juridi
 import { ConcluirContratoWizard } from "@/components/juridico/ConcluirContratoWizard";
 import { EnderecoEditor } from "@/components/juridico/EnderecoEditor";
 import { EnviarAssinaturaDialog } from "@/components/juridico/EnviarAssinaturaDialog";
+import { VoltarCardDialog } from "@/components/juridico/VoltarCardDialog";
+import { cancelarAssinatura } from "@/lib/juridico/clicksign.functions";
+
 
 import { PagamentoEditor } from "@/components/juridico/PagamentoEditor";
 import { toast } from "sonner";
