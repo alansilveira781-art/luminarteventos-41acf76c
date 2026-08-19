@@ -3836,6 +3836,62 @@ export type Database = {
           },
         ]
       }
+      juridico_assinaturas: {
+        Row: {
+          assinado_em: string | null
+          contrato_id: string
+          created_at: string
+          documento: string | null
+          email: string
+          id: string
+          nome: string
+          papel: string
+          request_signature_key: string | null
+          sign_as: string | null
+          signer_key: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assinado_em?: string | null
+          contrato_id: string
+          created_at?: string
+          documento?: string | null
+          email: string
+          id?: string
+          nome: string
+          papel?: string
+          request_signature_key?: string | null
+          sign_as?: string | null
+          signer_key?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assinado_em?: string | null
+          contrato_id?: string
+          created_at?: string
+          documento?: string | null
+          email?: string
+          id?: string
+          nome?: string
+          papel?: string
+          request_signature_key?: string | null
+          sign_as?: string | null
+          signer_key?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "juridico_assinaturas_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "juridico_contratos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       juridico_comentarios: {
         Row: {
           contrato_id: string
@@ -3880,6 +3936,11 @@ export type Database = {
       juridico_contratos: {
         Row: {
           categoria: string | null
+          clicksign_assinado_em: string | null
+          clicksign_document_key: string | null
+          clicksign_enviado_em: string | null
+          clicksign_erro: string | null
+          clicksign_status: string
           cliente_bairro: string | null
           cliente_cep: string | null
           cliente_cidade: string | null
@@ -3960,6 +4021,11 @@ export type Database = {
         }
         Insert: {
           categoria?: string | null
+          clicksign_assinado_em?: string | null
+          clicksign_document_key?: string | null
+          clicksign_enviado_em?: string | null
+          clicksign_erro?: string | null
+          clicksign_status?: string
           cliente_bairro?: string | null
           cliente_cep?: string | null
           cliente_cidade?: string | null
@@ -4040,6 +4106,11 @@ export type Database = {
         }
         Update: {
           categoria?: string | null
+          clicksign_assinado_em?: string | null
+          clicksign_document_key?: string | null
+          clicksign_enviado_em?: string | null
+          clicksign_erro?: string | null
+          clicksign_status?: string
           cliente_bairro?: string | null
           cliente_cep?: string | null
           cliente_cidade?: string | null
