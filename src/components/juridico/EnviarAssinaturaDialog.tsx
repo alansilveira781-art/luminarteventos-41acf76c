@@ -122,12 +122,58 @@ export function EnviarAssinaturaDialog({
   const [signatarios, setSignatarios] = useState<Signatario[]>([]);
   const [mensagem, setMensagem] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [empresa, setEmpresa] = useState<any>(null);
+  const [modeloHtml, setModeloHtml] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !contrato) return;
     setSignatarios(signatariosDoContrato(contrato));
     setMensagem(`Olá! Segue o contrato "${contrato.titulo ?? ""}" para assinatura eletrônica.`);
+
+    // Empresa contratada (dados usados nos campos automáticos do modelo).
+    sb.from("admin_empresas")
+      .select("razao_social,nome_fantasia,cnpj,endereco,representante_nome,representante_documento")
+      .then(({ data }: any) => {
+        const alvo = (contrato?.empresa ?? "").trim().toLowerCase();
+        setEmpresa(
+          (data ?? []).find(
+            (e: any) =>
+              (e.razao_social ?? "").trim().toLowerCase() === alvo ||
+              (e.nome_fantasia ?? "").trim().toLowerCase() === alvo,
+          ) ?? null,
+        );
+      });
+
+    // Modelo original (com os marcadores) para re-renderizar com os dados atuais.
+    if (contrato?.modelo_id) {
+      sb.from("juridico_modelos")
+        .select("corpo_html")
+        .eq("id", contrato.modelo_id)
+        .maybeSingle()
+        .then(({ data }: any) => setModeloHtml(data?.corpo_html ?? null));
+    } else {
+      setModeloHtml(null);
+    }
   }, [open, contrato?.id]);
+
+  const valores = useMemo(
+    () => ({
+      ...(contrato ? variaveisDoContrato(contrato, empresa) : {}),
+      ...((contrato?.variaveis_valores as Record<string, string>) ?? {}),
+    }),
+    [contrato, empresa],
+  );
+
+  const baseHtml = modeloHtml ?? contrato?.corpo_html ?? "";
+  const htmlRenderizado = useMemo(
+    () => (baseHtml ? renderizarModelo(baseHtml, valores as Record<string, string>) : ""),
+    [baseHtml, valores],
+  );
+  const pendentes = useMemo(
+    () => (baseHtml ? camposPendentes(baseHtml, valores) : []),
+    [baseHtml, valores],
+  );
+  const faltamObrigatorios = pendentes.filter((c) => CAMPOS_OBRIGATORIOS.includes(c));
 
   function set(i: number, patch: Partial<Signatario>) {
     setSignatarios((p) => p.map((s, j) => (j === i ? { ...s, ...patch } : s)));
