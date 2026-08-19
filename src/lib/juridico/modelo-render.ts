@@ -4,7 +4,8 @@ import { valorPorExtenso } from "./valor-extenso";
 
 export const SANITIZE_OPTS = {
   ALLOWED_TAGS: [
-    "p", "br", "strong", "em", "u", "h1", "h2", "h3", "ul", "ol", "li",
+    "p", "br", "strong", "b", "em", "i", "u", "s", "sup", "sub",
+    "h1", "h2", "h3", "ul", "ol", "li",
     "a", "span", "div", "blockquote", "table", "thead", "tbody", "tr", "th", "td", "mark",
   ],
   ALLOWED_ATTR: ["href", "target", "rel", "class", "style"],
@@ -13,6 +14,78 @@ export const SANITIZE_OPTS = {
 };
 
 export const sanitizeHtml = (html: string) => DOMPurify.sanitize(html ?? "", SANITIZE_OPTS);
+
+/**
+ * Normaliza o HTML vindo do editor / colagem do Word:
+ * converte `<b>/<i>` e `font-weight` em `<strong>/<em>`, remove lixo do Word
+ * (classes `Mso*`, propriedades `mso-*`, spans vazios) e transforma as quebras
+ * de linha soltas dentro do parágrafo em espaço (evita palavras/linhas cortadas).
+ */
+export function normalizarHtmlEditor(html: string): string {
+  if (typeof window === "undefined" || !html) return html ?? "";
+  const doc = new DOMParser().parseFromString(sanitizeHtml(html), "text/html");
+
+  const trocarTag = (el: Element, nova: string) => {
+    const novo = doc.createElement(nova);
+    while (el.firstChild) novo.appendChild(el.firstChild);
+    el.replaceWith(novo);
+    return novo;
+  };
+
+  // <b>/<i> -> <strong>/<em>
+  doc.body.querySelectorAll("b").forEach((el) => trocarTag(el, "strong"));
+  doc.body.querySelectorAll("i").forEach((el) => trocarTag(el, "em"));
+
+  doc.body.querySelectorAll("[style], [class], [id], [lang]").forEach((el) => {
+    const style = el.getAttribute("style") ?? "";
+    const negrito = /font-weight\s*:\s*(bold(er)?|[6-9]00)/i.test(style);
+    const italico = /font-style\s*:\s*italic/i.test(style);
+
+    // Mantém só o alinhamento; o resto do estilo do Word é descartado.
+    const align = /text-align\s*:\s*(justify|center|right|left)/i.exec(style)?.[1];
+    if (align) el.setAttribute("style", `text-align:${align.toLowerCase()}`);
+    else el.removeAttribute("style");
+
+    const cls = el.getAttribute("class") ?? "";
+    if (/mso|^Normal$|WordSection|ListParagraph/i.test(cls)) el.removeAttribute("class");
+    el.removeAttribute("lang");
+    if (/^docs-internal|^m_/.test(el.getAttribute("id") ?? "")) el.removeAttribute("id");
+
+    if (negrito || italico) {
+      const wrapper = doc.createElement(negrito ? "strong" : "em");
+      while (el.firstChild) wrapper.appendChild(el.firstChild);
+      if (negrito && italico) {
+        const em = doc.createElement("em");
+        while (wrapper.firstChild) em.appendChild(wrapper.firstChild);
+        wrapper.appendChild(em);
+      }
+      el.appendChild(wrapper);
+    }
+  });
+
+  // Spans sem atributos úteis viram o próprio conteúdo.
+  doc.body.querySelectorAll("span, font").forEach((el) => {
+    if (!el.getAttribute("style") && !el.getAttribute("class")) {
+      el.replaceWith(...Array.from(el.childNodes));
+    }
+  });
+
+  // Quebras de linha soltas dentro do texto viram espaço.
+  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+  const textos: Text[] = [];
+  while (walker.nextNode()) textos.push(walker.currentNode as Text);
+  textos.forEach((t) => {
+    t.nodeValue = (t.nodeValue ?? "").replace(/[\r\n\t]+/g, " ").replace(/\u00a0/g, " ");
+  });
+
+  let out = doc.body.innerHTML
+    .replace(/<(p|div)([^>]*)>(\s|&nbsp;|<br\s*\/?>)*<\/\1>/gi, "<p></p>")
+    .replace(/(<p><\/p>\s*){2,}/gi, "<p></p>")
+    .replace(/\s{2,}/g, " ");
+
+  return sanitizeHtml(out);
+}
+
 
 const RE_TITULO_NUM = /^\d+(\.\d+)*[.)-]?\s+\S/;
 const RE_ABERTURA_CLAUSULA =

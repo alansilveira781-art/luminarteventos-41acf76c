@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Pencil, Trash2, Bold, Italic, List, Heading2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { CAMPOS_SUGERIDOS, extrairCampos, sanitizeHtml } from "@/lib/juridico/modelo-render";
+import { CAMPOS_SUGERIDOS, extrairCampos, normalizarHtmlEditor, sanitizeHtml } from "@/lib/juridico/modelo-render";
 
 export const Route = createFileRoute("/juridico/modelos")({ component: ModelosPage });
 
@@ -46,7 +46,7 @@ function ModelosPage() {
 
   const saveMut = useMutation({
     mutationFn: async (p: any) => {
-      const safeHtml = sanitizeHtml(p.corpo_html ?? "");
+      const safeHtml = normalizarHtmlEditor(p.corpo_html ?? "");
       const variaveis = extractVars(safeHtml);
       const payload = { ...p, corpo_html: safeHtml, variaveis };
       const { id, ...rest } = payload;
@@ -115,14 +115,48 @@ function ModeloDialog({ open, onOpenChange, editing, onSave }: {
 }) {
   const [f, setF] = useState<any>({});
   const ref = useRef<HTMLDivElement>(null);
-  useMemo(() => {
+
+  useEffect(() => {
+    if (!open) return;
     const init = editing ?? { tipo: "corporativo", nome: "", corpo_html: "<p>Cole ou escreva o contrato aqui. Use <strong>[cliente_nome]</strong>, [cliente_documento], [valor_total] nos trechos a preencher.</p>" };
-    setF(init);
-    setTimeout(() => { if (ref.current) ref.current.innerHTML = sanitizeHtml(init.corpo_html ?? ""); }, 50);
+    setF({ ...init });
+    const id = requestAnimationFrame(() => {
+      if (ref.current) ref.current.innerHTML = sanitizeHtml(init.corpo_html ?? "");
+      try { document.execCommand("styleWithCSS", false, "false"); } catch { /* noop */ }
+    });
+    return () => cancelAnimationFrame(id);
   }, [editing, open]);
 
-  const exec = (cmd: string, val?: string) => { document.execCommand(cmd, false, val); ref.current?.focus(); };
+  const exec = (cmd: string, val?: string) => {
+    ref.current?.focus();
+    document.execCommand(cmd, false, val);
+    setF((p: any) => ({ ...p, corpo_html: ref.current?.innerHTML ?? p.corpo_html }));
+  };
+
+  /** Colagem do Word: limpa classes/estilos e quebras soltas, preservando negrito e listas. */
+  const colar = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const html = e.clipboardData.getData("text/html");
+    const texto = e.clipboardData.getData("text/plain");
+    if (html) {
+      document.execCommand("insertHTML", false, normalizarHtmlEditor(html));
+    } else {
+      const blocos = texto
+        .split(/\n{2,}/)
+        .map((b) => `<p>${b.replace(/\n/g, " ").replace(/[<>]/g, "").trim()}</p>`)
+        .join("");
+      document.execCommand("insertHTML", false, blocos);
+    }
+    setF((p: any) => ({ ...p, corpo_html: ref.current?.innerHTML ?? p.corpo_html }));
+  };
+
+  const salvar = () => {
+    if (!f.nome) return toast.error("Informe o nome");
+    onSave({ ...f, corpo_html: ref.current?.innerHTML ?? f.corpo_html ?? "" });
+  };
+
   const vars = useMemo(() => extractVars(f.corpo_html ?? ""), [f.corpo_html]);
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -166,10 +200,13 @@ function ModeloDialog({ open, onOpenChange, editing, onSave }: {
             <div
               ref={ref}
               contentEditable
-              onInput={(e) => setF((p: any) => ({ ...p, corpo_html: (e.target as HTMLDivElement).innerHTML }))}
-              className="prose prose-sm max-w-none p-3 min-h-[300px] max-h-[55vh] overflow-y-auto focus:outline-none"
+              onInput={() => setF((p: any) => ({ ...p, corpo_html: ref.current?.innerHTML ?? p.corpo_html }))}
+              onBlur={() => setF((p: any) => ({ ...p, corpo_html: ref.current?.innerHTML ?? p.corpo_html }))}
+              onPaste={colar}
+              className="prose prose-sm max-w-none p-3 min-h-[300px] max-h-[55vh] overflow-y-auto focus:outline-none contrato-preview"
               suppressContentEditableWarning
             />
+
           </div>
           {vars.length > 0 && (
             <div className="mt-2 text-xs text-muted-foreground">
@@ -180,7 +217,7 @@ function ModeloDialog({ open, onOpenChange, editing, onSave }: {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={() => { if (!f.nome) return toast.error("Informe o nome"); onSave(f); }}>{editing ? "Salvar" : "Criar"}</Button>
+          <Button onClick={salvar}>{editing ? "Salvar" : "Criar"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

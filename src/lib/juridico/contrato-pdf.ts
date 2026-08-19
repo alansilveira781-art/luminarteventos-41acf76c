@@ -2,8 +2,13 @@ import jsPDF from "jspdf";
 import timbrado from "@/assets/timbrado-luminart.png.asset.json";
 import { ehTituloSecao, rotuloClausula } from "./modelo-render";
 
+/** Palavra do contrato com o negrito herdado do HTML. */
+export type Palavra = { txt: string; bold: boolean; colar?: boolean };
+
 export type BlocoContrato = {
   texto: string;
+  /** Palavras já com o negrito real vindo do HTML. */
+  palavras: Palavra[];
   /** titulo = seção numerada/caixa alta; clausula = "Cláusula 1ª." com rótulo em negrito. */
   tipo: "titulo" | "clausula" | "paragrafo" | "lista";
   /** Trecho inicial em negrito (rótulo da cláusula). */
@@ -12,58 +17,112 @@ export type BlocoContrato = {
   nivel?: number;
 };
 
-/** Converte o HTML do contrato em blocos de texto simples preservando parágrafos e listas. */
+type Trecho = { txt: string; bold: boolean };
+
+const EH_NEGRITO = /font-weight\s*:\s*(bold(er)?|[6-9]00)/i;
+
+/** Converte o HTML do contrato em blocos preservando parágrafos, listas e negrito. */
 export function htmlParaBlocos(html: string): BlocoContrato[] {
   const doc = new DOMParser().parseFromString(html ?? "", "text/html");
   const blocos: BlocoContrato[] = [];
 
-  /**
-   * Texto de um elemento preservando as quebras `<br>` como "\n" e
-   * garantindo separação entre elementos inline vizinhos sem espaço.
-   */
-  const textoDe = (el: Node): string => {
-    let out = "";
+  /** Trechos de um elemento, mantendo `<br>` como "\n" e o negrito herdado. */
+  const trechosDe = (el: Node, bold = false): Trecho[] => {
+    const out: Trecho[] = [];
     el.childNodes.forEach((child) => {
       if (child.nodeType === Node.TEXT_NODE) {
-        out += child.nodeValue ?? "";
+        const v = child.nodeValue ?? "";
+        if (v) out.push({ txt: v, bold });
         return;
       }
       const e = child as HTMLElement;
       const tag = e.tagName?.toLowerCase();
+      if (!tag) return;
       if (tag === "br") {
-        out += "\n";
+        out.push({ txt: "\n", bold });
         return;
       }
-      const interno = textoDe(e);
-      if (!interno) return;
+      const negrito =
+        bold ||
+        tag === "strong" ||
+        tag === "b" ||
+        ["h1", "h2", "h3"].includes(tag) ||
+        EH_NEGRITO.test(e.getAttribute("style") ?? "");
+      const filhos = trechosDe(e, negrito);
+      if (!filhos.length) return;
+      const anterior = out.map((t) => t.txt).join("");
+      const inicio = filhos.map((t) => t.txt).join("");
       // Evita "Freitasinscrito" quando não há espaço entre os elementos.
-      if (out && !/[\s(\[{«"'\/-]$/.test(out) && !/^[\s.,;:!?)\]}%»"']/.test(interno)) out += " ";
-      out += interno;
+      if (
+        anterior &&
+        !/[\s(\[{«"'/-]$/.test(anterior) &&
+        !/^[\s.,;:!?)\]}%»"']/.test(inicio)
+      ) {
+
+        out.push({ txt: " ", bold });
+      }
+      out.push(...filhos);
     });
     return out;
   };
 
-  const push = (texto: string, tipo: BlocoContrato["tipo"], nivel = 0) => {
-    texto
-      .split("\n")
-      .map((l) => l.replace(/\s+/g, " ").trim())
-      .filter(Boolean)
-      .forEach((linha, i) => {
-        const t = tipo === "titulo" && i > 0 ? "paragrafo" : tipo;
-        const rotulo = t === "clausula" ? (rotuloClausula(linha) ?? undefined) : undefined;
-        blocos.push({ texto: linha, tipo: t, rotulo, nivel });
-      });
+  /** Divide os trechos em linhas (por "\n") e cada linha em palavras com negrito. */
+  const linhasDe = (trechos: Trecho[]): Palavra[][] => {
+    const linhas: Palavra[][] = [];
+    let atual: Palavra[] = [];
+    let cur: Palavra | null = null;
+    let colar = false;
+    for (const t of trechos) {
+      const partes = t.txt.split(/(\s+)/);
+      for (const p of partes) {
+        if (!p) continue;
+        if (p === "\n" || /\n/.test(p)) {
+          if (atual.length) linhas.push(atual);
+          atual = [];
+          cur = null;
+          colar = false;
+          continue;
+        }
+        if (/^\s+$/.test(p)) {
+          cur = null;
+          colar = false;
+          continue;
+        }
+        if (cur && cur.bold === t.bold) {
+          cur.txt += p;
+        } else {
+          cur = { txt: p, bold: t.bold, colar: colar || undefined };
+          atual.push(cur);
+        }
+        colar = true;
+      }
+    }
+    if (atual.length) linhas.push(atual);
+    return linhas;
+  };
+
+  const textoDaLinha = (linha: Palavra[]) =>
+    linha.reduce((acc, p, i) => acc + (i > 0 && !p.colar ? " " : "") + p.txt, "").trim();
+
+  const push = (trechos: Trecho[], tipo: BlocoContrato["tipo"], nivel = 0) => {
+    linhasDe(trechos).forEach((linha, i) => {
+      const texto = textoDaLinha(linha);
+      if (!texto) return;
+      const t = tipo === "titulo" && i > 0 ? "paragrafo" : tipo;
+      const rotulo = t === "clausula" ? (rotuloClausula(texto) ?? undefined) : undefined;
+      blocos.push({ texto, palavras: linha, tipo: t, rotulo, nivel });
+    });
   };
 
   const pushParagrafo = (el: HTMLElement, nivel = 0) => {
-    const texto = textoDe(el);
-    const primeira = texto.split("\n").find((l) => l.trim()) ?? "";
+    const trechos = trechosDe(el);
+    const primeira = textoDaLinha(linhasDe(trechos)[0] ?? []);
     const forte = el.querySelector("strong, b");
     const jaNegrito =
       !!forte && (el.textContent ?? "").trim() === (forte.textContent ?? "").trim();
-    if (ehTituloSecao(primeira, jaNegrito)) return push(texto, "titulo", nivel);
-    if (rotuloClausula(primeira)) return push(texto, "clausula", nivel);
-    push(texto, nivel > 0 ? "lista" : "paragrafo", nivel);
+    if (ehTituloSecao(primeira, jaNegrito)) return push(trechos, "titulo", nivel);
+    if (rotuloClausula(primeira)) return push(trechos, "clausula", nivel);
+    push(trechos, nivel > 0 ? "lista" : "paragrafo", nivel);
   };
 
   const walk = (node: Node, nivel = 0) => {
@@ -72,30 +131,31 @@ export function htmlParaBlocos(html: string): BlocoContrato[] {
       const el = child as HTMLElement;
       const tag = el.tagName?.toLowerCase();
       if (!tag) return;
-      if (["h1", "h2", "h3"].includes(tag)) return push(textoDe(el), "titulo", nivel);
+      if (["h1", "h2", "h3"].includes(tag)) return push(trechosDe(el), "titulo", nivel);
       if (tag === "p" || tag === "blockquote") return pushParagrafo(el, nivel);
-      if (tag === "li") return push(textoDe(el), "lista", Math.max(1, nivel));
+      if (tag === "li") return push(trechosDe(el), "lista", Math.max(1, nivel));
       if (["ul", "ol"].includes(tag)) return walk(el, nivel + 1);
       if (["div", "table", "tbody", "thead", "tr"].includes(tag)) return walk(el, nivel);
-      if (tag === "td" || tag === "th") return push(textoDe(el), "paragrafo", nivel);
+      if (tag === "td" || tag === "th") return push(trechosDe(el), "paragrafo", nivel);
       pushParagrafo(el, nivel);
     });
   };
 
   walk(doc.body);
-  if (blocos.length === 0) push(textoDe(doc.body), "paragrafo");
+  if (blocos.length === 0) push(trechosDe(doc.body), "paragrafo");
   return blocos;
 }
 
 /** Espaçamento e tipografia padrão do contrato (mm / pt), espelhando o modelo em Word. */
 const TAMANHO_CORPO = 10.5; // ≈ Calibri 11
 const TAMANHO_TITULO = 11;
-const ALTURA_LINHA = 4.7; // entrelinha ~1,15
-const ALTURA_LINHA_TITULO = 5.2;
+const ALTURA_LINHA = 4.35; // entrelinha 1,15
+const ALTURA_LINHA_TITULO = 4.8;
 const ESPACO_ANTES_TITULO = 4.2; // 12 pt
 const ESPACO_DEPOIS_TITULO = 2.1; // 6 pt
 const ESPACO_PARAGRAFO = 2.1; // 6 pt
 const RECUO_LISTA = 8; // recuo à esquerda dos itens a) b) c)
+
 
 
 const RODAPE_LINHAS = [
@@ -150,27 +210,27 @@ export async function gerarContratoPdfBase64(
     }
   };
 
-  type Palavra = { txt: string; bold: boolean };
+  const larguraDe = (p: Palavra) => {
+    doc.setFont("helvetica", p.bold ? "bold" : "normal");
+    return doc.getTextWidth(p.txt);
+  };
+  const larguraEspaco = () => {
+    doc.setFont("helvetica", "normal");
+    return doc.getTextWidth(" ");
+  };
 
   /** Quebra os tokens em linhas respeitando a largura disponível. */
   const quebrarLinhas = (palavras: Palavra[], larguraDisp: number): Palavra[][] => {
     const linhas: Palavra[][] = [];
     let atual: Palavra[] = [];
     let usado = 0;
-    const larguraDe = (p: Palavra) => {
-      doc.setFont("helvetica", p.bold ? "bold" : "normal");
-      return doc.getTextWidth(p.txt);
-    };
-    const espaco = () => {
-      doc.setFont("helvetica", "normal");
-      return doc.getTextWidth(" ");
-    };
     palavras.forEach((p) => {
       const w = larguraDe(p);
-      const extra = atual.length ? espaco() + w : w;
-      if (atual.length && usado + extra > larguraDisp) {
+      const comEspaco = atual.length > 0 && !p.colar;
+      const extra = comEspaco ? larguraEspaco() + w : w;
+      if (atual.length && !p.colar && usado + extra > larguraDisp) {
         linhas.push(atual);
-        atual = [p];
+        atual = [{ ...p, colar: undefined }];
         usado = w;
       } else {
         atual.push(p);
@@ -188,39 +248,44 @@ export async function gerarContratoPdfBase64(
     larguraDisp: number,
     justificar: boolean,
   ) => {
-    doc.setFont("helvetica", "normal");
-    const espacoBase = doc.getTextWidth(" ");
-    const larguraTexto = linha.reduce((acc, p) => {
-      doc.setFont("helvetica", p.bold ? "bold" : "normal");
-      return acc + doc.getTextWidth(p.txt);
-    }, 0);
-    const vaos = linha.length - 1;
+    const espacoBase = larguraEspaco();
+    const larguraTexto = linha.reduce((acc, p) => acc + larguraDe(p), 0);
+    const vaos = linha.reduce((acc, p, i) => acc + (i > 0 && !p.colar ? 1 : 0), 0);
     let espaco = espacoBase;
     if (justificar && vaos > 0) {
       const calc = (larguraDisp - larguraTexto) / vaos;
       // Evita linhas com espaçamento exagerado (palavras muito longas).
-      espaco = calc > espacoBase * 3 ? espacoBase : calc;
+      espaco = calc > espacoBase * 3 || calc < espacoBase ? espacoBase : calc;
     }
     let cursor = x;
-    linha.forEach((p) => {
+    linha.forEach((p, i) => {
+      if (i > 0 && !p.colar) cursor += espaco;
       doc.setFont("helvetica", p.bold ? "bold" : "normal");
       doc.text(p.txt, cursor, y);
-      cursor += doc.getTextWidth(p.txt) + espaco;
+      cursor += doc.getTextWidth(p.txt);
     });
   };
 
+  /** Palavras do bloco, com o negrito do HTML + o realce do tipo (título / rótulo). */
   const tokens = (bloco: BlocoContrato): Palavra[] => {
+    const base = bloco.palavras.length
+      ? bloco.palavras
+      : bloco.texto.split(/\s+/).filter(Boolean).map((txt) => ({ txt, bold: false }));
+
+    if (bloco.tipo === "titulo") return base.map((p) => ({ ...p, bold: true }));
+
     const rotulo = bloco.tipo === "clausula" ? bloco.rotulo : undefined;
-    const bold = bloco.tipo === "titulo";
-    if (rotulo && bloco.texto.trimStart().startsWith(rotulo)) {
-      const resto = bloco.texto.trimStart().slice(rotulo.length).trim();
-      return [
-        ...rotulo.split(/\s+/).filter(Boolean).map((txt) => ({ txt, bold: true })),
-        ...resto.split(/\s+/).filter(Boolean).map((txt) => ({ txt, bold: false })),
-      ];
-    }
-    return bloco.texto.split(/\s+/).filter(Boolean).map((txt) => ({ txt, bold }));
+    if (!rotulo) return base;
+
+    // Negrita o rótulo inicial ("Cláusula 1ª.") mantendo o resto como está.
+    let restante = rotulo.replace(/\s+/g, "").length;
+    return base.map((p) => {
+      if (restante <= 0) return p;
+      restante -= p.txt.replace(/\s+/g, "").length;
+      return { ...p, bold: true };
+    });
   };
+
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
