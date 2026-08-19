@@ -63,6 +63,24 @@ const MESES = [
 
 const porExtenso = (d: Date) => `${d.getDate()} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`;
 
+/** CPF (xxx.xxx.xxx-xx) ou CNPJ (xx.xxx.xxx/xxxx-xx); devolve como veio se não bater. */
+export function fmtDoc(v?: string | null): string {
+  const s = String(v ?? "").trim();
+  const d = s.replace(/\D/g, "");
+  if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+  return s;
+}
+
+/** Telefone (xx)x.xxxx-xxxx (celular) ou (xx)xxxx-xxxx (fixo). */
+export function fmtTel(v?: string | null): string {
+  const s = String(v ?? "").trim();
+  const d = s.replace(/\D/g, "");
+  if (d.length === 11) return d.replace(/(\d{2})(\d{1})(\d{4})(\d{4})/, "($1)$2.$3-$4");
+  if (d.length === 10) return d.replace(/(\d{2})(\d{4})(\d{4})/, "($1)$2-$3");
+  return s;
+}
+
 function enderecoLinha(p: ContratoDados, prefixo: "cliente" | "resp_legal" | "resp_legal2"): string {
   return [
     [p[`${prefixo}_logradouro`], p[`${prefixo}_numero`]].filter(Boolean).join(", "),
@@ -110,7 +128,7 @@ function blocoAssinaturas(c: ContratoDados, empresa?: EmpresaContratada | null):
   partes.push(
     linha(
       empresa?.razao_social || c.empresa || "",
-      [empresa?.representante_nome, empresa?.representante_documento]
+      [empresa?.representante_nome, fmtDoc(empresa?.representante_documento)]
         .filter(Boolean)
         .join(" — ") || undefined,
     ),
@@ -118,14 +136,14 @@ function blocoAssinaturas(c: ContratoDados, empresa?: EmpresaContratada | null):
   partes.push(
     linha(
       c.cliente_nome || "",
-      [c.resp_legal_nome, c.resp_legal_documento].filter(Boolean).join(" — ") || undefined,
+      [c.resp_legal_nome, fmtDoc(c.resp_legal_documento)].filter(Boolean).join(" — ") || undefined,
     ),
   );
   if (c.resp_legal2_nome) {
     partes.push(
       linha(
         c.cliente_nome || "",
-        [c.resp_legal2_nome, c.resp_legal2_documento].filter(Boolean).join(" — ") || undefined,
+        [c.resp_legal2_nome, fmtDoc(c.resp_legal2_documento)].filter(Boolean).join(" — ") || undefined,
       ),
     );
   }
@@ -133,7 +151,7 @@ function blocoAssinaturas(c: ContratoDados, empresa?: EmpresaContratada | null):
   if (comNome.length) {
     partes.push(`<p style="margin-top:24px"><strong>Testemunhas:</strong></p>`);
     comNome.forEach((t) =>
-      partes.push(linha(t.nome ?? "", t.documento ? `CPF ${t.documento}` : undefined)),
+      partes.push(linha(t.nome ?? "", t.documento ? `CPF ${fmtDoc(t.documento)}` : undefined)),
     );
   }
   return partes.join("");
@@ -176,10 +194,10 @@ export function variaveisDoContrato(
     empresa: empresa?.razao_social ?? c.empresa ?? "",
     empresa_razao_social: empresa?.razao_social ?? c.empresa ?? "",
     empresa_nome_fantasia: empresa?.nome_fantasia ?? "",
-    empresa_cnpj: empresa?.cnpj ?? "",
+    empresa_cnpj: fmtDoc(empresa?.cnpj),
     empresa_endereco: empresa?.endereco ?? "",
     empresa_representante: empresa?.representante_nome ?? "",
-    empresa_representante_documento: empresa?.representante_documento ?? "",
+    empresa_representante_documento: fmtDoc(empresa?.representante_documento),
     categoria: c.categoria ?? "",
     evento_nome: c.evento_nome ?? "",
     nome_evento: c.evento_nome ?? "",
@@ -191,11 +209,11 @@ export function variaveisDoContrato(
     cliente: c.cliente_nome ?? "",
     cliente_nome: c.cliente_nome ?? "",
     razao_social: c.cliente_nome ?? "",
-    cliente_documento: c.cliente_documento ?? "",
-    cpf: c.cliente_documento ?? "",
-    cnpj: c.cliente_documento ?? "",
+    cliente_documento: fmtDoc(c.cliente_documento),
+    cpf: fmtDoc(c.cliente_documento),
+    cnpj: fmtDoc(c.cliente_documento),
     cliente_email: c.cliente_email ?? "",
-    cliente_telefone: c.cliente_telefone ?? "",
+    cliente_telefone: fmtTel(c.cliente_telefone),
     cliente_cep: c.cliente_cep ?? "",
     cliente_logradouro: c.cliente_logradouro ?? "",
     cliente_numero: c.cliente_numero ?? "",
@@ -208,20 +226,20 @@ export function variaveisDoContrato(
     endereco_completo: enderecoLinha(c, "cliente"),
     resp_legal_nome: c.resp_legal_nome ?? "",
     representante_legal: c.resp_legal_nome ?? "",
-    resp_legal_documento: c.resp_legal_documento ?? "",
+    resp_legal_documento: fmtDoc(c.resp_legal_documento),
     resp_legal_email: c.resp_legal_email ?? "",
-    resp_legal_telefone: c.resp_legal_telefone ?? "",
+    resp_legal_telefone: fmtTel(c.resp_legal_telefone),
     resp_legal_endereco: enderecoLinha(c, "resp_legal"),
     resp_legal2_nome: c.resp_legal2_nome ?? "",
     representante_legal_2: c.resp_legal2_nome ?? "",
-    resp_legal2_documento: c.resp_legal2_documento ?? "",
+    resp_legal2_documento: fmtDoc(c.resp_legal2_documento),
     resp_legal2_email: c.resp_legal2_email ?? "",
-    resp_legal2_telefone: c.resp_legal2_telefone ?? "",
+    resp_legal2_telefone: fmtTel(c.resp_legal2_telefone),
     resp_legal2_endereco: enderecoLinha(c, "resp_legal2"),
     testemunha1_nome: testemunhas[0]?.nome ?? "",
-    testemunha1_documento: testemunhas[0]?.documento ?? "",
+    testemunha1_documento: fmtDoc(testemunhas[0]?.documento),
     testemunha2_nome: testemunhas[1]?.nome ?? "",
-    testemunha2_documento: testemunhas[1]?.documento ?? "",
+    testemunha2_documento: fmtDoc(testemunhas[1]?.documento),
     valor: c.valor != null ? fmtMoeda(Number(c.valor)) : "",
     valor_total: c.valor != null ? fmtMoeda(Number(c.valor)) : "",
     valor_extenso: c.valor != null ? valorPorExtenso(Number(c.valor)) : "",
