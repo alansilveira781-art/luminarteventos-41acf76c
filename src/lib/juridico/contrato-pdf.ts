@@ -56,10 +56,9 @@ export function htmlParaBlocos(html: string): BlocoContrato[] {
       if (
         anterior &&
         !/[\s(\[{«"'/-]$/.test(anterior) &&
-        !/^[\s.,;:!?)\]}%»"']/.test(inicio) &&
-        (e.previousSibling as HTMLElement)?.nodeName !== undefined &&
-        !/^(strong|b|em|i|u|span|mark|a|sup|sub)$/.test(tag)
+        !/^[\s.,;:!?)\]}%»"']/.test(inicio)
       ) {
+
         out.push({ txt: " ", bold });
       }
       out.push(...filhos);
