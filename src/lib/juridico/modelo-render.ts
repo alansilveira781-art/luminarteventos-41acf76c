@@ -14,6 +14,39 @@ export const SANITIZE_OPTS = {
 
 export const sanitizeHtml = (html: string) => DOMPurify.sanitize(html ?? "", SANITIZE_OPTS);
 
+const RE_CABECALHO_INICIO =
+  /^(cl[áa]usula|par[áa]grafo|anexo|considerando\s+que\s*:|do\s+objeto)\b/i;
+const RE_CABECALHO_NUM = /^\d+(\.\d+)*[.)-]?\s+\S/;
+
+/**
+ * Identifica se um bloco de texto é cabeçalho de cláusula
+ * (usado tanto na prévia em tela quanto na geração do PDF).
+ */
+export function ehCabecalhoClausula(texto: string, jaEmNegrito = false): boolean {
+  const t = (texto ?? "").replace(/\s+/g, " ").trim();
+  if (!t || t.length > 120) return false;
+  if (RE_CABECALHO_INICIO.test(t)) return true;
+  if (RE_CABECALHO_NUM.test(t) && t.length <= 90 && !/[.!?]\s+\S/.test(t)) return true;
+  const letras = t.replace(/[^A-Za-zÀ-ÿ]/g, "");
+  if (letras.length >= 4 && letras === letras.toUpperCase() && !t.endsWith(".")) return true;
+  return jaEmNegrito && t.length <= 90;
+}
+
+/** Coloca em negrito os cabeçalhos de cláusula detectados (prévia em tela). */
+export function realcarCabecalhos(html: string): string {
+  return (html ?? "").replace(
+    /<p([^>]*)>([\s\S]*?)<\/p>/gi,
+    (m, attrs: string, inner: string) => {
+      const texto = inner.replace(/<[^>]+>/g, " ");
+      const jaNegrito = /^\s*<(strong|b)\b/i.test(inner);
+      if (!ehCabecalhoClausula(texto, jaNegrito)) return m;
+      if (/^\s*<(strong|b)\b[\s\S]*<\/(strong|b)>\s*$/i.test(inner.trim())) return m;
+      const limpo = inner.replace(/<\/?(strong|b)>/gi, "");
+      return `<p${attrs}><strong>${limpo}</strong></p>`;
+    },
+  );
+}
+
 /** Normaliza um nome de campo: minúsculo, sem acento, espaços viram "_". */
 export function normalizarCampo(nome: string): string {
   return (nome ?? "")
