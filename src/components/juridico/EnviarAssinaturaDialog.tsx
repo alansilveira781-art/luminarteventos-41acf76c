@@ -276,7 +276,7 @@ export function EnviarAssinaturaDialog({
                 Pré-visualizar contrato preenchido
               </summary>
               <div
-                className="prose prose-sm max-w-none p-3 max-h-72 overflow-y-auto border-t"
+                className="prose prose-sm max-w-none p-3 max-h-72 overflow-y-auto border-t contrato-preview"
                 dangerouslySetInnerHTML={{ __html: htmlRenderizado }}
               />
             </details>

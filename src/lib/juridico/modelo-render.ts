@@ -14,38 +14,70 @@ export const SANITIZE_OPTS = {
 
 export const sanitizeHtml = (html: string) => DOMPurify.sanitize(html ?? "", SANITIZE_OPTS);
 
-const RE_CABECALHO_INICIO =
-  /^(cl[áa]usula|par[áa]grafo|anexo|considerando\s+que\s*:|do\s+objeto)\b/i;
-const RE_CABECALHO_NUM = /^\d+(\.\d+)*[.)-]?\s+\S/;
+const RE_TITULO_NUM = /^\d+(\.\d+)*[.)-]?\s+\S/;
+const RE_ABERTURA_CLAUSULA =
+  /^((?:cl[áa]usula|par[áa]grafo)\s+[^.:—-]{0,40}?[.:]|par[áa]grafo\s+[úu]nico\s*[.:]|considerando\s+que\s*:)/i;
 
-/**
- * Identifica se um bloco de texto é cabeçalho de cláusula
- * (usado tanto na prévia em tela quanto na geração do PDF).
- */
-export function ehCabecalhoClausula(texto: string, jaEmNegrito = false): boolean {
-  const t = (texto ?? "").replace(/\s+/g, " ").trim();
-  if (!t || t.length > 120) return false;
-  if (RE_CABECALHO_INICIO.test(t)) return true;
-  if (RE_CABECALHO_NUM.test(t) && t.length <= 90 && !/[.!?]\s+\S/.test(t)) return true;
-  const letras = t.replace(/[^A-Za-zÀ-ÿ]/g, "");
-  if (letras.length >= 4 && letras === letras.toUpperCase() && !t.endsWith(".")) return true;
-  return jaEmNegrito && t.length <= 90;
+/** Rótulo em negrito de uma abertura de cláusula ("Cláusula 1ª.", "Parágrafo Único:"). */
+export function rotuloClausula(texto: string): string | null {
+  const t = (texto ?? "").replace(/\s+/g, " ").trimStart();
+  const m = t.match(RE_ABERTURA_CLAUSULA);
+  return m ? m[1] : null;
 }
 
-/** Coloca em negrito os cabeçalhos de cláusula detectados (prévia em tela). */
+/**
+ * Título de seção do contrato: numeração "1. DAS PARTES", "2. DO OBJETO"
+ * ou linha curta inteiramente em caixa alta. Aberturas de cláusula NÃO entram aqui.
+ */
+export function ehTituloSecao(texto: string, jaEmNegrito = false): boolean {
+  const t = (texto ?? "").replace(/\s+/g, " ").trim();
+  if (!t || t.length > 120) return false;
+  if (rotuloClausula(t)) return false;
+  if (/^anexo\b/i.test(t)) return true;
+  if (RE_TITULO_NUM.test(t) && t.length <= 90 && !/[.!?]\s+\S/.test(t)) return true;
+  const letras = t.replace(/[^A-Za-zÀ-ÿ]/g, "");
+  if (letras.length >= 4 && letras === letras.toUpperCase() && !t.endsWith(".")) return true;
+  return jaEmNegrito && t.length <= 90 && !/[.!?]\s+\S/.test(t);
+}
+
+/** @deprecated use `ehTituloSecao` */
+export const ehCabecalhoClausula = ehTituloSecao;
+
+/**
+ * Prévia em tela: títulos de seção em negrito e, nas aberturas de cláusula,
+ * apenas o rótulo em negrito — igual ao PDF.
+ */
 export function realcarCabecalhos(html: string): string {
   return (html ?? "").replace(
     /<p([^>]*)>([\s\S]*?)<\/p>/gi,
     (m, attrs: string, inner: string) => {
-      const texto = inner.replace(/<[^>]+>/g, " ");
+      const texto = inner.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      if (!texto) return m;
       const jaNegrito = /^\s*<(strong|b)\b/i.test(inner);
-      if (!ehCabecalhoClausula(texto, jaNegrito)) return m;
-      if (/^\s*<(strong|b)\b[\s\S]*<\/(strong|b)>\s*$/i.test(inner.trim())) return m;
-      const limpo = inner.replace(/<\/?(strong|b)>/gi, "");
-      return `<p${attrs}><strong>${limpo}</strong></p>`;
+
+      if (ehTituloSecao(texto, jaNegrito)) {
+        if (/^\s*<(strong|b)\b[\s\S]*<\/(strong|b)>\s*$/i.test(inner.trim())) return m;
+        const limpo = inner.replace(/<\/?(strong|b)>/gi, "");
+        return `<p${attrs}><strong>${limpo}</strong></p>`;
+      }
+
+      const rotulo = rotuloClausula(texto);
+      if (rotulo && !jaNegrito) {
+        const limpo = inner.replace(/<\/?(strong|b)>/gi, "");
+        const semTags = limpo.replace(/<[^>]+>/g, "");
+        if (semTags.trimStart().startsWith(rotulo)) {
+          const idx = limpo.indexOf(rotulo);
+          if (idx >= 0) {
+            const resto = limpo.slice(idx + rotulo.length);
+            return `<p${attrs}><strong>${limpo.slice(0, idx)}${rotulo}</strong>${resto}</p>`;
+          }
+        }
+      }
+      return m;
     },
   );
 }
+
 
 /** Normaliza um nome de campo: minúsculo, sem acento, espaços viram "_". */
 export function normalizarCampo(nome: string): string {

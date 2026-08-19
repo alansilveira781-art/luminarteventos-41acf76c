@@ -167,3 +167,27 @@
   }
   .tabular-nums { font-variant-numeric: tabular-nums; }
 }
+
+/* Prévia do contrato: mesma tipografia do PDF gerado. */
+.contrato-preview {
+  text-align: justify;
+  line-height: 1.4;
+}
+.contrato-preview p {
+  margin: 0 0 0.45rem;
+}
+.contrato-preview h1,
+.contrato-preview h2,
+.contrato-preview h3 {
+  margin: 0.9rem 0 0.45rem;
+  font-weight: 700;
+  text-align: left;
+}
+.contrato-preview ul,
+.contrato-preview ol {
+  margin: 0 0 0.45rem;
+  padding-left: 1.6rem;
+}
+.contrato-preview li {
+  margin: 0 0 0.2rem;
+}

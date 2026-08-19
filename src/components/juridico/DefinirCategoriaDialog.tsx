@@ -201,7 +201,7 @@ export function DefinirCategoriaDialog({
             <div>
               <div className="text-xs font-semibold text-muted-foreground mb-1">Prévia do contrato</div>
               <div
-                className="prose prose-sm max-w-none rounded-md border p-3 max-h-64 overflow-y-auto"
+                className="prose prose-sm max-w-none rounded-md border p-3 max-h-64 overflow-y-auto contrato-preview"
                 dangerouslySetInnerHTML={{ __html: preview }}
               />
             </div>
