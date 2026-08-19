@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,19 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { gerarContratoPdfBase64 } from "@/lib/juridico/contrato-pdf";
 import { enviarParaAssinatura } from "@/lib/juridico/clicksign.functions";
+import {
+  CAMPOS_OBRIGATORIOS,
+  CAMPOS_SUGERIDOS,
+  camposPendentes,
+  limparCamposVazios,
+  renderizarModelo,
+  variaveisDoContrato,
+} from "@/lib/juridico/modelo-render";
+
+const LABEL_CAMPO: Record<string, string> = CAMPOS_SUGERIDOS.reduce(
+  (a: Record<string, string>, c: any) => ({ ...a, [c.campo]: c.label }),
+  {},
+);
 
 const sb = supabase as any;
 
@@ -71,9 +84,9 @@ function signatariosDoContrato(c: any): Signatario[] {
   return out;
 }
 
-async function pdfDoContrato(contrato: any): Promise<{ base64: string; nomeArquivo: string }> {
-  if ((contrato?.corpo_html ?? "").trim()) {
-    return gerarContratoPdfBase64(contrato.titulo ?? "Contrato", contrato.corpo_html);
+async function pdfDoContrato(contrato: any, html: string): Promise<{ base64: string; nomeArquivo: string }> {
+  if ((html ?? "").trim()) {
+    return gerarContratoPdfBase64(contrato.titulo ?? "Contrato", limparCamposVazios(html));
   }
   // Sem corpo próprio: usa o contrato anexado ao card.
   const { data: anexos } = await sb
@@ -109,12 +122,58 @@ export function EnviarAssinaturaDialog({
   const [signatarios, setSignatarios] = useState<Signatario[]>([]);
   const [mensagem, setMensagem] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [empresa, setEmpresa] = useState<any>(null);
+  const [modeloHtml, setModeloHtml] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !contrato) return;
     setSignatarios(signatariosDoContrato(contrato));
     setMensagem(`Olá! Segue o contrato "${contrato.titulo ?? ""}" para assinatura eletrônica.`);
+
+    // Empresa contratada (dados usados nos campos automáticos do modelo).
+    sb.from("admin_empresas")
+      .select("razao_social,nome_fantasia,cnpj,endereco,representante_nome,representante_documento")
+      .then(({ data }: any) => {
+        const alvo = (contrato?.empresa ?? "").trim().toLowerCase();
+        setEmpresa(
+          (data ?? []).find(
+            (e: any) =>
+              (e.razao_social ?? "").trim().toLowerCase() === alvo ||
+              (e.nome_fantasia ?? "").trim().toLowerCase() === alvo,
+          ) ?? null,
+        );
+      });
+
+    // Modelo original (com os marcadores) para re-renderizar com os dados atuais.
+    if (contrato?.modelo_id) {
+      sb.from("juridico_modelos")
+        .select("corpo_html")
+        .eq("id", contrato.modelo_id)
+        .maybeSingle()
+        .then(({ data }: any) => setModeloHtml(data?.corpo_html ?? null));
+    } else {
+      setModeloHtml(null);
+    }
   }, [open, contrato?.id]);
+
+  const valores = useMemo(
+    () => ({
+      ...(contrato ? variaveisDoContrato(contrato, empresa) : {}),
+      ...((contrato?.variaveis_valores as Record<string, string>) ?? {}),
+    }),
+    [contrato, empresa],
+  );
+
+  const baseHtml = modeloHtml ?? contrato?.corpo_html ?? "";
+  const htmlRenderizado = useMemo(
+    () => (baseHtml ? renderizarModelo(baseHtml, valores as Record<string, string>) : ""),
+    [baseHtml, valores],
+  );
+  const pendentes = useMemo(
+    () => (baseHtml ? camposPendentes(baseHtml, valores) : []),
+    [baseHtml, valores],
+  );
+  const faltamObrigatorios = pendentes.filter((c) => CAMPOS_OBRIGATORIOS.includes(c));
 
   function set(i: number, patch: Partial<Signatario>) {
     setSignatarios((p) => p.map((s, j) => (j === i ? { ...s, ...patch } : s)));
@@ -131,9 +190,19 @@ export function EnviarAssinaturaDialog({
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s.email)) return toast.error(`E-mail inválido: ${s.nome}`);
     }
 
+    if (faltamObrigatorios.length > 0) {
+      return toast.error(
+        `Preencha antes de enviar: ${faltamObrigatorios.map((c) => LABEL_CAMPO[c] ?? c).join(", ")}`,
+      );
+    }
+
     setEnviando(true);
     try {
-      const { base64, nomeArquivo } = await pdfDoContrato(contrato);
+      const { base64, nomeArquivo } = await pdfDoContrato(contrato, htmlRenderizado);
+      // Guarda o corpo já preenchido para a impressão local ficar igual ao assinado.
+      if (htmlRenderizado) {
+        await sb.from("juridico_contratos").update({ corpo_html: htmlRenderizado }).eq("id", contrato.id);
+      }
 
       const contratada = limpos.find((s) => s.papel === "contratada");
       if (contratada) {
@@ -179,6 +248,32 @@ export function EnviarAssinaturaDialog({
             Confira os signatários. O PDF do contrato será gerado e enviado ao Clicksign, que dispara os e-mails de assinatura.
           </DialogDescription>
         </DialogHeader>
+
+        {htmlRenderizado && (
+          <div className="space-y-2">
+            {pendentes.length > 0 && (
+              <div
+                className={`rounded-md border p-2 text-xs ${
+                  faltamObrigatorios.length ? "border-destructive text-destructive" : "text-muted-foreground"
+                }`}
+              >
+                {faltamObrigatorios.length
+                  ? `Campos obrigatórios sem preenchimento: ${faltamObrigatorios.map((c) => LABEL_CAMPO[c] ?? c).join(", ")}`
+                  : `Campos opcionais sem valor (serão omitidos): ${pendentes.map((c) => LABEL_CAMPO[c] ?? c).join(", ")}`}
+              </div>
+            )}
+            <details className="rounded-md border">
+              <summary className="cursor-pointer px-3 py-2 text-sm font-medium">
+                Pré-visualizar contrato preenchido
+              </summary>
+              <div
+                className="prose prose-sm max-w-none p-3 max-h-72 overflow-y-auto border-t"
+                dangerouslySetInnerHTML={{ __html: htmlRenderizado }}
+              />
+            </details>
+          </div>
+        )}
+
 
         <div className="space-y-3">
           {signatarios.map((s, i) => (

@@ -329,3 +329,27 @@ export function renderizarModelo(
     .replace(RE_CHAVES, (_m, g1) => troca(g1));
   return sanitizeHtml(out);
 }
+
+/** Campos que não podem ficar vazios no contrato enviado para assinatura. */
+export const CAMPOS_OBRIGATORIOS = [
+  "cliente_nome",
+  "cliente_documento",
+  "valor_total",
+  "empresa_razao_social",
+  "empresa_cnpj",
+];
+
+/** Lista os campos do modelo que continuam sem valor. */
+export function camposPendentes(html: string, valores: Record<string, any>): string[] {
+  return extrairCampos(html).filter((c) => !String(valores?.[c] ?? "").trim());
+}
+
+/** Remove os marcadores que sobraram sem valor (usado antes de gerar o PDF final). */
+export function limparCamposVazios(html: string): string {
+  return sanitizeHtml(
+    (html ?? "")
+      .replace(/<mark class="modelo-campo-vazio">\[[^\]]*\]<\/mark>/g, "")
+      .replace(RE_COLCHETE, "")
+      .replace(RE_CHAVES, ""),
+  );
+}
