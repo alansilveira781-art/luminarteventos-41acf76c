@@ -294,3 +294,96 @@ export async function gerarRelatorioPatrimonioConsolidadoPdf(params: {
   const stamp = agora.toISOString().slice(0, 10);
   doc.save(`relatorio-patrimonio-consolidado-${stamp}.pdf`);
 }
+
+export async function gerarFolhaConferenciaPatrimonioPdf(params: {
+  filtros?: string[];
+  linhas: RelatorioPatConsolidadoLinha[];
+}) {
+  const { default: jsPDF } = await import("jspdf");
+  const autoTable = (await import("jspdf-autotable")).default;
+
+  const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const marginX = 12;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text("Grupo Luminart — Folha de conferência de Patrimônio", marginX, 15);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  let y = 21;
+  const filtros = (params.filtros ?? []).filter(Boolean);
+  if (filtros.length) {
+    const linhas = doc.splitTextToSize(`Filtros: ${filtros.join("  ·  ")}`, pageW - marginX * 2);
+    doc.text(linhas, marginX, y);
+    y += linhas.length * 4;
+  }
+  const agora = new Date();
+  doc.setTextColor(120);
+  doc.text(
+    `Gerado em ${agora.toLocaleDateString("pt-BR")} às ${agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`,
+    marginX,
+    y,
+  );
+  doc.setTextColor(0);
+  y += 4;
+
+  let totQtd = 0;
+  const body: any[] = params.linhas.map((l) => {
+    totQtd += l.quantidade;
+    return [
+      [l.nome ?? "—", l.especificacao].filter(Boolean).join(" · "),
+      l.categoria,
+      num(l.quantidade),
+      "",
+      "",
+    ];
+  });
+
+  body.push([
+    {
+      content: `TOTAL GERAL (${params.linhas.length} ${params.linhas.length === 1 ? "item" : "itens"})`,
+      colSpan: 2,
+      styles: { fontStyle: "bold", halign: "right", fillColor: [55, 55, 55], textColor: 255 },
+    },
+    { content: num(totQtd), styles: { fontStyle: "bold", halign: "right", fillColor: [55, 55, 55], textColor: 255 } },
+    { content: "", styles: { fillColor: [55, 55, 55] } },
+    { content: "", styles: { fillColor: [55, 55, 55] } },
+  ]);
+
+  autoTable(doc, {
+    startY: y + 4,
+    head: [["Item", "Categoria", "Qtd. sistema", "Qtd. conferida", "Observações"]],
+    body,
+    theme: "grid",
+    styles: { fontSize: 9, cellPadding: 2, overflow: "linebreak", minCellHeight: 8 },
+    headStyles: { fillColor: [55, 55, 55], textColor: 255, fontSize: 8, fontStyle: "bold", minCellHeight: 7 },
+    columnStyles: {
+      0: { cellWidth: 66 },
+      1: { cellWidth: 32 },
+      2: { cellWidth: 22, halign: "right" },
+      3: { cellWidth: 26 },
+      4: { cellWidth: 40 },
+    },
+    margin: { left: marginX, right: marginX, bottom: 22 },
+  });
+
+  const pages = doc.getNumberOfPages();
+  for (let p = 1; p <= pages; p++) {
+    doc.setPage(p);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(60);
+    doc.text("Responsável: ____________________________", marginX, pageH - 14);
+    doc.text("Data: ____/____/______", pageW - marginX, pageH - 14, { align: "right" });
+    doc.setTextColor(130);
+    doc.text("Grupo Luminart — Folha de conferência de Patrimônio", marginX, pageH - 7);
+    doc.text(`Página ${p} de ${pages}`, pageW - marginX, pageH - 7, { align: "right" });
+  }
+  doc.setTextColor(0);
+
+  const stamp = agora.toISOString().slice(0, 10);
+  doc.save(`folha-conferencia-patrimonio-${stamp}.pdf`);
+}
