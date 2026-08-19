@@ -63,6 +63,24 @@ const MESES = [
 
 const porExtenso = (d: Date) => `${d.getDate()} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`;
 
+/** CPF (xxx.xxx.xxx-xx) ou CNPJ (xx.xxx.xxx/xxxx-xx); devolve como veio se não bater. */
+export function fmtDoc(v?: string | null): string {
+  const s = String(v ?? "").trim();
+  const d = s.replace(/\D/g, "");
+  if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+  return s;
+}
+
+/** Telefone (xx)x.xxxx-xxxx (celular) ou (xx)xxxx-xxxx (fixo). */
+export function fmtTel(v?: string | null): string {
+  const s = String(v ?? "").trim();
+  const d = s.replace(/\D/g, "");
+  if (d.length === 11) return d.replace(/(\d{2})(\d{1})(\d{4})(\d{4})/, "($1)$2.$3-$4");
+  if (d.length === 10) return d.replace(/(\d{2})(\d{4})(\d{4})/, "($1)$2-$3");
+  return s;
+}
+
 function enderecoLinha(p: ContratoDados, prefixo: "cliente" | "resp_legal" | "resp_legal2"): string {
   return [
     [p[`${prefixo}_logradouro`], p[`${prefixo}_numero`]].filter(Boolean).join(", "),
