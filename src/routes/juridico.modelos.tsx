@@ -46,7 +46,7 @@ function ModelosPage() {
 
   const saveMut = useMutation({
     mutationFn: async (p: any) => {
-      const safeHtml = sanitizeHtml(p.corpo_html ?? "");
+      const safeHtml = normalizarHtmlEditor(p.corpo_html ?? "");
       const variaveis = extractVars(safeHtml);
       const payload = { ...p, corpo_html: safeHtml, variaveis };
       const { id, ...rest } = payload;
