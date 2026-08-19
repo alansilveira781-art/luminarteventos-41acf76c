@@ -203,9 +203,7 @@ function SolicitarContratoPublico() {
   const [form, setForm] = useState({ ...vazio });
 
   const [endCliente, setEndCliente] = useState<Endereco>({ ...enderecoVazio });
-  const [endResp, setEndResp] = useState<Endereco>({ ...enderecoVazio });
   const [resp2Ativo, setResp2Ativo] = useState(false);
-  const [endResp2, setEndResp2] = useState<Endereco>({ ...enderecoVazio });
   const [testemunhas, setTestemunhas] = useState<Testemunha[]>([]);
   const [proposta, setProposta] = useState<File | null>(null);
   const [docEmpresa, setDocEmpresa] = useState<File | null>(null);
@@ -384,8 +382,6 @@ function SolicitarContratoPublico() {
       setEnviado({ tipo: data.tipo, numero: data.numero ?? null });
       setForm({ ...vazio });
       setEndCliente({ ...enderecoVazio });
-      setEndResp({ ...enderecoVazio });
-      setEndResp2({ ...enderecoVazio });
       setResp2Ativo(false);
       setTestemunhas([]);
       setHorariosAtivos(false);
@@ -687,8 +683,7 @@ function SolicitarContratoPublico() {
                     size="sm"
                     onClick={() => {
                       setResp2Ativo(false);
-                      setEndResp2({ ...enderecoVazio });
-                      set("resp_legal2_nome", "");
+                                      set("resp_legal2_nome", "");
                       set("resp_legal2_documento", "");
                       set("resp_legal2_email", "");
                       set("resp_legal2_telefone", "");
