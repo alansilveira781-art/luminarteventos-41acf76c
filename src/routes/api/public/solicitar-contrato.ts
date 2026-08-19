@@ -95,8 +95,6 @@ const schema = z
       }
       if (d.resp_legal_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.resp_legal_email))
         ctx.addIssue({ code: "custom", path: ["resp_legal_email"], message: "E-mail inválido" });
-      if (!d.resp_legal_endereco)
-        ctx.addIssue({ code: "custom", path: ["resp_legal_endereco"], message: "Endereço obrigatório" });
     } else if (digits(d.cliente_documento).length !== 11) {
       ctx.addIssue({ code: "custom", path: ["cliente_documento"], message: "CPF inválido" });
     }
