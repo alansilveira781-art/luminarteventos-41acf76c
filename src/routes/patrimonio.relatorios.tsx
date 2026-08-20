@@ -45,6 +45,17 @@ type Pat = {
 
 const brl = (v: number) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+function compareEspecThenNome(
+  a: { nome: string; especificacao?: string | null },
+  b: { nome: string; especificacao?: string | null },
+) {
+  const ea = (a.especificacao ?? "").trim();
+  const eb = (b.especificacao ?? "").trim();
+  const especCmp = ea.localeCompare(eb, "pt-BR", { numeric: true });
+  if (especCmp !== 0) return especCmp;
+  return a.nome.localeCompare(b.nome, "pt-BR", { numeric: true });
+}
+
 function PatrimonioRelatorios() {
   const [cat, setCat] = useState("__all");
   const [sub, setSub] = useState("__all");
@@ -52,7 +63,7 @@ function PatrimonioRelatorios() {
   const [loc, setLoc] = useState("__all");
   const [agrupar, setAgrupar] = useState<"categoria" | "subcategoria" | "nenhum">("categoria");
   const [modo, setModo] = useState<"detalhado" | "consolidado" | "conferencia">("detalhado");
-  const [ordem, setOrdem] = useState<"quantidade" | "nome">("quantidade");
+  const [ordem, setOrdem] = useState<"quantidade" | "nome" | "especificacao">("especificacao");
   const [q, setQ] = useState("");
   const qd = useDebouncedValue(q, 300);
   const [gerando, setGerando] = useState(false);
@@ -115,7 +126,7 @@ function PatrimonioRelatorios() {
       if (!nq) return true;
       return [i.nome, i.especificacao, i.id_item, i.subcategoria, i.localizacao, i.cod != null ? String(i.cod) : ""]
         .some((v) => normalize(String(v ?? "")).includes(nq));
-    });
+    }).sort((a, b) => compareEspecThenNome(a, b));
   }, [itens, cat, sub, estado, loc, qd]);
 
   const consolidado = useMemo(() => {
@@ -163,12 +174,15 @@ function PatrimonioRelatorios() {
         valorMedio: g.quantidade > 0 ? g.valorTotal / g.quantidade : 0,
       };
     });
-    const rotulo = (l: { nome: string; especificacao: string }) => `${l.nome} ${l.especificacao}`.trim();
-    linhas.sort((a, b) =>
-      ordem === "nome"
-        ? rotulo(a).localeCompare(rotulo(b), "pt-BR")
-        : b.quantidade - a.quantidade || rotulo(a).localeCompare(rotulo(b), "pt-BR"),
-    );
+    linhas.sort((a, b) => {
+      if (ordem === "quantidade") {
+        return b.quantidade - a.quantidade || compareEspecThenNome(a, b);
+      }
+      if (ordem === "nome") {
+        return a.nome.localeCompare(b.nome, "pt-BR", { numeric: true }) || compareEspecThenNome(a, b);
+      }
+      return compareEspecThenNome(a, b);
+    });
     return linhas;
   }, [filtrados, ordem]);
 
@@ -299,7 +313,7 @@ function PatrimonioRelatorios() {
             onValueChange={(v) => {
               const m = v as typeof modo;
               setModo(m);
-              if (m === "conferencia") setOrdem("nome");
+              if (m === "conferencia") setOrdem("especificacao");
             }}
           >
             <SelectTrigger><SelectValue /></SelectTrigger>
@@ -328,8 +342,9 @@ function PatrimonioRelatorios() {
             <Select value={ordem} onValueChange={(v) => setOrdem(v as typeof ordem)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="quantidade">Maior quantidade</SelectItem>
+                <SelectItem value="especificacao">Especificação (Gride) → Nome</SelectItem>
                 <SelectItem value="nome">Nome (A–Z)</SelectItem>
+                <SelectItem value="quantidade">Maior quantidade</SelectItem>
               </SelectContent>
             </Select>
           </div>
