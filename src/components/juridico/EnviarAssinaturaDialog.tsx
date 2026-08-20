@@ -8,6 +8,7 @@ import { Trash2, Plus, Send } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { gerarContratoPdfBase64 } from "@/lib/juridico/contrato-pdf";
+import { mesclarContratoComProposta } from "@/lib/juridico/contrato-merge";
 import { enviarParaAssinatura } from "@/lib/juridico/clicksign.functions";
 import {
   CAMPOS_OBRIGATORIOS,
