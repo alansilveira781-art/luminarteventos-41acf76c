@@ -143,7 +143,9 @@ export function EnviarAssinaturaDialog({
 
     // Empresa contratada (dados usados nos campos automáticos do modelo).
     sb.from("admin_empresas")
-      .select("razao_social,nome_fantasia,cnpj,endereco,representante_nome,representante_documento")
+      .select(
+        "razao_social,nome_fantasia,cnpj,endereco,representante_nome,representante_documento,representante_email,representante_telefone",
+      )
       .then(({ data }: any) => {
         const alvo = (contrato?.empresa ?? "").trim().toLowerCase();
         setEmpresa(
