@@ -4021,6 +4021,7 @@ export type Database = {
           tipo: string
           titulo: string
           updated_at: string
+          usar_clicksign: boolean
           valor: number | null
           variaveis_valores: Json | null
           venda_id: string | null
@@ -4106,6 +4107,7 @@ export type Database = {
           tipo?: string
           titulo: string
           updated_at?: string
+          usar_clicksign?: boolean
           valor?: number | null
           variaveis_valores?: Json | null
           venda_id?: string | null
@@ -4191,6 +4193,7 @@ export type Database = {
           tipo?: string
           titulo?: string
           updated_at?: string
+          usar_clicksign?: boolean
           valor?: number | null
           variaveis_valores?: Json | null
           venda_id?: string | null

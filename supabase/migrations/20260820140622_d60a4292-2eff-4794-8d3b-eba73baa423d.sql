@@ -1,0 +1,1 @@
+ALTER TABLE public.juridico_contratos ADD COLUMN IF NOT EXISTS usar_clicksign boolean NOT NULL DEFAULT true;
