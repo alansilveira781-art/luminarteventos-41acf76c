@@ -63,49 +63,20 @@ function EntradasPage() {
   const [filterEvento, setFilterEvento] = useState<string>("__all");
   const { sort, toggleSort, applySort } = useSort({ key: "data_movimento", dir: "desc" });
 
-  // Edição de linha única: deletar a antiga e inserir a nova
-  // (triggers do banco fazem a reversão e a reaplicação no estoque).
-  const editMut = useMutation({
-    mutationFn: async (p: { original: any; patch: any }) => {
-      const { original, patch } = p;
-      const { id: _ignore, item: _i, fornecedor: _f, created_at: _c, updated_at: _u, ...base } = original;
-      const novo = { ...base, ...patch };
-      const { error: delErr } = await supabase.from("movimentacoes").delete().eq("id", original.id);
-      if (delErr) throw delErr;
-      const { error } = await supabase.from("movimentacoes").insert(novo);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["entradas"] });
-      qc.invalidateQueries({ queryKey: ["itens"] });
-      qc.invalidateQueries({ queryKey: ["itens-select"] });
-      qc.invalidateQueries({ queryKey: ["itens-select-saida"] });
-      toast.success("Entrada atualizada");
-      setEditing(null);
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
+  // Edição inteligente: a RPC atualiza as linhas mantidas aplicando apenas o
+  // delta no estoque, insere as novas e remove as excluídas (sem saldo negativo).
   const editGroupMut = useMutation({
-    mutationFn: async (p: { grupo: any; meta: any; linhas: Array<{ item_id: string; quantidade: number; valor_unitario: number | null }> }) => {
-      const old: any[] = p.grupo.linhas ?? [];
-      // Apagar antigas (triggers revertem o estoque)
+    mutationFn: async (p: { grupo: any; meta: any; linhas: Array<Record<string, any>> }) => {
+      const old: any[] = p.grupo.linhas ?? [p.grupo];
       const oldIds = old.map((o) => o.id);
-      const { error: delErr } = await supabase.from("movimentacoes").delete().in("id", oldIds);
-      if (delErr) throw delErr;
-      // Inserir novas mantendo o mesmo requisicao_numero (triggers aplicam o estoque)
-      const requisicao_numero = p.grupo.numero ?? null;
-      const inserts = p.linhas.map((l) => ({
-        ...p.meta,
-        tipo: "entrada" as const,
-        item_id: l.item_id,
-        quantidade: l.quantidade,
-        valor_unitario: l.valor_unitario,
-        requisicao_numero,
-      }));
-      const { error } = await supabase.from("movimentacoes").insert(inserts);
+      const { error } = await supabase.rpc("estoque_editar_entrada", {
+        p_old_ids: oldIds,
+        p_meta: p.meta,
+        p_linhas: p.linhas,
+      });
       if (error) throw error;
     },
+
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["entradas"] });
       qc.invalidateQueries({ queryKey: ["itens"] });

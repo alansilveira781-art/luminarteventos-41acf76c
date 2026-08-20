@@ -5839,6 +5839,10 @@ export type Database = {
         Returns: string
       }
       enqueue_notificacoes: { Args: { rows: Json }; Returns: undefined }
+      estoque_editar_entrada: {
+        Args: { p_linhas: Json; p_meta: Json; p_old_ids: string[] }
+        Returns: undefined
+      }
       get_profile_names: {
         Args: { _ids: string[] }
         Returns: {
