@@ -118,6 +118,7 @@ type Contrato = {
   clicksign_enviado_em?: string | null;
   clicksign_assinado_em?: string | null;
   clicksign_erro?: string | null;
+  usar_clicksign?: boolean | null;
 };
 
 
@@ -191,21 +192,23 @@ function QuadroContratos() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-  /** Confere no banco (evita cache velho) se o contrato tem proposta anexada. */
-  async function temProposta(contratoId: string) {
+  /** Tipos de anexo presentes no card, conferidos no banco (evita cache velho). */
+  async function tiposAnexos(contratoId: string): Promise<Set<string>> {
     const { data } = await sb
       .from("juridico_anexos")
-      .select("id")
-      .eq("contrato_id", contratoId)
-      .eq("tipo", "proposta")
-      .limit(1);
-    const ok = !!(data as any[])?.length;
+      .select("tipo")
+      .eq("contrato_id", contratoId);
+    const tipos = new Set(((data as any[]) ?? []).map((a) => String(a.tipo ?? "")));
     setComProposta((s) => {
       const n = new Set(s);
-      ok ? n.add(contratoId) : n.delete(contratoId);
+      tipos.has("proposta") ? n.add(contratoId) : n.delete(contratoId);
       return n;
     });
-    return ok;
+    return tipos;
+  }
+
+  async function temProposta(contratoId: string) {
+    return (await tiposAnexos(contratoId)).has("proposta");
   }
 
 
@@ -220,14 +223,24 @@ function QuadroContratos() {
     // Retrocesso: sempre pede confirmação e registra o motivo.
     if (ordemStatus(status) < ordemStatus(card.status)) { setVoltar({ card, to: status }); return; }
     if (status === "criacao") { setCriacaoCard(card); return; }
+    const interno = card.usar_clicksign === false;
     // Da Criação em diante, a proposta anexada é obrigatória.
-    if (ordemStatus(status) >= ordemStatus("validacao") && !(await temProposta(card.id))) {
-      toast.error("Anexe a proposta ao card antes de enviar para Validação");
-      setEditing(card);
-      return;
+    if (ordemStatus(status) >= ordemStatus("validacao")) {
+      const tipos = await tiposAnexos(card.id);
+      if (!tipos.has("proposta")) {
+        toast.error("Anexe a proposta ao card antes de enviar para Validação");
+        setEditing(card);
+        return;
+      }
+      // Assinatura interna: exige também o contrato assinado anexado para concluir.
+      if (interno && status === "concluido" && !tipos.has("contrato")) {
+        toast.error("Anexe o contrato assinado antes de concluir");
+        setEditing(card);
+        return;
+      }
     }
     if (status === "concluido") { setConcluirCard(card); return; }
-    if (status === "assinatura" && !card.clicksign_document_key) { setAssinaturaCard(card); return; }
+    if (status === "assinatura" && !interno && !card.clicksign_document_key) { setAssinaturaCard(card); return; }
 
     const patch: any = { status };
     if (status === "assinatura" && !card.data_assinatura) patch.data_assinatura = new Date().toISOString().slice(0, 10);
@@ -239,7 +252,8 @@ function QuadroContratos() {
   async function confirmarVolta(motivo: string) {
     if (!voltar) return;
     const { card, to } = voltar;
-    const precisaCancelar = card.status === "assinatura" && !!card.clicksign_document_key;
+    const precisaCancelar =
+      card.status === "assinatura" && card.usar_clicksign !== false && !!card.clicksign_document_key;
     try {
       if (precisaCancelar) {
         await cancelarAssinaturaFn({ data: { contratoId: card.id, motivo } });
@@ -290,6 +304,19 @@ function QuadroContratos() {
   }
 
 
+
+  /** Alterna entre envio pelo Clicksign e assinatura interna. */
+  async function alternarClicksign(card: Contrato) {
+    const novo = card.usar_clicksign === false;
+    if (!novo && card.clicksign_document_key) {
+      toast.error("Este contrato já foi enviado ao Clicksign. Volte o card para alterar.");
+      return;
+    }
+    setRows((rs) => rs.map((r) => (r.id === card.id ? { ...r, usar_clicksign: novo } : r)));
+    const { error } = await sb.from("juridico_contratos").update({ usar_clicksign: novo }).eq("id", card.id);
+    if (error) { toast.error(error.message); load(); return; }
+    toast.success(novo ? "Assinatura pelo Clicksign" : "Assinatura interna (sem Clicksign)");
+  }
 
   async function onDelete(id: string) {
     if (!confirm("Remover este contrato?")) return;
@@ -342,6 +369,7 @@ function QuadroContratos() {
                   onDelete={() => onDelete(c.id)}
                   onEnviarAssinatura={() => setAssinaturaCard(c)}
                   onValidar={() => setConcluirCard(c)}
+                  onToggleClicksign={() => alternarClicksign(c)}
 
                 />
               ))}
@@ -388,7 +416,12 @@ function QuadroContratos() {
         onOpenChange={(v) => !v && setVoltar(null)}
         deLabel={voltar ? STATUS_LABELS[voltar.card.status] : ""}
         paraLabel={voltar ? STATUS_LABELS[voltar.to] : ""}
-        cancelaAssinatura={!!voltar && voltar.card.status === "assinatura" && !!voltar.card.clicksign_document_key}
+        cancelaAssinatura={
+          !!voltar &&
+          voltar.card.status === "assinatura" &&
+          voltar.card.usar_clicksign !== false &&
+          !!voltar.card.clicksign_document_key
+        }
         onConfirm={confirmarVolta}
       />
 
@@ -433,18 +466,20 @@ const CLICKSIGN_LABEL: Record<string, string> = {
   erro: "Erro no envio",
 };
 
-function Card({ card, temProposta, onOpen, onDelete, onEnviarAssinatura, onValidar }: {
+function Card({ card, temProposta, onOpen, onDelete, onEnviarAssinatura, onValidar, onToggleClicksign }: {
   card: Contrato;
   temProposta?: boolean;
   onOpen: () => void;
   onDelete: () => void;
   onEnviarAssinatura?: () => void;
   onValidar?: () => void;
+  onToggleClicksign?: () => void;
 }) {
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
-  const cs = card.clicksign_status ?? null;
+  const interno = card.usar_clicksign === false;
+  const cs = interno ? null : card.clicksign_status ?? null;
   const assinado = cs === "assinado";
   return (
     <div
@@ -474,6 +509,21 @@ function Card({ card, temProposta, onOpen, onDelete, onEnviarAssinatura, onValid
             >
               {temProposta ? "Proposta" : "Sem proposta"}
             </span>
+            <button
+              type="button"
+              title={
+                interno
+                  ? "Assinatura interna — clique para enviar pelo Clicksign"
+                  : "Enviar pelo Clicksign — clique para assinatura interna"
+              }
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); onToggleClicksign?.(); }}
+              className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                interno ? "bg-muted text-muted-foreground" : "bg-primary/15 text-primary"
+              }`}
+            >
+              {interno ? "Interno" : "Clicksign"}
+            </button>
           </div>
 
           <div className="font-medium text-sm truncate text-foreground mt-1">{card.titulo}</div>
@@ -512,7 +562,7 @@ function Card({ card, temProposta, onOpen, onDelete, onEnviarAssinatura, onValid
               Validar contrato assinado
             </button>
           )}
-          {!card.clicksign_document_key && card.status === "assinatura" && onEnviarAssinatura && (
+          {!interno && !card.clicksign_document_key && card.status === "assinatura" && onEnviarAssinatura && (
             <button
               type="button"
               onPointerDown={(e) => e.stopPropagation()}
@@ -856,6 +906,7 @@ function ContratoDetalhesDialog({
       pagamento_forma: form.pagamento_forma || null,
       pagamento_modo: form.pagamento_modo || null,
       pagamento_parcelas: form.pagamento_parcelas ?? null,
+      usar_clicksign: form.usar_clicksign !== false,
     };
 
     const { error } = await sb.from("juridico_contratos").update(payload).eq("id", contrato!.id);
@@ -863,6 +914,7 @@ function ContratoDetalhesDialog({
     if (error) return toast.error(error.message);
     toast.success("Contrato atualizado");
     onSaved();
+    onClose();
   }
 
   return (
@@ -933,6 +985,22 @@ function ContratoDetalhesDialog({
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="col-span-2">
+                <Label>Enviar pelo Clicksign?</Label>
+                <Select
+                  value={form.usar_clicksign === false ? "nao" : "sim"}
+                  onValueChange={(v) => setForm({ ...form, usar_clicksign: v === "sim" })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sim">Sim — assinatura eletrônica pelo Clicksign</SelectItem>
+                    <SelectItem value="nao">Não — assinatura interna (anexar contrato assinado)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  No modo interno, para concluir o card é obrigatório ter a proposta e o contrato anexados.
+                </p>
               </div>
 
               <EnderecoEditor
