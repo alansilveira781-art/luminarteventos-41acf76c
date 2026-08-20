@@ -168,10 +168,13 @@ export function EnviarAssinaturaDialog({
   const [enviando, setEnviando] = useState(false);
   const [empresa, setEmpresa] = useState<any>(null);
   const [modeloHtml, setModeloHtml] = useState<string | null>(null);
+  const [proposta, setProposta] = useState<{ nome: string } | null>(null);
 
   useEffect(() => {
     if (!open || !contrato) return;
     setSignatarios(signatariosDoContrato(contrato));
+    setProposta(null);
+    anexoProposta(contrato.id).then((a: any) => setProposta(a ? { nome: a.nome } : null));
     setMensagem(`Olá! Segue o contrato "${contrato.titulo ?? ""}" para assinatura eletrônica.`);
 
     // Empresa contratada (dados usados nos campos automáticos do modelo).
