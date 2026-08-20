@@ -139,15 +139,19 @@ function ColaboradoresPage() {
     setRows((rs) => rs.filter((r) => r.id !== c.id));
   }
 
-  function imprimirRelatorio() {
+  function imprimirRelatorio(apenasSelecionados = selected.size > 0) {
+    const lista = apenasSelecionados && selecionados.length > 0 ? selecionados : filtrados;
+    if (lista.length === 0) return toast.error("Nenhum colaborador para imprimir.");
+    const usouSelecao = apenasSelecionados && selecionados.length > 0;
     const filtros: string[] = [];
+    if (usouSelecao) filtros.push("Seleção manual");
     if (busca.trim()) filtros.push(`Busca: "${busca.trim()}"`);
-    if (fDep !== "__todos") filtros.push(`Departamento: ${fDep}`);
+    if (fDeps.length > 0) filtros.push(`Departamento(s): ${fDeps.join(", ")}`);
     if (fTipo !== "__todos") filtros.push(`Vínculo: ${TIPO_LABEL[fTipo as TipoContratacao] ?? fTipo}`);
     filtros.push(`Status: ${fStatus === "ativos" ? "Ativos" : fStatus === "desligados" ? "Desligados" : "Todos"}`);
     const filtrosLabel = filtros.join(" · ");
     const hoje = new Date().toLocaleString("pt-BR");
-    const rowsHtml = filtrados
+    const rowsHtml = lista
       .map(
         (c) => `
         <tr>
