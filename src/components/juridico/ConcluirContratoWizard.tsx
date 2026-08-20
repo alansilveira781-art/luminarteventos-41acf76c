@@ -102,6 +102,9 @@ export function ConcluirContratoWizard({
   const [venda, setVenda] = useState<VendaFormState>(() => vendaFormFromContrato(contrato));
   const [salvando, setSalvando] = useState(false);
   const [eventoId, setEventoId] = useState<string | null>(null);
+  const [pasta, setPasta] = useState<PastaContratoInput>(() => pastaFromContrato(contrato));
+  const [pastaCriada, setPastaCriada] = useState<{ path: string; url: string | null } | null>(null);
+  const criarPastas = useServerFn(criarPastasContrato);
 
   const { data: vendedores = [] } = useVendedores();
   const { data: cerimoniais = [] } = useCerimoniais();
@@ -110,8 +113,10 @@ export function ConcluirContratoWizard({
     if (!open || !contrato) return;
     setStep(0);
     setEventoId(null);
+    setPastaCriada(null);
     setEv(eventoFormFromContrato(contrato));
     setVenda(vendaFormFromContrato(contrato));
+    setPasta(pastaFromContrato(contrato));
   }, [open, contrato?.id]);
 
   const derived = useMemo(
