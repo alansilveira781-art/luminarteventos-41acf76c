@@ -201,8 +201,15 @@ function QuadroContratos() {
     // Retrocesso: sempre pede confirmação e registra o motivo.
     if (ordemStatus(status) < ordemStatus(card.status)) { setVoltar({ card, to: status }); return; }
     if (status === "criacao") { setCriacaoCard(card); return; }
+    // Da Criação em diante, a proposta anexada é obrigatória.
+    if (ordemStatus(status) >= ordemStatus("validacao") && !(await temProposta(card.id))) {
+      toast.error("Anexe a proposta ao card antes de enviar para Validação");
+      setEditing(card);
+      return;
+    }
     if (status === "concluido") { setConcluirCard(card); return; }
     if (status === "assinatura" && !card.clicksign_document_key) { setAssinaturaCard(card); return; }
+
     const patch: any = { status };
     if (status === "assinatura" && !card.data_assinatura) patch.data_assinatura = new Date().toISOString().slice(0, 10);
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
