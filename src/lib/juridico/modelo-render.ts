@@ -71,6 +71,16 @@ export function normalizarHtmlEditor(html: string): string {
     }
   });
 
+  // Wrappers inline que envolvem blocos (colagem do Word) são desfeitos,
+  // senão a lista/parágrafo interno perde a quebra de linha na renderização.
+  for (let i = 0; i < 5; i++) {
+    const invalidos = Array.from(
+      doc.body.querySelectorAll("span, font, strong, em, a"),
+    ).filter((el) => el.querySelector("p, div, ul, ol, li, table, h1, h2, h3"));
+    if (!invalidos.length) break;
+    invalidos.forEach((el) => el.replaceWith(...Array.from(el.childNodes)));
+  }
+
   // Spans sem atributos úteis viram o próprio conteúdo.
   doc.body.querySelectorAll("span, font").forEach((el) => {
     if (!el.getAttribute("style") && !el.getAttribute("class")) {
