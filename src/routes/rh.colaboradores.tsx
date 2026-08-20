@@ -97,12 +97,16 @@ function ColaboradoresPage() {
     return rows.filter((r) => {
       if (fStatus === "ativos" && !r.ativo) return false;
       if (fStatus === "desligados" && r.ativo) return false;
-      if (fDep !== "__todos" && r.departamento !== fDep) return false;
+      if (fDeps.length > 0 && !fDeps.includes(r.departamento ?? "")) return false;
       if (fTipo !== "__todos" && r.tipo_contratacao !== fTipo) return false;
       if (q && !r.nome.toLowerCase().includes(q) && !r.documento.includes(q)) return false;
       return true;
     });
-  }, [rows, fDep, fTipo, fStatus, busca]);
+  }, [rows, fDeps, fTipo, fStatus, busca]);
+
+  const selecionados = useMemo(() => rows.filter((r) => selected.has(r.id)), [rows, selected]);
+  const depsLabel =
+    fDeps.length === 0 ? "Todos departamentos" : fDeps.length === 1 ? fDeps[0] : `${fDeps.length} departamentos`;
 
   const allVisibleSelected = filtrados.length > 0 && filtrados.every((r) => selected.has(r.id));
   function toggleAll(v: boolean) {
