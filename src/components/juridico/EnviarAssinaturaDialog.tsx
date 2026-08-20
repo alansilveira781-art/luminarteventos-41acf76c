@@ -295,9 +295,20 @@ export function EnviarAssinaturaDialog({
         <DialogHeader>
           <DialogTitle>Enviar para assinatura — {contrato.titulo}</DialogTitle>
           <DialogDescription>
-            Confira os signatários. O PDF do contrato será gerado e enviado ao Clicksign, que dispara os e-mails de assinatura.
+            Confira os signatários. Será enviado ao Clicksign um único PDF com o contrato e a proposta anexada ao final.
           </DialogDescription>
         </DialogHeader>
+
+        <div
+          className={`rounded-md border p-2 text-xs ${
+            proposta ? "text-muted-foreground" : "border-destructive text-destructive"
+          }`}
+        >
+          {proposta
+            ? `Proposta que será unida ao contrato: ${proposta.nome}`
+            : "Nenhuma proposta anexada — anexe a proposta antes de enviar para assinatura."}
+        </div>
+
 
         {htmlRenderizado && (
           <div className="space-y-2">
