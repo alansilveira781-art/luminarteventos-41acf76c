@@ -64,7 +64,19 @@ export function DefinirCategoriaDialog({
     sb.from("admin_empresas")
       .select("razao_social,nome_fantasia,cnpj,endereco,representante_nome,representante_documento")
       .then(({ data }: any) => setEmpresas(data ?? []));
+    setPropostaFile(null);
+    setPropostaExistente(null);
+    if (contrato?.id) {
+      sb.from("juridico_anexos")
+        .select("id,nome,path")
+        .eq("contrato_id", contrato.id)
+        .eq("tipo", "proposta")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .then(({ data }: any) => setPropostaExistente(data?.[0] ?? null));
+    }
   }, [open, contrato?.id]);
+
 
   const modelosDaCategoria = useMemo(
     () => modelos.filter((m) => (m.tipo ?? "").toLowerCase() === categoria),
