@@ -464,7 +464,18 @@ function Card({ card, temProposta, onOpen, onDelete, onEnviarAssinatura, onValid
             <span className="text-[10px] font-mono font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
               {contratoCodigo(card)}
             </span>
+            <span
+              title={temProposta ? "Proposta anexada" : "Sem proposta anexada"}
+              className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                temProposta
+                  ? "bg-emerald-500/15 text-emerald-600"
+                  : "bg-rose-500/15 text-rose-600"
+              }`}
+            >
+              {temProposta ? "Proposta" : "Sem proposta"}
+            </span>
           </div>
+
           <div className="font-medium text-sm truncate text-foreground mt-1">{card.titulo}</div>
           {card.cliente_nome && <div className="text-[11px] text-muted-foreground truncate">{card.cliente_nome}</div>}
           <div className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
