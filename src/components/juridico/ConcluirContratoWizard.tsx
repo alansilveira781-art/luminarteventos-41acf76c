@@ -220,22 +220,47 @@ export function ConcluirContratoWizard({
         ...(eventoId ? { evento_id: eventoId } : {}),
       });
       toast.success("Venda cadastrada no comercial");
-      onOpenChange(false);
-      onFinalizado();
+      setStep(2);
     } finally {
       setSalvando(false);
     }
   }
 
   function pularVenda() {
+    setStep(2);
+  }
+
+  function fechar() {
     onOpenChange(false);
     onFinalizado();
+  }
+
+  async function confirmarPastas() {
+    if (!pasta.nomeEvento.trim()) return toast.error("Informe o nome do evento");
+    if (!pasta.ano.trim() || !pasta.mes.trim()) return toast.error("Informe ano e mês da pasta");
+    setSalvando(true);
+    try {
+      const res = await criarPastas({
+        data: { contratoId: contrato.id, caminho: caminhoPastaEvento(pasta), enviarAnexos: true },
+      });
+      setPastaCriada({ path: res.path, url: res.url ?? null });
+      toast.success(
+        res.enviados.length
+          ? `Pastas criadas e ${res.enviados.length} arquivo(s) enviados`
+          : "Pastas criadas no Dropbox",
+      );
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao criar pastas no Dropbox");
+    } finally {
+      setSalvando(false);
+    }
   }
 
   if (!contrato) return null;
 
   const jaTemEvento = !!contrato.evento_id;
   const jaTemVenda = !!contrato.venda_id;
+  const caminhoPreview = caminhoPastaEvento(pasta);
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v && !salvando) onOpenChange(false); }}>
