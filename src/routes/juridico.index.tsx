@@ -191,6 +191,25 @@ function QuadroContratos() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
+  /** Confere no banco (evita cache velho) se o contrato tem proposta anexada. */
+  async function temProposta(contratoId: string) {
+    const { data } = await sb
+      .from("juridico_anexos")
+      .select("id")
+      .eq("contrato_id", contratoId)
+      .eq("tipo", "proposta")
+      .limit(1);
+    const ok = !!(data as any[])?.length;
+    setComProposta((s) => {
+      const n = new Set(s);
+      ok ? n.add(contratoId) : n.delete(contratoId);
+      return n;
+    });
+    return ok;
+  }
+
+
+
   async function onDragEnd(e: DragEndEvent) {
     const id = String(e.active.id);
     const overId = e.over?.id ? String(e.over.id) : null;
