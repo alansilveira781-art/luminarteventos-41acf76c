@@ -337,10 +337,12 @@ function QuadroContratos() {
                 <Card
                   key={c.id}
                   card={c}
+                  temProposta={comProposta.has(c.id)}
                   onOpen={() => setEditing(c)}
                   onDelete={() => onDelete(c.id)}
                   onEnviarAssinatura={() => setAssinaturaCard(c)}
                   onValidar={() => setConcluirCard(c)}
+
                 />
               ))}
 
