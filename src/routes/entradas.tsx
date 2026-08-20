@@ -1018,7 +1018,10 @@ function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor
           <Select value={meta.empresa} onValueChange={(v) => setM("empresa", v)}>
             <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
             <SelectContent>
-              {EMPRESAS.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+              {(meta.empresa && !(EMPRESAS as readonly string[]).includes(meta.empresa)
+                ? [meta.empresa, ...EMPRESAS]
+                : [...EMPRESAS]
+              ).map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
             </SelectContent>
           </Select>
         </FormField>
