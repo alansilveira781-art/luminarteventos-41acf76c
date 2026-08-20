@@ -47,6 +47,9 @@ export function DefinirCategoriaDialog({
   const [empresas, setEmpresas] = useState<any[]>([]);
   const [manuais, setManuais] = useState<Record<string, string>>({});
   const [salvando, setSalvando] = useState(false);
+  const [propostaExistente, setPropostaExistente] = useState<any | null>(null);
+  const [propostaFile, setPropostaFile] = useState<File | null>(null);
+
 
   useEffect(() => {
     if (!open) return;
@@ -61,7 +64,19 @@ export function DefinirCategoriaDialog({
     sb.from("admin_empresas")
       .select("razao_social,nome_fantasia,cnpj,endereco,representante_nome,representante_documento")
       .then(({ data }: any) => setEmpresas(data ?? []));
+    setPropostaFile(null);
+    setPropostaExistente(null);
+    if (contrato?.id) {
+      sb.from("juridico_anexos")
+        .select("id,nome,path")
+        .eq("contrato_id", contrato.id)
+        .eq("tipo", "proposta")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .then(({ data }: any) => setPropostaExistente(data?.[0] ?? null));
+    }
   }, [open, contrato?.id]);
+
 
   const modelosDaCategoria = useMemo(
     () => modelos.filter((m) => (m.tipo ?? "").toLowerCase() === categoria),
@@ -93,10 +108,30 @@ export function DefinirCategoriaDialog({
     [modelo, auto, manuais],
   );
 
+  async function enviarProposta() {
+    if (!propostaFile || !contrato?.id) return;
+    const safe = propostaFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `${contrato.id}/${Date.now()}_${safe}`;
+    const { error: upErr } = await sb.storage
+      .from("juridico-anexos")
+      .upload(path, propostaFile, { contentType: propostaFile.type || undefined });
+    if (upErr) throw new Error(upErr.message);
+    const { error: insErr } = await sb.from("juridico_anexos").insert({
+      contrato_id: contrato.id,
+      nome: propostaFile.name,
+      path,
+      mime_type: propostaFile.type || null,
+      tamanho: propostaFile.size,
+      tipo: "proposta",
+    });
+    if (insErr) throw new Error(insErr.message);
+  }
+
   async function confirmar() {
     if (!categoria) return toast.error("Escolha o tipo do contrato");
     setSalvando(true);
     try {
+      await enviarProposta();
       await onConfirm({
         status: "criacao",
         categoria,
@@ -105,10 +140,13 @@ export function DefinirCategoriaDialog({
         variaveis_valores: manuais,
       });
       onOpenChange(false);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao anexar a proposta");
     } finally {
       setSalvando(false);
     }
   }
+
 
   if (!contrato) return null;
 
@@ -166,6 +204,27 @@ export function DefinirCategoriaDialog({
               )}
             </div>
           )}
+
+          <div className="rounded-md border p-3 space-y-2">
+            <Label className="text-sm">Proposta anexada</Label>
+            {propostaExistente && !propostaFile && (
+              <p className="text-xs text-muted-foreground">
+                Já anexada: <span className="font-medium">{propostaExistente.nome}</span> — envie outro arquivo para substituir.
+              </p>
+            )}
+            <Input
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg,.webp"
+              onChange={(e) => setPropostaFile(e.target.files?.[0] ?? null)}
+            />
+            {!propostaExistente && !propostaFile && (
+              <p className="text-xs text-amber-600">
+                A proposta é obrigatória para mover o card até a Validação.
+              </p>
+            )}
+          </div>
+
+
 
           <div className="rounded-md border p-3 text-sm space-y-1 bg-muted/30">
             <div className="text-xs font-semibold text-muted-foreground">Dados que serão aplicados</div>

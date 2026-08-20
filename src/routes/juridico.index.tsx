@@ -141,9 +141,14 @@ function QuadroContratos() {
   const [concluirCard, setConcluirCard] = useState<Contrato | null>(null);
   const [assinaturaCard, setAssinaturaCard] = useState<Contrato | null>(null);
   const [voltar, setVoltar] = useState<{ card: Contrato; to: Status } | null>(null);
+  const [comProposta, setComProposta] = useState<Set<string>>(new Set());
   const cancelarAssinaturaFn = useServerFn(cancelarAssinatura);
 
-
+  /** Ids de contratos que possuem anexo do tipo "proposta". */
+  const carregarPropostas = async () => {
+    const { data } = await sb.from("juridico_anexos").select("contrato_id").eq("tipo", "proposta");
+    setComProposta(new Set(((data as any[]) ?? []).map((a) => a.contrato_id)));
+  };
 
   const load = async () => {
     setLoading(true);
@@ -154,8 +159,10 @@ function QuadroContratos() {
       .order("created_at", { ascending: false });
     if (error) toast.error(error.message);
     setRows((data as any) ?? []);
+    await carregarPropostas();
     setLoading(false);
   };
+
 
   useEffect(() => { load(); }, []);
 
@@ -184,6 +191,25 @@ function QuadroContratos() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
+  /** Confere no banco (evita cache velho) se o contrato tem proposta anexada. */
+  async function temProposta(contratoId: string) {
+    const { data } = await sb
+      .from("juridico_anexos")
+      .select("id")
+      .eq("contrato_id", contratoId)
+      .eq("tipo", "proposta")
+      .limit(1);
+    const ok = !!(data as any[])?.length;
+    setComProposta((s) => {
+      const n = new Set(s);
+      ok ? n.add(contratoId) : n.delete(contratoId);
+      return n;
+    });
+    return ok;
+  }
+
+
+
   async function onDragEnd(e: DragEndEvent) {
     const id = String(e.active.id);
     const overId = e.over?.id ? String(e.over.id) : null;
@@ -194,8 +220,15 @@ function QuadroContratos() {
     // Retrocesso: sempre pede confirmação e registra o motivo.
     if (ordemStatus(status) < ordemStatus(card.status)) { setVoltar({ card, to: status }); return; }
     if (status === "criacao") { setCriacaoCard(card); return; }
+    // Da Criação em diante, a proposta anexada é obrigatória.
+    if (ordemStatus(status) >= ordemStatus("validacao") && !(await temProposta(card.id))) {
+      toast.error("Anexe a proposta ao card antes de enviar para Validação");
+      setEditing(card);
+      return;
+    }
     if (status === "concluido") { setConcluirCard(card); return; }
     if (status === "assinatura" && !card.clicksign_document_key) { setAssinaturaCard(card); return; }
+
     const patch: any = { status };
     if (status === "assinatura" && !card.data_assinatura) patch.data_assinatura = new Date().toISOString().slice(0, 10);
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -304,10 +337,12 @@ function QuadroContratos() {
                 <Card
                   key={c.id}
                   card={c}
+                  temProposta={comProposta.has(c.id)}
                   onOpen={() => setEditing(c)}
                   onDelete={() => onDelete(c.id)}
                   onEnviarAssinatura={() => setAssinaturaCard(c)}
                   onValidar={() => setConcluirCard(c)}
+
                 />
               ))}
 
@@ -398,13 +433,15 @@ const CLICKSIGN_LABEL: Record<string, string> = {
   erro: "Erro no envio",
 };
 
-function Card({ card, onOpen, onDelete, onEnviarAssinatura, onValidar }: {
+function Card({ card, temProposta, onOpen, onDelete, onEnviarAssinatura, onValidar }: {
   card: Contrato;
+  temProposta?: boolean;
   onOpen: () => void;
   onDelete: () => void;
   onEnviarAssinatura?: () => void;
   onValidar?: () => void;
 }) {
+
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
   const cs = card.clicksign_status ?? null;
@@ -427,7 +464,18 @@ function Card({ card, onOpen, onDelete, onEnviarAssinatura, onValidar }: {
             <span className="text-[10px] font-mono font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
               {contratoCodigo(card)}
             </span>
+            <span
+              title={temProposta ? "Proposta anexada" : "Sem proposta anexada"}
+              className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                temProposta
+                  ? "bg-emerald-500/15 text-emerald-600"
+                  : "bg-rose-500/15 text-rose-600"
+              }`}
+            >
+              {temProposta ? "Proposta" : "Sem proposta"}
+            </span>
           </div>
+
           <div className="font-medium text-sm truncate text-foreground mt-1">{card.titulo}</div>
           {card.cliente_nome && <div className="text-[11px] text-muted-foreground truncate">{card.cliente_nome}</div>}
           <div className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
