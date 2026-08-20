@@ -45,6 +45,17 @@ type Pat = {
 
 const brl = (v: number) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+function compareEspecThenNome(
+  a: { nome: string; especificacao?: string | null },
+  b: { nome: string; especificacao?: string | null },
+) {
+  const ea = (a.especificacao ?? "").trim();
+  const eb = (b.especificacao ?? "").trim();
+  const especCmp = ea.localeCompare(eb, "pt-BR", { numeric: true });
+  if (especCmp !== 0) return especCmp;
+  return a.nome.localeCompare(b.nome, "pt-BR", { numeric: true });
+}
+
 function PatrimonioRelatorios() {
   const [cat, setCat] = useState("__all");
   const [sub, setSub] = useState("__all");
