@@ -509,6 +509,21 @@ function Card({ card, temProposta, onOpen, onDelete, onEnviarAssinatura, onValid
             >
               {temProposta ? "Proposta" : "Sem proposta"}
             </span>
+            <button
+              type="button"
+              title={
+                interno
+                  ? "Assinatura interna — clique para enviar pelo Clicksign"
+                  : "Enviar pelo Clicksign — clique para assinatura interna"
+              }
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); onToggleClicksign?.(); }}
+              className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                interno ? "bg-muted text-muted-foreground" : "bg-primary/15 text-primary"
+              }`}
+            >
+              {interno ? "Interno" : "Clicksign"}
+            </button>
           </div>
 
           <div className="font-medium text-sm truncate text-foreground mt-1">{card.titulo}</div>
