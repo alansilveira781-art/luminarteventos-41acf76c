@@ -344,7 +344,14 @@ export async function gerarFolhaConferenciaPatrimonioPdf(params: {
   y += 4;
 
   let totQtd = 0;
-  const body: any[] = params.linhas.map((l) => {
+  const linhasOrdenadas = [...params.linhas].sort((a, b) => {
+    const ea = (a.especificacao ?? "").trim();
+    const eb = (b.especificacao ?? "").trim();
+    const cmp = ea.localeCompare(eb, "pt-BR", { numeric: true });
+    if (cmp !== 0) return cmp;
+    return (a.nome ?? "").localeCompare(b.nome ?? "", "pt-BR", { numeric: true });
+  });
+  const body: any[] = linhasOrdenadas.map((l) => {
     totQtd += l.quantidade;
     return [
       [l.nome ?? "—", l.especificacao].filter(Boolean).join(" · "),
