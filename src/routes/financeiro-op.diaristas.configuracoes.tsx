@@ -115,6 +115,12 @@ function DiaristasConfiguracoes() {
   const qc = useQueryClient();
   const { data = [], isLoading } = useDiaristas();
   const { data: colaboradores = [] } = useColaboradores();
+  const { data: departamentos = [] } = useDiaristaDepartamentos();
+  const opcoesDepartamento = useMemo(() => {
+    const set = new Set<string>(departamentos.map((d) => d.nome));
+    for (const d of data) if (d.departamento) set.add(d.departamento);
+    return Array.from(set);
+  }, [departamentos, data]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<DiaristaForm>(emptyForm);
 
