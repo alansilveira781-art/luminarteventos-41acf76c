@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Power, Search, Printer, PencilLine, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Power, Search, Printer, PencilLine, X, ChevronDown } from "lucide-react";
 import logoUrl from "@/assets/luminart-logo.png";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -311,6 +311,9 @@ function ColaboradoresPage() {
           <div className="flex gap-2">
             <Button size="sm" onClick={() => setLoteOpen(true)}>
               <PencilLine className="h-3.5 w-3.5 mr-1" /> Editar em lote
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => imprimirRelatorio(true)}>
+              <Printer className="h-3.5 w-3.5 mr-1" /> Imprimir selecionados
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
               <X className="h-3.5 w-3.5 mr-1" /> Limpar
