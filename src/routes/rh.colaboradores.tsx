@@ -222,8 +222,9 @@ function ColaboradoresPage() {
         description="Cadastro de pessoal (LGPD — dados sensíveis restritos ao módulo RH)"
         actions={
           <>
-            <Button variant="outline" onClick={imprimirRelatorio}>
-              <Printer className="h-4 w-4 mr-1" /> Imprimir
+            <Button variant="outline" onClick={() => imprimirRelatorio()}>
+              <Printer className="h-4 w-4 mr-1" />
+              {selected.size > 0 ? `Imprimir (${selected.size} selecionados)` : "Imprimir"}
             </Button>
             <Button
               onClick={() => {
