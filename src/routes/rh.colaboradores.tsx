@@ -61,7 +61,7 @@ function ColaboradoresPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState("");
-  const [fDep, setFDep] = useState<string>("__todos");
+  const [fDeps, setFDeps] = useState<string[]>([]);
   const [fTipo, setFTipo] = useState<string>("__todos");
   const [fStatus, setFStatus] = useState<"ativos" | "desligados" | "__todos">("ativos");
   const [open, setOpen] = useState(false);
