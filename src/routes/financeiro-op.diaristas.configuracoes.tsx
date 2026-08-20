@@ -391,7 +391,7 @@ function DiaristasConfiguracoes() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value={SEM_DEPTO}>Sem departamento</SelectItem>
-                    {DEPARTAMENTOS.map((dep) => (
+                    {opcoesDepartamento.map((dep) => (
                       <SelectItem key={dep} value={dep}>{dep}</SelectItem>
                     ))}
                   </SelectContent>
