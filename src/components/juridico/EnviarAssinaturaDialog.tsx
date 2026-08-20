@@ -225,13 +225,6 @@ export function EnviarAssinaturaDialog({
         await sb.from("juridico_contratos").update({ corpo_html: htmlRenderizado }).eq("id", contrato.id);
       }
 
-      const contratada = limpos.find((s) => s.papel === "contratada");
-      if (contratada) {
-        localStorage.setItem(
-          `clicksign-contratada:${contrato.empresa ?? ""}`,
-          JSON.stringify({ nome: contratada.nome, email: contratada.email, documento: contratada.documento }),
-        );
-      }
 
       await enviarParaAssinatura({
         data: {
