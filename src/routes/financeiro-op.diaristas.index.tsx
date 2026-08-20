@@ -39,7 +39,7 @@ import {
   type ModoDivisao,
 } from "@/lib/diaristas-calc";
 import { useDiaristaAcesso } from "@/lib/diaristas-acesso";
-import { useDiaristaConfig } from "@/lib/diaristas-config";
+import { useDiaristaConfig, useDiaristaDepartamentos } from "@/lib/diaristas-config";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
@@ -370,6 +370,7 @@ function ApontamentoTab() {
   });
 
   const diaristasAtivos = useMemo(() => diaristas.filter((d) => d.ativo), [diaristas]);
+  const opcoesDepartamento = useOpcoesDepartamento(diaristas);
   const diaristasMap = useMemo(
     () => new Map(diaristas.map((d) => [d.id, d])),
     [diaristas],
@@ -667,7 +668,7 @@ function ApontamentoTab() {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos</SelectItem>
-                {DEPARTAMENTOS_DIARISTA.map((dep) => (
+                {opcoesDepartamento.map((dep) => (
                   <SelectItem key={dep} value={dep}>{dep}</SelectItem>
                 ))}
                 <SelectItem value="__sem">Sem departamento</SelectItem>
@@ -2024,7 +2025,7 @@ function FechamentoView({
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos</SelectItem>
-                {DEPARTAMENTOS_DIARISTA.map((dep) => (
+                {opcoesDepartamento.map((dep) => (
                   <SelectItem key={dep} value={dep}>{dep}</SelectItem>
                 ))}
                 <SelectItem value="__sem">Sem departamento</SelectItem>
