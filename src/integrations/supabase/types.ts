@@ -2239,9 +2239,11 @@ export type Database = {
       }
       demanda_itens: {
         Row: {
+          cotacao: string | null
           created_at: string
           demanda_id: string
           desconto: number
+          desconto_percentual: number | null
           descricao: string | null
           evento_projeto: string | null
           frete: number
@@ -2257,9 +2259,11 @@ export type Database = {
           valor_unitario: number | null
         }
         Insert: {
+          cotacao?: string | null
           created_at?: string
           demanda_id: string
           desconto?: number
+          desconto_percentual?: number | null
           descricao?: string | null
           evento_projeto?: string | null
           frete?: number
@@ -2275,9 +2279,11 @@ export type Database = {
           valor_unitario?: number | null
         }
         Update: {
+          cotacao?: string | null
           created_at?: string
           demanda_id?: string
           desconto?: number
+          desconto_percentual?: number | null
           descricao?: string | null
           evento_projeto?: string | null
           frete?: number
