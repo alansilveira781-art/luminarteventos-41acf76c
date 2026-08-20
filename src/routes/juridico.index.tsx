@@ -906,6 +906,7 @@ function ContratoDetalhesDialog({
       pagamento_forma: form.pagamento_forma || null,
       pagamento_modo: form.pagamento_modo || null,
       pagamento_parcelas: form.pagamento_parcelas ?? null,
+      usar_clicksign: form.usar_clicksign !== false,
     };
 
     const { error } = await sb.from("juridico_contratos").update(payload).eq("id", contrato!.id);
@@ -913,6 +914,7 @@ function ContratoDetalhesDialog({
     if (error) return toast.error(error.message);
     toast.success("Contrato atualizado");
     onSaved();
+    onClose();
   }
 
   return (
