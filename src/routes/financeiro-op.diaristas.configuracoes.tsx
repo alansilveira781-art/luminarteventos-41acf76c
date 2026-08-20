@@ -18,7 +18,12 @@ import { Pencil, Plus, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { MoneyInput } from "@/components/MoneyInput";
 import { supabase } from "@/integrations/supabase/client";
-import { useDiaristaConfig, DIARISTA_CONFIG_KEY } from "@/lib/diaristas-config";
+import {
+  useDiaristaConfig,
+  DIARISTA_CONFIG_KEY,
+  useDiaristaDepartamentos,
+  DIARISTA_DEPARTAMENTOS_KEY,
+} from "@/lib/diaristas-config";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
