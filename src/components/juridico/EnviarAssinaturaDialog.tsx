@@ -290,38 +290,59 @@ export function EnviarAssinaturaDialog({
 
 
         <div className="space-y-3">
-          {signatarios.map((s, i) => (
-            <div key={i} className="rounded-md border p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase text-muted-foreground">{PAPEL_LABEL[s.papel]}</span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setSignatarios((p) => p.filter((_, j) => j !== i))}
-                  aria-label="Remover signatário"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+          {signatarios.map((s, i) => {
+            const fixo = s.papel === "contratada";
+            return (
+              <div key={i} className="rounded-md border p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase text-muted-foreground">{PAPEL_LABEL[s.papel]}</span>
+                  {!fixo && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSignatarios((p) => p.filter((_, j) => j !== i))}
+                      aria-label="Remover signatário"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div>
+                    <Label className="text-xs">Nome</Label>
+                    <Input value={s.nome} readOnly={fixo} disabled={fixo} onChange={(e) => set(i, { nome: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">E-mail</Label>
+                    <Input
+                      type="email"
+                      value={s.email}
+                      readOnly={fixo}
+                      disabled={fixo}
+                      onChange={(e) => set(i, { email: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">CPF/CNPJ</Label>
+                    <Input
+                      value={s.documento}
+                      readOnly={fixo}
+                      disabled={fixo}
+                      onChange={(e) => set(i, { documento: e.target.value })}
+                    />
+                  </div>
+                </div>
+                {fixo && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Preenchido automaticamente pelo cadastro em Administração &gt; Empresas.
+                  </p>
+                )}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <div>
-                  <Label className="text-xs">Nome</Label>
-                  <Input value={s.nome} onChange={(e) => set(i, { nome: e.target.value })} />
-                </div>
-                <div>
-                  <Label className="text-xs">E-mail</Label>
-                  <Input type="email" value={s.email} onChange={(e) => set(i, { email: e.target.value })} />
-                </div>
-                <div>
-                  <Label className="text-xs">CPF/CNPJ</Label>
-                  <Input value={s.documento} onChange={(e) => set(i, { documento: e.target.value })} />
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           <div className="flex flex-wrap gap-2">
-            {(["cliente", "contratada", "testemunha"] as Papel[]).map((p) => (
+            {(["cliente", "testemunha"] as Papel[]).map((p) => (
               <Button
                 key={p}
                 variant="outline"
