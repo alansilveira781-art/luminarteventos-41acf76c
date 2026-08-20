@@ -141,9 +141,14 @@ function QuadroContratos() {
   const [concluirCard, setConcluirCard] = useState<Contrato | null>(null);
   const [assinaturaCard, setAssinaturaCard] = useState<Contrato | null>(null);
   const [voltar, setVoltar] = useState<{ card: Contrato; to: Status } | null>(null);
+  const [comProposta, setComProposta] = useState<Set<string>>(new Set());
   const cancelarAssinaturaFn = useServerFn(cancelarAssinatura);
 
-
+  /** Ids de contratos que possuem anexo do tipo "proposta". */
+  const carregarPropostas = async () => {
+    const { data } = await sb.from("juridico_anexos").select("contrato_id").eq("tipo", "proposta");
+    setComProposta(new Set(((data as any[]) ?? []).map((a) => a.contrato_id)));
+  };
 
   const load = async () => {
     setLoading(true);
@@ -154,8 +159,10 @@ function QuadroContratos() {
       .order("created_at", { ascending: false });
     if (error) toast.error(error.message);
     setRows((data as any) ?? []);
+    await carregarPropostas();
     setLoading(false);
   };
+
 
   useEffect(() => { load(); }, []);
 
