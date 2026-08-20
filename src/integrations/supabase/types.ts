@@ -26,7 +26,9 @@ export type Database = {
           nome_fantasia: string | null
           razao_social: string
           representante_documento: string | null
+          representante_email: string | null
           representante_nome: string | null
+          representante_telefone: string | null
           updated_at: string
         }
         Insert: {
@@ -40,7 +42,9 @@ export type Database = {
           nome_fantasia?: string | null
           razao_social: string
           representante_documento?: string | null
+          representante_email?: string | null
           representante_nome?: string | null
+          representante_telefone?: string | null
           updated_at?: string
         }
         Update: {
@@ -54,7 +58,9 @@ export type Database = {
           nome_fantasia?: string | null
           razao_social?: string
           representante_documento?: string | null
+          representante_email?: string | null
           representante_nome?: string | null
+          representante_telefone?: string | null
           updated_at?: string
         }
         Relationships: []
