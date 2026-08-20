@@ -356,6 +356,7 @@ function QuadroContratos() {
                   onDelete={() => onDelete(c.id)}
                   onEnviarAssinatura={() => setAssinaturaCard(c)}
                   onValidar={() => setConcluirCard(c)}
+                  onToggleClicksign={() => alternarClicksign(c)}
 
                 />
               ))}
