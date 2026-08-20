@@ -223,14 +223,24 @@ function QuadroContratos() {
     // Retrocesso: sempre pede confirmação e registra o motivo.
     if (ordemStatus(status) < ordemStatus(card.status)) { setVoltar({ card, to: status }); return; }
     if (status === "criacao") { setCriacaoCard(card); return; }
+    const interno = card.usar_clicksign === false;
     // Da Criação em diante, a proposta anexada é obrigatória.
-    if (ordemStatus(status) >= ordemStatus("validacao") && !(await temProposta(card.id))) {
-      toast.error("Anexe a proposta ao card antes de enviar para Validação");
-      setEditing(card);
-      return;
+    if (ordemStatus(status) >= ordemStatus("validacao")) {
+      const tipos = await tiposAnexos(card.id);
+      if (!tipos.has("proposta")) {
+        toast.error("Anexe a proposta ao card antes de enviar para Validação");
+        setEditing(card);
+        return;
+      }
+      // Assinatura interna: exige também o contrato assinado anexado para concluir.
+      if (interno && status === "concluido" && !tipos.has("contrato")) {
+        toast.error("Anexe o contrato assinado antes de concluir");
+        setEditing(card);
+        return;
+      }
     }
     if (status === "concluido") { setConcluirCard(card); return; }
-    if (status === "assinatura" && !card.clicksign_document_key) { setAssinaturaCard(card); return; }
+    if (status === "assinatura" && !interno && !card.clicksign_document_key) { setAssinaturaCard(card); return; }
 
     const patch: any = { status };
     if (status === "assinatura" && !card.data_assinatura) patch.data_assinatura = new Date().toISOString().slice(0, 10);
