@@ -75,6 +75,17 @@ function signatariosDoContrato(c: any): Signatario[] {
   return out;
 }
 
+/** Signatário fixo da contratada, sempre a partir do cadastro da empresa. */
+function contratadaSignatario(empresa: any): Signatario {
+  const val = (v: any) => (String(v ?? "").trim() ? String(v).trim() : "");
+  return {
+    nome: val(empresa?.representante_nome) || CONTRATADA_PADRAO.representante_nome,
+    email: val(empresa?.representante_email) || CONTRATADA_PADRAO.representante_email,
+    documento: val(empresa?.representante_documento) || CONTRATADA_PADRAO.representante_documento,
+    papel: "contratada",
+  };
+}
+
 /** Nome do documento no Clicksign: "NOME DO EVENTO - LOCAL". */
 export function nomeDocumentoContrato(c: any): string {
   const partes = [c?.evento_nome, c?.evento_local]
