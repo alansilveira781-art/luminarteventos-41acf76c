@@ -108,10 +108,30 @@ export function DefinirCategoriaDialog({
     [modelo, auto, manuais],
   );
 
+  async function enviarProposta() {
+    if (!propostaFile || !contrato?.id) return;
+    const safe = propostaFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `${contrato.id}/${Date.now()}_${safe}`;
+    const { error: upErr } = await sb.storage
+      .from("juridico-anexos")
+      .upload(path, propostaFile, { contentType: propostaFile.type || undefined });
+    if (upErr) throw new Error(upErr.message);
+    const { error: insErr } = await sb.from("juridico_anexos").insert({
+      contrato_id: contrato.id,
+      nome: propostaFile.name,
+      path,
+      mime_type: propostaFile.type || null,
+      tamanho: propostaFile.size,
+      tipo: "proposta",
+    });
+    if (insErr) throw new Error(insErr.message);
+  }
+
   async function confirmar() {
     if (!categoria) return toast.error("Escolha o tipo do contrato");
     setSalvando(true);
     try {
+      await enviarProposta();
       await onConfirm({
         status: "criacao",
         categoria,
@@ -120,7 +140,12 @@ export function DefinirCategoriaDialog({
         variaveis_valores: manuais,
       });
       onOpenChange(false);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao anexar a proposta");
     } finally {
+      setSalvando(false);
+    }
+
       setSalvando(false);
     }
   }
