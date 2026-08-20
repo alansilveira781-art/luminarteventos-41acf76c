@@ -47,6 +47,9 @@ export function DefinirCategoriaDialog({
   const [empresas, setEmpresas] = useState<any[]>([]);
   const [manuais, setManuais] = useState<Record<string, string>>({});
   const [salvando, setSalvando] = useState(false);
+  const [propostaExistente, setPropostaExistente] = useState<any | null>(null);
+  const [propostaFile, setPropostaFile] = useState<File | null>(null);
+
 
   useEffect(() => {
     if (!open) return;
