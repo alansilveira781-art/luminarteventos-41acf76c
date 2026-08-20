@@ -973,6 +973,7 @@ function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor
       e.preventDefault();
       const validas = linhas.filter((l) => l.item_id && Number(l.quantidade) > 0);
       if (validas.length === 0) return toast.error("Adicione pelo menos um item");
+      if (!meta.empresa) return toast.error("Selecione a empresa");
       onSubmit(
         {
           data_movimento: fromBRTInputDateTime(meta.data_movimento),
