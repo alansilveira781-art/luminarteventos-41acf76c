@@ -118,6 +118,7 @@ type Contrato = {
   clicksign_enviado_em?: string | null;
   clicksign_assinado_em?: string | null;
   clicksign_erro?: string | null;
+  usar_clicksign?: boolean | null;
 };
 
 
