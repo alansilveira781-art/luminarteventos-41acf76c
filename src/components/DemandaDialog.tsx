@@ -40,6 +40,8 @@ export type DemandaItem = {
   descricao?: string | null;
   unidade?: string | null;
   quantidade: number;
+  cotacao?: string | null;
+  desconto_percentual?: number | null;
   valor_unitario?: number | null;
   desconto?: number | null;
   frete?: number | null;
@@ -48,7 +50,7 @@ export type DemandaItem = {
 };
 
 function novoDemandaItem(): DemandaItem {
-  return { item_id: null, descricao: "", unidade: "", quantidade: 1, valor_unitario: 0, desconto: 0, frete: 0, ipi: 0, outros_custos: 0 };
+  return { item_id: null, descricao: "", unidade: "", quantidade: 1, cotacao: "", desconto_percentual: null, valor_unitario: 0, desconto: 0, frete: 0, ipi: 0, outros_custos: 0 };
 }
 
 export type Demanda = {
