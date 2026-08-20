@@ -327,6 +327,72 @@ export function ConcluirContratoWizard({
           </div>
         )}
 
+        {step === 2 && (
+          <div className="space-y-4">
+            {contrato.dropbox_path && !pastaCriada && (
+              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs">
+                Este contrato já gerou a pasta <span className="font-mono">{contrato.dropbox_path}</span>.
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label>Pasta raiz</Label>
+                <Input
+                  value={pasta.raiz ?? RAIZ_PADRAO}
+                  onChange={(e) => setPasta((p) => ({ ...p, raiz: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Ano</Label>
+                <Input value={pasta.ano} onChange={(e) => setPasta((p) => ({ ...p, ano: e.target.value }))} />
+              </div>
+              <div>
+                <Label>Mês</Label>
+                <Input value={pasta.mes} onChange={(e) => setPasta((p) => ({ ...p, mes: e.target.value }))} />
+              </div>
+              <div>
+                <Label>Período do evento</Label>
+                <Input value={pasta.periodo} onChange={(e) => setPasta((p) => ({ ...p, periodo: e.target.value }))} />
+              </div>
+              <div>
+                <Label>Nome do evento</Label>
+                <Input value={pasta.nomeEvento} onChange={(e) => setPasta((p) => ({ ...p, nomeEvento: e.target.value }))} />
+              </div>
+              <div>
+                <Label>Local do evento</Label>
+                <Input value={pasta.localEvento ?? ""} onChange={(e) => setPasta((p) => ({ ...p, localEvento: e.target.value }))} />
+              </div>
+            </div>
+
+            <div className="rounded-md border p-3 space-y-2 text-xs">
+              <div className="font-semibold text-sm">Será criado</div>
+              <div className="font-mono break-all">{caminhoPreview}</div>
+              <div className="text-muted-foreground">
+                Nome da pasta: <span className="font-mono">{nomePastaEvento(pasta)}</span>
+              </div>
+              <ul className="pl-4 list-disc text-muted-foreground">
+                {SUBPASTAS.map((s) => (
+                  <li key={s}>{s}</li>
+                ))}
+              </ul>
+              <div className="text-muted-foreground">
+                Contrato assinado e proposta são enviados para <span className="font-mono">04 - DOC</span>.
+              </div>
+            </div>
+
+            {pastaCriada && (
+              <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 p-2 text-xs space-y-1">
+                <div>Pastas criadas com sucesso.</div>
+                {pastaCriada.url && (
+                  <a className="underline" href={pastaCriada.url} target="_blank" rel="noreferrer">
+                    Abrir no Dropbox
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         <DialogFooter className="gap-2 mt-2">
           {step === 0 ? (
             <>
@@ -340,14 +406,27 @@ export function ConcluirContratoWizard({
                 {salvando ? "Salvando…" : "Cadastrar evento e avançar"}
               </Button>
             </>
-          ) : (
+          ) : step === 1 ? (
             <>
               <Button variant="ghost" onClick={pularVenda} disabled={salvando}>
                 Pular cadastro da venda
               </Button>
               <Button onClick={confirmarVenda} disabled={salvando}>
-                {salvando ? "Salvando…" : "Cadastrar venda e concluir"}
+                {salvando ? "Salvando…" : "Cadastrar venda e avançar"}
               </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" onClick={fechar} disabled={salvando}>
+                {pastaCriada ? "Fechar" : "Pular criação de pastas"}
+              </Button>
+              {pastaCriada ? (
+                <Button onClick={fechar}>Concluir</Button>
+              ) : (
+                <Button onClick={confirmarPastas} disabled={salvando}>
+                  {salvando ? "Criando…" : "Criar pastas e enviar arquivos"}
+                </Button>
+              )}
             </>
           )}
         </DialogFooter>
