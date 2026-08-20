@@ -196,7 +196,7 @@ function ColaboradoresPage() {
         </div>
       </header>
       <h1>Relatório de Colaboradores</h1>
-      <div class="subtitle">Recursos Humanos · ${filtrados.length} registro(s)</div>
+      <div class="subtitle">Recursos Humanos · ${usouSelecao ? "Seleção manual · " : ""}${lista.length} registro(s)</div>
       <div class="chips"><span class="chip">${escapeHtml(filtrosLabel)}</span></div>
       <table>
         <thead><tr><th>Nome</th><th>Departamento</th><th>Função</th><th>Vínculo</th><th>Documento</th><th>Status</th></tr></thead>
