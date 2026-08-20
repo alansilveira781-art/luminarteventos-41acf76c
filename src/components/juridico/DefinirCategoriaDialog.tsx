@@ -145,10 +145,8 @@ export function DefinirCategoriaDialog({
     } finally {
       setSalvando(false);
     }
-
-      setSalvando(false);
-    }
   }
+
 
   if (!contrato) return null;
 
