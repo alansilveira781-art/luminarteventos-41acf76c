@@ -126,7 +126,7 @@ function PatrimonioRelatorios() {
       if (!nq) return true;
       return [i.nome, i.especificacao, i.id_item, i.subcategoria, i.localizacao, i.cod != null ? String(i.cod) : ""]
         .some((v) => normalize(String(v ?? "")).includes(nq));
-    });
+    }).sort((a, b) => compareEspecThenNome(a, b));
   }, [itens, cat, sub, estado, loc, qd]);
 
   const consolidado = useMemo(() => {
