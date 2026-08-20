@@ -621,7 +621,7 @@ export function DemandaDialog({
                         />
                       </div>
                     </div>
-                    <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
+                    <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
                       <div>
                         <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Qtd</label>
                         <Input
@@ -639,11 +639,47 @@ export function DemandaDialog({
                         />
                       </div>
                       <div>
+                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Cotação</label>
+                        <Input
+                          value={it.cotacao ?? ""}
+                          onChange={(e) => updateCotacaoOrDesconto(idx, { cotacao: e.target.value })}
+                          placeholder="Ex: 12,50"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Desc. %</label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={it.desconto_percentual ?? ""}
+                          onChange={(e) => updateCotacaoOrDesconto(idx, { desconto_percentual: e.target.value === "" ? null : Number(e.target.value) })}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
                         <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Valor unit.</label>
                         <MoneyInput
                           value={it.valor_unitario ?? 0}
                           onChange={(n) => updateItem(idx, { valor_unitario: n || null })}
                         />
+                      </div>
+                    </div>
+                    <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Desconto (R$)</label>
+                        <MoneyInput value={it.desconto ?? 0} onChange={(n) => updateItem(idx, { desconto: n })} />
+                      </div>
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">IPI</label>
+                        <MoneyInput value={it.ipi ?? 0} onChange={(n) => updateItem(idx, { ipi: n })} />
+                      </div>
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Frete</label>
+                        <MoneyInput value={it.frete ?? 0} onChange={(n) => updateItem(idx, { frete: n })} />
+                      </div>
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Outros / Imposto</label>
+                        <MoneyInput value={it.outros_custos ?? 0} onChange={(n) => updateItem(idx, { outros_custos: n })} />
                       </div>
                       <div>
                         <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Subtotal</label>
@@ -652,24 +688,6 @@ export function DemandaDialog({
                           readOnly
                           className="bg-muted/50"
                         />
-                      </div>
-                    </div>
-                    <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
-                      <div>
-                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Desconto</label>
-                        <MoneyInput value={it.desconto ?? 0} onChange={(n) => updateItem(idx, { desconto: n })} />
-                      </div>
-                      <div>
-                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Frete</label>
-                        <MoneyInput value={it.frete ?? 0} onChange={(n) => updateItem(idx, { frete: n })} />
-                      </div>
-                      <div>
-                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">IPI</label>
-                        <MoneyInput value={it.ipi ?? 0} onChange={(n) => updateItem(idx, { ipi: n })} />
-                      </div>
-                      <div>
-                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Outros / Imposto</label>
-                        <MoneyInput value={it.outros_custos ?? 0} onChange={(n) => updateItem(idx, { outros_custos: n })} />
                       </div>
                     </div>
                     <div className="flex justify-end">
