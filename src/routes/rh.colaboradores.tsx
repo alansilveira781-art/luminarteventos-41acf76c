@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Power, Search, Printer, PencilLine, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Power, Search, Printer, PencilLine, X, ChevronDown } from "lucide-react";
 import logoUrl from "@/assets/luminart-logo.png";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -61,7 +62,7 @@ function ColaboradoresPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState("");
-  const [fDep, setFDep] = useState<string>("__todos");
+  const [fDeps, setFDeps] = useState<string[]>([]);
   const [fTipo, setFTipo] = useState<string>("__todos");
   const [fStatus, setFStatus] = useState<"ativos" | "desligados" | "__todos">("ativos");
   const [open, setOpen] = useState(false);
@@ -96,12 +97,16 @@ function ColaboradoresPage() {
     return rows.filter((r) => {
       if (fStatus === "ativos" && !r.ativo) return false;
       if (fStatus === "desligados" && r.ativo) return false;
-      if (fDep !== "__todos" && r.departamento !== fDep) return false;
+      if (fDeps.length > 0 && !fDeps.includes(r.departamento ?? "")) return false;
       if (fTipo !== "__todos" && r.tipo_contratacao !== fTipo) return false;
       if (q && !r.nome.toLowerCase().includes(q) && !r.documento.includes(q)) return false;
       return true;
     });
-  }, [rows, fDep, fTipo, fStatus, busca]);
+  }, [rows, fDeps, fTipo, fStatus, busca]);
+
+  const selecionados = useMemo(() => rows.filter((r) => selected.has(r.id)), [rows, selected]);
+  const depsLabel =
+    fDeps.length === 0 ? "Todos departamentos" : fDeps.length === 1 ? fDeps[0] : `${fDeps.length} departamentos`;
 
   const allVisibleSelected = filtrados.length > 0 && filtrados.every((r) => selected.has(r.id));
   function toggleAll(v: boolean) {
@@ -134,15 +139,19 @@ function ColaboradoresPage() {
     setRows((rs) => rs.filter((r) => r.id !== c.id));
   }
 
-  function imprimirRelatorio() {
+  function imprimirRelatorio(apenasSelecionados = selected.size > 0) {
+    const lista = apenasSelecionados && selecionados.length > 0 ? selecionados : filtrados;
+    if (lista.length === 0) return toast.error("Nenhum colaborador para imprimir.");
+    const usouSelecao = apenasSelecionados && selecionados.length > 0;
     const filtros: string[] = [];
+    if (usouSelecao) filtros.push("Seleção manual");
     if (busca.trim()) filtros.push(`Busca: "${busca.trim()}"`);
-    if (fDep !== "__todos") filtros.push(`Departamento: ${fDep}`);
+    if (fDeps.length > 0) filtros.push(`Departamento(s): ${fDeps.join(", ")}`);
     if (fTipo !== "__todos") filtros.push(`Vínculo: ${TIPO_LABEL[fTipo as TipoContratacao] ?? fTipo}`);
     filtros.push(`Status: ${fStatus === "ativos" ? "Ativos" : fStatus === "desligados" ? "Desligados" : "Todos"}`);
     const filtrosLabel = filtros.join(" · ");
     const hoje = new Date().toLocaleString("pt-BR");
-    const rowsHtml = filtrados
+    const rowsHtml = lista
       .map(
         (c) => `
         <tr>
@@ -187,7 +196,7 @@ function ColaboradoresPage() {
         </div>
       </header>
       <h1>Relatório de Colaboradores</h1>
-      <div class="subtitle">Recursos Humanos · ${filtrados.length} registro(s)</div>
+      <div class="subtitle">Recursos Humanos · ${usouSelecao ? "Seleção manual · " : ""}${lista.length} registro(s)</div>
       <div class="chips"><span class="chip">${escapeHtml(filtrosLabel)}</span></div>
       <table>
         <thead><tr><th>Nome</th><th>Departamento</th><th>Função</th><th>Vínculo</th><th>Documento</th><th>Status</th></tr></thead>
@@ -213,8 +222,9 @@ function ColaboradoresPage() {
         description="Cadastro de pessoal (LGPD — dados sensíveis restritos ao módulo RH)"
         actions={
           <>
-            <Button variant="outline" onClick={imprimirRelatorio}>
-              <Printer className="h-4 w-4 mr-1" /> Imprimir
+            <Button variant="outline" onClick={() => imprimirRelatorio()}>
+              <Printer className="h-4 w-4 mr-1" />
+              {selected.size > 0 ? `Imprimir (${selected.size} selecionados)` : "Imprimir"}
             </Button>
             <Button
               onClick={() => {
@@ -238,19 +248,40 @@ function ColaboradoresPage() {
             onChange={(e) => setBusca(e.target.value)}
           />
         </div>
-        <Select value={fDep} onValueChange={setFDep}>
-          <SelectTrigger className="w-[220px] h-9">
-            <SelectValue placeholder="Departamento" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__todos">Todos departamentos</SelectItem>
-            {departamentos.map((d) => (
-              <SelectItem key={d} value={d}>
-                {d}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="w-[220px] h-9 justify-between font-normal">
+              <span className="truncate">{depsLabel}</span>
+              <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[240px] p-2" align="start">
+            <div className="flex items-center justify-between px-1 pb-2">
+              <span className="text-xs font-medium text-muted-foreground">Departamentos</span>
+              {fDeps.length > 0 && (
+                <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => setFDeps([])}>
+                  Limpar
+                </Button>
+              )}
+            </div>
+            <div className="max-h-64 overflow-auto space-y-1">
+              {departamentos.length === 0 && (
+                <p className="px-1 py-2 text-xs text-muted-foreground">Nenhum departamento cadastrado.</p>
+              )}
+              {departamentos.map((d) => (
+                <label key={d} className="flex items-center gap-2 rounded px-1 py-1 text-sm hover:bg-accent cursor-pointer">
+                  <Checkbox
+                    checked={fDeps.includes(d)}
+                    onCheckedChange={(v) =>
+                      setFDeps((prev) => (v ? [...prev, d] : prev.filter((x) => x !== d)))
+                    }
+                  />
+                  <span className="truncate">{d}</span>
+                </label>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
         <Select value={fTipo} onValueChange={setFTipo}>
           <SelectTrigger className="w-[160px] h-9">
             <SelectValue placeholder="Tipo" />
@@ -280,6 +311,9 @@ function ColaboradoresPage() {
           <div className="flex gap-2">
             <Button size="sm" onClick={() => setLoteOpen(true)}>
               <PencilLine className="h-3.5 w-3.5 mr-1" /> Editar em lote
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => imprimirRelatorio(true)}>
+              <Printer className="h-3.5 w-3.5 mr-1" /> Imprimir selecionados
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
               <X className="h-3.5 w-3.5 mr-1" /> Limpar
