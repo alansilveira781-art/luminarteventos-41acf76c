@@ -205,6 +205,27 @@ export function DefinirCategoriaDialog({
             </div>
           )}
 
+          <div className="rounded-md border p-3 space-y-2">
+            <Label className="text-sm">Proposta anexada</Label>
+            {propostaExistente && !propostaFile && (
+              <p className="text-xs text-muted-foreground">
+                Já anexada: <span className="font-medium">{propostaExistente.nome}</span> — envie outro arquivo para substituir.
+              </p>
+            )}
+            <Input
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg,.webp"
+              onChange={(e) => setPropostaFile(e.target.files?.[0] ?? null)}
+            />
+            {!propostaExistente && !propostaFile && (
+              <p className="text-xs text-amber-600">
+                A proposta é obrigatória para mover o card até a Validação.
+              </p>
+            )}
+          </div>
+
+
+
           <div className="rounded-md border p-3 text-sm space-y-1 bg-muted/30">
             <div className="text-xs font-semibold text-muted-foreground">Dados que serão aplicados</div>
             <div>Cliente: {contrato.cliente_nome || "—"} · {contrato.cliente_documento || "—"}</div>
