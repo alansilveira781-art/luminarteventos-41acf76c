@@ -193,6 +193,8 @@ function EmpresaDialog({
       endereco: form.endereco?.trim() || null,
       representante_nome: (form as any).representante_nome?.trim() || null,
       representante_documento: (form as any).representante_documento?.trim() || null,
+      representante_email: (form as any).representante_email?.trim() || null,
+      representante_telefone: (form as any).representante_telefone?.trim() || null,
       ativo: form.ativo ?? true,
     };
 
