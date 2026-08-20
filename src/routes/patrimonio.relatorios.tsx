@@ -313,7 +313,7 @@ function PatrimonioRelatorios() {
             onValueChange={(v) => {
               const m = v as typeof modo;
               setModo(m);
-              if (m === "conferencia") setOrdem("nome");
+              if (m === "conferencia") setOrdem("especificacao");
             }}
           >
             <SelectTrigger><SelectValue /></SelectTrigger>
