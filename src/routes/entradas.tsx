@@ -252,6 +252,7 @@ function EntradasPage() {
           fornecedor_id: m.fornecedor_id,
           fornecedor: m.fornecedor,
           entrada_tipo: m.entrada_tipo,
+          empresa: m.empresa,
           nota_fiscal: m.nota_fiscal,
           observacoes: m.observacoes,
           responsavel_lancamento: m.responsavel_lancamento,
@@ -972,6 +973,7 @@ function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor
       e.preventDefault();
       const validas = linhas.filter((l) => l.item_id && Number(l.quantidade) > 0);
       if (validas.length === 0) return toast.error("Adicione pelo menos um item");
+      if (!meta.empresa) return toast.error("Selecione a empresa");
       onSubmit(
         {
           data_movimento: fromBRTInputDateTime(meta.data_movimento),
@@ -1016,7 +1018,10 @@ function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor
           <Select value={meta.empresa} onValueChange={(v) => setM("empresa", v)}>
             <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
             <SelectContent>
-              {EMPRESAS.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+              {(meta.empresa && !(EMPRESAS as readonly string[]).includes(meta.empresa)
+                ? [meta.empresa, ...EMPRESAS]
+                : [...EMPRESAS]
+              ).map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
             </SelectContent>
           </Select>
         </FormField>
