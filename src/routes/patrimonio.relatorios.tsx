@@ -174,12 +174,15 @@ function PatrimonioRelatorios() {
         valorMedio: g.quantidade > 0 ? g.valorTotal / g.quantidade : 0,
       };
     });
-    const rotulo = (l: { nome: string; especificacao: string }) => `${l.nome} ${l.especificacao}`.trim();
-    linhas.sort((a, b) =>
-      ordem === "nome"
-        ? rotulo(a).localeCompare(rotulo(b), "pt-BR")
-        : b.quantidade - a.quantidade || rotulo(a).localeCompare(rotulo(b), "pt-BR"),
-    );
+    linhas.sort((a, b) => {
+      if (ordem === "quantidade") {
+        return b.quantidade - a.quantidade || compareEspecThenNome(a, b);
+      }
+      if (ordem === "nome") {
+        return a.nome.localeCompare(b.nome, "pt-BR", { numeric: true }) || compareEspecThenNome(a, b);
+      }
+      return compareEspecThenNome(a, b);
+    });
     return linhas;
   }, [filtrados, ordem]);
 
