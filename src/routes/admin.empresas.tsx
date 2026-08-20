@@ -193,6 +193,8 @@ function EmpresaDialog({
       endereco: form.endereco?.trim() || null,
       representante_nome: (form as any).representante_nome?.trim() || null,
       representante_documento: (form as any).representante_documento?.trim() || null,
+      representante_email: (form as any).representante_email?.trim() || null,
+      representante_telefone: (form as any).representante_telefone?.trim() || null,
       ativo: form.ativo ?? true,
     };
 
@@ -266,6 +268,24 @@ function EmpresaDialog({
               placeholder="000.000.000-00"
             />
           </div>
+          <div>
+            <Label>E-mail do representante (assinatura)</Label>
+            <Input
+              type="email"
+              value={(form as any).representante_email ?? ""}
+              onChange={(e) => setForm({ ...form, representante_email: e.target.value } as any)}
+              placeholder="nome@empresa.com.br"
+            />
+          </div>
+          <div>
+            <Label>Telefone do representante</Label>
+            <Input
+              value={(form as any).representante_telefone ?? ""}
+              onChange={(e) => setForm({ ...form, representante_telefone: e.target.value } as any)}
+              placeholder="(00) 0.0000-0000"
+            />
+          </div>
+
 
           <div className="col-span-2 flex items-center gap-2">
             <Switch

@@ -64,20 +64,8 @@ function signatariosDoContrato(c: any): Signatario[] {
     });
   }
 
-  const contratadaSalva = (() => {
-    try {
-      const raw = localStorage.getItem(`clicksign-contratada:${c?.empresa ?? ""}`);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  })();
-  out.push({
-    nome: contratadaSalva?.nome || CONTRATADA_PADRAO.representante_nome,
-    email: contratadaSalva?.email || CONTRATADA_PADRAO.representante_email,
-    documento: contratadaSalva?.documento || CONTRATADA_PADRAO.representante_documento,
-    papel: "contratada",
-  });
+  out.push(contratadaSignatario(null));
+
 
 
   for (const t of (c?.testemunhas ?? []) as any[]) {
@@ -85,6 +73,17 @@ function signatariosDoContrato(c: any): Signatario[] {
     out.push({ nome: t.nome, email: t.email ?? "", documento: t.documento ?? "", papel: "testemunha" });
   }
   return out;
+}
+
+/** Signatário fixo da contratada, sempre a partir do cadastro da empresa. */
+function contratadaSignatario(empresa: any): Signatario {
+  const val = (v: any) => (String(v ?? "").trim() ? String(v).trim() : "");
+  return {
+    nome: val(empresa?.representante_nome) || CONTRATADA_PADRAO.representante_nome,
+    email: val(empresa?.representante_email) || CONTRATADA_PADRAO.representante_email,
+    documento: val(empresa?.representante_documento) || CONTRATADA_PADRAO.representante_documento,
+    papel: "contratada",
+  };
 }
 
 /** Nome do documento no Clicksign: "NOME DO EVENTO - LOCAL". */
@@ -144,7 +143,9 @@ export function EnviarAssinaturaDialog({
 
     // Empresa contratada (dados usados nos campos automáticos do modelo).
     sb.from("admin_empresas")
-      .select("razao_social,nome_fantasia,cnpj,endereco,representante_nome,representante_documento")
+      .select(
+        "razao_social,nome_fantasia,cnpj,endereco,representante_nome,representante_documento,representante_email,representante_telefone",
+      )
       .then(({ data }: any) => {
         const alvo = (contrato?.empresa ?? "").trim().toLowerCase();
         setEmpresa(
@@ -167,6 +168,14 @@ export function EnviarAssinaturaDialog({
       setModeloHtml(null);
     }
   }, [open, contrato?.id]);
+
+  // A contratada nunca é editada à mão: vem sempre do cadastro da empresa.
+  useEffect(() => {
+    if (!open) return;
+    const fixo = contratadaSignatario(empresa);
+    setSignatarios((p) => p.map((s) => (s.papel === "contratada" ? fixo : s)));
+  }, [open, empresa]);
+
 
   const valores = useMemo(
     () => ({
@@ -216,13 +225,6 @@ export function EnviarAssinaturaDialog({
         await sb.from("juridico_contratos").update({ corpo_html: htmlRenderizado }).eq("id", contrato.id);
       }
 
-      const contratada = limpos.find((s) => s.papel === "contratada");
-      if (contratada) {
-        localStorage.setItem(
-          `clicksign-contratada:${contrato.empresa ?? ""}`,
-          JSON.stringify({ nome: contratada.nome, email: contratada.email, documento: contratada.documento }),
-        );
-      }
 
       await enviarParaAssinatura({
         data: {
@@ -288,38 +290,59 @@ export function EnviarAssinaturaDialog({
 
 
         <div className="space-y-3">
-          {signatarios.map((s, i) => (
-            <div key={i} className="rounded-md border p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase text-muted-foreground">{PAPEL_LABEL[s.papel]}</span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setSignatarios((p) => p.filter((_, j) => j !== i))}
-                  aria-label="Remover signatário"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+          {signatarios.map((s, i) => {
+            const fixo = s.papel === "contratada";
+            return (
+              <div key={i} className="rounded-md border p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase text-muted-foreground">{PAPEL_LABEL[s.papel]}</span>
+                  {!fixo && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSignatarios((p) => p.filter((_, j) => j !== i))}
+                      aria-label="Remover signatário"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div>
+                    <Label className="text-xs">Nome</Label>
+                    <Input value={s.nome} readOnly={fixo} disabled={fixo} onChange={(e) => set(i, { nome: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">E-mail</Label>
+                    <Input
+                      type="email"
+                      value={s.email}
+                      readOnly={fixo}
+                      disabled={fixo}
+                      onChange={(e) => set(i, { email: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">CPF/CNPJ</Label>
+                    <Input
+                      value={s.documento}
+                      readOnly={fixo}
+                      disabled={fixo}
+                      onChange={(e) => set(i, { documento: e.target.value })}
+                    />
+                  </div>
+                </div>
+                {fixo && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Preenchido automaticamente pelo cadastro em Administração &gt; Empresas.
+                  </p>
+                )}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <div>
-                  <Label className="text-xs">Nome</Label>
-                  <Input value={s.nome} onChange={(e) => set(i, { nome: e.target.value })} />
-                </div>
-                <div>
-                  <Label className="text-xs">E-mail</Label>
-                  <Input type="email" value={s.email} onChange={(e) => set(i, { email: e.target.value })} />
-                </div>
-                <div>
-                  <Label className="text-xs">CPF/CNPJ</Label>
-                  <Input value={s.documento} onChange={(e) => set(i, { documento: e.target.value })} />
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           <div className="flex flex-wrap gap-2">
-            {(["cliente", "contratada", "testemunha"] as Papel[]).map((p) => (
+            {(["cliente", "testemunha"] as Papel[]).map((p) => (
               <Button
                 key={p}
                 variant="outline"
