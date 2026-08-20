@@ -43,18 +43,10 @@ type Pat = {
   localizacao: string | null;
 };
 
+import { compareFamiliaNomeMedida } from "@/lib/patrimonio/ordenacao";
+
 const brl = (v: number) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-function compareEspecThenNome(
-  a: { nome: string; especificacao?: string | null },
-  b: { nome: string; especificacao?: string | null },
-) {
-  const ea = (a.especificacao ?? "").trim();
-  const eb = (b.especificacao ?? "").trim();
-  const especCmp = ea.localeCompare(eb, "pt-BR", { numeric: true });
-  if (especCmp !== 0) return especCmp;
-  return a.nome.localeCompare(b.nome, "pt-BR", { numeric: true });
-}
 
 function PatrimonioRelatorios() {
   const [cat, setCat] = useState("__all");
@@ -126,7 +118,7 @@ function PatrimonioRelatorios() {
       if (!nq) return true;
       return [i.nome, i.especificacao, i.id_item, i.subcategoria, i.localizacao, i.cod != null ? String(i.cod) : ""]
         .some((v) => normalize(String(v ?? "")).includes(nq));
-    }).sort((a, b) => compareEspecThenNome(a, b));
+    }).sort((a, b) => compareFamiliaNomeMedida(a, b));
   }, [itens, cat, sub, estado, loc, qd]);
 
   const consolidado = useMemo(() => {
@@ -176,12 +168,12 @@ function PatrimonioRelatorios() {
     });
     linhas.sort((a, b) => {
       if (ordem === "quantidade") {
-        return b.quantidade - a.quantidade || compareEspecThenNome(a, b);
+        return b.quantidade - a.quantidade || compareFamiliaNomeMedida(a, b);
       }
       if (ordem === "nome") {
-        return a.nome.localeCompare(b.nome, "pt-BR", { numeric: true }) || compareEspecThenNome(a, b);
+        return a.nome.localeCompare(b.nome, "pt-BR", { numeric: true }) || compareFamiliaNomeMedida(a, b);
       }
-      return compareEspecThenNome(a, b);
+      return compareFamiliaNomeMedida(a, b);
     });
     return linhas;
   }, [filtrados, ordem]);
@@ -342,7 +334,7 @@ function PatrimonioRelatorios() {
             <Select value={ordem} onValueChange={(v) => setOrdem(v as typeof ordem)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="especificacao">Especificação (Gride) → Nome</SelectItem>
+                <SelectItem value="especificacao">Especificação (Gride) → Nome → Medida</SelectItem>
                 <SelectItem value="nome">Nome (A–Z)</SelectItem>
                 <SelectItem value="quantidade">Maior quantidade</SelectItem>
               </SelectContent>
