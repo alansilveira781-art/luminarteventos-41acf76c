@@ -3995,6 +3995,8 @@ export type Database = {
           desmontagem_hora_fim: string | null
           desmontagem_hora_inicio: string | null
           desmontagem_inicio: string | null
+          dropbox_path: string | null
+          dropbox_url: string | null
           empresa: string | null
           evento_fim: string | null
           evento_hora_fim: string | null
@@ -4081,6 +4083,8 @@ export type Database = {
           desmontagem_hora_fim?: string | null
           desmontagem_hora_inicio?: string | null
           desmontagem_inicio?: string | null
+          dropbox_path?: string | null
+          dropbox_url?: string | null
           empresa?: string | null
           evento_fim?: string | null
           evento_hora_fim?: string | null
@@ -4167,6 +4171,8 @@ export type Database = {
           desmontagem_hora_fim?: string | null
           desmontagem_hora_inicio?: string | null
           desmontagem_inicio?: string | null
+          dropbox_path?: string | null
+          dropbox_url?: string | null
           empresa?: string | null
           evento_fim?: string | null
           evento_hora_fim?: string | null
