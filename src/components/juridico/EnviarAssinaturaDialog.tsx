@@ -64,20 +64,8 @@ function signatariosDoContrato(c: any): Signatario[] {
     });
   }
 
-  const contratadaSalva = (() => {
-    try {
-      const raw = localStorage.getItem(`clicksign-contratada:${c?.empresa ?? ""}`);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  })();
-  out.push({
-    nome: contratadaSalva?.nome || CONTRATADA_PADRAO.representante_nome,
-    email: contratadaSalva?.email || CONTRATADA_PADRAO.representante_email,
-    documento: contratadaSalva?.documento || CONTRATADA_PADRAO.representante_documento,
-    papel: "contratada",
-  });
+  out.push(contratadaSignatario(null));
+
 
 
   for (const t of (c?.testemunhas ?? []) as any[]) {
