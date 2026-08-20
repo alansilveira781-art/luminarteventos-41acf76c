@@ -252,6 +252,7 @@ function EntradasPage() {
           fornecedor_id: m.fornecedor_id,
           fornecedor: m.fornecedor,
           entrada_tipo: m.entrada_tipo,
+          empresa: m.empresa,
           nota_fiscal: m.nota_fiscal,
           observacoes: m.observacoes,
           responsavel_lancamento: m.responsavel_lancamento,
