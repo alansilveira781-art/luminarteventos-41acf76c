@@ -411,7 +411,7 @@ export function EnviarAssinaturaDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={enviando}>
             Cancelar
           </Button>
-          <Button onClick={enviar} disabled={enviando}>
+          <Button onClick={enviar} disabled={enviando || !proposta}>
             <Send className="h-4 w-4 mr-1" /> {enviando ? "Enviando…" : "Enviar para assinatura"}
           </Button>
         </DialogFooter>
