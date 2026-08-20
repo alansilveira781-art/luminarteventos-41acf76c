@@ -342,8 +342,9 @@ function PatrimonioRelatorios() {
             <Select value={ordem} onValueChange={(v) => setOrdem(v as typeof ordem)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="quantidade">Maior quantidade</SelectItem>
+                <SelectItem value="especificacao">Especificação (Gride) → Nome</SelectItem>
                 <SelectItem value="nome">Nome (A–Z)</SelectItem>
+                <SelectItem value="quantidade">Maior quantidade</SelectItem>
               </SelectContent>
             </Select>
           </div>
