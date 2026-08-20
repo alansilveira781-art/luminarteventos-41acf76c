@@ -327,35 +327,17 @@ function blocoAssinaturas(c: ContratoDados, empresa?: EmpresaContratada | null):
   const partes: string[] = [];
   const contratada = contratadaComPadrao(empresa);
 
-  partes.push(
-    linha(
-      contratada.razao_social,
-      [contratada.representante_nome, fmtDoc(contratada.representante_documento)]
-        .filter(Boolean)
-        .join(" — ") || undefined,
-    ),
-  );
+  // Somente nomes nas assinaturas — sem CPF/CNPJ.
+  partes.push(linha(contratada.razao_social, contratada.representante_nome || undefined));
 
-  partes.push(
-    linha(
-      c.cliente_nome || "",
-      [c.resp_legal_nome, fmtDoc(c.resp_legal_documento)].filter(Boolean).join(" — ") || undefined,
-    ),
-  );
+  partes.push(linha(c.cliente_nome || "", c.resp_legal_nome || undefined));
   if (c.resp_legal2_nome) {
-    partes.push(
-      linha(
-        c.cliente_nome || "",
-        [c.resp_legal2_nome, fmtDoc(c.resp_legal2_documento)].filter(Boolean).join(" — ") || undefined,
-      ),
-    );
+    partes.push(linha(c.cliente_nome || "", c.resp_legal2_nome));
   }
   const comNome = testemunhas.filter((t) => (t?.nome ?? "").trim());
   if (comNome.length) {
     partes.push(`<p style="margin-top:24px"><strong>Testemunhas:</strong></p>`);
-    comNome.forEach((t) =>
-      partes.push(linha(t.nome ?? "", t.documento ? `CPF ${fmtDoc(t.documento)}` : undefined)),
-    );
+    comNome.forEach((t) => partes.push(linha(t.nome ?? "")));
   }
   return partes.join("");
 }
