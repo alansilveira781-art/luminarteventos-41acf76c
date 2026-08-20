@@ -84,7 +84,13 @@ export async function gerarRelatorioPatrimonioPdf(params: RelatorioPatrimonioPar
     const lista = grupos
       .get(chave)!
       .slice()
-      .sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? "", "pt-BR"));
+      .sort((a, b) => {
+        const ea = (a.especificacao ?? "").trim();
+        const eb = (b.especificacao ?? "").trim();
+        const cmp = ea.localeCompare(eb, "pt-BR", { numeric: true });
+        if (cmp !== 0) return cmp;
+        return (a.nome ?? "").localeCompare(b.nome ?? "", "pt-BR", { numeric: true });
+      });
 
     if (agruparPor !== "nenhum") {
       body.push([
