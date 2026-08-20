@@ -433,13 +433,15 @@ const CLICKSIGN_LABEL: Record<string, string> = {
   erro: "Erro no envio",
 };
 
-function Card({ card, onOpen, onDelete, onEnviarAssinatura, onValidar }: {
+function Card({ card, temProposta, onOpen, onDelete, onEnviarAssinatura, onValidar }: {
   card: Contrato;
+  temProposta?: boolean;
   onOpen: () => void;
   onDelete: () => void;
   onEnviarAssinatura?: () => void;
   onValidar?: () => void;
 }) {
+
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
   const cs = card.clicksign_status ?? null;
