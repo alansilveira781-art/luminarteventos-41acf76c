@@ -94,29 +94,61 @@ export function nomeDocumentoContrato(c: any): string {
   return (partes.length ? partes.join(" - ") : String(c?.titulo ?? "Contrato")).toUpperCase();
 }
 
-async function pdfDoContrato(contrato: any, html: string): Promise<{ base64: string; nomeArquivo: string }> {
-  const nomeBase = nomeDocumentoContrato(contrato);
-  if ((html ?? "").trim()) {
-    return gerarContratoPdfBase64(contrato.titulo ?? "Contrato", limparCamposVazios(html), nomeBase);
-  }
-  // Sem corpo próprio: usa o contrato anexado ao card.
-  const { data: anexos } = await sb
+async function anexoProposta(contratoId: string) {
+  const { data } = await sb
     .from("juridico_anexos")
     .select("nome,path,mime_type")
-    .eq("contrato_id", contrato.id)
-    .eq("tipo", "contrato")
+    .eq("contrato_id", contratoId)
+    .eq("tipo", "proposta")
     .order("created_at", { ascending: false })
     .limit(1);
-  const anexo = anexos?.[0];
-  if (!anexo) throw new Error("Contrato sem corpo e sem arquivo anexado — anexe o PDF do contrato antes de enviar.");
-  const { data: file, error } = await sb.storage.from("juridico-anexos").download(anexo.path);
+  return data?.[0] ?? null;
+}
+
+async function baixarAnexo(path: string): Promise<Uint8Array> {
+  const { data: file, error } = await sb.storage.from("juridico-anexos").download(path);
   if (error) throw new Error(error.message);
-  const buffer = new Uint8Array(await file.arrayBuffer());
-  let bin = "";
-  for (let i = 0; i < buffer.length; i += 8192) {
-    bin += String.fromCharCode(...buffer.subarray(i, i + 8192));
+  return new Uint8Array(await file.arrayBuffer());
+}
+
+async function pdfDoContrato(contrato: any, html: string): Promise<{ base64: string; nomeArquivo: string }> {
+  const nomeBase = nomeDocumentoContrato(contrato);
+  let base64: string;
+
+  if ((html ?? "").trim()) {
+    base64 = (await gerarContratoPdfBase64(contrato.titulo ?? "Contrato", limparCamposVazios(html), nomeBase)).base64;
+  } else {
+    // Sem corpo próprio: usa o contrato anexado ao card.
+    const { data: anexos } = await sb
+      .from("juridico_anexos")
+      .select("nome,path,mime_type")
+      .eq("contrato_id", contrato.id)
+      .eq("tipo", "contrato")
+      .order("created_at", { ascending: false })
+      .limit(1);
+    const anexo = anexos?.[0];
+    if (!anexo) throw new Error("Contrato sem corpo e sem arquivo anexado — anexe o PDF do contrato antes de enviar.");
+    base64 = bytesParaBase64(await baixarAnexo(anexo.path));
   }
-  return { base64: btoa(bin), nomeArquivo: `${nomeBase}.pdf` };
+
+  // Contrato + Proposta em um único documento.
+  const proposta = await anexoProposta(contrato.id);
+  if (!proposta) throw new Error("Anexe a proposta antes de enviar para assinatura");
+  base64 = await mesclarContratoComProposta(base64, {
+    bytes: await baixarAnexo(proposta.path),
+    mimeType: proposta.mime_type,
+    nome: proposta.nome,
+  });
+
+  return { base64, nomeArquivo: `${nomeBase}.pdf` };
+}
+
+function bytesParaBase64(bytes: Uint8Array): string {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 8192) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + 8192));
+  }
+  return btoa(bin);
 }
 
 export function EnviarAssinaturaDialog({
