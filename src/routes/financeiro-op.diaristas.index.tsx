@@ -1638,6 +1638,8 @@ function FechamentoView({
 
 
 
+  const opcoesDepartamento = useOpcoesDepartamento(diaristas);
+
   const diaristasMap = useMemo(
     () => new Map(diaristas.map((d) => [d.id, d])),
     [diaristas],
