@@ -18,7 +18,12 @@ import { Pencil, Plus, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { MoneyInput } from "@/components/MoneyInput";
 import { supabase } from "@/integrations/supabase/client";
-import { useDiaristaConfig, DIARISTA_CONFIG_KEY } from "@/lib/diaristas-config";
+import {
+  useDiaristaConfig,
+  DIARISTA_CONFIG_KEY,
+  useDiaristaDepartamentos,
+  DIARISTA_DEPARTAMENTOS_KEY,
+} from "@/lib/diaristas-config";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -50,7 +55,6 @@ type DiaristaForm = {
   ativo: boolean;
 };
 
-const DEPARTAMENTOS = ["Marcenaria", "Estrutura", "Iluminação"];
 const SEM_DEPTO = "__sem";
 const SEM_COLAB = "__nenhum";
 
@@ -116,6 +120,12 @@ function DiaristasConfiguracoes() {
   const qc = useQueryClient();
   const { data = [], isLoading } = useDiaristas();
   const { data: colaboradores = [] } = useColaboradores();
+  const { data: departamentos = [] } = useDiaristaDepartamentos();
+  const opcoesDepartamento = useMemo(() => {
+    const set = new Set<string>(departamentos.map((d) => d.nome));
+    for (const d of data) if (d.departamento) set.add(d.departamento);
+    return Array.from(set);
+  }, [departamentos, data]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<DiaristaForm>(emptyForm);
 
@@ -201,6 +211,8 @@ function DiaristasConfiguracoes() {
       {isFinAdmin && <LancadoresCard />}
 
       {isFinAdmin && <RefeicoesCard />}
+
+      {isFinAdmin && <DepartamentosCard />}
 
 
       <Card className="p-4">
@@ -390,7 +402,7 @@ function DiaristasConfiguracoes() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value={SEM_DEPTO}>Sem departamento</SelectItem>
-                    {DEPARTAMENTOS.map((dep) => (
+                    {opcoesDepartamento.map((dep) => (
                       <SelectItem key={dep} value={dep}>{dep}</SelectItem>
                     ))}
                   </SelectContent>
@@ -636,6 +648,160 @@ function LancadoresCard() {
               Nenhum usuário encontrado.
             </div>
           )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function DepartamentosCard() {
+  const qc = useQueryClient();
+  const { data: departamentos = [], isLoading } = useDiaristaDepartamentos();
+  const [novo, setNovo] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editNome, setEditNome] = useState("");
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: DIARISTA_DEPARTAMENTOS_KEY });
+  };
+
+  const add = useMutation({
+    mutationFn: async (nome: string) => {
+      const ordem = (departamentos.at(-1)?.ordem ?? 0) + 1;
+      const { error } = await (supabase as any)
+        .from("diarista_departamentos")
+        .insert({ nome, ordem });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setNovo("");
+      toast.success("Departamento adicionado");
+      invalidate();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao adicionar"),
+  });
+
+  const rename = useMutation({
+    mutationFn: async ({ id, nome }: { id: string; nome: string }) => {
+      const { error } = await (supabase as any)
+        .from("diarista_departamentos")
+        .update({ nome })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setEditId(null);
+      toast.success("Departamento atualizado");
+      invalidate();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao atualizar"),
+  });
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from("diarista_departamentos")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Departamento removido");
+      invalidate();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao remover"),
+  });
+
+  return (
+    <Card className="p-4 space-y-3">
+      <div>
+        <div className="font-medium">Departamentos</div>
+        <div className="text-xs text-muted-foreground">
+          Lista usada no cadastro de diaristas e nos filtros. Remover um departamento
+          não altera os diaristas já cadastrados nele.
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <Input
+          value={novo}
+          placeholder="Novo departamento (ex.: Produção de Eventos)"
+          onChange={(e) => setNovo(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && novo.trim()) {
+              e.preventDefault();
+              add.mutate(novo.trim());
+            }
+          }}
+        />
+        <Button
+          onClick={() => novo.trim() && add.mutate(novo.trim())}
+          disabled={!novo.trim() || add.isPending}
+        >
+          {add.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+          <span className="ml-1">Adicionar</span>
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="text-sm text-muted-foreground">Carregando…</div>
+      ) : departamentos.length === 0 ? (
+        <div className="text-sm text-muted-foreground">Nenhum departamento cadastrado.</div>
+      ) : (
+        <div className="divide-y rounded-md border">
+          {departamentos.map((d) => (
+            <div key={d.id} className="flex items-center gap-2 px-3 py-2">
+              {editId === d.id ? (
+                <>
+                  <Input
+                    value={editNome}
+                    autoFocus
+                    onChange={(e) => setEditNome(e.target.value)}
+                    className="h-8"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      editNome.trim() && rename.mutate({ id: d.id, nome: editNome.trim() })
+                    }
+                    disabled={!editNome.trim() || rename.isPending}
+                  >
+                    Salvar
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditId(null)}>
+                    Cancelar
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <span className="flex-1 text-sm">{d.nome}</span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    aria-label="Renomear"
+                    onClick={() => {
+                      setEditId(d.id);
+                      setEditNome(d.nome);
+                    }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-destructive"
+                    aria-label="Remover"
+                    onClick={() => {
+                      if (confirm(`Remover o departamento "${d.nome}"?`)) remove.mutate(d.id);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </Card>
