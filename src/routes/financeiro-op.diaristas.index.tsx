@@ -59,7 +59,15 @@ type Diarista = {
   ativo: boolean;
 };
 
-export const DEPARTAMENTOS_DIARISTA = ["Marcenaria", "Estrutura", "Iluminação"] as const;
+/** Opções de departamento: cadastro + os já usados pelos diaristas. */
+function useOpcoesDepartamento(lista: { departamento?: string | null }[]) {
+  const { data: departamentos = [] } = useDiaristaDepartamentos();
+  return useMemo(() => {
+    const set = new Set<string>(departamentos.map((d) => d.nome));
+    for (const d of lista) if (d.departamento) set.add(d.departamento);
+    return Array.from(set);
+  }, [departamentos, lista]);
+}
 
 /** Nome usado nas listagens: apelido quando houver, senão o nome completo. */
 function nomeExib(d?: Pick<Diarista, "nome" | "apelido"> | null) {
