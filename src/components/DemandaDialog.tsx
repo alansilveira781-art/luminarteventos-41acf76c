@@ -167,7 +167,7 @@ export function DemandaDialog({
       }
       const { data: dItens } = await sb
         .from("demanda_itens")
-        .select("id,item_id,descricao,unidade,quantidade,valor_unitario,desconto,frete,ipi,outros_custos")
+        .select("id,item_id,descricao,unidade,quantidade,cotacao,desconto_percentual,valor_unitario,desconto,frete,ipi,outros_custos")
         .eq("demanda_id", demandaId)
         .order("created_at", { ascending: true });
       setItens((dItens ?? []) as any);
