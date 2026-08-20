@@ -305,6 +305,19 @@ function QuadroContratos() {
 
 
 
+  /** Alterna entre envio pelo Clicksign e assinatura interna. */
+  async function alternarClicksign(card: Contrato) {
+    const novo = card.usar_clicksign === false;
+    if (!novo && card.clicksign_document_key) {
+      toast.error("Este contrato já foi enviado ao Clicksign. Volte o card para alterar.");
+      return;
+    }
+    setRows((rs) => rs.map((r) => (r.id === card.id ? { ...r, usar_clicksign: novo } : r)));
+    const { error } = await sb.from("juridico_contratos").update({ usar_clicksign: novo }).eq("id", card.id);
+    if (error) { toast.error(error.message); load(); return; }
+    toast.success(novo ? "Assinatura pelo Clicksign" : "Assinatura interna (sem Clicksign)");
+  }
+
   async function onDelete(id: string) {
     if (!confirm("Remover este contrato?")) return;
     const { error } = await sb.from("juridico_contratos").delete().eq("id", id);
