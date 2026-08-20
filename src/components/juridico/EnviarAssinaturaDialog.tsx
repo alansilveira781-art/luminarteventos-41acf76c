@@ -169,6 +169,14 @@ export function EnviarAssinaturaDialog({
     }
   }, [open, contrato?.id]);
 
+  // A contratada nunca é editada à mão: vem sempre do cadastro da empresa.
+  useEffect(() => {
+    if (!open) return;
+    const fixo = contratadaSignatario(empresa);
+    setSignatarios((p) => p.map((s) => (s.papel === "contratada" ? fixo : s)));
+  }, [open, empresa]);
+
+
   const valores = useMemo(
     () => ({
       ...(contrato ? variaveisDoContrato(contrato, empresa) : {}),
