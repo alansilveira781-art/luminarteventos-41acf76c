@@ -50,7 +50,6 @@ type DiaristaForm = {
   ativo: boolean;
 };
 
-const DEPARTAMENTOS = ["Marcenaria", "Estrutura", "Iluminação"];
 const SEM_DEPTO = "__sem";
 const SEM_COLAB = "__nenhum";
 
