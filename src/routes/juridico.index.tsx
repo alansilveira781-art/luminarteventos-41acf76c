@@ -192,21 +192,23 @@ function QuadroContratos() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-  /** Confere no banco (evita cache velho) se o contrato tem proposta anexada. */
-  async function temProposta(contratoId: string) {
+  /** Tipos de anexo presentes no card, conferidos no banco (evita cache velho). */
+  async function tiposAnexos(contratoId: string): Promise<Set<string>> {
     const { data } = await sb
       .from("juridico_anexos")
-      .select("id")
-      .eq("contrato_id", contratoId)
-      .eq("tipo", "proposta")
-      .limit(1);
-    const ok = !!(data as any[])?.length;
+      .select("tipo")
+      .eq("contrato_id", contratoId);
+    const tipos = new Set(((data as any[]) ?? []).map((a) => String(a.tipo ?? "")));
     setComProposta((s) => {
       const n = new Set(s);
-      ok ? n.add(contratoId) : n.delete(contratoId);
+      tipos.has("proposta") ? n.add(contratoId) : n.delete(contratoId);
       return n;
     });
-    return ok;
+    return tipos;
+  }
+
+  async function temProposta(contratoId: string) {
+    return (await tiposAnexos(contratoId)).has("proposta");
   }
 
 
