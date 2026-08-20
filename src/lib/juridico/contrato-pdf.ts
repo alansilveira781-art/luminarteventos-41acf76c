@@ -149,6 +149,8 @@ export function htmlParaBlocos(html: string): BlocoContrato[] {
       if (["ul", "ol"].includes(tag)) return walk(el, nivel + 1);
       if (["div", "table", "tbody", "thead", "tr"].includes(tag)) return walk(el, nivel);
       if (tag === "td" || tag === "th") return push(trechosDe(el), "paragrafo", nivel);
+      // Wrappers inline (span/font/strong…) que envolvem blocos: descer nos filhos.
+      if (el.querySelector("p, div, ul, ol, li, table, h1, h2, h3")) return walk(el, nivel);
       pushParagrafo(el, nivel);
     });
   };
