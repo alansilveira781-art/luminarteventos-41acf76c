@@ -562,7 +562,7 @@ function Card({ card, temProposta, onOpen, onDelete, onEnviarAssinatura, onValid
               Validar contrato assinado
             </button>
           )}
-          {!card.clicksign_document_key && card.status === "assinatura" && onEnviarAssinatura && (
+          {!interno && !card.clicksign_document_key && card.status === "assinatura" && onEnviarAssinatura && (
             <button
               type="button"
               onPointerDown={(e) => e.stopPropagation()}
