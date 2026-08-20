@@ -214,7 +214,9 @@ export type EmpresaContratada = {
 };
 
 /** Contratada padrão: dados fixos da Luminart / Maicon usados quando o cadastro não tem o campo. */
-export const CONTRATADA_PADRAO: Required<EmpresaContratada> = {
+export type ContratadaFixa = { [K in keyof EmpresaContratada]-?: string };
+
+export const CONTRATADA_PADRAO: ContratadaFixa = {
   razao_social: "LUMINART ALUGUEL DE MÁQUINAS E ESTRUTURAS PARA EVENTOS LTDA",
   nome_fantasia: "LUMINART",
   cnpj: "14552439000131",
@@ -226,7 +228,7 @@ export const CONTRATADA_PADRAO: Required<EmpresaContratada> = {
 };
 
 /** Junta o cadastro da empresa com os dados fixos da contratada. */
-export function contratadaComPadrao(empresa?: EmpresaContratada | null): Required<EmpresaContratada> {
+export function contratadaComPadrao(empresa?: EmpresaContratada | null): ContratadaFixa {
   const val = (v: unknown) => (String(v ?? "").trim() ? String(v).trim() : null);
   return {
     razao_social: val(empresa?.razao_social) ?? CONTRATADA_PADRAO.razao_social,
