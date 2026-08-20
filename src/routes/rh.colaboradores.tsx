@@ -248,19 +248,40 @@ function ColaboradoresPage() {
             onChange={(e) => setBusca(e.target.value)}
           />
         </div>
-        <Select value={fDep} onValueChange={setFDep}>
-          <SelectTrigger className="w-[220px] h-9">
-            <SelectValue placeholder="Departamento" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__todos">Todos departamentos</SelectItem>
-            {departamentos.map((d) => (
-              <SelectItem key={d} value={d}>
-                {d}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="w-[220px] h-9 justify-between font-normal">
+              <span className="truncate">{depsLabel}</span>
+              <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[240px] p-2" align="start">
+            <div className="flex items-center justify-between px-1 pb-2">
+              <span className="text-xs font-medium text-muted-foreground">Departamentos</span>
+              {fDeps.length > 0 && (
+                <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => setFDeps([])}>
+                  Limpar
+                </Button>
+              )}
+            </div>
+            <div className="max-h-64 overflow-auto space-y-1">
+              {departamentos.length === 0 && (
+                <p className="px-1 py-2 text-xs text-muted-foreground">Nenhum departamento cadastrado.</p>
+              )}
+              {departamentos.map((d) => (
+                <label key={d} className="flex items-center gap-2 rounded px-1 py-1 text-sm hover:bg-accent cursor-pointer">
+                  <Checkbox
+                    checked={fDeps.includes(d)}
+                    onCheckedChange={(v) =>
+                      setFDeps((prev) => (v ? [...prev, d] : prev.filter((x) => x !== d)))
+                    }
+                  />
+                  <span className="truncate">{d}</span>
+                </label>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
         <Select value={fTipo} onValueChange={setFTipo}>
           <SelectTrigger className="w-[160px] h-9">
             <SelectValue placeholder="Tipo" />
