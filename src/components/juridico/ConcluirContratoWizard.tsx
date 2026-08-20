@@ -13,10 +13,16 @@ import {
 } from "@/lib/comercial/venda-form";
 import { calcularDerivados } from "@/lib/comercial/comissao";
 import { useVendedores, useCerimoniais } from "@/lib/comercial/cadastros";
+import { useServerFn } from "@tanstack/react-start";
+import { criarPastasContrato } from "@/lib/juridico/dropbox.functions";
+import {
+  SUBPASTAS, caminhoPastaEvento, nomePastaEvento, pastaFromContrato, RAIZ_PADRAO,
+  type PastaContratoInput,
+} from "@/lib/juridico/dropbox-paths";
 
 const sb = supabase as any;
 
-const STEPS = ["Cadastro no calendário", "Cadastro em Vendas"];
+const STEPS = ["Cadastro no calendário", "Cadastro em Vendas", "Pastas no Dropbox"];
 
 /** Categoria do contrato → tipo do evento / classificação da venda. */
 function categoriaLabel(categoria?: string | null): string {
