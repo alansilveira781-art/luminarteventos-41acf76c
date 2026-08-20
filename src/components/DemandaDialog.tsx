@@ -258,6 +258,8 @@ export function DemandaDialog({
             descricao: it.descricao ?? null,
             unidade: it.unidade ?? null,
             quantidade: Number(it.quantidade || 0),
+            cotacao: it.cotacao || null,
+            desconto_percentual: it.desconto_percentual ?? null,
             valor_unitario: it.valor_unitario ?? null,
             desconto: Number(it.desconto || 0),
             frete: Number(it.frete || 0),
