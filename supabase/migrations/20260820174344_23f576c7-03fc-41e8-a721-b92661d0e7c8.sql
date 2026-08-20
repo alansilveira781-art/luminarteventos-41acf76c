@@ -1,0 +1,1 @@
+ALTER TABLE public.demanda_itens ADD COLUMN IF NOT EXISTS cotacao text, ADD COLUMN IF NOT EXISTS desconto_percentual numeric;
