@@ -986,6 +986,22 @@ function ContratoDetalhesDialog({
                   </SelectContent>
                 </Select>
               </div>
+              <div className="col-span-2">
+                <Label>Enviar pelo Clicksign?</Label>
+                <Select
+                  value={form.usar_clicksign === false ? "nao" : "sim"}
+                  onValueChange={(v) => setForm({ ...form, usar_clicksign: v === "sim" })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sim">Sim — assinatura eletrônica pelo Clicksign</SelectItem>
+                    <SelectItem value="nao">Não — assinatura interna (anexar contrato assinado)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  No modo interno, para concluir o card é obrigatório ter a proposta e o contrato anexados.
+                </p>
+              </div>
 
               <EnderecoEditor
                 titulo={`${contrato.cliente_tipo === "pj" ? "Pessoa Jurídica" : "Pessoa Física"} — endereço do cliente`}
