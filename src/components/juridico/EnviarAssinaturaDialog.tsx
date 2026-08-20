@@ -12,11 +12,13 @@ import { enviarParaAssinatura } from "@/lib/juridico/clicksign.functions";
 import {
   CAMPOS_OBRIGATORIOS,
   CAMPOS_SUGERIDOS,
+  CONTRATADA_PADRAO,
   camposPendentes,
   limparCamposVazios,
   renderizarContratoFinal,
   variaveisDoContrato,
 } from "@/lib/juridico/modelo-render";
+
 
 const LABEL_CAMPO: Record<string, string> = CAMPOS_SUGERIDOS.reduce(
   (a: Record<string, string>, c: any) => ({ ...a, [c.campo]: c.label }),
@@ -71,11 +73,12 @@ function signatariosDoContrato(c: any): Signatario[] {
     }
   })();
   out.push({
-    nome: contratadaSalva?.nome ?? "",
-    email: contratadaSalva?.email ?? "",
-    documento: contratadaSalva?.documento ?? "",
+    nome: contratadaSalva?.nome || CONTRATADA_PADRAO.representante_nome,
+    email: contratadaSalva?.email || CONTRATADA_PADRAO.representante_email,
+    documento: contratadaSalva?.documento || CONTRATADA_PADRAO.representante_documento,
     papel: "contratada",
   });
+
 
   for (const t of (c?.testemunhas ?? []) as any[]) {
     if (!(t?.nome ?? "").trim()) continue;

@@ -15,6 +15,9 @@ export type BlocoContrato = {
   rotulo?: string;
   /** Nível de recuo (listas). */
   nivel?: number;
+  /** Recuo digitado no modelo (em caracteres de espaço). */
+  recuoChars?: number;
+
 };
 
 type Trecho = { txt: string; bold: boolean };
@@ -67,23 +70,31 @@ export function htmlParaBlocos(html: string): BlocoContrato[] {
   };
 
   /** Divide os trechos em linhas (por "\n") e cada linha em palavras com negrito. */
-  const linhasDe = (trechos: Trecho[]): Palavra[][] => {
-    const linhas: Palavra[][] = [];
+  type Linha = { palavras: Palavra[]; recuo: number };
+  const linhasDe = (trechos: Trecho[]): Linha[] => {
+    const linhas: Linha[] = [];
     let atual: Palavra[] = [];
+    let recuo = 0;
     let cur: Palavra | null = null;
     let colar = false;
+    const fechar = () => {
+      if (atual.length) linhas.push({ palavras: atual, recuo });
+      atual = [];
+      recuo = 0;
+      cur = null;
+      colar = false;
+    };
     for (const t of trechos) {
       const partes = t.txt.split(/(\s+)/);
       for (const p of partes) {
         if (!p) continue;
         if (p === "\n" || /\n/.test(p)) {
-          if (atual.length) linhas.push(atual);
-          atual = [];
-          cur = null;
-          colar = false;
+          fechar();
           continue;
         }
         if (/^\s+$/.test(p)) {
+          // Espaços/nbsp no início da linha viram recuo do bloco.
+          if (!atual.length) recuo += p.length;
           cur = null;
           colar = false;
           continue;
@@ -97,7 +108,7 @@ export function htmlParaBlocos(html: string): BlocoContrato[] {
         colar = true;
       }
     }
-    if (atual.length) linhas.push(atual);
+    fechar();
     return linhas;
   };
 
@@ -106,17 +117,18 @@ export function htmlParaBlocos(html: string): BlocoContrato[] {
 
   const push = (trechos: Trecho[], tipo: BlocoContrato["tipo"], nivel = 0) => {
     linhasDe(trechos).forEach((linha, i) => {
-      const texto = textoDaLinha(linha);
+      const texto = textoDaLinha(linha.palavras);
       if (!texto) return;
       const t = tipo === "titulo" && i > 0 ? "paragrafo" : tipo;
       const rotulo = t === "clausula" ? (rotuloClausula(texto) ?? undefined) : undefined;
-      blocos.push({ texto, palavras: linha, tipo: t, rotulo, nivel });
+      blocos.push({ texto, palavras: linha.palavras, tipo: t, rotulo, nivel, recuoChars: linha.recuo || undefined });
     });
   };
 
+
   const pushParagrafo = (el: HTMLElement, nivel = 0) => {
     const trechos = trechosDe(el);
-    const primeira = textoDaLinha(linhasDe(trechos)[0] ?? []);
+    const primeira = textoDaLinha(linhasDe(trechos)[0]?.palavras ?? []);
     const forte = el.querySelector("strong, b");
     const jaNegrito =
       !!forte && (el.textContent ?? "").trim() === (forte.textContent ?? "").trim();
@@ -297,7 +309,9 @@ export async function gerarContratoPdfBase64(
   blocos.forEach((bloco, i) => {
     const ehTitulo = bloco.tipo === "titulo";
     doc.setFontSize(ehTitulo ? TAMANHO_TITULO : TAMANHO_CORPO);
-    const recuo = bloco.tipo === "lista" ? RECUO_LISTA * Math.max(1, bloco.nivel ?? 1) : 0;
+    const recuoDigitado = (bloco.recuoChars ?? 0) > 0 ? (bloco.recuoChars ?? 0) * larguraEspaco() : 0;
+    const recuo =
+      recuoDigitado || (bloco.tipo === "lista" ? RECUO_LISTA * Math.max(1, bloco.nivel ?? 1) : 0);
     const x = margem + recuo;
     const larguraDisp = largura - recuo;
     const alturaLinha = ehTitulo ? ALTURA_LINHA_TITULO : ALTURA_LINHA;
@@ -313,18 +327,22 @@ export async function gerarContratoPdfBase64(
 
     linhas.forEach((linha, idx) => {
       if (!(ehTitulo && idx === 0)) quebra(alturaLinha);
-      escreverLinha(linha, x, larguraDisp, !ehTitulo && idx < linhas.length - 1);
+      const justificar = !ehTitulo && !recuoDigitado && idx < linhas.length - 1;
+      escreverLinha(linha, x, larguraDisp, justificar);
       y += alturaLinha;
     });
 
+
     const proximo = blocos[i + 1];
+    const seguidasRecuadas = !!bloco.recuoChars && !!proximo?.recuoChars;
     y += ehTitulo
       ? ESPACO_DEPOIS_TITULO
       : proximo?.tipo === "titulo"
         ? 0
-        : proximo?.tipo === "lista" && bloco.tipo === "lista"
+        : seguidasRecuadas || (proximo?.tipo === "lista" && bloco.tipo === "lista")
           ? ESPACO_PARAGRAFO / 2
           : ESPACO_PARAGRAFO;
+
   });
 
 

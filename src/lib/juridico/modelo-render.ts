@@ -41,9 +41,17 @@ export function normalizarHtmlEditor(html: string): string {
     const negrito = /font-weight\s*:\s*(bold(er)?|[6-9]00)/i.test(style);
     const italico = /font-style\s*:\s*italic/i.test(style);
 
-    // Mantém só o alinhamento; o resto do estilo do Word é descartado.
+    // Mantém alinhamento e recuos; o resto do estilo do Word é descartado.
+    const manter: string[] = [];
     const align = /text-align\s*:\s*(justify|center|right|left)/i.exec(style)?.[1];
-    if (align) el.setAttribute("style", `text-align:${align.toLowerCase()}`);
+    if (align) manter.push(`text-align:${align.toLowerCase()}`);
+    const ml = /margin-left\s*:\s*([\d.]+(px|pt|cm|em|rem))/i.exec(style)?.[1];
+    if (ml) manter.push(`margin-left:${ml}`);
+    const pl = /padding-left\s*:\s*([\d.]+(px|pt|cm|em|rem))/i.exec(style)?.[1];
+    if (pl) manter.push(`padding-left:${pl}`);
+    const ti = /text-indent\s*:\s*(-?[\d.]+(px|pt|cm|em|rem))/i.exec(style)?.[1];
+    if (ti) manter.push(`text-indent:${ti}`);
+    if (manter.length) el.setAttribute("style", manter.join(";"));
     else el.removeAttribute("style");
 
     const cls = el.getAttribute("class") ?? "";
@@ -70,21 +78,32 @@ export function normalizarHtmlEditor(html: string): string {
     }
   });
 
-  // Quebras de linha soltas dentro do texto viram espaço.
+  // Quebras de linha soltas viram espaço, mas o recuo do início da linha
+  // (espaços/tabulação após <br> ou no começo do bloco) é preservado.
   const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
   const textos: Text[] = [];
   while (walker.nextNode()) textos.push(walker.currentNode as Text);
   textos.forEach((t) => {
-    t.nodeValue = (t.nodeValue ?? "").replace(/[\r\n\t]+/g, " ").replace(/\u00a0/g, " ");
+    const inicioDeLinha =
+      !t.previousSibling ||
+      (t.previousSibling as HTMLElement).tagName?.toLowerCase() === "br";
+    let v = (t.nodeValue ?? "")
+      .replace(/\t/g, "\u00a0\u00a0\u00a0\u00a0")
+      .replace(/[\r\n]+/g, " ");
+    if (inicioDeLinha) {
+      v = v.replace(/^[ \u00a0]+/, (m) => "\u00a0".repeat(m.length));
+    }
+    t.nodeValue = v;
   });
 
   let out = doc.body.innerHTML
     .replace(/<(p|div)([^>]*)>(\s|&nbsp;|<br\s*\/?>)*<\/\1>/gi, "<p></p>")
     .replace(/(<p><\/p>\s*){2,}/gi, "<p></p>")
-    .replace(/\s{2,}/g, " ");
+    .replace(/[ \t]{2,}/g, " ");
 
   return sanitizeHtml(out);
 }
+
 
 
 const RE_TITULO_NUM = /^\d+(\.\d+)*[.)-]?\s+\S/;
@@ -190,7 +209,39 @@ export type EmpresaContratada = {
   endereco?: string | null;
   representante_nome?: string | null;
   representante_documento?: string | null;
+  representante_email?: string | null;
+  representante_telefone?: string | null;
 };
+
+/** Contratada padrão: dados fixos da Luminart / Maicon usados quando o cadastro não tem o campo. */
+export const CONTRATADA_PADRAO: Required<EmpresaContratada> = {
+  razao_social: "LUMINART ALUGUEL DE MÁQUINAS E ESTRUTURAS PARA EVENTOS LTDA",
+  nome_fantasia: "LUMINART",
+  cnpj: "14552439000131",
+  endereco: "Av. Maestro Lisboa, n.º 2181, Lagoa Redonda, Fortaleza/CE",
+  representante_nome: "Maicon Viana de Lima",
+  representante_documento: "04027005384",
+  representante_email: "maicon@luminarteventos.com.br",
+  representante_telefone: "85999331605",
+};
+
+/** Junta o cadastro da empresa com os dados fixos da contratada. */
+export function contratadaComPadrao(empresa?: EmpresaContratada | null): Required<EmpresaContratada> {
+  const val = (v: unknown) => (String(v ?? "").trim() ? String(v).trim() : null);
+  return {
+    razao_social: val(empresa?.razao_social) ?? CONTRATADA_PADRAO.razao_social,
+    nome_fantasia: val(empresa?.nome_fantasia) ?? CONTRATADA_PADRAO.nome_fantasia,
+    cnpj: val(empresa?.cnpj) ?? CONTRATADA_PADRAO.cnpj,
+    endereco: val(empresa?.endereco) ?? CONTRATADA_PADRAO.endereco,
+    representante_nome: val(empresa?.representante_nome) ?? CONTRATADA_PADRAO.representante_nome,
+    representante_documento:
+      val(empresa?.representante_documento) ?? CONTRATADA_PADRAO.representante_documento,
+    representante_email: val(empresa?.representante_email) ?? CONTRATADA_PADRAO.representante_email,
+    representante_telefone:
+      val(empresa?.representante_telefone) ?? CONTRATADA_PADRAO.representante_telefone,
+  };
+}
+
 
 export type Testemunha = { nome?: string; documento?: string; email?: string };
 
@@ -262,15 +313,17 @@ function blocoAssinaturas(c: ContratoDados, empresa?: EmpresaContratada | null):
 
   const testemunhas = (c.testemunhas ?? []) as Testemunha[];
   const partes: string[] = [];
+  const contratada = contratadaComPadrao(empresa);
 
   partes.push(
     linha(
-      empresa?.razao_social || c.empresa || "",
-      [empresa?.representante_nome, fmtDoc(empresa?.representante_documento)]
+      contratada.razao_social,
+      [contratada.representante_nome, fmtDoc(contratada.representante_documento)]
         .filter(Boolean)
         .join(" — ") || undefined,
     ),
   );
+
   partes.push(
     linha(
       c.cliente_nome || "",
@@ -326,16 +379,20 @@ export function variaveisDoContrato(
   const testemunhas = (c.testemunhas ?? []) as Testemunha[];
   const texto = parcelasTexto(parcelas);
 
+  const contratada = contratadaComPadrao(empresa);
   const map: Record<string, string> = {
     titulo: c.titulo ?? "",
     contrato_titulo: c.titulo ?? "",
-    empresa: empresa?.razao_social ?? c.empresa ?? "",
-    empresa_razao_social: empresa?.razao_social ?? c.empresa ?? "",
-    empresa_nome_fantasia: empresa?.nome_fantasia ?? "",
-    empresa_cnpj: fmtDoc(empresa?.cnpj),
-    empresa_endereco: empresa?.endereco ?? "",
-    empresa_representante: empresa?.representante_nome ?? "",
-    empresa_representante_documento: fmtDoc(empresa?.representante_documento),
+    empresa: contratada.razao_social,
+    empresa_razao_social: contratada.razao_social,
+    empresa_nome_fantasia: contratada.nome_fantasia,
+    empresa_cnpj: fmtDoc(contratada.cnpj),
+    empresa_endereco: contratada.endereco,
+    empresa_representante: contratada.representante_nome,
+    empresa_representante_documento: fmtDoc(contratada.representante_documento),
+    empresa_representante_email: contratada.representante_email,
+    empresa_representante_telefone: fmtTel(contratada.representante_telefone),
+
     categoria: c.categoria ?? "",
     evento_nome: c.evento_nome ?? "",
     nome_evento: c.evento_nome ?? "",
@@ -460,7 +517,12 @@ export const CAMPOS_SUGERIDOS: { campo: string; label: string }[] = [
   { campo: "empresa_razao_social", label: "Empresa contratada" },
   { campo: "empresa_cnpj", label: "CNPJ da contratada" },
   { campo: "empresa_representante", label: "Representante da contratada" },
+  { campo: "empresa_representante_documento", label: "CPF do representante da contratada" },
+  { campo: "empresa_representante_email", label: "E-mail da contratada" },
+  { campo: "empresa_representante_telefone", label: "Telefone da contratada" },
+  { campo: "empresa_endereco", label: "Endereço da contratada" },
   { campo: "assinaturas", label: "Bloco de assinaturas" },
+
 ];
 
 
