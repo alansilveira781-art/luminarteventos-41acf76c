@@ -252,7 +252,8 @@ function QuadroContratos() {
   async function confirmarVolta(motivo: string) {
     if (!voltar) return;
     const { card, to } = voltar;
-    const precisaCancelar = card.status === "assinatura" && !!card.clicksign_document_key;
+    const precisaCancelar =
+      card.status === "assinatura" && card.usar_clicksign !== false && !!card.clicksign_document_key;
     try {
       if (precisaCancelar) {
         await cancelarAssinaturaFn({ data: { contratoId: card.id, motivo } });
