@@ -19,7 +19,7 @@ import { EMPRESAS } from "@/lib/empresas";
 import { toBRTInputDateTime, fromBRTInputDateTime } from "@/lib/datetime";
 import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 import { EntitySearchSelect } from "@/components/EntitySearchSelect";
-import { TIPOS_QUE_VAO_PARA_ESTOQUE, TIPO_DEMANDA_OPTIONS } from "@/lib/demandas";
+import { useTiposDespesa } from "@/hooks/useTiposDespesa";
 
 
 const sb = supabase as any;
@@ -66,9 +66,7 @@ type DemandaRow = {
   total: number;
 };
 
-const TIPO_DEMANDA_LABEL: Record<string, string> = Object.fromEntries(
-  TIPO_DEMANDA_OPTIONS.map((o) => [o.value, o.label]),
-);
+
 
 
 function AReceberPage() {
