@@ -1,49 +1,36 @@
-# Dropbox: como gerar o refresh token
+# Ativar a integração com o Dropbox
 
-Você não precisa cadastrar nenhuma URL de redirecionamento. O Dropbox tem um modo
-"sem redirect" em que o próprio site mostra o código na tela.
+Recebi a chave e o segredo do app. O terceiro valor enviado tem o formato de um
+**código de autorização** (o código que o Dropbox mostra na tela), e não de um
+refresh token — refresh tokens começam com `sl.u.`. Códigos de autorização são de
+uso único e expiram em poucos minutos, então preciso trocá-lo pelo token
+definitivo antes de guardar.
 
-## Passo a passo (5 minutos)
+## O que farei ao aprovar
 
-1. No App Console do seu app, aba **Permissions**, marque:
-   - `files.content.write`
-   - `files.content.read`
-   - `sharing.write`
-   - Clique em **Submit**.
+1. Trocar o código pelo refresh token chamando o endpoint de token do Dropbox
+   (`grant_type=authorization_code`) com a chave e o segredo do app.
+2. Salvar nos segredos do projeto: `DROPBOX_APP_KEY`, `DROPBOX_APP_SECRET` e
+   `DROPBOX_REFRESH_TOKEN` (o valor obtido no passo 1).
+3. Testar a conexão criando/validando o caminho raiz `/EVENTOS DA SEMANA` e
+   confirmando que o token renova sozinho.
+4. Trocar os valores enviados no chat por armazenamento seguro — depois disso,
+   recomendo apagar a mensagem com o segredo.
 
-2. Abra esta URL no navegador (a chave do app já é a sua, da imagem):
+## Se o código já tiver expirado
+
+Faço uma nova tentativa e, se o Dropbox recusar, peço que você reabra a URL de
+autorização abaixo e me envie o novo código (válido por poucos minutos):
 
 ```text
 https://www.dropbox.com/oauth2/authorize?client_id=wwzwqv615qdm0m2&response_type=code&token_access_type=offline
 ```
 
-3. Autorize. O Dropbox mostra um **código de acesso** na tela. Copie.
+Antes disso, confirme na aba **Permissions** do app que estão marcadas:
+`files.content.write`, `files.content.read` e `sharing.write` (e clique em Submit).
 
-4. Troque o código pelo refresh token. Cole no terminal (Prompt de Comando /
-   PowerShell), substituindo `SEU_CODIGO` e `SEU_APP_SECRET`:
+## Depois de conectado
 
-```text
-curl https://api.dropboxapi.com/oauth2/token -d code=SEU_CODIGO -d grant_type=authorization_code -u wwzwqv615qdm0m2:SEU_APP_SECRET
-```
-
-5. A resposta traz `"refresh_token": "sl.u...."`. É esse valor que preciso.
-
-## O que me enviar depois
-
-Vou abrir o formulário seguro pedindo:
-
-- `DROPBOX_APP_KEY` = `wwzwqv615qdm0m2`
-- `DROPBOX_APP_SECRET` = o "Segredo do app" (botão **Show/Programa** na tela)
-- `DROPBOX_REFRESH_TOKEN` = o valor do passo 5
-
-## Observações
-
-- O botão **Gerar** ("Token de acesso gerado") da tela cria um token que expira em
-  4 horas — não serve para a integração automática. Por isso o fluxo acima.
-- O campo **Webhook URIs** não é necessário para criar pastas; deixe vazio.
-- Se preferir não usar o terminal, eu crio no app uma página interna de conexão
-  (`/api/dropbox/oauth/callback`) e você autoriza clicando num botão — nesse caso
-  a URL a cadastrar em "URIs de redirecionamento" seria:
-  `https://grupoluminart.lovable.app/api/dropbox/oauth/callback`
-  e também `https://id-preview--6426c238-9a04-43ca-bcba-50cca625fad7.lovable.app/api/dropbox/oauth/callback`.
-  Me diga se quer esse caminho e eu implemento.
+O passo 3 do assistente "Concluir contrato" (Jurídico) passa a criar de verdade a
+estrutura de pastas do evento no Dropbox e a enviar o contrato assinado e a
+proposta para `04 - DOC`.
