@@ -8,7 +8,7 @@ import { EventoPublicCombobox } from "@/components/EventoPublicCombobox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TIPO_COMPRA_OPTIONS } from "@/lib/compras";
-import { TIPO_DEMANDA_OPTIONS, TIPOS_COM_ITENS } from "@/lib/demandas";
+import { useTiposDespesa } from "@/hooks/useTiposDespesa";
 import { ShoppingCart, Wallet, ChevronLeft, ChevronRight, Check, Loader2, Plus, Trash2, Paperclip, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -199,7 +199,7 @@ function SolicitarPage() {
 
   const usaItens =
     form.tipo === "compra" ||
-    (form.tipo === "demanda" && TIPOS_COM_ITENS.includes(form.subtipo));
+    (form.tipo === "demanda" && tiposDespesa.exigeItens(form.subtipo));
 
   function itemVazio(it: ItemRow): boolean {
     return (
@@ -489,7 +489,7 @@ function SolicitarPage() {
                   <SelectValue placeholder="Selecione…" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(isCompra ? TIPO_COMPRA_OPTIONS : TIPO_DEMANDA_OPTIONS).map((t) => (
+                  {(isCompra ? TIPO_COMPRA_OPTIONS : tiposDespesa.options).map((t) => (
                     <SelectItem key={t.value} value={t.value}>
                       {t.label}
                     </SelectItem>
@@ -863,7 +863,12 @@ function SolicitarPage() {
           <div className="rounded-lg border border-border divide-y divide-border text-sm">
             <Row k="Tipo" v={isCompra ? "Compra" : "Despesa"} />
             <Row k="Título" v={form.titulo} />
-            {form.subtipo && <Row k="Categoria" v={labelOf(form.tipo!, form.subtipo)} />}
+            {form.subtipo && (
+          <Row
+            k="Categoria"
+            v={form.tipo === "compra" ? labelOf(form.tipo, form.subtipo) : tiposDespesa.labelOf(form.subtipo)}
+          />
+        )}
             {form.fornecedor && <Row k="Fornecedor" v={form.fornecedor} />}
             {form.valor_total && (
               <Row
@@ -1003,6 +1008,6 @@ function Row({ k, v }: { k: string; v: string }) {
 }
 
 function labelOf(tipo: Tipo, value: string): string {
-  const list = tipo === "compra" ? TIPO_COMPRA_OPTIONS : TIPO_DEMANDA_OPTIONS;
+  const list = TIPO_COMPRA_OPTIONS;
   return (list as readonly { value: string; label: string }[]).find((o) => o.value === value)?.label ?? value;
 }
