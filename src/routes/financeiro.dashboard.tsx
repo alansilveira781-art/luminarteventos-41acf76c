@@ -98,7 +98,7 @@ function FinanceiroDashboard() {
       nome: (labels as any)[nome] ?? (TIPO_DEMANDA_LEGACY_LABELS as any)[nome] ?? nome,
       valor: Math.round(valor * 100) / 100,
     }));
-  }, [demandas]);
+  }, [demandas, tiposDespesa]);
 
   const porStatus = useMemo(() => {
     const labels = Object.fromEntries(DEMANDA_STATUSES.map((s) => [s.key, s.label]));
