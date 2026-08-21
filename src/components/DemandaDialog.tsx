@@ -858,15 +858,15 @@ export function DemandaDialog({
           </div>
         </DialogFooter>
       </DialogContent>
-      <NovoTipoDespesaDialog
-        open={novoTipoOpen}
-        onClose={() => setNovoTipoOpen(false)}
-        onCreated={(slug) => {
-          tiposDespesa.refetch();
-          setForm((f) => ({ ...f, tipo_demanda: slug }));
-        }}
-      />
     </Dialog>
+    <NovoTipoDespesaDialog
+      open={novoTipoOpen}
+      onClose={() => setNovoTipoOpen(false)}
+      onCreated={(slug) => {
+        tiposDespesa.refetch();
+        setForm((f) => ({ ...f, tipo_demanda: slug }));
+      }}
+    />
     </>
   );
 }
