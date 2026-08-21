@@ -526,7 +526,9 @@ function ComprasKanban() {
               {(byStatus[s.key] ?? []).map((c) => {
                 const next = nextCompraStatus(c.status);
                 const back = compraBackStatus(c.status);
+                const atalho = isNatanaelShortcut(user?.email, c.status, "finalizado");
                 const canMove =
+                  atalho ||
                   canMoveCompra(c, user?.id, isAdmin, user?.email, next ?? undefined, c.status, responsavelDoStatus(next), responsavelDoStatus(c.status)) ||
                   (!!back && canMoveCompra(c, user?.id, isAdmin, user?.email, back, c.status, responsavelDoStatus(back), responsavelDoStatus(c.status)));
                 const canMigrate =
@@ -539,13 +541,16 @@ function ComprasKanban() {
                     compra={c}
                     onOpen={() => { setEditId(c.id); setOpen(true); }}
                     nextStatusLabel={next ? (COMPRA_STATUSES.find((x) => x.key === next)?.label ?? null) : null}
-                    onAdvance={next ? () => advanceToStatus(c, next) : undefined}
+                    onAdvance={next ? () => { void advanceToStatus(c, next); } : undefined}
                     canMove={canMove}
                     blockedMsg={canMove ? null : statusMoveBlockedMessage(next)}
                     onMigrar={canMigrate ? () => setMigrarCompra(c) : undefined}
                     pagto={pagamentosPorCompra.get(c.id) ?? null}
+                    selected={selectedIds.has(c.id)}
+                    onToggleSelect={() => toggleSelect(c.id)}
                   />
                 );
+
               })}
               <button
                 type="button"
