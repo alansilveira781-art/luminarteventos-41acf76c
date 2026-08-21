@@ -51,7 +51,7 @@ export function slugifyTipo(nome: string): string {
 
 export function useTiposDespesa() {
   const qc = useQueryClient();
-  const { isAdmin, modulos } = useAuth();
+  const { isAdmin, modulos, session } = useAuth();
 
   const podeCriar =
     isAdmin ||
@@ -59,9 +59,19 @@ export function useTiposDespesa() {
       (m) => (m.slug === "financeiro_op" || m.slug === "financeiro") && m.is_admin,
     );
 
+  const autenticado = !!session;
+
   const { data, isLoading } = useQuery({
-    queryKey: ["demanda-tipos"],
+    queryKey: ["demanda-tipos", autenticado],
     queryFn: async () => {
+      if (!autenticado) {
+        // Usuários não autenticados (formulário público) leem via rota pública,
+        // pois a tabela não é exposta ao papel anônimo.
+        const res = await fetch("/api/public/tipos-despesa");
+        if (!res.ok) throw new Error("Falha ao carregar tipos");
+        const json = await res.json();
+        return (json.tipos ?? []) as TipoDespesa[];
+      }
       const { data, error } = await sb
         .from("demanda_tipos")
         .select("id,slug,label,exige_itens,destino_recebimento,ativo,ordem")
@@ -72,6 +82,7 @@ export function useTiposDespesa() {
     },
     staleTime: 5 * 60_000,
   });
+
 
   const tipos = data && data.length ? data : FALLBACK;
 
