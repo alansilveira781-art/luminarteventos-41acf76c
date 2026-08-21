@@ -295,6 +295,7 @@ export function descreverRecorrencia(
   intervalo: number,
   fim: FimRecorrencia,
   qtdGerada?: number,
+  somenteDiasUteis = false,
 ): string {
   if (recorrencia === "nenhuma") return "Não se repete";
   const n = Math.max(1, Math.floor(intervalo) || 1);
@@ -311,9 +312,11 @@ export function descreverRecorrencia(
     sufixo = `, até ${d}/${m}/${y}`;
   } else sufixo = ", por 1 ano";
 
+  const uteis = somenteDiasUteis ? ", somente dias úteis" : "";
   const total = qtdGerada != null ? ` — ${qtdGerada} tarefa${qtdGerada === 1 ? "" : "s"}` : "";
-  return `${base}${sufixo}${total}`;
+  return `${base}${sufixo}${uteis}${total}`;
 }
+
 
 export function rotuloRecorrencia(t: LembreteTarefa): string {
   const r = RECORRENCIAS.find((x) => x.value === t.recorrencia);
