@@ -226,6 +226,15 @@ export type FimRecorrencia =
   | { tipo: "ate"; ate: string }
   | { tipo: "nunca" };
 
+/** Empurra sábado/domingo para a segunda-feira seguinte. */
+export function proximoDiaUtil(d: Date): Date {
+  const x = new Date(d);
+  const dow = x.getDay();
+  if (dow === 6) x.setDate(x.getDate() + 2);
+  else if (dow === 0) x.setDate(x.getDate() + 1);
+  return x;
+}
+
 /**
  * Gera as datas de uma série a partir da data inicial (inclusive).
  * Limitada a MAX_OCORRENCIAS; "nunca" gera 1 ano de ocorrências.
@@ -235,8 +244,11 @@ export function gerarOcorrencias(
   recorrencia: LembreteRecorrencia,
   intervalo: number,
   fim: FimRecorrencia,
+  somenteDiasUteis = false,
 ): Date[] {
-  if (recorrencia === "nenhuma") return [inicio];
+  if (recorrencia === "nenhuma") {
+    return [somenteDiasUteis ? proximoDiaUtil(inicio) : inicio];
+  }
   const passo = Math.max(1, Math.floor(intervalo) || 1);
 
   let limiteQtd = MAX_OCORRENCIAS;
@@ -252,7 +264,8 @@ export function gerarOcorrencias(
   }
 
   const datas: Date[] = [];
-  for (let i = 0; i < MAX_OCORRENCIAS; i++) {
+  const vistos = new Set<number>();
+  for (let i = 0; i < MAX_OCORRENCIAS * 2; i++) {
     let atual: Date;
     if (recorrencia === "diaria") atual = addDays(inicio, i * passo);
     else if (recorrencia === "semanal") atual = addDays(inicio, i * passo * 7);
@@ -261,13 +274,21 @@ export function gerarOcorrencias(
     if (recorrencia !== "mensal") {
       atual.setHours(inicio.getHours(), inicio.getMinutes(), 0, 0);
     }
+    if (somenteDiasUteis) {
+      atual = proximoDiaUtil(atual);
+      atual.setHours(inicio.getHours(), inicio.getMinutes(), 0, 0);
+    }
     if (limiteData && atual.getTime() > limiteData.getTime()) break;
-    datas.push(atual);
-    if (datas.length >= limiteQtd) break;
+    if (!vistos.has(atual.getTime())) {
+      vistos.add(atual.getTime());
+      datas.push(atual);
+      if (datas.length >= limiteQtd) break;
+    }
   }
 
   return datas.length > 0 ? datas : [inicio];
 }
+
 
 export function descreverRecorrencia(
   recorrencia: LembreteRecorrencia,
