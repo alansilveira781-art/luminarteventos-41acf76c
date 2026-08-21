@@ -151,6 +151,10 @@ export function canMoveCompra(
   // Admin move qualquer card para qualquer status.
   if (isAdmin) return true;
 
+  // Atalho do Natanael: Em Andamento → Finalizado.
+  if (isNatanaelShortcut(userEmail, currentStatus, targetStatus)) return true;
+
+
   // Regra: fora da aprovação, o card só pode avançar para o próximo status da sequência.
   // O responsável da origem pode empurrar, e o responsável do destino pode puxar.
   if (targetStatus) {
