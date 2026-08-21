@@ -482,6 +482,7 @@ function LembretesPage() {
             projetoPorId={projetoPorId}
             onToggle={toggleConcluida}
             onEditar={(t) => setTarefaDialog({ open: true, tarefa: t })}
+            onNova={(d) => setTarefaDialog({ open: true, tarefa: null, data: d })}
           />
         </TabsContent>
 
@@ -651,14 +652,18 @@ function HojeView({
   projetoPorId,
   onToggle,
   onEditar,
+  onNova,
 }: {
   carregando: boolean;
   tarefas: LembreteTarefa[];
   projetoPorId: Record<string, LembreteProjeto>;
   onToggle: (t: LembreteTarefa) => void;
   onEditar: (t: LembreteTarefa) => void;
+  onNova: (d: Date) => void;
 }) {
-  const hoje = toDateKey(new Date());
+  const [dia, setDia] = useState(() => startOfDay(new Date()));
+  const hoje = toDateKey(dia);
+  const ehHoje = hoje === toDateKey(new Date());
   const doDia = tarefas.filter((t) => toDateKey(new Date(t.data_hora)) === hoje);
   const pendentes = doDia.filter((t) => t.status === "pendente");
   const concluidas = doDia.filter((t) => t.status === "concluida");
@@ -667,9 +672,28 @@ function HojeView({
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="outline" size="icon" onClick={() => setDia((d) => addDays(d, -1))} aria-label="Dia anterior">
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="min-w-[16rem] text-sm font-medium">{dataPorExtenso(dia)}</span>
+        <Button variant="outline" size="icon" onClick={() => setDia((d) => addDays(d, 1))} aria-label="Próximo dia">
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+        {!ehHoje && (
+          <Button variant="outline" size="sm" onClick={() => setDia(startOfDay(new Date()))}>
+            Hoje
+          </Button>
+        )}
+        <Button variant="outline" size="sm" className="ml-auto" onClick={() => onNova(dia)}>
+          <Plus className="mr-1 h-4 w-4" />
+          Nova tarefa
+        </Button>
+      </div>
+
       <Card>
         {pendentes.length === 0 ? (
-          <Vazio>Nenhuma tarefa pendente para hoje.</Vazio>
+          <Vazio>{ehHoje ? "Nenhuma tarefa pendente para hoje." : "Nenhuma tarefa pendente neste dia."}</Vazio>
         ) : (
           pendentes.map((t) => (
             <LinhaTarefa
@@ -685,7 +709,7 @@ function HojeView({
 
       {concluidas.length > 0 && (
         <div>
-          <h2 className="mb-2 text-sm font-medium text-muted-foreground">Concluídas hoje</h2>
+          <h2 className="mb-2 text-sm font-medium text-muted-foreground">{ehHoje ? "Concluídas hoje" : "Concluídas neste dia"}</h2>
           <Card>
             {concluidas.map((t) => (
               <LinhaTarefa
