@@ -650,6 +650,7 @@ function Column({
 
 function Card({
   compra, onOpen, onAdvance, nextStatusLabel, canMove = true, blockedMsg = null, onMigrar, pagto = null,
+  selected = false, onToggleSelect,
 }: {
   compra: Compra;
   onOpen: () => void;
@@ -659,6 +660,8 @@ function Card({
   blockedMsg?: string | null;
   onMigrar?: () => void;
   pagto?: StatusPagamentos | null;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: compra.id, disabled: !canMove });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
@@ -672,12 +675,26 @@ function Card({
       {...(canMove ? { ...listeners, ...attributes } : {})}
       onClick={onOpen}
       title={canMove ? undefined : blockedMsg ?? undefined}
-      className={`rounded-md border p-2.5 text-xs shadow-sm ${parceladoPendente ? "border-amber-300 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/10" : "border-border bg-card"} ${isDragging ? "opacity-50" : ""} ${canMove ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
+      className={`rounded-md border p-2.5 text-xs shadow-sm ${parceladoPendente ? "border-amber-300 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/10" : "border-border bg-card"} ${selected ? "ring-2 ring-primary" : ""} ${isDragging ? "opacity-50" : ""} ${canMove ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
     >
       <div className="flex items-start gap-2">
+        {onToggleSelect && (
+          <span
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            className="pt-0.5"
+          >
+            <Checkbox
+              checked={selected}
+              onCheckedChange={() => onToggleSelect()}
+              aria-label="Selecionar card"
+            />
+          </span>
+        )}
         <span
           aria-hidden
           className={`text-muted-foreground select-none ${canMove ? "" : "opacity-40"}`}
+
         >⋮⋮</span>
         <div className="flex-1 text-left min-w-0">
           <div className="flex items-start justify-between gap-2">
