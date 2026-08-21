@@ -34,8 +34,11 @@ export type TarefaFormValues = {
   recorrencia_intervalo: number;
   recorrencia_fim: string | null;
   recorrencia_qtd: number | null;
+  /** Não é coluna do banco: usado apenas para gerar as ocorrências. */
+  somente_dias_uteis: boolean;
   prioridade: LembretePrioridade;
 };
+
 
 const SEM_PROJETO = "__sem__";
 
