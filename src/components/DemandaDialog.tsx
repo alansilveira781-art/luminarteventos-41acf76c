@@ -106,10 +106,14 @@ export function DemandaDialog({
   const [pagamentos, setPagamentos] = useState<PagamentoLinha[]>([]);
 
 
+  const tiposDespesa = useTiposDespesa();
+  const [novoTipoOpen, setNovoTipoOpen] = useState(false);
+
   const tipoRequerItens = useMemo(
-    () => TIPOS_COM_ITENS.includes(form.tipo_demanda ?? ""),
-    [form.tipo_demanda],
+    () => tiposDespesa.exigeItens(form.tipo_demanda),
+    [tiposDespesa, form.tipo_demanda],
   );
+
 
   const { data: fornecedores = [] } = useQuery({
     queryKey: ["compras-fornecedores-min"],
