@@ -11,7 +11,8 @@ import { AvancarCardDialog } from "@/components/AvancarCardDialog";
 import { PrazoDot } from "@/components/PrazoDot";
 
 import { notifyResponsavel } from "@/lib/notify";
-import { DEMANDA_STATUSES, TIPOS_QUE_VAO_PARA_RECEBIMENTO, proximoStatusDemanda, type DemandaStatus } from "@/lib/demandas";
+import { DEMANDA_STATUSES, proximoStatusDemanda, type DemandaStatus } from "@/lib/demandas";
+import { useTiposDespesa } from "@/hooks/useTiposDespesa";
 import { KanbanFilters, applyKanbanFilters, type FieldDef, type Filters } from "@/components/KanbanFilters";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { statusPagamentos, formatBRL, type PagamentoLinha, type StatusPagamentos } from "@/lib/pagamentos";
@@ -56,6 +57,7 @@ function DemandasKanban() {
   const [q, setQ] = useState("");
   const [filters, setFilters] = usePersistedState<Filters>("demandas.kanban", {});
   const [pendingMove, setPendingMove] = useState<{ id: string; status: DemandaStatus; titulo: string } | null>(null);
+  const tiposDespesa = useTiposDespesa();
 
   // Abre o card automaticamente quando a URL tem ?id=...
   useEffect(() => {
@@ -194,7 +196,7 @@ function DemandasKanban() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   function nextStatus(d: Demanda): DemandaStatus | null {
-    return proximoStatusDemanda(d.status, d.tipo_demanda ?? null);
+    return proximoStatusDemanda(d.status, d.tipo_demanda ?? null, tiposDespesa.paraRecebimento);
   }
 
   async function advanceToStatus(
@@ -203,8 +205,8 @@ function DemandasKanban() {
     opts?: { force?: boolean; toastMsg?: string },
   ) {
     if (demanda.status === status) return;
-    if (status === "a_receber" && !TIPOS_QUE_VAO_PARA_RECEBIMENTO.includes(demanda.tipo_demanda ?? "")) {
-      toast.error('Somente despesas de fardamento, material de limpeza, material de escritório, reposição de estoque ou imobilizado podem ir para "A Receber".');
+    if (status === "a_receber" && !tiposDespesa.vaiParaRecebimento(demanda.tipo_demanda)) {
+      toast.error('Este tipo de despesa não gera recebimento em Estoque ou Patrimônio, então não pode ir para "A Receber".');
       return;
     }
     const id = demanda.id;

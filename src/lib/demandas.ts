@@ -45,9 +45,11 @@ export const TIPOS_QUE_VAO_PARA_RECEBIMENTO: string[] = [
 export function proximoStatusDemanda(
   status: DemandaStatus,
   tipo?: string | null,
+  tiposRecebimento?: readonly string[],
 ): DemandaStatus | null {
+  const recebimento = tiposRecebimento ?? TIPOS_QUE_VAO_PARA_RECEBIMENTO;
   if (status === "em_andamento") {
-    return TIPOS_QUE_VAO_PARA_RECEBIMENTO.includes(tipo ?? "") ? "a_receber" : "finalizado";
+    return recebimento.includes(tipo ?? "") ? "a_receber" : "finalizado";
   }
   const ordem: DemandaStatus[] = [
     "solicitacao",

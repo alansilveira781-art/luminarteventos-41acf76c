@@ -9,7 +9,8 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, CartesianGrid,
 } from "recharts";
-import { DEMANDA_STATUSES, TIPO_DEMANDA_OPTIONS, TIPO_DEMANDA_LEGACY_LABELS } from "@/lib/demandas";
+import { DEMANDA_STATUSES, TIPO_DEMANDA_LEGACY_LABELS } from "@/lib/demandas";
+import { useTiposDespesa } from "@/hooks/useTiposDespesa";
 import { grupoDoPlanoNome, buildPrefixIndex, DRE_STRUCTURE, type DreGroupId } from "@/lib/conta-azul/dre";
 import { useDreEstrutura } from "@/hooks/useDreEstrutura";
 
@@ -52,6 +53,7 @@ function FinanceiroDashboard() {
   });
 
   const { data: dreEstrutura = DRE_STRUCTURE } = useDreEstrutura();
+  const tiposDespesa = useTiposDespesa();
 
   const stats = useMemo(() => {
     const total = demandas.reduce((s: number, c: any) => s + Number(c.valor_total || 0), 0);
@@ -86,7 +88,7 @@ function FinanceiroDashboard() {
   }, [demandas]);
 
   const porTipo = useMemo(() => {
-    const labels = Object.fromEntries(TIPO_DEMANDA_OPTIONS.map((t) => [t.value, t.label]));
+    const labels = Object.fromEntries(tiposDespesa.options.map((t) => [t.value, t.label]));
     const map = new Map<string, number>();
     demandas.forEach((c: any) => {
       const k = c.tipo_demanda || "Sem tipo";
@@ -96,7 +98,7 @@ function FinanceiroDashboard() {
       nome: (labels as any)[nome] ?? (TIPO_DEMANDA_LEGACY_LABELS as any)[nome] ?? nome,
       valor: Math.round(valor * 100) / 100,
     }));
-  }, [demandas]);
+  }, [demandas, tiposDespesa]);
 
   const porStatus = useMemo(() => {
     const labels = Object.fromEntries(DEMANDA_STATUSES.map((s) => [s.key, s.label]));

@@ -19,7 +19,7 @@ import { EMPRESAS } from "@/lib/empresas";
 import { toBRTInputDateTime, fromBRTInputDateTime } from "@/lib/datetime";
 import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 import { EntitySearchSelect } from "@/components/EntitySearchSelect";
-import { TIPOS_QUE_VAO_PARA_ESTOQUE, TIPO_DEMANDA_OPTIONS } from "@/lib/demandas";
+import { useTiposDespesa } from "@/hooks/useTiposDespesa";
 
 
 const sb = supabase as any;
@@ -66,13 +66,12 @@ type DemandaRow = {
   total: number;
 };
 
-const TIPO_DEMANDA_LABEL: Record<string, string> = Object.fromEntries(
-  TIPO_DEMANDA_OPTIONS.map((o) => [o.value, o.label]),
-);
+
 
 
 function AReceberPage() {
   const qc = useQueryClient();
+  const tiposDespesa = useTiposDespesa();
   const [openId, setOpenId] = useState<string | null>(null);
   const [openDemandaId, setOpenDemandaId] = useState<string | null>(null);
 
@@ -95,13 +94,13 @@ function AReceberPage() {
 
 
   const { data: demandas = [] } = useQuery({
-    queryKey: ["demandas-receber"],
+    queryKey: ["demandas-receber", tiposDespesa.paraEstoque.join(",")],
     queryFn: async () => {
       const { data: dm, error } = await sb
         .from("demandas")
         .select("id,numero,titulo,tipo_demanda,solicitante,fornecedor,fornecedor_id,comprador,observacoes")
         .eq("status", "a_receber")
-        .in("tipo_demanda", TIPOS_QUE_VAO_PARA_ESTOQUE);
+        .in("tipo_demanda", tiposDespesa.paraEstoque);
       if (error) throw error;
       const rows = (dm ?? []) as any[];
       const ids = rows.map((r) => r.id);
@@ -175,7 +174,7 @@ function AReceberPage() {
               </span>
             </div>
             <div className="text-xs text-muted-foreground space-y-0.5">
-              {d.tipo_demanda && <div>Tipo: {TIPO_DEMANDA_LABEL[d.tipo_demanda] ?? d.tipo_demanda.replace(/_/g, " ")}</div>}
+              {d.tipo_demanda && <div>Tipo: {tiposDespesa.labelOf(d.tipo_demanda)}</div>}
               {d.solicitante && <div>Solicitante: {d.solicitante}</div>}
               {d.fornecedor && <div>Fornecedor: {d.fornecedor}</div>}
               {d.comprador && <div>Comprador: {d.comprador}</div>}

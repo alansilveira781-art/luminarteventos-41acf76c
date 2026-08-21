@@ -2410,6 +2410,42 @@ export type Database = {
           },
         ]
       }
+      demanda_tipos: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          created_by: string | null
+          destino_recebimento: string
+          exige_itens: boolean
+          id: string
+          label: string
+          ordem: number
+          slug: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          destino_recebimento?: string
+          exige_itens?: boolean
+          id?: string
+          label: string
+          ordem?: number
+          slug: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          destino_recebimento?: string
+          exige_itens?: boolean
+          id?: string
+          label?: string
+          ordem?: number
+          slug?: string
+        }
+        Relationships: []
+      }
       demandas: {
         Row: {
           aprovacao_operacao: string | null

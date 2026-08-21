@@ -23,7 +23,9 @@ import { fetchAllRows } from "@/lib/fetch-all";
 import { toBRTInputDateTime, fromBRTInputDateTime } from "@/lib/datetime";
 import { toast } from "sonner";
 import { ensureValidSession, describeSupabaseError } from "@/lib/supabase-guard";
-import { DEMANDA_STATUSES, TIPO_DEMANDA_OPTIONS, TIPOS_QUE_VAO_PARA_ESTOQUE, TIPOS_COM_ITENS, TIPOS_QUE_VAO_PARA_RECEBIMENTO, proximoStatusDemanda, type DemandaStatus } from "@/lib/demandas";
+import { DEMANDA_STATUSES, proximoStatusDemanda, type DemandaStatus } from "@/lib/demandas";
+import { useTiposDespesa } from "@/hooks/useTiposDespesa";
+import { NovoTipoDespesaDialog } from "@/components/NovoTipoDespesaDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { CopiarLinkButton } from "@/components/CopiarLinkButton";
 import { PagamentosGrid } from "@/components/PagamentosGrid";
@@ -106,10 +108,14 @@ export function DemandaDialog({
   const [pagamentos, setPagamentos] = useState<PagamentoLinha[]>([]);
 
 
+  const tiposDespesa = useTiposDespesa();
+  const [novoTipoOpen, setNovoTipoOpen] = useState(false);
+
   const tipoRequerItens = useMemo(
-    () => TIPOS_COM_ITENS.includes(form.tipo_demanda ?? ""),
-    [form.tipo_demanda],
+    () => tiposDespesa.exigeItens(form.tipo_demanda),
+    [tiposDespesa, form.tipo_demanda],
   );
+
 
   const { data: fornecedores = [] } = useQuery({
     queryKey: ["compras-fornecedores-min"],
@@ -379,20 +385,35 @@ export function DemandaDialog({
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {DEMANDA_STATUSES
-                      .filter((s) => s.key !== "a_receber" || TIPOS_QUE_VAO_PARA_RECEBIMENTO.includes(form.tipo_demanda ?? ""))
+                      .filter((s) => s.key !== "a_receber" || tiposDespesa.vaiParaRecebimento(form.tipo_demanda))
                       .map((s) => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </FormField>
               <FormField label="Tipo de Despesa">
-                <SearchableSelect
-                  value={form.tipo_demanda ?? ""}
-                  onChange={(v) => setForm({ ...form, tipo_demanda: v })}
-                  options={TIPO_DEMANDA_OPTIONS}
-                  placeholder="Selecione…"
-                  searchPlaceholder="Buscar tipo…"
-                />
+                <div className="flex items-center gap-2">
+                  <SearchableSelect
+                    className="flex-1"
+                    value={form.tipo_demanda ?? ""}
+                    onChange={(v) => setForm({ ...form, tipo_demanda: v })}
+                    options={tiposDespesa.options}
+                    placeholder="Selecione…"
+                    searchPlaceholder="Buscar tipo…"
+                  />
+                  {tiposDespesa.podeCriar && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setNovoTipoOpen(true)}
+                      title="Cadastrar novo tipo de despesa"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </FormField>
+
               <FormField label="Categoria (DRE)">
                 <Select
                   value={form.categoria_external_id ?? ""}
@@ -807,7 +828,7 @@ export function DemandaDialog({
                   </>
                 );
               }
-              const nextKey = proximoStatusDemanda(form.status, form.tipo_demanda ?? null);
+              const nextKey = proximoStatusDemanda(form.status, form.tipo_demanda ?? null, tiposDespesa.paraRecebimento);
               const nextLabel = nextKey
                 ? DEMANDA_STATUSES.find((s) => s.key === nextKey)?.label ?? null
                 : null;
@@ -838,6 +859,14 @@ export function DemandaDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <NovoTipoDespesaDialog
+      open={novoTipoOpen}
+      onClose={() => setNovoTipoOpen(false)}
+      onCreated={(slug) => {
+        tiposDespesa.refetch();
+        setForm((f) => ({ ...f, tipo_demanda: slug }));
+      }}
+    />
     </>
   );
 }
