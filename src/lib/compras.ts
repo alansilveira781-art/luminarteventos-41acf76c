@@ -42,6 +42,18 @@ const PEDRO_ALLOWED_SOURCES: CompraStatus[] = PEDRO_ALLOWED_MOVES.map(([from]) =
 export const PEDRO_MOVE_BLOCKED_MSG =
   "Pedro só pode mover cards de Solicitação → Análise e de Análise → Pendente Aprovação.";
 
+// Natanael pode finalizar direto a partir de "Compra Em Andamento" (pula "A Receber").
+export const NATANAEL_EMAIL = "natanael@luminarteventos.com.br";
+
+export function isNatanaelShortcut(
+  userEmail: string | undefined | null,
+  from?: CompraStatus | null,
+  to?: CompraStatus | null,
+): boolean {
+  if (!userEmail || userEmail.trim().toLowerCase() !== NATANAEL_EMAIL) return false;
+  return from === "em_andamento" && to === "finalizado";
+}
+
 // Retornos permitidos (voltar o card um passo), liberados para admin e para o
 // responsável configurado do status de origem ou destino.
 export const COMPRA_ALLOWED_BACK_MOVES: Array<[CompraStatus, CompraStatus]> = [
@@ -138,6 +150,10 @@ export function canMoveCompra(
 
   // Admin move qualquer card para qualquer status.
   if (isAdmin) return true;
+
+  // Atalho do Natanael: Em Andamento → Finalizado.
+  if (isNatanaelShortcut(userEmail, currentStatus, targetStatus)) return true;
+
 
   // Regra: fora da aprovação, o card só pode avançar para o próximo status da sequência.
   // O responsável da origem pode empurrar, e o responsável do destino pode puxar.

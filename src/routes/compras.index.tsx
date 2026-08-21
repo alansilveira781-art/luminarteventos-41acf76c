@@ -10,7 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, ChevronRight, ArrowRightLeft } from "lucide-react";
 import { CompraDialog } from "@/components/CompraDialog";
-import { COMPRA_STATUSES, canEditCompra, canMoveCompra, compraBackStatus, moveBlockedMessage, nextCompraStatus, PEDRO_EMAIL, PEDRO_MOVE_BLOCKED_MSG, type CompraStatus } from "@/lib/compras";
+import { COMPRA_STATUSES, canEditCompra, canMoveCompra, compraBackStatus, isNatanaelShortcut, moveBlockedMessage, nextCompraStatus, PEDRO_EMAIL, PEDRO_MOVE_BLOCKED_MSG, type CompraStatus } from "@/lib/compras";
+import { Checkbox } from "@/components/ui/checkbox";
+
 import { useTiposDespesa } from "@/hooks/useTiposDespesa";
 import { statusPagamentos, formatBRL, type PagamentoLinha, type StatusPagamentos } from "@/lib/pagamentos";
 import { KanbanFilters, applyKanbanFilters, type FieldDef, type Filters } from "@/components/KanbanFilters";
@@ -240,21 +242,24 @@ function ComprasKanban() {
   async function advanceToStatus(
     compra: Compra,
     status: CompraStatus,
-    opts?: { force?: boolean; toastMsg?: string; prazo?: string },
-  ) {
-    if (compra.status === status) return;
+    opts?: { force?: boolean; toastMsg?: string; prazo?: string; silent?: boolean },
+  ): Promise<{ ok: boolean; motivo?: string }> {
+    const fail = (motivo: string) => {
+      if (!opts?.silent) toast.error(motivo);
+      return { ok: false, motivo };
+    };
+    if (compra.status === status) return { ok: true };
 
     if (!canMoveCompra(compra, user?.id, isAdmin, user?.email, status, compra.status, responsavelDoStatus(status), responsavelDoStatus(compra.status))) {
       const isPedro = !!user?.email && user.email.trim().toLowerCase() === PEDRO_EMAIL;
       const respIdDest = responsavelDoStatus(status);
-      toast.error(
+      return fail(
         isPedro
           ? PEDRO_MOVE_BLOCKED_MSG
           : respIdDest
           ? statusMoveBlockedMessage(status)
           : moveBlockedMessage(compra),
       );
-      return;
     }
 
 
@@ -264,19 +269,16 @@ function ComprasKanban() {
         .select("id,evento_projeto")
         .eq("compra_id", compra.id);
       if (itensErr) {
-        toast.error("Não foi possível validar os itens da compra. Tente novamente.");
-        return;
+        return fail("Não foi possível validar os itens da compra. Tente novamente.");
       }
       if (!itensEvento || itensEvento.length === 0) {
-        toast.error("Adicione os itens da compra (com Evento / Projeto) antes de enviar para Pendente Aprovação.");
-        return;
+        return fail("Adicione os itens da compra (com Evento / Projeto) antes de enviar para Pendente Aprovação.");
       }
       const semEvento = itensEvento.filter((it: any) => !String(it.evento_projeto ?? "").trim()).length;
       if (semEvento > 0) {
-        toast.error(
+        return fail(
           `Preencha o Evento / Projeto de todos os itens antes de enviar para Pendente Aprovação (${semEvento} item(ns) sem evento).`,
         );
-        return;
       }
     }
 
@@ -284,20 +286,17 @@ function ComprasKanban() {
 
     if (status === "a_receber") {
       if (!compra.tipo_compra) {
-        toast.error("Defina o tipo da compra antes de movê-la para Compras a Receber.");
-        return;
+        return fail("Defina o tipo da compra antes de movê-la para Compras a Receber.");
       }
       if ((compra as any).tem_nf !== false) {
         const nfs = ((compra as any).numeros_nf as string[] | null) ?? [];
         const hasNf = nfs.some((n) => (n ?? "").trim()) || !!String((compra as any).numero_nf ?? "").trim();
         if (!hasNf) {
-          toast.error("Adicione pelo menos uma NF antes de mover para Compras a Receber (ou desmarque \"Tem NF\").");
-          return;
+          return fail("Adicione pelo menos uma NF antes de mover para Compras a Receber (ou desmarque \"Tem NF\").");
         }
       }
       if (!(compra as any).empresa_faturada) {
-        toast.error("Informe a empresa faturada antes de mover para Compras a Receber.");
-        return;
+        return fail("Informe a empresa faturada antes de mover para Compras a Receber.");
       }
     }
 
@@ -319,8 +318,8 @@ function ComprasKanban() {
             responsavelNome: def.responsavel_nome ?? undefined,
             prazo: opts?.prazo,
           });
-        } catch {
-          return;
+        } catch (e: any) {
+          return { ok: false, motivo: String(e?.message ?? "Movimentação bloqueada.") };
         }
         notifyResponsavel({
           userId: def.responsavel_id,
@@ -329,23 +328,72 @@ function ComprasKanban() {
           link: `/compras?id=${id}`,
           tipo: "compra_responsavel",
         }).catch(() => {});
-        toast.success(opts?.toastMsg ?? `Card movido. ${def.responsavel_nome ?? "Responsável"} foi notificado.`);
-        return;
+        if (!opts?.silent) toast.success(opts?.toastMsg ?? `Card movido. ${def.responsavel_nome ?? "Responsável"} foi notificado.`);
+        return { ok: true };
       }
       if (opts?.force) {
         try {
           await moveStatus.mutateAsync({ id, status, prazo: opts?.prazo });
-        } catch {
-          return;
+        } catch (e: any) {
+          return { ok: false, motivo: String(e?.message ?? "Movimentação bloqueada.") };
         }
-        toast.success(opts.toastMsg ?? "Card movido.");
-        return;
+        if (!opts?.silent) toast.success(opts.toastMsg ?? "Card movido.");
+        return { ok: true };
       }
       setPendingMove({ id, status, titulo, prazo: opts?.prazo });
-    } else {
-      moveStatus.mutate({ id, status, prazo: opts?.prazo });
+      return { ok: true };
     }
+
+    try {
+      await moveStatus.mutateAsync({ id, status, prazo: opts?.prazo });
+    } catch (e: any) {
+      return { ok: false, motivo: String(e?.message ?? "Movimentação bloqueada.") };
+    }
+    return { ok: true };
   }
+
+  // ---- Seleção múltipla / ações em massa ----
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkTarget, setBulkTarget] = useState<CompraStatus | "">("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  const toggleSelect = (id: string) =>
+    setSelectedIds((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+
+  const selectedCompras = useMemo(
+    () => compras.filter((c) => selectedIds.has(c.id)),
+    [compras, selectedIds],
+  );
+  const todosPendentes =
+    selectedCompras.length > 0 && selectedCompras.every((c) => c.status === "pendente_aprovacao");
+
+  async function runBulk(target: CompraStatus) {
+    if (selectedCompras.length === 0) return;
+    setBulkBusy(true);
+    let ok = 0;
+    const motivos: string[] = [];
+    for (const c of selectedCompras) {
+      const atual = compras.find((x) => x.id === c.id) ?? c;
+      const r = await advanceToStatus(atual, target, { force: true, silent: true });
+      if (r.ok) ok++;
+      else if (r.motivo && !motivos.includes(r.motivo)) motivos.push(r.motivo);
+    }
+    setBulkBusy(false);
+    setSelectedIds(new Set());
+    qc.invalidateQueries({ queryKey: ["compras"] });
+    const bloqueados = selectedCompras.length - ok;
+    if (bloqueados === 0) toast.success(`${ok} card(s) movido(s).`);
+    else
+      toast.warning(`${ok} movido(s), ${bloqueados} bloqueado(s).`, {
+        description: motivos.slice(0, 2).join(" "),
+      });
+  }
+
 
   async function onDragEnd(e: DragEndEvent) {
     const id = String(e.active.id);
@@ -402,6 +450,40 @@ function ComprasKanban() {
         <KanbanFilters rows={compras} fields={filterFields} value={filters} onChange={setFilters} />
       </div>
 
+      {selectedIds.size > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm">
+          <span className="font-medium">{selectedIds.size} card(s) selecionado(s)</span>
+          <div className="flex flex-wrap items-center gap-2 ml-auto">
+            <Select value={bulkTarget} onValueChange={(v) => setBulkTarget(v as CompraStatus)}>
+              <SelectTrigger className="h-8 w-56">
+                <SelectValue placeholder="Mover para..." />
+              </SelectTrigger>
+              <SelectContent>
+                {COMPRA_STATUSES.map((s) => (
+                  <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              disabled={!bulkTarget || bulkBusy}
+              onClick={() => bulkTarget && runBulk(bulkTarget as CompraStatus)}
+            >
+              Mover selecionados
+            </Button>
+            {todosPendentes && (
+              <Button size="sm" variant="secondary" disabled={bulkBusy} onClick={() => runBulk("aprovada")}>
+                Aprovar selecionados
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
+              Limpar
+            </Button>
+          </div>
+        </div>
+      )}
+
+
       {q.trim() ? (
         <div className="rounded-lg border border-border bg-card divide-y divide-border max-h-[calc(100vh-180px)] overflow-auto">
           {filteredCompras.length === 0 && (
@@ -446,7 +528,9 @@ function ComprasKanban() {
               {(byStatus[s.key] ?? []).map((c) => {
                 const next = nextCompraStatus(c.status);
                 const back = compraBackStatus(c.status);
+                const atalho = isNatanaelShortcut(user?.email, c.status, "finalizado");
                 const canMove =
+                  atalho ||
                   canMoveCompra(c, user?.id, isAdmin, user?.email, next ?? undefined, c.status, responsavelDoStatus(next), responsavelDoStatus(c.status)) ||
                   (!!back && canMoveCompra(c, user?.id, isAdmin, user?.email, back, c.status, responsavelDoStatus(back), responsavelDoStatus(c.status)));
                 const canMigrate =
@@ -459,13 +543,16 @@ function ComprasKanban() {
                     compra={c}
                     onOpen={() => { setEditId(c.id); setOpen(true); }}
                     nextStatusLabel={next ? (COMPRA_STATUSES.find((x) => x.key === next)?.label ?? null) : null}
-                    onAdvance={next ? () => advanceToStatus(c, next) : undefined}
+                    onAdvance={next ? () => { void advanceToStatus(c, next); } : undefined}
                     canMove={canMove}
                     blockedMsg={canMove ? null : statusMoveBlockedMessage(next)}
                     onMigrar={canMigrate ? () => setMigrarCompra(c) : undefined}
                     pagto={pagamentosPorCompra.get(c.id) ?? null}
+                    selected={selectedIds.has(c.id)}
+                    onToggleSelect={() => toggleSelect(c.id)}
                   />
                 );
+
               })}
               <button
                 type="button"
@@ -565,6 +652,7 @@ function Column({
 
 function Card({
   compra, onOpen, onAdvance, nextStatusLabel, canMove = true, blockedMsg = null, onMigrar, pagto = null,
+  selected = false, onToggleSelect,
 }: {
   compra: Compra;
   onOpen: () => void;
@@ -574,6 +662,8 @@ function Card({
   blockedMsg?: string | null;
   onMigrar?: () => void;
   pagto?: StatusPagamentos | null;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: compra.id, disabled: !canMove });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
@@ -587,12 +677,26 @@ function Card({
       {...(canMove ? { ...listeners, ...attributes } : {})}
       onClick={onOpen}
       title={canMove ? undefined : blockedMsg ?? undefined}
-      className={`rounded-md border p-2.5 text-xs shadow-sm ${parceladoPendente ? "border-amber-300 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/10" : "border-border bg-card"} ${isDragging ? "opacity-50" : ""} ${canMove ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
+      className={`rounded-md border p-2.5 text-xs shadow-sm ${parceladoPendente ? "border-amber-300 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/10" : "border-border bg-card"} ${selected ? "ring-2 ring-primary" : ""} ${isDragging ? "opacity-50" : ""} ${canMove ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
     >
       <div className="flex items-start gap-2">
+        {onToggleSelect && (
+          <span
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            className="pt-0.5"
+          >
+            <Checkbox
+              checked={selected}
+              onCheckedChange={() => onToggleSelect()}
+              aria-label="Selecionar card"
+            />
+          </span>
+        )}
         <span
           aria-hidden
           className={`text-muted-foreground select-none ${canMove ? "" : "opacity-40"}`}
+
         >⋮⋮</span>
         <div className="flex-1 text-left min-w-0">
           <div className="flex items-start justify-between gap-2">
