@@ -34,8 +34,11 @@ export type TarefaFormValues = {
   recorrencia_intervalo: number;
   recorrencia_fim: string | null;
   recorrencia_qtd: number | null;
+  /** Não é coluna do banco: usado apenas para gerar as ocorrências. */
+  somente_dias_uteis: boolean;
   prioridade: LembretePrioridade;
 };
+
 
 const SEM_PROJETO = "__sem__";
 
@@ -69,6 +72,7 @@ export function TarefaDialog({
   const [fimTipo, setFimTipo] = useState<FimRecorrencia["tipo"]>("qtd");
   const [fimQtd, setFimQtd] = useState(10);
   const [fimData, setFimData] = useState("");
+  const [diasUteis, setDiasUteis] = useState(false);
   const [prioridade, setPrioridade] = useState<LembretePrioridade>("normal");
   const [erro, setErro] = useState<string | null>(null);
 
@@ -89,6 +93,7 @@ export function TarefaDialog({
       setFimTipo(tarefa.recorrencia_fim ? "ate" : tarefa.recorrencia_qtd ? "qtd" : "qtd");
       setFimQtd(tarefa.recorrencia_qtd ?? 10);
       setFimData(tarefa.recorrencia_fim ?? "");
+      setDiasUteis(false);
       setPrioridade(tarefa.prioridade);
     } else {
       setTitulo("");
@@ -104,6 +109,7 @@ export function TarefaDialog({
       setFimTipo("qtd");
       setFimQtd(10);
       setFimData("");
+      setDiasUteis(false);
       setPrioridade("normal");
     }
   }, [open, tarefa, dataPadrao]);
@@ -119,7 +125,9 @@ export function TarefaDialog({
           recorrencia,
           intervalo,
           fim,
-          gerarOcorrencias(combinarDataHora(data, hora, diaInteiro), recorrencia, intervalo, fim).length,
+          gerarOcorrencias(combinarDataHora(data, hora, diaInteiro), recorrencia, intervalo, fim, diasUteis)
+            .length,
+          diasUteis,
         )
       : null;
 
@@ -151,6 +159,7 @@ export function TarefaDialog({
               recorrencia_intervalo: recorrencia === "nenhuma" ? 1 : Math.max(1, Number(intervalo) || 1),
               recorrencia_fim: recorrencia !== "nenhuma" && fimTipo === "ate" ? fimData : null,
               recorrencia_qtd: recorrencia !== "nenhuma" && fimTipo === "qtd" ? Math.max(1, Number(fimQtd) || 1) : null,
+              somente_dias_uteis: recorrencia !== "nenhuma" && diasUteis,
               prioridade,
             });
           }}
@@ -308,6 +317,13 @@ export function TarefaDialog({
                   <Input id="t-ate" type="date" value={fimData} onChange={(e) => setFimData(e.target.value)} />
                 </div>
               )}
+
+              <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                <Label htmlFor="t-uteis" className="cursor-pointer">
+                  Somente dias úteis (seg a sex)
+                </Label>
+                <Switch id="t-uteis" checked={diasUteis} onCheckedChange={setDiasUteis} />
+              </div>
 
               {previa && <p className="text-xs text-muted-foreground">{previa}</p>}
               {tarefa && (

@@ -209,6 +209,7 @@ function LembretesPage() {
       escopo: EscopoSerie;
       atual: LembreteTarefa | null;
     }): Promise<{ acao: "criada" | "atualizada" | "regerada"; qtd: number }> => {
+      const { somente_dias_uteis: diasUteis, ...vals } = values;
       if (atual) {
         const emSerie = escopo !== "esta" && !!atual.serie_id;
 
@@ -224,10 +225,11 @@ function LembretesPage() {
             values.recorrencia,
             values.recorrencia_intervalo,
             fimDaRecorrencia(values),
+            diasUteis,
           );
           const serieId = datas.length > 1 ? (atual.serie_id ?? crypto.randomUUID()) : null;
           const linhas = datas.map((d) => ({
-            ...values,
+            ...vals,
             data_hora: d.toISOString(),
             serie_id: serieId,
             user_id: user!.id,
@@ -239,20 +241,20 @@ function LembretesPage() {
 
         if (emSerie) {
           // Aplica os campos comuns no escopo, preservando a data/hora de cada ocorrência.
-          const { data_hora: _dh, ...comuns } = values;
+          const { data_hora: _dh, ...comuns } = vals;
           let upd = sb.from("lembretes_tarefas").update(comuns).eq("serie_id", atual.serie_id!);
           if (escopo === "futuras") upd = upd.gte("data_hora", atual.data_hora);
           const { data, error } = await upd.select("id");
           if (error) throw error;
           const { error: e2 } = await sb
             .from("lembretes_tarefas")
-            .update({ data_hora: values.data_hora })
+            .update({ data_hora: vals.data_hora })
             .eq("id", atual.id);
           if (e2) throw e2;
           return { acao: "atualizada", qtd: data?.length ?? 1 };
         }
 
-        const { error } = await sb.from("lembretes_tarefas").update(values).eq("id", atual.id);
+        const { error } = await sb.from("lembretes_tarefas").update(vals).eq("id", atual.id);
         if (error) throw error;
         return { acao: "atualizada", qtd: 1 };
       }
@@ -262,11 +264,12 @@ function LembretesPage() {
         values.recorrencia,
         values.recorrencia_intervalo,
         fimDaRecorrencia(values),
+        diasUteis,
       );
       const serieId = datas.length > 1 ? crypto.randomUUID() : null;
 
       const linhas = datas.map((d) => ({
-        ...values,
+        ...vals,
         data_hora: d.toISOString(),
         serie_id: serieId,
         user_id: user!.id,
@@ -479,6 +482,7 @@ function LembretesPage() {
             projetoPorId={projetoPorId}
             onToggle={toggleConcluida}
             onEditar={(t) => setTarefaDialog({ open: true, tarefa: t })}
+            onNova={(d) => setTarefaDialog({ open: true, tarefa: null, data: d })}
           />
         </TabsContent>
 
@@ -648,14 +652,18 @@ function HojeView({
   projetoPorId,
   onToggle,
   onEditar,
+  onNova,
 }: {
   carregando: boolean;
   tarefas: LembreteTarefa[];
   projetoPorId: Record<string, LembreteProjeto>;
   onToggle: (t: LembreteTarefa) => void;
   onEditar: (t: LembreteTarefa) => void;
+  onNova: (d: Date) => void;
 }) {
-  const hoje = toDateKey(new Date());
+  const [dia, setDia] = useState(() => startOfDay(new Date()));
+  const hoje = toDateKey(dia);
+  const ehHoje = hoje === toDateKey(new Date());
   const doDia = tarefas.filter((t) => toDateKey(new Date(t.data_hora)) === hoje);
   const pendentes = doDia.filter((t) => t.status === "pendente");
   const concluidas = doDia.filter((t) => t.status === "concluida");
@@ -664,9 +672,28 @@ function HojeView({
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="outline" size="icon" onClick={() => setDia((d) => addDays(d, -1))} aria-label="Dia anterior">
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="min-w-[16rem] text-sm font-medium">{dataPorExtenso(dia)}</span>
+        <Button variant="outline" size="icon" onClick={() => setDia((d) => addDays(d, 1))} aria-label="Próximo dia">
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+        {!ehHoje && (
+          <Button variant="outline" size="sm" onClick={() => setDia(startOfDay(new Date()))}>
+            Hoje
+          </Button>
+        )}
+        <Button variant="outline" size="sm" className="ml-auto" onClick={() => onNova(dia)}>
+          <Plus className="mr-1 h-4 w-4" />
+          Nova tarefa
+        </Button>
+      </div>
+
       <Card>
         {pendentes.length === 0 ? (
-          <Vazio>Nenhuma tarefa pendente para hoje.</Vazio>
+          <Vazio>{ehHoje ? "Nenhuma tarefa pendente para hoje." : "Nenhuma tarefa pendente neste dia."}</Vazio>
         ) : (
           pendentes.map((t) => (
             <LinhaTarefa
@@ -682,7 +709,7 @@ function HojeView({
 
       {concluidas.length > 0 && (
         <div>
-          <h2 className="mb-2 text-sm font-medium text-muted-foreground">Concluídas hoje</h2>
+          <h2 className="mb-2 text-sm font-medium text-muted-foreground">{ehHoje ? "Concluídas hoje" : "Concluídas neste dia"}</h2>
           <Card>
             {concluidas.map((t) => (
               <LinhaTarefa
