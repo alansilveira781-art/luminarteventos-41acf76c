@@ -828,7 +828,7 @@ export function DemandaDialog({
                   </>
                 );
               }
-              const nextKey = proximoStatusDemanda(form.status, form.tipo_demanda ?? null);
+              const nextKey = proximoStatusDemanda(form.status, form.tipo_demanda ?? null, tiposDespesa.paraRecebimento);
               const nextLabel = nextKey
                 ? DEMANDA_STATUSES.find((s) => s.key === nextKey)?.label ?? null
                 : null;
