@@ -209,6 +209,7 @@ function LembretesPage() {
       escopo: EscopoSerie;
       atual: LembreteTarefa | null;
     }): Promise<{ acao: "criada" | "atualizada" | "regerada"; qtd: number }> => {
+      const { somente_dias_uteis: diasUteis, ...vals } = values;
       if (atual) {
         const emSerie = escopo !== "esta" && !!atual.serie_id;
 
@@ -224,10 +225,11 @@ function LembretesPage() {
             values.recorrencia,
             values.recorrencia_intervalo,
             fimDaRecorrencia(values),
+            diasUteis,
           );
           const serieId = datas.length > 1 ? (atual.serie_id ?? crypto.randomUUID()) : null;
           const linhas = datas.map((d) => ({
-            ...values,
+            ...vals,
             data_hora: d.toISOString(),
             serie_id: serieId,
             user_id: user!.id,
@@ -239,20 +241,20 @@ function LembretesPage() {
 
         if (emSerie) {
           // Aplica os campos comuns no escopo, preservando a data/hora de cada ocorrência.
-          const { data_hora: _dh, ...comuns } = values;
+          const { data_hora: _dh, ...comuns } = vals;
           let upd = sb.from("lembretes_tarefas").update(comuns).eq("serie_id", atual.serie_id!);
           if (escopo === "futuras") upd = upd.gte("data_hora", atual.data_hora);
           const { data, error } = await upd.select("id");
           if (error) throw error;
           const { error: e2 } = await sb
             .from("lembretes_tarefas")
-            .update({ data_hora: values.data_hora })
+            .update({ data_hora: vals.data_hora })
             .eq("id", atual.id);
           if (e2) throw e2;
           return { acao: "atualizada", qtd: data?.length ?? 1 };
         }
 
-        const { error } = await sb.from("lembretes_tarefas").update(values).eq("id", atual.id);
+        const { error } = await sb.from("lembretes_tarefas").update(vals).eq("id", atual.id);
         if (error) throw error;
         return { acao: "atualizada", qtd: 1 };
       }
@@ -262,11 +264,12 @@ function LembretesPage() {
         values.recorrencia,
         values.recorrencia_intervalo,
         fimDaRecorrencia(values),
+        diasUteis,
       );
       const serieId = datas.length > 1 ? crypto.randomUUID() : null;
 
       const linhas = datas.map((d) => ({
-        ...values,
+        ...vals,
         data_hora: d.toISOString(),
         serie_id: serieId,
         user_id: user!.id,
