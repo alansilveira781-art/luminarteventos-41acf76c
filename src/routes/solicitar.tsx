@@ -105,6 +105,7 @@ function fmtSize(n: number) {
 }
 
 function SolicitarPage() {
+  const tiposDespesa = useTiposDespesa();
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormState>(() => {
     if (typeof window === "undefined") return initial;
