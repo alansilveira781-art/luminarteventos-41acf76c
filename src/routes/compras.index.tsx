@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Plus, Search, ChevronRight, ArrowRightLeft } from "lucide-react";
 import { CompraDialog } from "@/components/CompraDialog";
 import { COMPRA_STATUSES, canEditCompra, canMoveCompra, compraBackStatus, moveBlockedMessage, nextCompraStatus, PEDRO_EMAIL, PEDRO_MOVE_BLOCKED_MSG, type CompraStatus } from "@/lib/compras";
-import { TIPO_DEMANDA_OPTIONS, TIPOS_COM_ITENS } from "@/lib/demandas";
+import { useTiposDespesa } from "@/hooks/useTiposDespesa";
 import { statusPagamentos, formatBRL, type PagamentoLinha, type StatusPagamentos } from "@/lib/pagamentos";
 import { KanbanFilters, applyKanbanFilters, type FieldDef, type Filters } from "@/components/KanbanFilters";
 import { useAuth } from "@/contexts/AuthContext";
@@ -753,7 +753,7 @@ function MigrarCompraDialog({
       const pagamentos = (pagsRes.data ?? []) as any[];
       const comentarios = (comsRes.data ?? []) as any[];
 
-      const usaItens = TIPOS_COM_ITENS.includes(tipo);
+      const usaItens = tiposDespesa.exigeItens(tipo);
       let observacoes: string | null = full.observacoes ?? null;
       if (!usaItens && itens && itens.length) {
         const linhas = itens.map((it: any) => {
@@ -914,14 +914,14 @@ function MigrarCompraDialog({
               <SelectValue placeholder="Selecione o tipo…" />
             </SelectTrigger>
             <SelectContent>
-              {TIPO_DEMANDA_OPTIONS.map((o) => (
+              {tiposDespesa.options.map((o) => (
                 <SelectItem key={o.value} value={o.value}>
                   {o.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          {tipo && !TIPOS_COM_ITENS.includes(tipo) && (
+          {tipo && !tiposDespesa.exigeItens(tipo) && (
             <p className="text-xs text-muted-foreground">
               Os itens da compra serão convertidos em texto no campo de observações.
             </p>
