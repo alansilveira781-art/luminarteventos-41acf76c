@@ -9,7 +9,8 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, CartesianGrid,
 } from "recharts";
-import { DEMANDA_STATUSES, TIPO_DEMANDA_OPTIONS, TIPO_DEMANDA_LEGACY_LABELS } from "@/lib/demandas";
+import { DEMANDA_STATUSES, TIPO_DEMANDA_LEGACY_LABELS } from "@/lib/demandas";
+import { useTiposDespesa } from "@/hooks/useTiposDespesa";
 import { grupoDoPlanoNome, buildPrefixIndex, DRE_STRUCTURE, type DreGroupId } from "@/lib/conta-azul/dre";
 import { useDreEstrutura } from "@/hooks/useDreEstrutura";
 
@@ -86,7 +87,7 @@ function FinanceiroDashboard() {
   }, [demandas]);
 
   const porTipo = useMemo(() => {
-    const labels = Object.fromEntries(TIPO_DEMANDA_OPTIONS.map((t) => [t.value, t.label]));
+    const labels = Object.fromEntries(tiposDespesa.options.map((t) => [t.value, t.label]));
     const map = new Map<string, number>();
     demandas.forEach((c: any) => {
       const k = c.tipo_demanda || "Sem tipo";
