@@ -448,6 +448,40 @@ function ComprasKanban() {
         <KanbanFilters rows={compras} fields={filterFields} value={filters} onChange={setFilters} />
       </div>
 
+      {selectedIds.size > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm">
+          <span className="font-medium">{selectedIds.size} card(s) selecionado(s)</span>
+          <div className="flex flex-wrap items-center gap-2 ml-auto">
+            <Select value={bulkTarget} onValueChange={(v) => setBulkTarget(v as CompraStatus)}>
+              <SelectTrigger className="h-8 w-56">
+                <SelectValue placeholder="Mover para..." />
+              </SelectTrigger>
+              <SelectContent>
+                {COMPRA_STATUSES.map((s) => (
+                  <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              disabled={!bulkTarget || bulkBusy}
+              onClick={() => bulkTarget && runBulk(bulkTarget as CompraStatus)}
+            >
+              Mover selecionados
+            </Button>
+            {todosPendentes && (
+              <Button size="sm" variant="secondary" disabled={bulkBusy} onClick={() => runBulk("aprovada")}>
+                Aprovar selecionados
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
+              Limpar
+            </Button>
+          </div>
+        </div>
+      )}
+
+
       {q.trim() ? (
         <div className="rounded-lg border border-border bg-card divide-y divide-border max-h-[calc(100vh-180px)] overflow-auto">
           {filteredCompras.length === 0 && (
