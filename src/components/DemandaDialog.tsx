@@ -385,14 +385,29 @@ export function DemandaDialog({
                 </Select>
               </FormField>
               <FormField label="Tipo de Despesa">
-                <SearchableSelect
-                  value={form.tipo_demanda ?? ""}
-                  onChange={(v) => setForm({ ...form, tipo_demanda: v })}
-                  options={TIPO_DEMANDA_OPTIONS}
-                  placeholder="Selecione…"
-                  searchPlaceholder="Buscar tipo…"
-                />
+                <div className="flex items-center gap-2">
+                  <SearchableSelect
+                    className="flex-1"
+                    value={form.tipo_demanda ?? ""}
+                    onChange={(v) => setForm({ ...form, tipo_demanda: v })}
+                    options={tiposDespesa.options}
+                    placeholder="Selecione…"
+                    searchPlaceholder="Buscar tipo…"
+                  />
+                  {tiposDespesa.podeCriar && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setNovoTipoOpen(true)}
+                      title="Cadastrar novo tipo de despesa"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </FormField>
+
               <FormField label="Categoria (DRE)">
                 <Select
                   value={form.categoria_external_id ?? ""}
