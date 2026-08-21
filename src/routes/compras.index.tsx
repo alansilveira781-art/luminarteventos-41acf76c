@@ -707,6 +707,8 @@ function MigrarCompraDialog({
 }) {
   const [tipo, setTipo] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  const tiposDespesa = useTiposDespesa();
+
 
   useEffect(() => {
     if (compra) setTipo("");
