@@ -53,6 +53,7 @@ function FinanceiroDashboard() {
   });
 
   const { data: dreEstrutura = DRE_STRUCTURE } = useDreEstrutura();
+  const tiposDespesa = useTiposDespesa();
 
   const stats = useMemo(() => {
     const total = demandas.reduce((s: number, c: any) => s + Number(c.valor_total || 0), 0);
