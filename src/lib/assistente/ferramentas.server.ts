@@ -237,6 +237,54 @@ export async function runTool(sb: Sb, name: string, input: any): Promise<unknown
         .sort((x, y) => y.saidas - x.saidas)
         .slice(0, lim(a.limite, 30));
     }
+    case "consultar_uber": {
+      let q = sb
+        .from("uber_corridas")
+        .select("id,data_solicitacao,hora_solicitacao,nome,sobrenome,servico,cidade,endereco_partida,endereco_destino,valor,projeto,detalhamento")
+        .order("data_solicitacao", { ascending: false })
+        .limit(lim(a.limite, 500));
+      if (a.data_inicio) q = q.gte("data_solicitacao", a.data_inicio);
+      if (a.data_fim) q = q.lte("data_solicitacao", a.data_fim);
+      if (a.busca) {
+        const termo = `%${a.busca}%`;
+        q = q.or(
+          `nome.ilike.${termo},sobrenome.ilike.${termo},projeto.ilike.${termo},endereco_partida.ilike.${termo},endereco_destino.ilike.${termo},servico.ilike.${termo},cidade.ilike.${termo},detalhamento.ilike.${termo}`,
+        );
+      }
+      if (a.colaborador) {
+        const termo = `%${a.colaborador}%`;
+        q = q.or(`nome.ilike.${termo},sobrenome.ilike.${termo}`);
+      }
+      if (a.servico) q = q.ilike("servico", `%${a.servico}%`);
+      if (a.projeto) q = q.ilike("projeto", `%${a.projeto}%`);
+      if (typeof a.valor_min === "number") q = q.gte("valor", a.valor_min);
+      if (typeof a.valor_max === "number") q = q.lte("valor", a.valor_max);
+      const { data, error } = await q;
+      if (error) throw error;
+      const rows = (data ?? []) as any[];
+      const total = rows.reduce((s, r) => s + Number(r.valor ?? 0), 0);
+      const porProjeto: Record<string, { qtd: number; total: number }> = {};
+      const porServico: Record<string, { qtd: number; total: number }> = {};
+      const porColaborador: Record<string, { qtd: number; total: number }> = {};
+      for (const r of rows) {
+        const v = Number(r.valor ?? 0);
+        const proj = r.projeto ?? "(sem projeto)";
+        const serv = r.servico ?? "(sem serviço)";
+        const colab = `${r.nome ?? ""} ${r.sobrenome ?? ""}`.trim() || "(não identificado)";
+        porProjeto[proj] = { qtd: (porProjeto[proj]?.qtd ?? 0) + 1, total: (porProjeto[proj]?.total ?? 0) + v };
+        porServico[serv] = { qtd: (porServico[serv]?.qtd ?? 0) + 1, total: (porServico[serv]?.total ?? 0) + v };
+        porColaborador[colab] = { qtd: (porColaborador[colab]?.qtd ?? 0) + 1, total: (porColaborador[colab]?.total ?? 0) + v };
+      }
+      return {
+        quantidade: rows.length,
+        total,
+        periodo: { inicio: a.data_inicio, fim: a.data_fim },
+        por_projeto: porProjeto,
+        por_servico: porServico,
+        por_colaborador: porColaborador,
+        corridas: a.incluir_detalhes !== false ? rows : undefined,
+      };
+    }
     default:
       throw new Error(`Ferramenta desconhecida: ${name}`);
   }
