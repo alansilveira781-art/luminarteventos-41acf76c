@@ -126,10 +126,9 @@ function inPeriodoStr(date: string | null, ano: number, mes: number): boolean {
 
 function passaVisao(row: ContaRow, visao: Visao, ano: number, mes: number): boolean {
   if (visao === "realizado") {
-    // Já pago (caixa efetivo) — usa data de pagamento; se ausente, cai para vencimento.
+    // Caixa efetivo: só entra com data de pagamento preenchida.
     if (row.status !== "pago") return false;
-    const data = row.data_pagamento ?? row.data_vencimento;
-    return inPeriodoStr(data, ano, mes);
+    return inPeriodoStr(row.data_pagamento ?? null, ano, mes);
   }
   // Projetado: ainda não pago (em aberto ou atrasado) — usa data de vencimento
   if (row.status === "pago") return false;
