@@ -566,14 +566,21 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
               <FormField label="Dias da semana*" wide>
                 <div className="flex gap-1 flex-wrap">
                   {DIAS_SEMANA.map((d, idx) => {
-                    const active = form.dias_semana.includes(idx);
+                    const isWeekend = idx === 0 || idx === 6;
+                    const active = !isWeekend && form.dias_semana.includes(idx);
                     return (
                       <button
                         key={idx}
                         type="button"
+                        disabled={isWeekend}
+                        title={isWeekend ? "As rotinas ocorrem apenas de segunda a sexta" : undefined}
                         onClick={() => toggleDay(idx)}
                         className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors ${
-                          active ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
+                          isWeekend
+                            ? "opacity-40 cursor-not-allowed bg-muted"
+                            : active
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-background hover:bg-muted"
                         }`}
                       >
                         {d}
