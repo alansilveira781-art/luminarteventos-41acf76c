@@ -92,6 +92,26 @@ export const toolDefs = [
       },
     },
   },
+  {
+    name: "consultar_uber",
+    description:
+      "Consulta corridas da Uber importadas no sistema (tabela uber_corridas). Retorna total gasto, quantidade de corridas e detalhes por período, colaborador, serviço, cidade ou projeto/evento.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        data_inicio: { type: "string", description: "Data inicial AAAA-MM-DD" },
+        data_fim: { type: "string", description: "Data final AAAA-MM-DD" },
+        busca: { type: "string", description: "Texto em nome, projeto, endereço, serviço, cidade ou detalhamento" },
+        colaborador: { type: "string", description: "Nome/sobrenome/e-mail do colaborador" },
+        servico: { type: "string", description: "Tipo de serviço Uber" },
+        projeto: { type: "string", description: "Nome do projeto/evento vinculado" },
+        valor_min: { type: "number", description: "Valor mínimo da corrida" },
+        valor_max: { type: "number", description: "Valor máximo da corrida" },
+        limite: { type: "integer", description: "Máximo de registros detalhados (padrão 500)" },
+        incluir_detalhes: { type: "boolean", description: "Se verdadeiro, retorna lista de corridas; se falso, apenas agregações" },
+      },
+    },
+  },
 ] as const;
 
 function lim(v: any, def = 50) {
