@@ -684,12 +684,13 @@ function Card({
           <span
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
-            className="pt-0.5"
+            className="pt-[3px]"
           >
             <Checkbox
               checked={selected}
               onCheckedChange={() => onToggleSelect()}
               aria-label="Selecionar card"
+              className="h-3.5 w-3.5 [&_svg]:h-3 [&_svg]:w-3"
             />
           </span>
         )}
