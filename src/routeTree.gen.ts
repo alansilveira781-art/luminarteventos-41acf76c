@@ -35,6 +35,7 @@ import { Route as ComprasRouteImport } from './routes/compras'
 import { Route as ComercialRouteImport } from './routes/comercial'
 import { Route as CalendarioPublicoRouteImport } from './routes/calendario-publico'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AssistenteRouteImport } from './routes/assistente'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RhIndexRouteImport } from './routes/rh.index'
@@ -262,6 +263,11 @@ const CalendarioPublicoRoute = CalendarioPublicoRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AssistenteRoute = AssistenteRouteImport.update({
+  id: '/assistente',
+  path: '/assistente',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -780,6 +786,7 @@ const ApiContaazulOauthCallbackRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/assistente': typeof AssistenteRoute
   '/auth': typeof AuthRoute
   '/calendario-publico': typeof CalendarioPublicoRoute
   '/comercial': typeof ComercialRouteWithChildren
@@ -905,6 +912,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/assistente': typeof AssistenteRoute
   '/auth': typeof AuthRoute
   '/calendario-publico': typeof CalendarioPublicoRoute
   '/dashboard': typeof DashboardRoute
@@ -1021,6 +1029,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/assistente': typeof AssistenteRoute
   '/auth': typeof AuthRoute
   '/calendario-publico': typeof CalendarioPublicoRoute
   '/comercial': typeof ComercialRouteWithChildren
@@ -1149,6 +1158,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/assistente'
     | '/auth'
     | '/calendario-publico'
     | '/comercial'
@@ -1274,6 +1284,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/assistente'
     | '/auth'
     | '/calendario-publico'
     | '/dashboard'
@@ -1389,6 +1400,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/assistente'
     | '/auth'
     | '/calendario-publico'
     | '/comercial'
@@ -1516,6 +1528,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
+  AssistenteRoute: typeof AssistenteRoute
   AuthRoute: typeof AuthRoute
   CalendarioPublicoRoute: typeof CalendarioPublicoRoute
   ComercialRoute: typeof ComercialRouteWithChildren
@@ -1753,6 +1766,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/assistente': {
+      id: '/assistente'
+      path: '/assistente'
+      fullPath: '/assistente'
+      preLoaderRoute: typeof AssistenteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -2700,6 +2720,7 @@ const RhRouteWithChildren = RhRoute._addFileChildren(RhRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
+  AssistenteRoute: AssistenteRoute,
   AuthRoute: AuthRoute,
   CalendarioPublicoRoute: CalendarioPublicoRoute,
   ComercialRoute: ComercialRouteWithChildren,
