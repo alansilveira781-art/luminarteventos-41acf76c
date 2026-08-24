@@ -509,10 +509,10 @@ function PainelFinanceiro() {
     const push = (rows: any[], isReceber: boolean) => {
       rows.forEach((c) => {
         if (c.status !== "pago") return;
-        // TEMP: regime de caixa exige data_pagamento; fallback p/ data_vencimento
-        // enquanto o sync do Conta Azul não popula data_pagamento.
-        const dataRef = c.data_pagamento ?? c.data_vencimento;
+        // Regime de caixa: exige data de pagamento (sem fallback para vencimento).
+        const dataRef = c.data_pagamento ?? null;
         if (!inPeriodo(dataRef, anoEfetivo, mes)) return;
+
         const plano = c.categoria_external_id ? planoMap.get(c.categoria_external_id) : undefined;
         if (isTransferencia(plano?.nome, c.descricao)) return;
         const v = Number(c.valor || 0);
