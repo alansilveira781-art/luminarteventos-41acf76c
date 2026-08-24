@@ -24,7 +24,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [isMasterAdmin, setIsMasterAdmin] = useState(false);
   const [modulos, setModulos] = useState<{ slug: string; nome: string; rota: string | null; is_admin: boolean }[]>([]);
+
 
   async function loadAccess(userId: string | null) {
     if (!userId) {
