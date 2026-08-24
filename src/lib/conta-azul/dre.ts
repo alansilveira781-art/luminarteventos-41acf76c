@@ -126,9 +126,10 @@ function inPeriodoStr(date: string | null, ano: number, mes: number): boolean {
 
 function passaVisao(row: ContaRow, visao: Visao, ano: number, mes: number): boolean {
   if (visao === "realizado") {
-    // Caixa efetivo: só entra com data de pagamento preenchida.
+    // Já pago (caixa efetivo) — usa data de pagamento; se ausente, cai para vencimento.
     if (row.status !== "pago") return false;
-    return inPeriodoStr(row.data_pagamento ?? null, ano, mes);
+    const data = row.data_pagamento ?? row.data_vencimento;
+    return inPeriodoStr(data, ano, mes);
   }
   // Projetado: ainda não pago (em aberto ou atrasado) — usa data de vencimento
   if (row.status === "pago") return false;
@@ -284,7 +285,7 @@ export function transferenciasNoPeriodo(
       if (!passaVisao(c, opts.visao, opts.ano, opts.mes)) return;
       const plano = c.categoria_external_id ? planoMap.get(c.categoria_external_id) : undefined;
       if (!isTransferencia(plano?.nome, c.descricao)) return;
-      const data = opts.visao === "realizado" ? (c.data_pagamento ?? null) : c.data_vencimento;
+      const data = opts.visao === "realizado" ? (c.data_pagamento ?? c.data_vencimento) : c.data_vencimento;
       const nome = origem === "pagar" ? (c.fornecedor_nome ?? null) : (c.cliente_nome ?? null);
       itens.push({ data, descricao: c.descricao ?? null, nome, valor: Math.abs(Number(c.valor || 0)), origem });
     });
@@ -379,7 +380,7 @@ export function calcularDRECaixa(
     rows.forEach((c) => {
       if (regime === "caixa") {
         if (c.status !== "pago") return;
-        if (!inPeriodo(c.data_pagamento ?? null, ano, mes)) return;
+        if (!inPeriodo(c.data_pagamento ?? c.data_vencimento, ano, mes)) return;
       } else {
         if (!inPeriodo(c.data_vencimento, ano, mes)) return;
       }
