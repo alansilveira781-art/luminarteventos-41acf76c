@@ -830,8 +830,9 @@ function PainelFinanceiro() {
           <div>
             <div className="text-sm font-semibold">Custo de operação x Receita — {anoEfetivo}</div>
             <div className="text-xs text-muted-foreground">
-              Pot. de Vendas + Despesas + Custos sobre a Receita Bruta (visão anual, não muda com o filtro de mês)
+              Soma de todas as saídas do demonstrativo (exceto Outras Saídas) sobre a Receita Bruta — visão anual, não muda com o filtro de mês
             </div>
+
           </div>
           <div className="rounded-md border px-4 py-2 bg-muted/40">
             <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Média dos meses completos</div>
@@ -862,10 +863,39 @@ function PainelFinanceiro() {
                   width={50}
                 />
                 <Tooltip
-                  formatter={(v: any, n: any) =>
-                    n === "% de operação" ? [v === null ? "—" : fmtPct(Number(v)), n] : [fmtMoney(Number(v)), n]
-                  }
+                  content={({ active, payload }: any) => {
+                    const p = active && payload && payload.length ? payload[0].payload : null;
+                    if (!p) return null;
+                    return (
+                      <div className="rounded-md border bg-background p-2 shadow-sm text-[11px] min-w-[210px]">
+                        <div className="font-semibold mb-1">{p.label}/{anoEfetivo}</div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">Receita Bruta</span>
+                          <span className="tabular-nums">{fmtMoney(p.receita)}</span>
+                        </div>
+                        <div className="flex justify-between gap-4 font-medium">
+                          <span>Custo de operação</span>
+                          <span className="tabular-nums">{fmtMoney(p.custoOperacao)}</span>
+                        </div>
+                        <div className="flex justify-between gap-4 font-medium" style={{ color: CHART_ACCENT }}>
+                          <span>% de operação</span>
+                          <span className="tabular-nums">{p.pct === null ? "—" : fmtPct(p.pct)}</span>
+                        </div>
+                        {p.detalhe?.length ? (
+                          <div className="mt-1 pt-1 border-t space-y-0.5">
+                            {p.detalhe.map((d: any) => (
+                              <div key={d.id} className="flex justify-between gap-4 text-muted-foreground">
+                                <span>{d.label}</span>
+                                <span className="tabular-nums">{fmtMoney(d.valor)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  }}
                 />
+
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Bar yAxisId="v" dataKey="receita" name="Receita Bruta" fill={CHART_BASE} isAnimationActive={false} radius={[3, 3, 0, 0]} />
                 <Bar yAxisId="v" dataKey="custoOperacao" name="Custo de operação" fill={CHART_NEGATIVE} isAnimationActive={false} radius={[3, 3, 0, 0]} />

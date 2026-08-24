@@ -204,6 +204,8 @@ export function textoFaturamento(c: FaturamentoComparativo, ano: number, mes: nu
 
 // ---------- Custo de operação x Receita (série anual) ----------
 
+export type DetalheGrupo = { id: DreGroupId; label: string; valor: number };
+
 export type PontoCustoOperacao = {
   mes: number;
   label: string;
@@ -211,33 +213,55 @@ export type PontoCustoOperacao = {
   custoOperacao: number;
   /** custoOperacao / receita (null quando não há receita) */
   pct: number | null;
+  /** Composição do custo de operação, grupo a grupo (mesmos rótulos do demonstrativo) */
+  detalhe: DetalheGrupo[];
 };
 
 type CalcDre = (ano: number, mes: number) => Partial<Record<DreGroupId, number>>;
 
+/** Grupos de saída somados no custo de operação (todo o demonstrativo, exceto Outras Saídas). */
+const GRUPOS_OPERACAO: { id: DreGroupId; label: string }[] = [
+  { id: "DR" as DreGroupId, label: "Deduções da Receita" },
+  { id: "AC" as DreGroupId, label: "Aquisição de Clientes" },
+  { id: "DM" as DreGroupId, label: "Despesas com Marketing" },
+  { id: "DC" as DreGroupId, label: "Despesas Comerciais" },
+  { id: "CV" as DreGroupId, label: "Custos Variáveis" },
+  { id: "CD" as DreGroupId, label: "Custos Diretos" },
+  { id: "CI" as DreGroupId, label: "Custos Indiretos" },
+  { id: "DS" as DreGroupId, label: "Despesas com Sócio" },
+  { id: "DA" as DreGroupId, label: "Despesas Administrativas" },
+  { id: "DT" as DreGroupId, label: "Despesas Tributárias" },
+  { id: "DF" as DreGroupId, label: "Despesas Financeiras" },
+  { id: "IN" as DreGroupId, label: "Investimentos" },
+];
+
 /**
  * Série Jan..Dez do ano: Receita Bruta x custo total para operar a empresa
- * (Potencial de Vendas + Despesas + Custos), e o percentual sobre a receita.
+ * (todos os grupos de saída do demonstrativo, exceto Outras Saídas).
  */
 export function serieCustoOperacao(ano: number, calc: CalcDre): PontoCustoOperacao[] {
   const out: PontoCustoOperacao[] = [];
   for (let m = 1; m <= 12; m++) {
     const t = calc(ano, m);
     const receita = t.RB ?? 0;
-    const pv = (t.AC ?? 0) + (t.DM ?? 0) + (t.DC ?? 0);
-    const desp = (t.DS ?? 0) + (t.DA ?? 0) + (t.DT ?? 0);
-    const custos = (t.CV ?? 0) + (t.CD ?? 0) + (t.CI ?? 0);
-    const custoOperacao = Math.abs(pv) + Math.abs(desp) + Math.abs(custos);
+    const detalhe = GRUPOS_OPERACAO.map((g) => ({
+      id: g.id,
+      label: g.label,
+      valor: Math.abs(t[g.id] ?? 0),
+    })).filter((d) => d.valor > 0);
+    const custoOperacao = detalhe.reduce((s, d) => s + d.valor, 0);
     out.push({
       mes: m,
       label: MESES_CURTOS[m],
       receita,
       custoOperacao,
       pct: receita > 0 ? custoOperacao / receita : null,
+      detalhe,
     });
   }
   return out;
 }
+
 
 export type ResumoCustoOperacao = {
   media: number | null;
