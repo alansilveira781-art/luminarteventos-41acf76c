@@ -379,7 +379,7 @@ export function calcularDRECaixa(
     rows.forEach((c) => {
       if (regime === "caixa") {
         if (c.status !== "pago") return;
-        if (!inPeriodo(c.data_pagamento ?? c.data_vencimento, ano, mes)) return;
+        if (!inPeriodo(c.data_pagamento ?? null, ano, mes)) return;
       } else {
         if (!inPeriodo(c.data_vencimento, ano, mes)) return;
       }
