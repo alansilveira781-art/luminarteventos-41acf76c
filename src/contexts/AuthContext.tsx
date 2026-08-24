@@ -9,6 +9,7 @@ interface AuthCtx {
   user: User | null;
   loading: boolean;
   isAdmin: boolean;
+  isMasterAdmin: boolean;
   roles: Role[];
   modulos: { slug: string; nome: string; rota: string | null; is_admin: boolean }[];
   hasModule: (slug: string) => boolean;
