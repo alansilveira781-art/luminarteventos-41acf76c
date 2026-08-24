@@ -20,7 +20,7 @@ export default defineTool({
   name: "resumo_financeiro",
   title: "Resumo financeiro do período",
   description:
-    "Consolida os gastos de Compras e Despesas em um período, com totais gerais e quebra por status. Útil para perguntas como 'quanto gastamos em julho?'.",
+    "Consolida os gastos de Compras e Aquisições em um período, com totais gerais e quebra por status. Útil para perguntas como 'quanto gastamos em julho?'.",
   inputSchema: {
     data_inicio: z.string().describe("Data inicial (AAAA-MM-DD)."),
     data_fim: z.string().describe("Data final (AAAA-MM-DD)."),

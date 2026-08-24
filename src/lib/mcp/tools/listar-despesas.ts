@@ -6,7 +6,7 @@ export default defineTool({
   name: "listar_despesas",
   title: "Listar despesas",
   description:
-    "Lista as despesas/demandas do módulo Despesas com tipo de despesa, status, evento/projeto, fornecedor, valor e datas.",
+    "Lista as despesas/demandas do módulo Aquisições com tipo de despesa, status, evento/projeto, fornecedor, valor e datas.",
   inputSchema: {
     status: z.string().describe("Status do card (ex.: em_andamento, finalizado).").optional(),
     tipo_demanda: z.string().describe("Tipo de despesa (ex.: reposicao_estoque, pro_labore).").optional(),
