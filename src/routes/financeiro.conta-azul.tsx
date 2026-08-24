@@ -192,7 +192,7 @@ function ContaAzulPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {!canManage ? (
-              <p className="text-sm text-muted-foreground">Apenas administradores do módulo AquisiÃ§Ãµes podem gerenciar esta conexão.</p>
+              <p className="text-sm text-muted-foreground">Apenas administradores do módulo Aquisições podem gerenciar esta conexão.</p>
             ) : status.isLoading ? (
               <p className="text-sm text-muted-foreground">Verificando status…</p>
             ) : connected ? (

@@ -185,7 +185,7 @@ function QuadroFinanceiro() {
     <div className="p-6 space-y-4">
       <PageHeader
         title="Quadro Financeiro"
-        description="Compras e aquisiÃ§Ãµes finalizadas seguindo o fluxo financeiro"
+        description="Compras e aquisições finalizadas seguindo o fluxo financeiro"
       />
 
       {!podeMover && (
@@ -315,7 +315,7 @@ function CardItem({
                   : "bg-accent/10 text-accent border-accent/30",
               )}
             >
-              {card.origem === "compra" ? "Compra" : "AquisiÃ§Ã£o"}
+              {card.origem === "compra" ? "Compra" : "Aquisição"}
             </span>
           </div>
           {card.fornecedor && card.titulo && (
@@ -324,7 +324,7 @@ function CardItem({
           <div className="mt-1.5 space-y-0.5 text-[11px] text-muted-foreground">
             {card.numero != null && (
               <div className="font-mono text-muted-foreground">
-                {card.origem === "compra" ? `COMPRA-${card.numero}` : `AQUISIÃÃO-${card.numero}`}
+                {card.origem === "compra" ? `COMPRA-${card.numero}` : `AQUISIÇÃO-${card.numero}`}
               </div>
             )}
             {card.solicitante && <div>Solic.: {card.solicitante}</div>}
@@ -441,7 +441,7 @@ function CardDetalheDialog({ card, onClose }: { card: Card | null; onClose: () =
     if (value == null || value === "") return;
     dados.push({ label, value: String(value) });
   };
-  push("Origem", card.origem === "compra" ? "Compra" : "AquisiÃ§Ã£o");
+  push("Origem", card.origem === "compra" ? "Compra" : "Aquisição");
   push("Número", full?.numero ?? card.numero);
   push("Título", full?.titulo ?? card.titulo);
   push("Status", full?.status);
@@ -473,7 +473,7 @@ function CardDetalheDialog({ card, onClose }: { card: Card | null; onClose: () =
     push("Tipo de compra", full?.tipo_compra);
     push("Empresa faturada", full?.empresa_faturada);
   } else {
-    push("Tipo de aquisiÃ§Ã£o", full?.tipo_demanda);
+    push("Tipo de aquisição", full?.tipo_demanda);
     push("Evento / Projeto", full?.evento_projeto);
   }
   push("Prazo", (full?.prazo ?? card.prazo) ? prazoLabel(full?.prazo ?? card.prazo) : null);

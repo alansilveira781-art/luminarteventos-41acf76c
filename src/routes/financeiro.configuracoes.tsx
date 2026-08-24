@@ -17,7 +17,7 @@ function FinanceiroConfiguracoes() {
     <>
       <PageHeader
         title="Configurações"
-        description="Defina o responsável padrão de cada status do Quadro de AquisiÃ§Ãµes. Ao mover um card para um status com padrão configurado, o responsável é atribuído automaticamente."
+        description="Defina o responsável padrão de cada status do Quadro de Aquisições. Ao mover um card para um status com padrão configurado, o responsável é atribuído automaticamente."
       />
       <StatusDefaultsTable
         tableName="financeiro_status_defaults"

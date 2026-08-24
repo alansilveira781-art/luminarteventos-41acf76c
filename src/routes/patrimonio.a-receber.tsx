@@ -142,7 +142,7 @@ function PatrimonioAReceberPage() {
     <>
       <PageHeader
         title="A receber"
-        description="Imobilizados em AquisiÃ§Ã£o aguardando validação de recebimento"
+        description="Imobilizados em Aquisição aguardando validação de recebimento"
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -158,7 +158,7 @@ function PatrimonioAReceberPage() {
                 {d.titulo || d.fornecedor || "Imobilizado"}
               </h3>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-muted whitespace-nowrap">
-                {d.numero != null ? `AQUISIÃÃO-${d.numero}` : "—"}
+                {d.numero != null ? `AQUISIÇÃO-${d.numero}` : "—"}
               </span>
             </div>
             <div className="text-xs text-muted-foreground space-y-1">
@@ -217,7 +217,7 @@ type LinhaPat = {
 };
 
 function buildInitialLinhas(demanda: DemandaRow): LinhaPat[] {
-  const baseObs = `Originado da AquisiÃ§Ã£o ${demanda.numero != null ? `#${demanda.numero}` : demanda.id.slice(0, 8)}`;
+  const baseObs = `Originado da Aquisição ${demanda.numero != null ? `#${demanda.numero}` : demanda.id.slice(0, 8)}`;
   if (demanda.itens.length === 0) {
     return [
       {
@@ -318,7 +318,7 @@ function ValidarRecebimentoDialog({ demanda, onClose }: { demanda: DemandaRow; o
         .maybeSingle();
       if (statusErr) throw statusErr;
       if (!statusRow || statusRow.status !== "a_receber") {
-        throw new Error("Esta aquisiÃ§Ã£o não está mais em A Receber. Atualize a tela.");
+        throw new Error("Esta aquisição não está mais em A Receber. Atualize a tela.");
       }
 
       // 2. Anti-duplicidade
@@ -402,7 +402,7 @@ function ValidarRecebimentoDialog({ demanda, onClose }: { demanda: DemandaRow; o
             quantidade: 1,
             data_movimento: new Date().toISOString(),
             finalidade: "Aquisição",
-            observacoes: `Recebimento de imobilizado — AquisiÃ§Ã£o ${demanda.numero != null ? `#${demanda.numero}` : demanda.id.slice(0, 8)}`,
+            observacoes: `Recebimento de imobilizado — Aquisição ${demanda.numero != null ? `#${demanda.numero}` : demanda.id.slice(0, 8)}`,
             created_by: user?.id ?? null,
           });
           if (movErr) throw movErr;
@@ -426,7 +426,7 @@ function ValidarRecebimentoDialog({ demanda, onClose }: { demanda: DemandaRow; o
           .in("id", processedItemIds);
       }
 
-      // 5. Finalizar aquisiÃ§Ã£o
+      // 5. Finalizar aquisição
       const { error: updErr } = await sb
         .from("demandas")
         .update({ status: "finalizado" })
@@ -452,7 +452,7 @@ function ValidarRecebimentoDialog({ demanda, onClose }: { demanda: DemandaRow; o
             Validar recebimento
             {demanda.numero != null && (
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-muted">
-                AQUISIÃÃO-{demanda.numero}
+                AQUISIÇÃO-{demanda.numero}
               </span>
             )}
           </DialogTitle>
@@ -499,7 +499,7 @@ function ValidarRecebimentoDialog({ demanda, onClose }: { demanda: DemandaRow; o
         {/* BLOCO B — Anexos */}
         {demanda.anexos.length > 0 && (
           <div className="space-y-2">
-            <Label className="text-xs">Anexos da aquisiÃ§Ã£o</Label>
+            <Label className="text-xs">Anexos da aquisição</Label>
             <div className="space-y-1.5">
               {demanda.anexos.map((a) => (
                 <div key={a.id} className="flex items-center gap-2 rounded-md border p-2 text-sm">
