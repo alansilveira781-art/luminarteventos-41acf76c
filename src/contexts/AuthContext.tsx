@@ -9,6 +9,7 @@ interface AuthCtx {
   user: User | null;
   loading: boolean;
   isAdmin: boolean;
+  isMasterAdmin: boolean;
   roles: Role[];
   modulos: { slug: string; nome: string; rota: string | null; is_admin: boolean }[];
   hasModule: (slug: string) => boolean;
@@ -23,21 +24,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [isMasterAdmin, setIsMasterAdmin] = useState(false);
   const [modulos, setModulos] = useState<{ slug: string; nome: string; rota: string | null; is_admin: boolean }[]>([]);
+
 
   async function loadAccess(userId: string | null) {
     if (!userId) {
       setRoles([]);
       setModulos([]);
+      setIsMasterAdmin(false);
       return;
     }
-    const [{ data: r }, { data: m }] = await Promise.all([
+    const [{ data: r }, { data: m }, { data: mm }] = await Promise.all([
       supabase.from("user_roles").select("role").eq("user_id", userId),
       supabase
         .from("user_modulos")
         .select("is_admin,modulos(slug,nome,rota,ativo)")
         .eq("user_id", userId),
+      (supabase as any).from("master_admins").select("user_id").eq("user_id", userId).maybeSingle(),
     ]);
+    setIsMasterAdmin(!!mm);
     const rolesList = (r ?? []).map((x: any) => x.role as Role);
     setRoles(rolesList);
 
@@ -71,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user: session?.user ?? null,
     loading,
     isAdmin: roles.includes("admin"),
+    isMasterAdmin,
     roles,
     modulos,
     hasModule: (slug) => roles.includes("admin") || modulos.some((m) => m.slug === slug),

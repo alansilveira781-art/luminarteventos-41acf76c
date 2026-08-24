@@ -35,6 +35,7 @@ import { Route as ComprasRouteImport } from './routes/compras'
 import { Route as ComercialRouteImport } from './routes/comercial'
 import { Route as CalendarioPublicoRouteImport } from './routes/calendario-publico'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AssistenteRouteImport } from './routes/assistente'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RhIndexRouteImport } from './routes/rh.index'
@@ -126,6 +127,7 @@ import { Route as ApiContaazulScheduleRouteImport } from './routes/api/contaazul
 import { Route as ApiContaazulReprocessarRateiosRouteImport } from './routes/api/contaazul/reprocessar-rateios'
 import { Route as ApiContaazulReprocessarFalhasRouteImport } from './routes/api/contaazul/reprocessar-falhas'
 import { Route as ApiContaazulHistoricoRouteImport } from './routes/api/contaazul/historico'
+import { Route as ApiAssistenteChatRouteImport } from './routes/api/assistente/chat'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiPublicHooksEnviarLembretesRouteImport } from './routes/api/public/hooks/enviar-lembretes'
@@ -261,6 +263,11 @@ const CalendarioPublicoRoute = CalendarioPublicoRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AssistenteRoute = AssistenteRouteImport.update({
+  id: '/assistente',
+  path: '/assistente',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -736,6 +743,11 @@ const ApiContaazulHistoricoRoute = ApiContaazulHistoricoRouteImport.update({
   path: '/api/contaazul/historico',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAssistenteChatRoute = ApiAssistenteChatRouteImport.update({
+  id: '/api/assistente/chat',
+  path: '/api/assistente/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -774,6 +786,7 @@ const ApiContaazulOauthCallbackRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/assistente': typeof AssistenteRoute
   '/auth': typeof AuthRoute
   '/calendario-publico': typeof CalendarioPublicoRoute
   '/comercial': typeof ComercialRouteWithChildren
@@ -867,6 +880,7 @@ export interface FileRoutesByFullPath {
   '/rh/': typeof RhIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/assistente/chat': typeof ApiAssistenteChatRoute
   '/api/contaazul/historico': typeof ApiContaazulHistoricoRoute
   '/api/contaazul/reprocessar-falhas': typeof ApiContaazulReprocessarFalhasRoute
   '/api/contaazul/reprocessar-rateios': typeof ApiContaazulReprocessarRateiosRoute
@@ -898,6 +912,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/assistente': typeof AssistenteRoute
   '/auth': typeof AuthRoute
   '/calendario-publico': typeof CalendarioPublicoRoute
   '/dashboard': typeof DashboardRoute
@@ -980,6 +995,7 @@ export interface FileRoutesByTo {
   '/rh': typeof RhIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/assistente/chat': typeof ApiAssistenteChatRoute
   '/api/contaazul/historico': typeof ApiContaazulHistoricoRoute
   '/api/contaazul/reprocessar-falhas': typeof ApiContaazulReprocessarFalhasRoute
   '/api/contaazul/reprocessar-rateios': typeof ApiContaazulReprocessarRateiosRoute
@@ -1013,6 +1029,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/assistente': typeof AssistenteRoute
   '/auth': typeof AuthRoute
   '/calendario-publico': typeof CalendarioPublicoRoute
   '/comercial': typeof ComercialRouteWithChildren
@@ -1106,6 +1123,7 @@ export interface FileRoutesById {
   '/rh/': typeof RhIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/assistente/chat': typeof ApiAssistenteChatRoute
   '/api/contaazul/historico': typeof ApiContaazulHistoricoRoute
   '/api/contaazul/reprocessar-falhas': typeof ApiContaazulReprocessarFalhasRoute
   '/api/contaazul/reprocessar-rateios': typeof ApiContaazulReprocessarRateiosRoute
@@ -1140,6 +1158,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/assistente'
     | '/auth'
     | '/calendario-publico'
     | '/comercial'
@@ -1233,6 +1252,7 @@ export interface FileRouteTypes {
     | '/rh/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/assistente/chat'
     | '/api/contaazul/historico'
     | '/api/contaazul/reprocessar-falhas'
     | '/api/contaazul/reprocessar-rateios'
@@ -1264,6 +1284,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/assistente'
     | '/auth'
     | '/calendario-publico'
     | '/dashboard'
@@ -1346,6 +1367,7 @@ export interface FileRouteTypes {
     | '/rh'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/assistente/chat'
     | '/api/contaazul/historico'
     | '/api/contaazul/reprocessar-falhas'
     | '/api/contaazul/reprocessar-rateios'
@@ -1378,6 +1400,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/assistente'
     | '/auth'
     | '/calendario-publico'
     | '/comercial'
@@ -1471,6 +1494,7 @@ export interface FileRouteTypes {
     | '/rh/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/assistente/chat'
     | '/api/contaazul/historico'
     | '/api/contaazul/reprocessar-falhas'
     | '/api/contaazul/reprocessar-rateios'
@@ -1504,6 +1528,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
+  AssistenteRoute: typeof AssistenteRoute
   AuthRoute: typeof AuthRoute
   CalendarioPublicoRoute: typeof CalendarioPublicoRoute
   ComercialRoute: typeof ComercialRouteWithChildren
@@ -1538,6 +1563,7 @@ export interface RootRouteChildren {
   EstoqueIndexRoute: typeof EstoqueIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiAssistenteChatRoute: typeof ApiAssistenteChatRoute
   ApiContaazulHistoricoRoute: typeof ApiContaazulHistoricoRoute
   ApiContaazulReprocessarFalhasRoute: typeof ApiContaazulReprocessarFalhasRoute
   ApiContaazulReprocessarRateiosRoute: typeof ApiContaazulReprocessarRateiosRoute
@@ -1740,6 +1766,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/assistente': {
+      id: '/assistente'
+      path: '/assistente'
+      fullPath: '/assistente'
+      preLoaderRoute: typeof AssistenteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -2379,6 +2412,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiContaazulHistoricoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/assistente/chat': {
+      id: '/api/assistente/chat'
+      path: '/api/assistente/chat'
+      fullPath: '/api/assistente/chat'
+      preLoaderRoute: typeof ApiAssistenteChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
       path: '/.mcp/invoke-tool/$tool'
@@ -2680,6 +2720,7 @@ const RhRouteWithChildren = RhRoute._addFileChildren(RhRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
+  AssistenteRoute: AssistenteRoute,
   AuthRoute: AuthRoute,
   CalendarioPublicoRoute: CalendarioPublicoRoute,
   ComercialRoute: ComercialRouteWithChildren,
@@ -2715,6 +2756,7 @@ const rootRouteChildren: RootRouteChildren = {
   EstoqueIndexRoute: EstoqueIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiAssistenteChatRoute: ApiAssistenteChatRoute,
   ApiContaazulHistoricoRoute: ApiContaazulHistoricoRoute,
   ApiContaazulReprocessarFalhasRoute: ApiContaazulReprocessarFalhasRoute,
   ApiContaazulReprocessarRateiosRoute: ApiContaazulReprocessarRateiosRoute,

@@ -56,6 +56,7 @@ import {
   Activity,
   ClipboardCheck as ClipboardCheckIcon,
   BellRing,
+  Sparkles,
 
 } from "lucide-react";
 import logo from "@/assets/luminart-logo-white.png";
@@ -64,12 +65,13 @@ import { useDiaristaAcesso } from "@/lib/diaristas-acesso";
 import { useTheme } from "@/contexts/ThemeContext";
 import { NotificationBell } from "@/components/NotificationBell";
 
-type NavItem = { title: string; url: string; icon: any; group: string; module?: string; adminOnly?: boolean; moduleAdminOnly?: string; expectadorEventos?: boolean; juridicoSolicitante?: boolean; diaristaLancador?: boolean };
+type NavItem = { title: string; url: string; icon: any; group: string; module?: string; adminOnly?: boolean; moduleAdminOnly?: string; expectadorEventos?: boolean; juridicoSolicitante?: boolean; diaristaLancador?: boolean; masterAdminOnly?: boolean };
 
 const allItems: NavItem[] = [
   { title: "Início", url: "/", icon: LayoutDashboard, group: "Visão geral" },
   { title: "Meus Pedidos", url: "/meus-pedidos", icon: ClipboardList, group: "Visão geral" },
   { title: "Lembretes", url: "/lembretes", icon: BellRing, group: "Visão geral" },
+  { title: "Assistente", url: "/assistente", icon: Sparkles, group: "Visão geral", masterAdminOnly: true },
   { title: "Calendário de Eventos", url: "/calendario-publico", icon: CalendarDays, group: "Visão geral", expectadorEventos: true },
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, group: "Estoque", module: "estoque" },
   { title: "Estoque", url: "/estoque", icon: Package, group: "Estoque", module: "estoque" },
@@ -183,7 +185,7 @@ function getContext(pathname: string): "home" | "estoque" | "compras" | "finance
 }
 
 function useNavItems(pathname: string) {
-  const { isAdmin, hasModule, modulos, user } = useAuth();
+  const { isAdmin, isMasterAdmin, hasModule, modulos, user } = useAuth();
   const { podeLancar: podeLancarDiaria } = useDiaristaAcesso();
   const ctx = getContext(pathname);
 
@@ -231,6 +233,7 @@ function useNavItems(pathname: string) {
 
   return allItems.filter((i) => {
     if (i.url === "/") return true;
+    if (i.masterAdminOnly) return isMasterAdmin;
 
 
     if (i.expectadorEventos) {
