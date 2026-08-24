@@ -284,7 +284,7 @@ export function transferenciasNoPeriodo(
       if (!passaVisao(c, opts.visao, opts.ano, opts.mes)) return;
       const plano = c.categoria_external_id ? planoMap.get(c.categoria_external_id) : undefined;
       if (!isTransferencia(plano?.nome, c.descricao)) return;
-      const data = opts.visao === "realizado" ? (c.data_pagamento ?? c.data_vencimento) : c.data_vencimento;
+      const data = opts.visao === "realizado" ? (c.data_pagamento ?? null) : c.data_vencimento;
       const nome = origem === "pagar" ? (c.fornecedor_nome ?? null) : (c.cliente_nome ?? null);
       itens.push({ data, descricao: c.descricao ?? null, nome, valor: Math.abs(Number(c.valor || 0)), origem });
     });
