@@ -201,3 +201,59 @@ export function textoFaturamento(c: FaturamentoComparativo, ano: number, mes: nu
   ];
   return partes.filter(Boolean).join(" ");
 }
+
+// ---------- Custo de operação x Receita (série anual) ----------
+
+export type PontoCustoOperacao = {
+  mes: number;
+  label: string;
+  receita: number;
+  custoOperacao: number;
+  /** custoOperacao / receita (null quando não há receita) */
+  pct: number | null;
+};
+
+type CalcDre = (ano: number, mes: number) => Partial<Record<DreGroupId, number>>;
+
+/**
+ * Série Jan..Dez do ano: Receita Bruta x custo total para operar a empresa
+ * (Potencial de Vendas + Despesas + Custos), e o percentual sobre a receita.
+ */
+export function serieCustoOperacao(ano: number, calc: CalcDre): PontoCustoOperacao[] {
+  const out: PontoCustoOperacao[] = [];
+  for (let m = 1; m <= 12; m++) {
+    const t = calc(ano, m);
+    const receita = t.RB ?? 0;
+    const pv = (t.AC ?? 0) + (t.DM ?? 0) + (t.DC ?? 0);
+    const desp = (t.DS ?? 0) + (t.DA ?? 0) + (t.DT ?? 0);
+    const custos = (t.CV ?? 0) + (t.CD ?? 0) + (t.CI ?? 0);
+    const custoOperacao = Math.abs(pv) + Math.abs(desp) + Math.abs(custos);
+    out.push({
+      mes: m,
+      label: MESES_CURTOS[m],
+      receita,
+      custoOperacao,
+      pct: receita > 0 ? custoOperacao / receita : null,
+    });
+  }
+  return out;
+}
+
+export type ResumoCustoOperacao = {
+  media: number | null;
+  meses: number;
+  melhor: PontoCustoOperacao | null;
+  pior: PontoCustoOperacao | null;
+};
+
+/** Média do percentual considerando apenas meses completos (exclui o mês corrente e futuros). */
+export function mediaMesesCompletos(serie: PontoCustoOperacao[], ano: number): ResumoCustoOperacao {
+  const hoje = new Date();
+  const ultimoCompleto =
+    ano < hoje.getFullYear() ? 12 : ano > hoje.getFullYear() ? 0 : hoje.getMonth(); // mês anterior ao corrente
+  const validos = serie.filter((p) => p.mes <= ultimoCompleto && p.pct !== null && p.receita > 0);
+  if (validos.length === 0) return { media: null, meses: 0, melhor: null, pior: null };
+  const media = validos.reduce((s, p) => s + (p.pct as number), 0) / validos.length;
+  const ord = [...validos].sort((a, b) => (a.pct as number) - (b.pct as number));
+  return { media, meses: validos.length, melhor: ord[0], pior: ord[ord.length - 1] };
+}

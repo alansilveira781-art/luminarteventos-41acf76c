@@ -16,6 +16,7 @@ import { agruparParcelamentos, type GroupedLancRow } from "@/lib/conta-azul/agru
 import {
   fatiasDoGrupo, comOutros, textoReceitas, textoCustosVariaveis,
   compararFaturamento, textoFaturamento, periodoAnterior, labelPeriodo,
+  serieCustoOperacao, mediaMesesCompletos,
 } from "@/lib/conta-azul/painel-analises";
 import { gerarPainelPdf, svgParaPng } from "@/lib/conta-azul/painel-pdf";
 import { listVendasDb } from "@/lib/comercial/vendas-db.functions";
@@ -486,6 +487,17 @@ function PainelFinanceiro() {
   );
   const textoFat = useMemo(() => textoFaturamento(comparativo, anoEfetivo, mes), [comparativo, anoEfetivo, mes]);
 
+  // ----- Custo de operação x Receita (ano inteiro, independente do filtro de mês) -----
+  const anoData = useContaAzulData(anoEfetivo, 0);
+  const serieOperacao = useMemo(
+    () =>
+      serieCustoOperacao(anoEfetivo, (a, m) =>
+        calcularDRECaixa(anoData.pagar.data ?? [], anoData.receber.data ?? [], planoMap, a, m, dreEstrutura).totais,
+      ),
+    [anoData.pagar.data, anoData.receber.data, planoMap, anoEfetivo, dreEstrutura],
+  );
+  const resumoOperacao = useMemo(() => mediaMesesCompletos(serieOperacao, anoEfetivo), [serieOperacao, anoEfetivo]);
+
   const pieRef = useRef<HTMLDivElement>(null);
   const cvRef = useRef<HTMLDivElement>(null);
   const [gerandoPdf, setGerandoPdf] = useState(false);
@@ -810,6 +822,76 @@ function PainelFinanceiro() {
           </div>
         </div>
         <p className="text-xs text-muted-foreground mt-3 leading-relaxed">{textoFat}</p>
+      </Card>
+
+      {/* Custo de operação x Receita — ano inteiro */}
+      <Card className="p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+          <div>
+            <div className="text-sm font-semibold">Custo de operação x Receita — {anoEfetivo}</div>
+            <div className="text-xs text-muted-foreground">
+              Pot. de Vendas + Despesas + Custos sobre a Receita Bruta (visão anual, não muda com o filtro de mês)
+            </div>
+          </div>
+          <div className="rounded-md border px-4 py-2 bg-muted/40">
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Média dos meses completos</div>
+            <div className="text-2xl font-bold tabular-nums" style={{ color: CHART_ACCENT }}>
+              {resumoOperacao.media === null ? "—" : fmtPct(resumoOperacao.media)}
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              {resumoOperacao.meses} mês(es) considerado(s)
+            </div>
+          </div>
+        </div>
+        <div style={{ height: 300 }}>
+          {anoData.pagar.isLoading || anoData.receber.isLoading ? (
+            <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" /> Carregando…
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={serieOperacao} margin={{ left: 8, right: 8, top: 8, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                <YAxis yAxisId="v" tickFormatter={(v) => fmtMoney(Number(v))} tick={{ fontSize: 10 }} width={90} />
+                <YAxis
+                  yAxisId="p"
+                  orientation="right"
+                  tickFormatter={(v) => `${Math.round(Number(v) * 100)}%`}
+                  tick={{ fontSize: 10 }}
+                  width={50}
+                />
+                <Tooltip
+                  formatter={(v: any, n: any) =>
+                    n === "% de operação" ? [v === null ? "—" : fmtPct(Number(v)), n] : [fmtMoney(Number(v)), n]
+                  }
+                />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar yAxisId="v" dataKey="receita" name="Receita Bruta" fill={CHART_BASE} isAnimationActive={false} radius={[3, 3, 0, 0]} />
+                <Bar yAxisId="v" dataKey="custoOperacao" name="Custo de operação" fill={CHART_NEGATIVE} isAnimationActive={false} radius={[3, 3, 0, 0]} />
+                <Line
+                  yAxisId="p"
+                  type="monotone"
+                  dataKey="pct"
+                  name="% de operação"
+                  stroke={CHART_ACCENT}
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                  connectNulls
+                  isAnimationActive={false}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+          {resumoOperacao.media === null
+            ? "Ainda não há meses completos com receita neste ano para calcular a média."
+            : `Em média, ${fmtPct(resumoOperacao.media)} da receita é consumida para operar a empresa (média de ${resumoOperacao.meses} mês(es) completo(s) de ${anoEfetivo}).` +
+              (resumoOperacao.melhor && resumoOperacao.pior
+                ? ` Melhor mês: ${resumoOperacao.melhor.label} (${fmtPct(resumoOperacao.melhor.pct as number)}); pior mês: ${resumoOperacao.pior.label} (${fmtPct(resumoOperacao.pior.pct as number)}).`
+                : "")}
+        </p>
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
