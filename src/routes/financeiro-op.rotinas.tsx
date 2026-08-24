@@ -480,7 +480,7 @@ function RotinaDialog({ rotina, onClose }: { rotina: Partial<Rotina>; onClose: (
         titulo: form.titulo,
         descricao: form.descricao || null,
         frequencia: form.frequencia,
-        dias_semana: form.dias_semana,
+        dias_semana: form.dias_semana.filter((d) => d >= 1 && d <= 5),
         hora: form.hora,
         data_inicio: form.data_inicio,
         data_fim: form.data_fim || null,
