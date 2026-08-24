@@ -16,6 +16,7 @@ import { agruparParcelamentos, type GroupedLancRow } from "@/lib/conta-azul/agru
 import {
   fatiasDoGrupo, comOutros, textoReceitas, textoCustosVariaveis,
   compararFaturamento, textoFaturamento, periodoAnterior, labelPeriodo,
+  serieCustoOperacao, mediaMesesCompletos,
 } from "@/lib/conta-azul/painel-analises";
 import { gerarPainelPdf, svgParaPng } from "@/lib/conta-azul/painel-pdf";
 import { listVendasDb } from "@/lib/comercial/vendas-db.functions";
