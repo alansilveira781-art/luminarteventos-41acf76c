@@ -5970,6 +5970,7 @@ export type Database = {
         Returns: string
       }
       proximo_codigo_evento: { Args: { _data: string }; Returns: string }
+      proximo_dia_util: { Args: { p_data: string }; Returns: string }
       reconciliar_estoque: { Args: { p_item_id: string }; Returns: number }
       refresh_item_status: { Args: { p_item_id: string }; Returns: undefined }
       show_limit: { Args: never; Returns: number }
