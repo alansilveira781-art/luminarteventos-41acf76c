@@ -77,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user: session?.user ?? null,
     loading,
     isAdmin: roles.includes("admin"),
+    isMasterAdmin,
     roles,
     modulos,
     hasModule: (slug) => roles.includes("admin") || modulos.some((m) => m.slug === slug),
