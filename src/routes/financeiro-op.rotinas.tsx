@@ -83,7 +83,7 @@ function RotinasPage() {
   return (
     <>
       <PageHeader
-        title="Rotinas Financeiras"
+        title="Rotina"
         description="Cadastre as rotinas recorrentes do setor financeiro"
         actions={
           <Button onClick={() => setEditing({})}>
@@ -734,6 +734,10 @@ function occursOn(r: Rotina, date: Date): boolean {
   const key = date.toISOString().slice(0, 10);
   if (key < r.data_inicio) return false;
   if (r.data_fim && key > r.data_fim) return false;
+
+  // Rotinas ocorrem apenas em dias uteis (segunda a sexta)
+  const dow = date.getDay();
+  if (dow === 0 || dow === 6) return false;
 
   const start = parseISODate(r.data_inicio);
   const diffDays = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
