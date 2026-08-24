@@ -65,6 +65,68 @@ export type Database = {
         }
         Relationships: []
       }
+      assistente_conversas: {
+        Row: {
+          created_at: string
+          id: string
+          titulo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          titulo?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          titulo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      assistente_mensagens: {
+        Row: {
+          conteudo: string
+          conversa_id: string
+          created_at: string
+          ferramentas: Json | null
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          conteudo: string
+          conversa_id: string
+          created_at?: string
+          ferramentas?: Json | null
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          conteudo?: string
+          conversa_id?: string
+          created_at?: string
+          ferramentas?: Json | null
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistente_mensagens_conversa_id_fkey"
+            columns: ["conversa_id"]
+            isOneToOne: false
+            referencedRelation: "assistente_conversas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ca_centros_custo: {
         Row: {
           ativo: boolean
@@ -4478,6 +4540,21 @@ export type Database = {
           },
         ]
       }
+      master_admins: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       modulos: {
         Row: {
           ativo: boolean
@@ -5933,6 +6010,7 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_diaria_admin: { Args: { _user_id: string }; Returns: boolean }
       is_expectador_eventos: { Args: { _user_id: string }; Returns: boolean }
+      is_master_admin: { Args: { _user_id: string }; Returns: boolean }
       is_module_admin: {
         Args: { _slug: string; _user_id: string }
         Returns: boolean
