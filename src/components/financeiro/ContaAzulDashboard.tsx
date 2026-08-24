@@ -487,6 +487,17 @@ function PainelFinanceiro() {
   );
   const textoFat = useMemo(() => textoFaturamento(comparativo, anoEfetivo, mes), [comparativo, anoEfetivo, mes]);
 
+  // ----- Custo de operação x Receita (ano inteiro, independente do filtro de mês) -----
+  const anoData = useContaAzulData(anoEfetivo, 0);
+  const serieOperacao = useMemo(
+    () =>
+      serieCustoOperacao(anoEfetivo, (a, m) =>
+        calcularDRECaixa(anoData.pagar.data ?? [], anoData.receber.data ?? [], planoMap, a, m, dreEstrutura).totais,
+      ),
+    [anoData.pagar.data, anoData.receber.data, planoMap, anoEfetivo, dreEstrutura],
+  );
+  const resumoOperacao = useMemo(() => mediaMesesCompletos(serieOperacao, anoEfetivo), [serieOperacao, anoEfetivo]);
+
   const pieRef = useRef<HTMLDivElement>(null);
   const cvRef = useRef<HTMLDivElement>(null);
   const [gerandoPdf, setGerandoPdf] = useState(false);
