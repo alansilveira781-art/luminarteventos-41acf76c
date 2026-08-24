@@ -32,15 +32,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!userId) {
       setRoles([]);
       setModulos([]);
+      setIsMasterAdmin(false);
       return;
     }
-    const [{ data: r }, { data: m }] = await Promise.all([
+    const [{ data: r }, { data: m }, { data: mm }] = await Promise.all([
       supabase.from("user_roles").select("role").eq("user_id", userId),
       supabase
         .from("user_modulos")
         .select("is_admin,modulos(slug,nome,rota,ativo)")
         .eq("user_id", userId),
+      (supabase as any).from("master_admins").select("user_id").eq("user_id", userId).maybeSingle(),
     ]);
+    setIsMasterAdmin(!!mm);
     const rolesList = (r ?? []).map((x: any) => x.role as Role);
     setRoles(rolesList);
 
