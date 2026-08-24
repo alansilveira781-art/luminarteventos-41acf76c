@@ -694,11 +694,6 @@ function Card({
             />
           </span>
         )}
-        <span
-          aria-hidden
-          className={`text-muted-foreground select-none ${canMove ? "" : "opacity-40"}`}
-
-        >⋮⋮</span>
         <div className="flex-1 text-left min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="font-medium text-sm truncate text-foreground flex-1 min-w-0 flex items-center gap-1.5">
