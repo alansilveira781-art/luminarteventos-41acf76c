@@ -830,8 +830,9 @@ function PainelFinanceiro() {
           <div>
             <div className="text-sm font-semibold">Custo de operação x Receita — {anoEfetivo}</div>
             <div className="text-xs text-muted-foreground">
-              Pot. de Vendas + Despesas + Custos sobre a Receita Bruta (visão anual, não muda com o filtro de mês)
+              Soma de todas as saídas do demonstrativo (exceto Outras Saídas) sobre a Receita Bruta — visão anual, não muda com o filtro de mês
             </div>
+
           </div>
           <div className="rounded-md border px-4 py-2 bg-muted/40">
             <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Média dos meses completos</div>
