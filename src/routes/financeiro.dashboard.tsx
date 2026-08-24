@@ -144,7 +144,7 @@ function FinanceiroDashboard() {
 
   return (
     <>
-      <PageHeader title="Dashboard de Despesas" description="Indicadores e gráficos do período selecionado" />
+      <PageHeader title="Dashboard de Aquisições" description="Indicadores e gráficos do período selecionado" />
 
       <div className="flex flex-wrap gap-3 mb-4 items-end">
         <div>
@@ -189,7 +189,7 @@ function FinanceiroDashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Despesas por tipo (R$)">
+        <ChartCard title="Aquisições por tipo (R$)">
           <ResponsiveContainer width="100%" height={260}>
             <PieChart>
               <Pie data={porTipo} dataKey="valor" nameKey="nome" outerRadius={90} label>
@@ -216,7 +216,7 @@ function FinanceiroDashboard() {
 
       <Card className="p-4 mt-4">
         <div className="flex items-baseline justify-between mb-3">
-          <div className="text-sm font-semibold">Demonstrativo de Despesas (DRE)</div>
+          <div className="text-sm font-semibold">Demonstrativo de Aquisições (DRE)</div>
           <div className="text-xs text-muted-foreground">
             Classificado: <span className="font-medium text-foreground">{fmt(dreAgg.totalClassificado)}</span>
             {dreAgg.semCategoria > 0 && (

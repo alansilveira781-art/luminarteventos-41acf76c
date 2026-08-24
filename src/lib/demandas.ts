@@ -5,14 +5,14 @@ import type { CompraStatus } from "./compras";
 export type DemandaStatus = CompraStatus;
 
 export const DEMANDA_STATUSES: { key: DemandaStatus; label: string; color: string }[] = [
-  { key: "solicitacao", label: "Solicitação de Despesa", color: "bg-slate-500" },
+  { key: "solicitacao", label: "Solicitação de Aquisição", color: "bg-slate-500" },
   { key: "analise", label: "Análise", color: "bg-blue-500" },
   { key: "pendente_aprovacao", label: "Pendente Aprovação", color: "bg-amber-500" },
-  { key: "aprovada", label: "Despesa Aprovada", color: "bg-emerald-500" },
-  { key: "em_andamento", label: "Despesa Em Andamento", color: "bg-indigo-500" },
+  { key: "aprovada", label: "Aquisição Aprovada", color: "bg-emerald-500" },
+  { key: "em_andamento", label: "Aquisição Em Andamento", color: "bg-indigo-500" },
   { key: "a_receber", label: "A Receber", color: "bg-cyan-500" },
   { key: "finalizado", label: "Finalizado", color: "bg-success" },
-  { key: "negada", label: "Despesa Negada", color: "bg-destructive" },
+  { key: "negada", label: "Aquisição Negada", color: "bg-destructive" },
 ];
 
 // Tipos que exigem grid de ITENS no lugar do descritivo livre

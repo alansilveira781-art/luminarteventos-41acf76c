@@ -93,7 +93,7 @@
       {
         "name": "listar_despesas",
         "title": "Listar despesas",
-        "description": "Lista as despesas/demandas do módulo Despesas com tipo de despesa, status, evento/projeto, fornecedor, valor e datas.",
+        "description": "Lista as despesas/demandas do módulo Aquisições com tipo de despesa, status, evento/projeto, fornecedor, valor e datas.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -202,7 +202,7 @@
       {
         "name": "resumo_financeiro",
         "title": "Resumo financeiro do período",
-        "description": "Consolida os gastos de Compras e Despesas em um período, com totais gerais e quebra por status. Útil para perguntas como 'quanto gastamos em julho?'.",
+        "description": "Consolida os gastos de Compras e Aquisições em um período, com totais gerais e quebra por status. Útil para perguntas como 'quanto gastamos em julho?'.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,

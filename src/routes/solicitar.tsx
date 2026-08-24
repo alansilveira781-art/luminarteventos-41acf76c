@@ -257,8 +257,8 @@ function SolicitarPage() {
         return null;
       }
       if (form.tipo === "demanda" && !(Number(form.valor_total) > 0))
-        return "Informe o valor total da despesa.";
-      return form.descricao.trim().length > 0 ? null : "Descreva a sua despesa.";
+        return "Informe o valor total da aquisição.";
+      return form.descricao.trim().length > 0 ? null : "Descreva a sua aquisição.";
     }
     return null;
   }
@@ -466,7 +466,7 @@ function SolicitarPage() {
               active={form.tipo === "demanda"}
               onClick={() => update({ tipo: "demanda" })}
               icon={<Wallet className="h-7 w-7" />}
-              title="Despesa"
+              title="Aquisição"
               desc="Estacionamento, alimentação, manutenção, imobilizado, etc."
             />
           </div>
@@ -484,7 +484,7 @@ function SolicitarPage() {
                 placeholder={isCompra ? "Ex.: Compra de papel A4" : "Ex.: Manutenção da frota"}
               />
             </Field>
-            <Field label={isCompra ? "Tipo de compra" : "Tipo de Despesa"}>
+            <Field label={isCompra ? "Tipo de compra" : "Tipo de Aquisição"}>
               <Select value={form.subtipo} onValueChange={(v) => update({ subtipo: v })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione…" />
@@ -548,7 +548,7 @@ function SolicitarPage() {
                   <span className="text-sm">
                     <span className="font-medium">É um reembolso?</span>
                     <span className="block text-xs text-muted-foreground">
-                      Marque se esta despesa é um reembolso a alguém da equipe.
+                      Marque se esta aquisição é um reembolso a alguém da equipe.
                     </span>
                   </span>
                 </label>
@@ -643,7 +643,7 @@ function SolicitarPage() {
       {step === 2 && (
         <Step
           title="Detalhes da solicitação"
-          subtitle={isCompra ? "Liste os itens e quem está solicitando." : "Descreva a despesa e quem está solicitando."}
+          subtitle={isCompra ? "Liste os itens e quem está solicitando." : "Descreva a aquisição e quem está solicitando."}
         >
           <div className="space-y-5">
             <Field label="Seu nome *">
@@ -688,7 +688,7 @@ function SolicitarPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-medium text-muted-foreground">
-                    {isCompra ? "Itens da compra *" : "Itens da despesa *"}
+                    {isCompra ? "Itens da compra *" : "Itens da aquisição *"}
                   </Label>
                   <Button type="button" size="sm" variant="outline" onClick={addItem}>
                     <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar item
@@ -781,7 +781,7 @@ function SolicitarPage() {
                     value={form.descricao}
                     maxLength={4000}
                     onChange={(e) => update({ descricao: e.target.value })}
-                    placeholder={isCompra ? "Algum detalhe adicional sobre a compra…" : "Algum detalhe adicional sobre a despesa…"}
+                    placeholder={isCompra ? "Algum detalhe adicional sobre a compra…" : "Algum detalhe adicional sobre a aquisição…"}
                   />
                 </Field>
               </div>
@@ -794,13 +794,13 @@ function SolicitarPage() {
                     placeholder="0,00"
                   />
                 </Field>
-                <Field label="Descreva sua despesa *">
+                <Field label="Descreva sua aquisição *">
                   <Textarea
                     rows={6}
                     value={form.descricao}
                     maxLength={4000}
                     onChange={(e) => update({ descricao: e.target.value })}
-                    placeholder="Detalhe a despesa, prazos, locais, observações…"
+                    placeholder="Detalhe a aquisição, prazos, locais, observações…"
                   />
                   <p className="text-[11px] text-muted-foreground mt-1">
                     {form.descricao.length}/4000
@@ -862,7 +862,7 @@ function SolicitarPage() {
       {step === 3 && (
         <Step title="Confira antes de enviar" subtitle="Revise os dados da solicitação.">
           <div className="rounded-lg border border-border divide-y divide-border text-sm">
-            <Row k="Tipo" v={isCompra ? "Compra" : "Despesa"} />
+            <Row k="Tipo" v={isCompra ? "Compra" : "Aquisição"} />
             <Row k="Título" v={form.titulo} />
             {form.subtipo && (
           <Row

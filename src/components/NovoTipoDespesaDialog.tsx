@@ -74,15 +74,15 @@ export function NovoTipoDespesaDialog({
       });
       if (error) {
         if (String(error.code) === "23505") {
-          toast.error("Já existe um tipo de despesa com esse nome.");
+          toast.error("Já existe um tipo de aquisição com esse nome.");
         } else if (String(error.code) === "42501") {
-          toast.error("Você não tem permissão para criar tipos de despesa.");
+          toast.error("Você não tem permissão para criar tipos de aquisição.");
         } else {
           toast.error(error.message);
         }
         return;
       }
-      toast.success("Tipo de despesa criado!");
+      toast.success("Tipo de aquisição criado!");
       onCreated?.(slug);
       reset();
       onClose();
@@ -95,9 +95,9 @@ export function NovoTipoDespesaDialog({
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Novo tipo de despesa</DialogTitle>
+          <DialogTitle>Novo tipo de aquisição</DialogTitle>
           <DialogDescription>
-            O novo tipo fica disponível para todos os usuários no quadro de despesas e no
+            O novo tipo fica disponível para todos os usuários no quadro de aquisições e no
             formulário de solicitação.
           </DialogDescription>
         </DialogHeader>

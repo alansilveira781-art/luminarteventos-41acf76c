@@ -210,7 +210,7 @@ export function DemandaDialog({
         && !pagamentosBatem(pagamentosLimpos, Number(form.valor_total ?? 0))
       ) {
         throw new Error(
-          "A soma das formas de pagamento precisa ser igual ao valor total da despesa.",
+          "A soma das formas de pagamento precisa ser igual ao valor total da aquisição.",
         );
       }
       const pendencias = validarPagamentos(pagamentosLimpos);
@@ -390,7 +390,7 @@ export function DemandaDialog({
                   </SelectContent>
                 </Select>
               </FormField>
-              <FormField label="Tipo de Despesa">
+              <FormField label="Tipo de Aquisição">
                 <div className="flex items-center gap-2">
                   <SearchableSelect
                     className="flex-1"
@@ -406,7 +406,7 @@ export function DemandaDialog({
                       variant="outline"
                       size="sm"
                       onClick={() => setNovoTipoOpen(true)}
-                      title="Cadastrar novo tipo de despesa"
+                      title="Cadastrar novo tipo de aquisição"
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
@@ -486,7 +486,7 @@ export function DemandaDialog({
                     })}
                     className="h-4 w-4"
                   />
-                  <span className="text-muted-foreground">Marque se esta despesa terá NF</span>
+                  <span className="text-muted-foreground">Marque se esta aquisição terá NF</span>
                 </label>
               </FormField>
               {form.tem_nf !== false && (
@@ -599,7 +599,7 @@ export function DemandaDialog({
             {tipoRequerItens ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-medium text-muted-foreground">Itens da despesa</label>
+                  <label className="text-xs font-medium text-muted-foreground">Itens da aquisição</label>
                   <Button type="button" variant="outline" size="sm" onClick={addItem}>
                     <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar item
                   </Button>

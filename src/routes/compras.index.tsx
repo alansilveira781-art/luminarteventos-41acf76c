@@ -768,8 +768,8 @@ function Card({
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onMigrar(); }}
             className="shrink-0 p-0.5 text-muted-foreground hover:text-primary"
-            title="Migrar para Despesa"
-            aria-label="Migrar para Despesa"
+            title="Migrar para Aquisição"
+            aria-label="Migrar para Aquisição"
           >
             <ArrowRightLeft className="h-4 w-4" />
           </button>
@@ -822,7 +822,7 @@ function MigrarCompraDialog({
 
   async function handleConfirm() {
     if (!tipo) {
-      toast.error("Escolha o tipo de despesa.");
+      toast.error("Escolha o tipo de aquisição.");
       return;
     }
     if (!compra) return;
@@ -923,7 +923,7 @@ function MigrarCompraDialog({
         if (insItErr) throw insItErr;
       }
 
-      // 4b) Copiar anexos (download do bucket de compras → upload no de despesas)
+      // 4b) Copiar anexos (download do bucket de compras → upload no de aquisições)
       const pathsAntigos: string[] = [];
       for (const a of anexos) {
         const { data: blob, error: dlErr } = await sb.storage
@@ -994,7 +994,7 @@ function MigrarCompraDialog({
       if (delErr) throw delErr;
 
 
-      toast.success("Compra migrada para Despesa");
+      toast.success("Compra migrada para Aquisição");
       onDone();
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao migrar compra");
@@ -1007,14 +1007,14 @@ function MigrarCompraDialog({
     <Dialog open={!!compra} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Migrar para Despesa</DialogTitle>
+          <DialogTitle>Migrar para Aquisição</DialogTitle>
           <DialogDescription>
-            Esta compra será convertida em uma despesa e removida do Quadro de Compras.
+            Esta compra será convertida em uma aquisição e removida do Quadro de Compras.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Tipo de despesa</label>
+          <label className="text-sm font-medium">Tipo de aquisição</label>
           <Select value={tipo} onValueChange={setTipo}>
             <SelectTrigger>
               <SelectValue placeholder="Selecione o tipo…" />

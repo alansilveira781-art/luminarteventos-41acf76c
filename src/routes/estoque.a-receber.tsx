@@ -132,7 +132,7 @@ function AReceberPage() {
     <>
       <PageHeader
         title="Recebimentos a validar"
-        description="Compras e despesas de material aguardando entrada no estoque"
+        description="Compras e aquisições de material aguardando entrada no estoque"
       />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -168,9 +168,9 @@ function AReceberPage() {
         {demandas.map((d) => (
           <Card key={d.id} className="p-4 space-y-2">
             <div className="flex items-start justify-between gap-2">
-              <div className="font-medium">{d.titulo || d.fornecedor || "Despesa"}</div>
+              <div className="font-medium">{d.titulo || d.fornecedor || "Aquisição"}</div>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">
-                {d.numero != null ? `DESPESA-${d.numero}` : "DESPESA"}
+                {d.numero != null ? `AQUISIÇÃO-${d.numero}` : "AQUISIÇÃO"}
               </span>
             </div>
             <div className="text-xs text-muted-foreground space-y-0.5">
@@ -840,7 +840,7 @@ function ReceberDemandaDialog({ demandaId, demandaNumero, onClose }: { demandaId
         .eq("id", demandaId)
         .maybeSingle();
       if (error) throw error;
-      if (!data) throw new Error("Despesa não encontrada");
+      if (!data) throw new Error("Aquisição não encontrada");
       return data as any;
     },
   });
@@ -957,16 +957,16 @@ function ReceberDemandaDialog({ demandaId, demandaNumero, onClose }: { demandaId
       const { data: statusRow, error: statusErr } = await sb
         .from("demandas").select("status").eq("id", demandaId).maybeSingle();
       if (statusErr) throw statusErr;
-      if (!statusRow) throw new Error("Despesa não encontrada");
+      if (!statusRow) throw new Error("Aquisição não encontrada");
       if (statusRow.status !== "a_receber") {
-        throw new Error(`Esta despesa não está mais em 'A Receber' (status atual: ${statusRow.status}).`);
+        throw new Error(`Esta aquisição não está mais em 'A Receber' (status atual: ${statusRow.status}).`);
       }
 
       const dataIso = fromBRTInputDateTime(dataMovimento);
       const { data: numData, error: numErr } = await sb.rpc("next_requisicao_numero");
       if (numErr) throw numErr;
       const requisicaoNumero = numData as number;
-      const origem = (demandaNumero ?? demanda?.numero) != null ? `DESPESA-${demandaNumero ?? demanda?.numero}` : demandaId;
+      const origem = (demandaNumero ?? demanda?.numero) != null ? `AQUISIÇÃO-${demandaNumero ?? demanda?.numero}` : demandaId;
 
       for (const it of demandaItens as any[]) {
         const itemId = it.item_id || itemMap[it.id];
@@ -999,7 +999,7 @@ function ReceberDemandaDialog({ demandaId, demandaNumero, onClose }: { demandaId
           nota_fiscal: notaFiscal || null,
           responsavel_recebimento: demanda?.comprador ?? null,
           responsavel_lancamento: demanda?.comprador ?? null,
-          observacoes: `Recebimento da despesa ${origem}${fornecedorNome ? ` - Fornecedor: ${fornecedorNome}` : ""}`,
+          observacoes: `Recebimento da aquisição ${origem}${fornecedorNome ? ` - Fornecedor: ${fornecedorNome}` : ""}`,
         });
         if (error) throw error;
 
@@ -1020,7 +1020,7 @@ function ReceberDemandaDialog({ demandaId, demandaNumero, onClose }: { demandaId
       if (updErr) throw updErr;
     },
     onSuccess: () => {
-      toast.success("Recebimento registrado e despesa finalizada");
+      toast.success("Recebimento registrado e aquisição finalizada");
       qc.invalidateQueries({ queryKey: ["demandas"] });
       qc.invalidateQueries({ queryKey: ["demandas-receber"] });
       qc.invalidateQueries({ queryKey: ["itens-min"] });
@@ -1039,9 +1039,9 @@ function ReceberDemandaDialog({ demandaId, demandaNumero, onClose }: { demandaId
       const { data: statusRow, error: statusErr } = await sb
         .from("demandas").select("status").eq("id", demandaId).maybeSingle();
       if (statusErr) throw statusErr;
-      if (!statusRow) throw new Error("Despesa não encontrada");
+      if (!statusRow) throw new Error("Aquisição não encontrada");
       if (statusRow.status !== "a_receber") {
-        throw new Error(`Esta despesa não está mais em 'A Receber' (status: ${statusRow.status}).`);
+        throw new Error(`Esta aquisição não está mais em 'A Receber' (status: ${statusRow.status}).`);
       }
 
       const { error: updErr } = await sb
@@ -1055,11 +1055,11 @@ function ReceberDemandaDialog({ demandaId, demandaNumero, onClose }: { demandaId
         demanda_id: demandaId,
         user_id: user?.id ?? null,
         user_nome: user?.user_metadata?.full_name ?? user?.email ?? "Estoque",
-        texto: `🔄 Devolvido para Despesa Em Andamento\nMotivo: ${motivoDevolucao.trim()}`,
+        texto: `🔄 Devolvido para Aquisição Em Andamento\nMotivo: ${motivoDevolucao.trim()}`,
       });
     },
     onSuccess: () => {
-      toast.success("Despesa devolvida para 'Em Andamento' no Quadro de Despesas");
+      toast.success("Aquisição devolvida para 'Em Andamento' no Quadro de Aquisições");
       qc.invalidateQueries({ queryKey: ["demandas"] });
       qc.invalidateQueries({ queryKey: ["demandas-receber"] });
       setDevolverOpen(false);
@@ -1077,7 +1077,7 @@ function ReceberDemandaDialog({ demandaId, demandaNumero, onClose }: { demandaId
           <DialogTitle className="flex items-center gap-2 flex-wrap">
             <span>Validar recebimento</span>
             <span className="text-xs font-mono px-2 py-0.5 rounded bg-muted">
-              DESPESA-{demandaNumero ?? demanda?.numero ?? "—"}
+              AQUISIÇÃO-{demandaNumero ?? demanda?.numero ?? "—"}
             </span>
           </DialogTitle>
         </DialogHeader>
@@ -1092,7 +1092,7 @@ function ReceberDemandaDialog({ demandaId, demandaNumero, onClose }: { demandaId
           <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
             <AlertTriangle className="h-4 w-4 mt-0.5 text-destructive shrink-0" />
             <div>
-              Esta despesa não está mais em <strong>A Receber</strong> (status atual: <strong>{demanda?.status}</strong>).
+              Esta aquisição não está mais em <strong>A Receber</strong> (status atual: <strong>{demanda?.status}</strong>).
             </div>
           </div>
         )}
@@ -1114,7 +1114,7 @@ function ReceberDemandaDialog({ demandaId, demandaNumero, onClose }: { demandaId
           </div>
           <div>
             <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Tipo de entrada</label>
-            <Input value="Despesa" readOnly className="bg-muted/40" />
+            <Input value="Aquisição" readOnly className="bg-muted/40" />
           </div>
           <div>
             <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Fornecedor*</label>
@@ -1136,7 +1136,7 @@ function ReceberDemandaDialog({ demandaId, demandaNumero, onClose }: { demandaId
         <div className="space-y-2">
           <h3 className="text-sm font-semibold">Itens recebidos</h3>
           {demandaItens.length === 0 && (
-            <p className="text-sm text-muted-foreground">Nenhum item cadastrado nesta despesa.</p>
+            <p className="text-sm text-muted-foreground">Nenhum item cadastrado nesta aquisição.</p>
           )}
           {(demandaItens as any[]).map((it) => {
             const extra = getExtra(it);
@@ -1280,7 +1280,7 @@ function ReceberDemandaDialog({ demandaId, demandaNumero, onClose }: { demandaId
               onClick={() => setDevolverOpen(true)}
               disabled={!!statusBlocked || finalizar.isPending}
             >
-              <Undo2 className="h-4 w-4 mr-1" /> Devolver para Despesas
+              <Undo2 className="h-4 w-4 mr-1" /> Devolver para Aquisições
             </Button>
             <div className="text-sm">
               <span className="text-muted-foreground">Total do recebimento: </span>
@@ -1305,11 +1305,11 @@ function ReceberDemandaDialog({ demandaId, demandaNumero, onClose }: { demandaId
           <Dialog open onOpenChange={(v) => { if (!v) setDevolverOpen(false); }}>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Devolver para Despesa Em Andamento</DialogTitle>
+                <DialogTitle>Devolver para Aquisição Em Andamento</DialogTitle>
               </DialogHeader>
               <div className="space-y-3 py-2">
                 <p className="text-sm text-muted-foreground">
-                  O card voltará para a coluna <strong>Despesa Em Andamento</strong> no Quadro de Despesas. O motivo ficará registrado nos comentários da despesa.
+                  O card voltará para a coluna <strong>Aquisição Em Andamento</strong> no Quadro de Aquisições. O motivo ficará registrado nos comentários da aquisição.
                 </p>
                 <div>
                   <label className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">
