@@ -46,6 +46,7 @@ const NOMES_FERRAMENTAS: Record<string, string> = {
   consultar_estoque: "Consultando estoque",
   resumo_financeiro: "Calculando resumo financeiro",
   gastos_por_centro_custo: "Somando rateios por centro de custo",
+  consultar_uber: "Consultando corridas Uber",
 };
 
 function AssistentePage() {
