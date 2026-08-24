@@ -85,9 +85,9 @@ const allItems: NavItem[] = [
   { title: "Quadro de Compras", url: "/compras", icon: KanbanSquare, group: "Compras", module: "compras" },
   { title: "Relatórios", url: "/compras/relatorios", icon: FileBarChart, group: "Compras", module: "compras" },
   { title: "Configurações", url: "/compras/configuracoes", icon: Settings, group: "Compras", module: "compras", moduleAdminOnly: "compras" },
-  { title: "Dashboard", url: "/financeiro/dashboard", icon: BarChart3, group: "Despesas", module: "financeiro" },
-  { title: "Quadro de Despesas", url: "/financeiro", icon: KanbanSquare, group: "Despesas", module: "financeiro" },
-  { title: "Configurações", url: "/financeiro/configuracoes", icon: Settings, group: "Despesas", module: "financeiro", moduleAdminOnly: "financeiro" },
+  { title: "Dashboard", url: "/financeiro/dashboard", icon: BarChart3, group: "AquisiÃ§Ãµes", module: "financeiro" },
+  { title: "Quadro de AquisiÃ§Ãµes", url: "/financeiro", icon: KanbanSquare, group: "AquisiÃ§Ãµes", module: "financeiro" },
+  { title: "Configurações", url: "/financeiro/configuracoes", icon: Settings, group: "AquisiÃ§Ãµes", module: "financeiro", moduleAdminOnly: "financeiro" },
 
   { title: "Dashboard", url: "/financeiro-op/dashboard", icon: BarChart3, group: "Financeiro", module: "financeiro_op" },
   { title: "Diaristas", url: "/financeiro-op/diaristas", icon: Users2, group: "Financeiro", module: "financeiro_op", diaristaLancador: true },
@@ -140,7 +140,7 @@ const allItems: NavItem[] = [
   { title: "Administração", url: "/admin", icon: Shield, group: "Administração", adminOnly: true },
 ];
 
-const groups = ["Visão geral", "Estoque", "Compras", "Despesas", "Financeiro", "Comercial", "Eventos", "Contábil", "Jurídico", "Patrimônio", "Operação", "Recursos Humanos", "Administração"];
+const groups = ["Visão geral", "Estoque", "Compras", "AquisiÃ§Ãµes", "Financeiro", "Comercial", "Eventos", "Contábil", "Jurídico", "Patrimônio", "Operação", "Recursos Humanos", "Administração"];
 
 
 const ESTOQUE_ROUTES = ["/dashboard", "/estoque", "/solicitantes", "/fornecedores", "/entradas", "/saidas", "/devolucoes", "/relatorios"];

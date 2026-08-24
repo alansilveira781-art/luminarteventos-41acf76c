@@ -206,7 +206,7 @@ function DemandasKanban() {
   ) {
     if (demanda.status === status) return;
     if (status === "a_receber" && !tiposDespesa.vaiParaRecebimento(demanda.tipo_demanda)) {
-      toast.error('Este tipo de despesa não gera recebimento em Estoque ou Patrimônio, então não pode ir para "A Receber".');
+      toast.error('Este tipo de aquisiÃ§Ã£o não gera recebimento em Estoque ou Patrimônio, então não pode ir para "A Receber".');
       return;
     }
     const id = demanda.id;
@@ -223,7 +223,7 @@ function DemandasKanban() {
       });
       notifyResponsavel({
         userId: def.responsavel_id,
-        titulo: `Despesa: ${statusLabel}`,
+        titulo: `AquisiÃ§Ã£o: ${statusLabel}`,
         mensagem: titulo,
         link: `/financeiro?id=${id}`,
         tipo: "compra_responsavel",
@@ -259,7 +259,7 @@ function DemandasKanban() {
   return (
     <>
       <PageHeader
-        title="Quadro de Despesas"
+        title="Quadro de AquisiÃ§Ãµes"
         description="Arraste os cards entre as colunas para alterar o status"
         actions={
           <Button onClick={() => { setEditId(null); setDefaultStatus("solicitacao"); limparUrlCard(); setOpen(true); }}>
@@ -377,7 +377,7 @@ function DemandasKanban() {
           moveStatus.mutate({ id, status, responsavelId, responsavelNome });
           notifyResponsavel({
             userId: responsavelId,
-            titulo: `Despesa: ${statusLabel}`,
+            titulo: `AquisiÃ§Ã£o: ${statusLabel}`,
             mensagem: `${titulo}${observacao ? ` — ${observacao}` : ""}`,
             link: `/financeiro?id=${id}`,
             tipo: "compra_responsavel",
@@ -422,7 +422,7 @@ function Card({
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: demanda.id });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
-  // Despesa parcelada (datas de pagamento diferentes) e ainda em aberto → âmbar
+  // AquisiÃ§Ã£o parcelada (datas de pagamento diferentes) e ainda em aberto → âmbar
   const parceladoPendente = !!pagto?.parcelado && !pagto?.quitado;
   return (
     <div

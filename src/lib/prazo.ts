@@ -1,4 +1,4 @@
-// Utilitários do campo "Prazo" (data limite) usado em Compras, Despesas e Solicitações.
+// Utilitários do campo "Prazo" (data limite) usado em Compras, AquisiÃ§Ãµes e Solicitações.
 
 const TZ = "America/Sao_Paulo";
 

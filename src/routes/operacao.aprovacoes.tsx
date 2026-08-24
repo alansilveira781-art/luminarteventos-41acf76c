@@ -72,7 +72,7 @@ function Aprovacoes() {
               <TableRow key={r.id}>
                 <TableCell className="font-mono text-xs">
                   <Link to={base} search={{ id: r.id } as any} className="hover:underline">
-                    {tabela === "compras" ? "COMPRA" : "DESPESA"}-{r.numero ?? "?"}
+                    {tabela === "compras" ? "COMPRA" : "AQUISIÃÃO"}-{r.numero ?? "?"}
                   </Link>
                 </TableCell>
                 <TableCell>{r.titulo}</TableCell>
@@ -108,7 +108,7 @@ function Aprovacoes() {
         <Tab tabela="compras" rows={compras} base="/compras" />
       </div>
       <div className="space-y-2">
-        <div className="text-sm font-medium">Despesas ({demandas.length})</div>
+        <div className="text-sm font-medium">AquisiÃ§Ãµes ({demandas.length})</div>
         <Tab tabela="demandas" rows={demandas} base="/financeiro" />
       </div>
     </div>

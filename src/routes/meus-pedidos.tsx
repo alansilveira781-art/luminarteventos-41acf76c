@@ -271,7 +271,7 @@ function PedidoCard({ pedido, onOpen }: { pedido: Pedido; onOpen: () => void }) 
                   : "bg-accent/10 text-accent border-accent/30",
               )}
             >
-              {pedido.tipo === "compra" ? "Compra" : "Despesa"}
+              {pedido.tipo === "compra" ? "Compra" : "AquisiÃ§Ã£o"}
             </span>
             <span
               className={cn(
@@ -434,7 +434,7 @@ function PedidoDetalheDialog({
 
         <div className="space-y-3 text-sm">
           <div className="grid grid-cols-2 gap-3">
-            <Info label="Tipo" value={pedido.tipo === "compra" ? "Compra" : "Despesa"} />
+            <Info label="Tipo" value={pedido.tipo === "compra" ? "Compra" : "AquisiÃ§Ã£o"} />
             <Info label="Categoria" value={pedido.categoria ?? "—"} />
             <Info label="Fornecedor" value={pedido.fornecedor ?? "—"} />
             <Info label="Solicitante" value={pedido.solicitante ?? "—"} />
