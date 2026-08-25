@@ -1002,7 +1002,8 @@ function DetalheOSDialog({
           </div>
           <div>
             <Label>Recebido por</Label>
-            <Input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} />
+            <ComboboxCreatable options={colaboradores} value={responsavel} onChange={setResponsavel} placeholder="Selecione o colaborador…" />
+
           </div>
           <div>
             <Label>Observações</Label>
