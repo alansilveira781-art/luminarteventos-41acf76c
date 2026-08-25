@@ -878,10 +878,16 @@ async function persistRateios(items: any[], tipo: "pagar" | "receber", syncedAt:
       const chunk = ids.slice(i, i + 500);
       const { data } = await sb
         .from(tabela)
-        .select("external_id,detalhe_synced_at")
+        .select("external_id,detalhe_synced_at,data_pagamento,status")
         .in("external_id", chunk)
         .gte("detalhe_synced_at", cutoff);
-      (data ?? []).forEach((r: any) => alreadyEnriched.add(String(r.external_id)));
+      (data ?? []).forEach((r: any) => {
+        const item = items.find((it: any) => String(it.id) === String(r.external_id));
+        const itemPago = normalizeStatus(item?.status_traduzido ?? item?.status) === "pago";
+        if (!itemPago || getDataPagamento(item) || r.data_pagamento) {
+          alreadyEnriched.add(String(r.external_id));
+        }
+      });
     }
   }
 
