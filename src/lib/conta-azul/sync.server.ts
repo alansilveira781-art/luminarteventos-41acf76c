@@ -253,11 +253,43 @@ function normalizeStatus(s?: string) {
   return "em_aberto";
 }
 
+function getBaixas(it: any): any[] {
+  return Array.isArray(it?.baixas)
+    ? it.baixas.filter((baixa: any) => baixa && typeof baixa === "object")
+    : [];
+}
+
+function getDataPagamento(it: any): string | null {
+  if (it?.data_pagamento) return String(it.data_pagamento).slice(0, 10);
+  const datas = getBaixas(it)
+    .map((baixa: any) => baixa.data_pagamento)
+    .filter(Boolean)
+    .map((data: unknown) => String(data).slice(0, 10))
+    .sort();
+  return datas.at(-1) ?? null;
+}
+
+function getValorRealizado(it: any): number | null {
+  const baixas = getBaixas(it);
+  if (baixas.length > 0) {
+    const total = baixas.reduce((soma: number, baixa: any) => {
+      const composicao = baixa.valor_composicao;
+      const valor = composicao?.valor_liquido ?? composicao?.valor_bruto ?? baixa.valor ?? 0;
+      return soma + Math.abs(Number(valor || 0));
+    }, 0);
+    if (total > 0) return Math.round(total * 100) / 100;
+  }
+  const valorPago = Number(it?.valor_pago ?? it?.pago ?? 0);
+  return valorPago > 0 ? Math.round(Math.abs(valorPago) * 100) / 100 : null;
+}
+
 function mapEvento(it: any, syncedAt: string, pessoaKey: "fornecedor_nome" | "cliente_nome") {
   const pessoaNome =
     pessoaKey === "fornecedor_nome"
       ? (it.fornecedor?.nome ?? null)
       : (it.cliente?.nome ?? it.fornecedor?.nome ?? null);
+  const status = normalizeStatus(it.status_traduzido ?? it.status);
+  const valorRealizado = status === "pago" ? getValorRealizado(it) : null;
   return {
     external_id: String(it.id),
     descricao: it.descricao ?? null,
@@ -267,10 +299,10 @@ function mapEvento(it: any, syncedAt: string, pessoaKey: "fornecedor_nome" | "cl
       it.centros_de_custo?.[0]?.id ? String(it.centros_de_custo[0].id)
       : it.centros_custo?.[0]?.id ? String(it.centros_custo[0].id)
       : null,
-    valor: Number(it.total ?? 0),
+    valor: valorRealizado ?? Number(it.total ?? it.valor_composicao?.valor_liquido ?? 0),
     data_vencimento: it.data_vencimento ?? null,
-    data_pagamento: it.data_pagamento ?? null,
-    status: normalizeStatus(it.status_traduzido ?? it.status),
+    data_pagamento: getDataPagamento(it),
+    status,
     documento: it.numero_documento ?? null,
     observacoes: it.observacoes ?? null,
     synced_at: syncedAt,
@@ -666,6 +698,8 @@ function isRateado(it: any): boolean {
  *   - é rateado (>=2 centros ou categorias) — precisa do detalhe p/ valor da fatia; OU
  *   - não tem centro OU não tem categoria na listagem. */
 function needsDetail(it: any): boolean {
+  const status = normalizeStatus(it.status_traduzido ?? it.status);
+  if (status === "pago" && !getDataPagamento(it)) return true;
   if (isRateado(it)) return true;
   const ccs = Array.isArray(it.centros_de_custo) ? it.centros_de_custo : [];
   const cats = Array.isArray(it.categorias) ? it.categorias : [];
@@ -857,6 +891,13 @@ async function persistRateios(items: any[], tipo: "pagar" | "receber", syncedAt:
     deadline,
     alreadyEnriched,
   );
+  if (enrichedIds.size > 0) {
+    const pessoaKey = tipo === "pagar" ? "fornecedor_nome" : "cliente_nome";
+    const parentRows = enriched
+      .filter((it: any) => enrichedIds.has(String(it.id)))
+      .map((it: any) => mapEvento(it, syncedAt, pessoaKey));
+    if (parentRows.length > 0) await upsertBatched(tabela, parentRows, "external_id");
+  }
   const allRateios: any[] = [];
   const lancIdsWithRateios: string[] = [];
   for (const it of enriched) {
@@ -1621,6 +1662,9 @@ export async function reprocessarRateios(
     processados++;
     try {
       const detail = await fetchDetalheComRetry(alvo.id);
+      const tabela = alvo.tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
+      const pessoaKey = alvo.tipo === "pagar" ? "fornecedor_nome" : "cliente_nome";
+      await sb.from(tabela).upsert(mapEvento(detail, syncedAt, pessoaKey), { onConflict: "external_id" });
       const rs = buildRateios(detail, alvo.tipo, syncedAt);
       if (!rs || rs.length === 0) {
         falhas++;
@@ -1628,14 +1672,12 @@ export async function reprocessarRateios(
           detalhes.push(`${alvo.id}: payload sem valor/percentual por centro`);
         }
         // Ainda assim marcamos como "visto" para não travar a fila neste item.
-        const tabela = alvo.tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
         await sb.from(tabela).update({ detalhe_synced_at: syncedAt }).eq("external_id", alvo.id);
         await new Promise((r) => setTimeout(r, SLEEP_MS));
         continue;
       }
       await sb.from("ca_lancamento_rateios").delete().eq("tipo", alvo.tipo).eq("lancamento_external_id", alvo.id);
       await sb.from("ca_lancamento_rateios").insert(rs);
-      const tabela = alvo.tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
       await sb.from(tabela).update({ detalhe_synced_at: syncedAt }).eq("external_id", alvo.id);
       corrigidos++;
       if (detalhes.length < 20) detalhes.push(`${alvo.id}: ${rs.length} fatias atualizadas`);
