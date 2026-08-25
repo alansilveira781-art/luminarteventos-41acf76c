@@ -207,6 +207,18 @@ function ComprasKanban() {
     staleTime: 1000 * 60 * 5,
   });
 
+  // Responsáveis padrão das Aquisições (tabela demandas)
+  const { data: statusDefaultsDemanda = [] } = useQuery({
+    queryKey: ["financeiro_status_defaults"],
+    queryFn: async () => {
+      const { data } = await sb
+        .from("financeiro_status_defaults")
+        .select("status, responsavel_id, responsavel_nome");
+      return (data ?? []) as { status: CompraStatus; responsavel_id: string | null; responsavel_nome: string | null }[];
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
   const responsavelDoStatus = (status?: CompraStatus | null): string | null => {
     if (!status) return null;
     const def = statusDefaults.find((d) => d.status === status && d.responsavel_id);
@@ -224,11 +236,12 @@ function ComprasKanban() {
 
   const filterFields = useMemo<FieldDef<Compra>[]>(() => [
     { key: "status", label: "Status", type: "multi", getValue: (r) => r.status, formatValue: (v) => COMPRA_STATUSES.find((s) => s.key === v)?.label ?? v },
+    { key: "origem", label: "Origem", type: "multi", getValue: (r) => (r.origem === "demanda" ? "Aquisição" : "Compra") },
     { key: "fornecedor", label: "Fornecedor", type: "multi", getValue: (r) => r.fornecedor },
     { key: "solicitante", label: "Solicitante", type: "multi", getValue: (r) => r.solicitante },
     { key: "comprador", label: "Comprador", type: "multi", getValue: (r) => r.comprador },
     { key: "responsavel_nome", label: "Responsável", type: "multi", getValue: (r) => r.responsavel_nome },
-    { key: "tipo_compra", label: "Tipo", type: "multi", getValue: (r) => r.tipo_compra },
+    { key: "tipo_compra", label: "Tipo", type: "multi", getValue: (r) => r.tipo_compra ?? r.tipo_demanda },
     { key: "empresa_faturada", label: "Empresa faturada", type: "multi", getValue: (r) => (r as any).empresa_faturada },
     { key: "tem_nf", label: "Tem NF", type: "multi", getValue: (r) => ((r as any).tem_nf === false ? "Não" : (r as any).tem_nf === true ? "Sim" : null) },
     { key: "data_compra", label: "Data de compra", type: "date-range", getValue: (r) => r.data_compra },
@@ -237,15 +250,16 @@ function ComprasKanban() {
   ], []);
 
   const filteredCompras = useMemo(() => {
-    let base = applyKanbanFilters(compras, filters, filterFields);
+    let base = applyKanbanFilters(cards, filters, filterFields);
     const s = qd.toLowerCase().trim();
     if (!s) return base;
     return base.filter((c) => {
-      const num = c.numero != null ? `compra-${c.numero}` : "";
+      const num = codigoCard(c).toLowerCase();
       return [num, String(c.numero ?? ""), c.titulo, c.solicitante, c.fornecedor, c.comprador]
         .some((v) => String(v ?? "").toLowerCase().includes(s));
     });
-  }, [compras, qd, filters, filterFields]);
+  }, [cards, qd, filters, filterFields]);
+
 
   const byStatus = useMemo(() => {
     const m: Record<CompraStatus, Compra[]> = {} as any;
