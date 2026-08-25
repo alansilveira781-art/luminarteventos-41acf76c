@@ -575,7 +575,7 @@ function ComprasKanban() {
         title="Compras"
         description="Arraste os cards entre as colunas para alterar o status"
         actions={
-          <Button onClick={() => { setEditId(null); setDefaultStatus("solicitacao"); setOpen(true); }}>
+          <Button onClick={() => setEscolherTipo("solicitacao")}>
             <Plus className="h-4 w-4 mr-1" /> Nova compra
           </Button>
         }
@@ -591,12 +591,15 @@ function ComprasKanban() {
             className="pl-9"
           />
         </div>
-        <KanbanFilters rows={compras} fields={filterFields} value={filters} onChange={setFilters} />
+        <KanbanFilters rows={cards} fields={filterFields} value={filters} onChange={setFilters} />
       </div>
 
       {selectedIds.size > 0 && (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm">
           <span className="font-medium">{selectedIds.size} card(s) selecionado(s)</span>
+          <span className="rounded bg-background/70 px-2 py-0.5 font-semibold">
+            Total: {formatBRL(selectedTotal)}
+          </span>
           <div className="flex flex-wrap items-center gap-2 ml-auto">
             <Select value={bulkTarget} onValueChange={(v) => setBulkTarget(v as CompraStatus)}>
               <SelectTrigger className="h-8 w-56">
@@ -639,14 +642,14 @@ function ComprasKanban() {
               <button
                 key={c.id}
                 type="button"
-                onClick={() => { setEditId(c.id); setOpen(true); }}
+                onClick={() => abrirCard(c)}
                 className="w-full text-left p-3 hover:bg-muted/50 flex items-center gap-3 text-sm"
               >
-                <span className="text-[11px] font-mono text-muted-foreground w-24 shrink-0">
-                  {c.numero != null ? `COMPRA-${c.numero}` : "—"}
+                <span className="text-[11px] font-mono text-muted-foreground w-28 shrink-0">
+                  {codigoCard(c)}
                 </span>
                 <span className="flex-1 min-w-0 truncate font-medium">
-                  {c.titulo || c.fornecedor || "Compra sem título"}
+                  {c.titulo || c.fornecedor || (c.origem === "demanda" ? "Aquisição sem título" : "Compra sem título")}
                 </span>
                 <span className="hidden sm:block text-xs text-muted-foreground truncate w-32">
                   {c.fornecedor || "—"}
@@ -670,14 +673,19 @@ function ComprasKanban() {
           {COMPRA_STATUSES.map((s) => (
             <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={byStatus[s.key]?.length ?? 0}>
               {(byStatus[s.key] ?? []).map((c) => {
-                const next = nextCompraStatus(c.status);
+                const isDemanda = c.origem === "demanda";
+                const next = isDemanda
+                  ? proximoStatusDemanda(c.status, c.tipo_demanda ?? null, tiposDespesa.paraRecebimento)
+                  : nextCompraStatus(c.status);
                 const back = compraBackStatus(c.status);
                 const atalho = isNatanaelShortcut(user?.email, c.status, "finalizado");
-                const canMove =
-                  atalho ||
-                  canMoveCompra(c, user?.id, isAdmin, user?.email, next ?? undefined, c.status, responsavelDoStatus(next), responsavelDoStatus(c.status)) ||
-                  (!!back && canMoveCompra(c, user?.id, isAdmin, user?.email, back, c.status, responsavelDoStatus(back), responsavelDoStatus(c.status)));
+                const canMove = isDemanda
+                  ? true
+                  : atalho ||
+                    canMoveCompra(c, user?.id, isAdmin, user?.email, next ?? undefined, c.status, responsavelDoStatus(next), responsavelDoStatus(c.status)) ||
+                    (!!back && canMoveCompra(c, user?.id, isAdmin, user?.email, back, c.status, responsavelDoStatus(back), responsavelDoStatus(c.status)));
                 const canMigrate =
+                  !isDemanda &&
                   (c.status === "solicitacao" || c.status === "a_receber") &&
                   canEditCompra(c, user?.id, isAdmin, user?.email, responsavelDoStatus(c.status));
 
@@ -685,7 +693,7 @@ function ComprasKanban() {
                   <Card
                     key={c.id}
                     compra={c}
-                    onOpen={() => { setEditId(c.id); setOpen(true); }}
+                    onOpen={() => abrirCard(c)}
                     nextStatusLabel={next ? (COMPRA_STATUSES.find((x) => x.key === next)?.label ?? null) : null}
                     onAdvance={next ? () => { void advanceToStatus(c, next); } : undefined}
                     canMove={canMove}
@@ -698,6 +706,7 @@ function ComprasKanban() {
                 );
 
               })}
+
               <button
                 type="button"
                 onClick={() => { setEditId(null); setDefaultStatus(s.key); setOpen(true); }}
