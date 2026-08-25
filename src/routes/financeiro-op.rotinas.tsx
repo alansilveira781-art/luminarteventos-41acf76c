@@ -1071,6 +1071,121 @@ function ExecucaoRotinas({ rotinas }: { rotinas: Rotina[] }) {
   );
 }
 
+function HistoricoDialog({ rotinas, onClose }: { rotinas: Rotina[]; onClose: () => void }) {
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const hoje = new Date();
+  const inicial = new Date();
+  inicial.setDate(inicial.getDate() - 30);
+
+  const [from, setFrom] = useState(iso(inicial));
+  const [to, setTo] = useState(iso(hoje));
+  const [rotinaFilter, setRotinaFilter] = useState<string>("__all");
+
+  const atalho = (dias: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() - dias);
+    setFrom(iso(d));
+    setTo(iso(new Date()));
+  };
+  const mesAtual = () => {
+    const d = new Date();
+    setFrom(iso(new Date(d.getFullYear(), d.getMonth(), 1)));
+    setTo(iso(new Date()));
+  };
+
+  const { data: itens = [], isLoading } = useQuery({
+    queryKey: ["rotina-execucoes-historico", from, to],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("financeiro_rotina_execucoes" as any)
+        .select("*")
+        .gte("data_referencia", from)
+        .lte("data_referencia", to)
+        .order("data_referencia", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return (data ?? []) as unknown as Execucao[];
+    },
+  });
+
+  const filtrados = useMemo(
+    () => (rotinaFilter === "__all" ? itens : itens.filter((e) => e.rotina_id === rotinaFilter)),
+    [itens, rotinaFilter],
+  );
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>Histórico de execuções</DialogTitle>
+        </DialogHeader>
+
+        <div className="flex flex-wrap items-end gap-2">
+          <div>
+            <div className="text-xs text-muted-foreground mb-1">De</div>
+            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-40" />
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground mb-1">Até</div>
+            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-40" />
+          </div>
+          <div className="flex gap-1">
+            <Button size="sm" variant="outline" onClick={() => atalho(7)}>7 dias</Button>
+            <Button size="sm" variant="outline" onClick={() => atalho(30)}>30 dias</Button>
+            <Button size="sm" variant="outline" onClick={mesAtual}>Mês atual</Button>
+          </div>
+          <div className="min-w-[200px]">
+            <div className="text-xs text-muted-foreground mb-1">Rotina</div>
+            <Select value={rotinaFilter} onValueChange={setRotinaFilter}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">Todas</SelectItem>
+                {rotinas.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>{r.titulo}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="max-h-[55vh] overflow-auto border rounded">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground sticky top-0">
+              <tr>
+                <th className="px-3 py-2 text-left">Rotina</th>
+                <th className="px-3 py-2 text-left">Data ref.</th>
+                <th className="px-3 py-2 text-left">Executada por</th>
+                <th className="px-3 py-2 text-left">Anexos</th>
+                <th className="px-3 py-2 text-left">Observações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading && (
+                <tr><td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">Carregando…</td></tr>
+              )}
+              {!isLoading && filtrados.length === 0 && (
+                <tr><td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">Nenhuma execução no período</td></tr>
+              )}
+              {filtrados.map((e) => {
+                const r = rotinas.find((x) => x.id === e.rotina_id);
+                return (
+                  <tr key={e.id} className="border-t hover:bg-muted/20 align-top">
+                    <td className="px-3 py-2">{r?.titulo ?? "—"}</td>
+                    <td className="px-3 py-2 text-xs">{fmtDate(e.data_referencia)}</td>
+                    <td className="px-3 py-2 text-xs">{e.executada_por_nome ?? "—"}</td>
+                    <td className="px-3 py-2"><AnexosLinks execucaoId={e.id} /></td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">{e.observacoes ?? "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function AnexosLinks({ execucaoId }: { execucaoId: string }) {
   const [preview, setPreview] = useState<any | null>(null);
   const { data: anexos = [] } = useQuery({
