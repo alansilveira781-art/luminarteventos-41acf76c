@@ -1,4 +1,5 @@
 import logoUrl from "@/assets/luminart-logo.png";
+import { compareFamiliaNomeMedida } from "@/lib/patrimonio/ordenacao";
 
 // Relatório de uma O.S. de patrimônio (A4 retrato).
 
@@ -39,6 +40,43 @@ export type OSPdfParams = {
 };
 
 const dt = (v?: string | null) => (v ? String(v).slice(0, 10).split("-").reverse().join("/") : "—");
+
+const chaveMaterial = (nome: string, especificacao?: string | null) =>
+  `${(nome || "").trim().toLowerCase()}|${(especificacao || "").trim().toLowerCase()}`;
+
+/** Agrupa lançamentos iguais (nome + especificação) somando as quantidades. */
+function agruparItens(itens: OSPdfItem[]) {
+  const map = new Map<
+    string,
+    OSPdfItem & { codigos: Set<string>; registros: number }
+  >();
+  for (const i of itens) {
+    const k = chaveMaterial(i.nome, i.especificacao);
+    let g = map.get(k);
+    if (!g) {
+      g = {
+        nome: i.nome,
+        especificacao: i.especificacao ?? null,
+        unidade: i.unidade ?? null,
+        id_item: null,
+        quantidade: 0,
+        devolvida: 0,
+        perdida: 0,
+        codigos: new Set<string>(),
+        registros: 0,
+      };
+      map.set(k, g);
+    }
+    g.quantidade += Number(i.quantidade || 0);
+    g.devolvida += Number(i.devolvida || 0);
+    g.perdida += Number(i.perdida || 0);
+    g.registros += 1;
+    if (i.id_item) g.codigos.add(i.id_item);
+    if (!g.unidade && i.unidade) g.unidade = i.unidade;
+  }
+  return [...map.values()].sort((a, b) => compareFamiliaNomeMedida(a, b));
+}
+
 
 // Carrega a logo em data URL, recortando a margem vazia e preservando a proporção real.
 async function carregarLogo(): Promise<{ src: string; w: number; h: number } | null> {
@@ -171,15 +209,16 @@ export async function gerarOSPdf(p: OSPdfParams) {
     headStyles: { fillColor: [30, 30, 34], textColor: 255, fontSize: 9 },
     styles: { fontSize: 9, cellPadding: 2 },
     head: [["Material", "Identificação", "Un.", "Saiu", "Devolvido", "Perdido", "Pendente"]],
-    body: p.itens.map((i) => [
+    body: agruparItens(p.itens).map((i) => [
       `${i.nome}${i.especificacao ? ` — ${i.especificacao}` : ""}`,
-      i.id_item || "—",
+      i.codigos.size === 1 ? [...i.codigos][0] : i.codigos.size > 1 ? `vários (${i.codigos.size})` : "—",
       i.unidade || "—",
       String(i.quantidade),
       String(i.devolvida),
       String(i.perdida),
       String(Math.max(0, i.quantidade - i.devolvida - i.perdida)),
     ]),
+
     columnStyles: {
       3: { halign: "right", cellWidth: 15 },
       4: { halign: "right", cellWidth: 20 },
@@ -202,16 +241,33 @@ export async function gerarOSPdf(p: OSPdfParams) {
       headStyles: { fillColor: [30, 30, 34], textColor: 255, fontSize: 9 },
       styles: { fontSize: 8.5, cellPadding: 2 },
       head: [["Data", "Material", "Devolvido", "Faltante", "Motivo", "Justificativa"]],
-      body: devs.flatMap((d) =>
-        d.linhas.map((l) => [
-          dt(d.data),
-          l.material,
-          String(l.devolvida),
-          String(l.faltante),
-          l.motivo === "perda" ? "Perda" : l.motivo === "emprestimo" ? "Continua emprestado" : "—",
-          l.justificativa || "—",
-        ]),
-      ),
+      body: devs.flatMap((d) => {
+        const map = new Map<string, { material: string; devolvida: number; faltante: number; motivos: Set<string>; justificativas: Set<string> }>();
+        for (const l of d.linhas) {
+          const k = `${l.material}|${l.motivo ?? ""}`;
+          let g = map.get(k);
+          if (!g) {
+            g = { material: l.material, devolvida: 0, faltante: 0, motivos: new Set(), justificativas: new Set() };
+            map.set(k, g);
+          }
+          g.devolvida += Number(l.devolvida || 0);
+          g.faltante += Number(l.faltante || 0);
+          if (l.motivo) g.motivos.add(l.motivo);
+          if (l.justificativa) g.justificativas.add(l.justificativa);
+        }
+        return [...map.values()].map((g) => {
+          const motivo = g.motivos.size === 1 ? [...g.motivos][0] : null;
+          return [
+            dt(d.data),
+            g.material,
+            String(g.devolvida),
+            String(g.faltante),
+            motivo === "perda" ? "Perda" : motivo === "emprestimo" ? "Continua emprestado" : g.motivos.size > 1 ? "Vários" : "—",
+            g.justificativas.size ? [...g.justificativas].join(" · ") : "—",
+          ];
+        });
+      }),
+
       columnStyles: { 2: { halign: "right", cellWidth: 20 }, 3: { halign: "right", cellWidth: 18 } },
       margin: { left: marginX, right: marginX },
     });
