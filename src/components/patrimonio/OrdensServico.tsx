@@ -21,6 +21,7 @@ import {
   allocateFromGroup,
   type PatItem,
 } from "@/components/patrimonio/PatGroupSelect";
+import { ComboboxCreatable } from "@/components/ComboboxCreatable";
 import { normalize } from "@/lib/utils";
 
 type OS = {
