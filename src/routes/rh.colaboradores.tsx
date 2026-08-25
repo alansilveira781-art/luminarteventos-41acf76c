@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Power, Search, Printer, PencilLine, X, ChevronDown } from "lucide-react";
+import { Plus, Pencil, Trash2, Power, Search, Printer, PencilLine, X, ChevronDown, Paperclip } from "lucide-react";
 import logoUrl from "@/assets/luminart-logo.png";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { EdicaoLoteDialog } from "@/components/rh/EdicaoLoteDialog";
+import { DocumentosColaborador } from "@/components/rh/DocumentosColaborador";
 
 export const Route = createFileRoute("/rh/colaboradores")({ component: ColaboradoresPage });
 
@@ -31,7 +32,9 @@ type Colab = {
   documento: string;
   user_id: string | null;
   ativo: boolean;
+  data_nascimento?: string | null;
 };
+
 
 type Profile = { id: string; display_name: string | null; email: string | null };
 
@@ -69,6 +72,7 @@ function ColaboradoresPage() {
   const [editing, setEditing] = useState<Colab | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loteOpen, setLoteOpen] = useState(false);
+  const [docsColab, setDocsColab] = useState<Colab | null>(null);
 
   async function load() {
     setLoading(true);
@@ -386,6 +390,9 @@ function ColaboradoresPage() {
                       <Button size="icon" variant="ghost" onClick={() => { setEditing(c); setOpen(true); }} title="Editar">
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
+                      <Button size="icon" variant="ghost" onClick={() => setDocsColab(c)} title="Documentos">
+                        <Paperclip className="h-3.5 w-3.5" />
+                      </Button>
                       <Button size="icon" variant="ghost" onClick={() => toggleAtivo(c)} title={c.ativo ? "Desativar" : "Ativar"}>
                         <Power className="h-3.5 w-3.5" />
                       </Button>
@@ -416,6 +423,15 @@ function ColaboradoresPage() {
         departamentos={departamentos}
         onSaved={load}
       />
+
+      <Dialog open={!!docsColab} onOpenChange={(v) => !v && setDocsColab(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Documentos — {docsColab?.nome}</DialogTitle>
+          </DialogHeader>
+          {docsColab && <DocumentosColaborador colaboradorId={docsColab.id} />}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -454,6 +470,7 @@ function ColabDialog({
       documento: (form.documento ?? "").replace(/\D/g, ""),
       user_id: form.user_id || null,
       ativo: form.ativo ?? true,
+      data_nascimento: form.data_nascimento || null,
     };
 
     if (editing) {
@@ -481,6 +498,14 @@ function ColabDialog({
           <div className="col-span-2">
             <Label>Nome *</Label>
             <Input value={form.nome ?? ""} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
+          </div>
+          <div className="col-span-2">
+            <Label>Data de nascimento</Label>
+            <Input
+              type="date"
+              value={(form.data_nascimento ?? "").slice(0, 10)}
+              onChange={(e) => setForm({ ...form, data_nascimento: e.target.value })}
+            />
           </div>
           <div>
             <Label>Departamento</Label>

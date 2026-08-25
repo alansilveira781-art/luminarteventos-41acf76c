@@ -6,6 +6,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { CopiarLinkButton } from "@/components/CopiarLinkButton";
 import {
   Award,
+  Gauge,
   LayoutDashboard,
 
   Package,
@@ -69,6 +70,7 @@ type NavItem = { title: string; url: string; icon: any; group: string; module?: 
 
 const allItems: NavItem[] = [
   { title: "Início", url: "/", icon: LayoutDashboard, group: "Visão geral" },
+  { title: "Painel", url: "/painel", icon: Gauge, group: "Visão geral", masterAdminOnly: true },
   { title: "Meus Pedidos", url: "/meus-pedidos", icon: ClipboardList, group: "Visão geral" },
   { title: "Lembretes", url: "/lembretes", icon: BellRing, group: "Visão geral" },
   { title: "Assistente", url: "/assistente", icon: Sparkles, group: "Visão geral", masterAdminOnly: true },
