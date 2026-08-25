@@ -13,6 +13,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { isTransferencia } from "@/lib/conta-azul/dre";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -66,23 +67,36 @@ function PainelPage() {
     },
   });
 
-  /* ---------- indicadores financeiros (caixa) ---------- */
+  /* ---------- indicadores financeiros (caixa, igual ao dashboard financeiro) ---------- */
   const { data: fin } = useQuery({
     queryKey: ["painel-financeiro", inicioMes, fimMes],
     enabled: isMasterAdmin,
     queryFn: async () => {
-      const [rec, pag, aReceber, aPagar] = await Promise.all([
-        supabase.from("ca_contas_receber").select("valor").gte("data_pagamento", inicioMes).lte("data_pagamento", fimMes),
-        supabase.from("ca_contas_pagar").select("valor").gte("data_pagamento", inicioMes).lte("data_pagamento", fimMes),
-        supabase.from("ca_contas_receber").select("valor").is("data_pagamento", null).gte("data_vencimento", inicioMes).lte("data_vencimento", fimMes),
-        supabase.from("ca_contas_pagar").select("valor").is("data_pagamento", null).gte("data_vencimento", inicioMes).lte("data_vencimento", fimMes),
+      const cols = "valor,status,data_vencimento,data_pagamento,descricao,categoria_external_id";
+      const orFilter = `and(data_pagamento.gte.${inicioMes},data_pagamento.lte.${fimMes}),and(data_pagamento.is.null,data_vencimento.gte.${inicioMes},data_vencimento.lte.${fimMes})`;
+      const [rec, pag, planos] = await Promise.all([
+        supabase.from("ca_contas_receber").select(cols).or(orFilter).limit(20000),
+        supabase.from("ca_contas_pagar").select(cols).or(orFilter).limit(20000),
+        supabase.from("ca_plano_contas").select("external_id,nome"),
       ]);
-      const soma = (r: any) => (r.data ?? []).reduce((s: number, x: any) => s + Number(x.valor || 0), 0);
-      const recebido = soma(rec);
-      const pago = soma(pag);
-      return { recebido, pago, saldo: recebido - pago, aReceber: soma(aReceber), aPagar: soma(aPagar) };
+      const planoMap = new Map(((planos.data ?? []) as any[]).map((p) => [p.external_id, p.nome as string]));
+      const validas = (r: any) =>
+        ((r.data ?? []) as any[]).filter(
+          (x) => !isTransferencia(x.categoria_external_id ? planoMap.get(x.categoria_external_id) : undefined, x.descricao),
+        );
+      const noMes = (d: string | null) => !!d && d >= inicioMes && d <= fimMes;
+      const soma = (rows: any[]) => rows.reduce((s, x) => s + Math.abs(Number(x.valor || 0)), 0);
+
+      const rRows = validas(rec);
+      const pRows = validas(pag);
+      const recebido = soma(rRows.filter((x) => x.status === "pago" && noMes(x.data_pagamento ?? x.data_vencimento)));
+      const pago = soma(pRows.filter((x) => x.status === "pago" && noMes(x.data_pagamento ?? x.data_vencimento)));
+      const aReceber = soma(rRows.filter((x) => x.status !== "pago" && noMes(x.data_vencimento)));
+      const aPagar = soma(pRows.filter((x) => x.status !== "pago" && noMes(x.data_vencimento)));
+      return { recebido, pago, saldo: recebido - pago, aReceber, aPagar };
     },
   });
+
 
   /* ---------- uber ---------- */
   const { data: uber } = useQuery({
