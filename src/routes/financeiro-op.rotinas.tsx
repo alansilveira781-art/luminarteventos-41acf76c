@@ -1009,7 +1009,12 @@ function ExecucaoRotinas({ rotinas }: { rotinas: Rotina[] }) {
 
 
       <div className="mt-6">
-        <div className="text-sm font-semibold mb-2">Histórico recente</div>
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-sm font-semibold">Histórico recente (últimos 2 dias)</div>
+          <Button size="sm" variant="outline" onClick={() => setVerHistorico(true)}>
+            <ListChecks className="h-4 w-4 mr-1" /> Ver histórico
+          </Button>
+        </div>
         <Card className="p-0 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -1023,10 +1028,10 @@ function ExecucaoRotinas({ rotinas }: { rotinas: Rotina[] }) {
                 </tr>
               </thead>
               <tbody>
-                {execucoes.length === 0 && (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Nenhuma execução registrada</td></tr>
+                {execucoesRecentes.length === 0 && (
+                  <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Nenhuma execução nos últimos 2 dias</td></tr>
                 )}
-                {execucoes.slice(0, 50).map((e) => {
+                {execucoesRecentes.map((e) => {
                   const r = rotinas.find((x) => x.id === e.rotina_id);
                   return (
                     <tr key={e.id} className="border-t hover:bg-muted/20 align-top">
@@ -1043,6 +1048,9 @@ function ExecucaoRotinas({ rotinas }: { rotinas: Rotina[] }) {
           </div>
         </Card>
       </div>
+
+      {verHistorico && <HistoricoDialog rotinas={rotinas} onClose={() => setVerHistorico(false)} />}
+
 
       {registrar && (
         <RegistrarExecucaoDialog rotina={registrar.rotina} dataInicial={registrar.date} onClose={() => setRegistrar(null)} />
