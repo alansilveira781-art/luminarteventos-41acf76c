@@ -304,7 +304,65 @@ function ComprasKanban() {
     },
   });
 
+  const moveDemandaStatus = useMutation({
+    mutationFn: async (vars: { id: string; status: CompraStatus; responsavelId?: string | null; responsavelNome?: string | null }) => {
+      const patch: any = { status: vars.status };
+      if (vars.responsavelId) {
+        patch.responsavel_id = vars.responsavelId;
+        patch.responsavel_nome = vars.responsavelNome ?? null;
+      }
+      const { error } = await sb.from("demandas").update(patch).eq("id", vars.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["compras", "demandas-abertas"] });
+      qc.invalidateQueries({ queryKey: ["demandas"] });
+      qc.invalidateQueries({ queryKey: ["demandas-receber"] });
+    },
+  });
+
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  // Movimentação de cards de Aquisição (tabela demandas), com as mesmas regras
+  // do antigo Quadro de Aquisições (inclusive comunicação com Estoque/Patrimônio).
+  async function advanceDemanda(
+    card: Compra,
+    status: CompraStatus,
+    opts?: { force?: boolean; toastMsg?: string; silent?: boolean },
+  ): Promise<{ ok: boolean; motivo?: string }> {
+    const fail = (motivo: string) => {
+      if (!opts?.silent) toast.error(motivo);
+      return { ok: false, motivo };
+    };
+    if (card.status === status) return { ok: true };
+    if (status === "a_receber" && !tiposDespesa.vaiParaRecebimento(card.tipo_demanda)) {
+      return fail('Este tipo de aquisição não gera recebimento em Estoque ou Patrimônio, então não pode ir para "A Receber".');
+    }
+    const titulo = card.titulo || card.fornecedor || `Aquisição ${card.numero ?? ""}`;
+    const statusLabel = COMPRA_STATUSES.find((s) => s.key === status)?.label || status;
+    const def = statusDefaultsDemanda.find((d) => d.status === status && d.responsavel_id);
+    try {
+      await moveDemandaStatus.mutateAsync({
+        id: card.id,
+        status,
+        responsavelId: def?.responsavel_id ?? null,
+        responsavelNome: def?.responsavel_nome ?? null,
+      });
+    } catch (e: any) {
+      return fail(String(e?.message ?? "Não foi possível mover o card."));
+    }
+    if (def?.responsavel_id) {
+      notifyResponsavel({
+        userId: def.responsavel_id,
+        titulo: `Aquisição: ${statusLabel}`,
+        mensagem: titulo,
+        link: `/compras?id=${card.id}`,
+        tipo: "compra_responsavel",
+      }).catch(() => {});
+    }
+    if (!opts?.silent) toast.success(opts?.toastMsg ?? "Card movido.");
+    return { ok: true };
+  }
 
   async function advanceToStatus(
     compra: Compra,
@@ -316,6 +374,8 @@ function ComprasKanban() {
       return { ok: false, motivo };
     };
     if (compra.status === status) return { ok: true };
+    if (compra.origem === "demanda") return advanceDemanda(compra, status, opts);
+
 
     if (!canMoveCompra(compra, user?.id, isAdmin, user?.email, status, compra.status, responsavelDoStatus(status), responsavelDoStatus(compra.status))) {
       const isPedro = !!user?.email && user.email.trim().toLowerCase() === PEDRO_EMAIL;
