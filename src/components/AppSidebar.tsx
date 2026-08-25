@@ -6,6 +6,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { CopiarLinkButton } from "@/components/CopiarLinkButton";
 import {
   Award,
+  Gauge,
   LayoutDashboard,
 
   Package,
