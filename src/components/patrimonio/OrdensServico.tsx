@@ -587,6 +587,8 @@ function NovaOSDialog({
   const [dataSaida, setDataSaida] = useState(hoje());
   const [previsao, setPrevisao] = useState("");
   const [responsavel, setResponsavel] = useState("");
+  const colaboradores = useColaboradoresNomes();
+
   const [observacoes, setObservacoes] = useState("");
 
   const [tomadorId, setTomadorId] = useState<string | null>(null);
