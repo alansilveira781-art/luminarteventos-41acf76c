@@ -1565,7 +1565,9 @@ export async function reprocessarRateios(
     const { data: invs, error: e1 } = await q;
     if (e1) throw e1;
     const ordemIds = (invs ?? [])
-      .filter((r: any) => !r.detalhe_synced_at || r.detalhe_synced_at < inicioIso || (r.status === "pago" && !r.data_pagamento))
+      .filter((r: any) => modoLista === "periodo"
+        ? !r.detalhe_synced_at || (r.status === "pago" && !r.data_pagamento)
+        : !r.detalhe_synced_at || r.detalhe_synced_at < inicioIso || (r.status === "pago" && !r.data_pagamento))
       .map((r: any) => String(r.external_id));
     if (ordemIds.length === 0) return [];
     if (modoLista === "periodo") {
@@ -1603,10 +1605,13 @@ export async function reprocessarRateios(
    *  aqueles sem `detalhe_synced_at` ou com timestamp anterior ao início. */
   async function contarPendentes(tipo: "pagar" | "receber"): Promise<number> {
     const tabela = tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
+    const pendencia = modo === "periodo"
+      ? "detalhe_synced_at.is.null,and(status.eq.pago,data_pagamento.is.null)"
+      : `detalhe_synced_at.is.null,detalhe_synced_at.lt.${inicioIso},and(status.eq.pago,data_pagamento.is.null)`;
     let q = sb
       .from(tabela)
       .select("external_id", { count: "exact", head: true })
-      .or(`detalhe_synced_at.is.null,detalhe_synced_at.lt.${inicioIso},and(status.eq.pago,data_pagamento.is.null)`);
+      .or(pendencia);
     if (modo === "periodo" && periodoFrom && periodoTo) {
       q = q.gte("data_vencimento", periodoFrom).lte("data_vencimento", periodoTo);
     }
