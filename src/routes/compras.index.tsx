@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, ChevronRight, ArrowRightLeft } from "lucide-react";
 import { CompraDialog } from "@/components/CompraDialog";
+import { DemandaDialog } from "@/components/DemandaDialog";
+import { proximoStatusDemanda } from "@/lib/demandas";
 import { COMPRA_STATUSES, canEditCompra, canMoveCompra, compraBackStatus, isNatanaelShortcut, moveBlockedMessage, nextCompraStatus, PEDRO_EMAIL, PEDRO_MOVE_BLOCKED_MSG, type CompraStatus } from "@/lib/compras";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -97,6 +99,7 @@ function ComprasKanban() {
   const [q, setQ] = useState<string>(""); const qd = useDebouncedValue(q, 300);
   const [filters, setFilters] = usePersistedState<Filters>("compras.kanban", {});
   const [migrarCompra, setMigrarCompra] = useState<Compra | null>(null);
+  const tiposDespesa = useTiposDespesa();
 
   // Abre o card automaticamente quando a URL tem ?id=...
   useEffect(() => {
@@ -923,12 +926,12 @@ function Card({
           <div className="flex items-start justify-between gap-2">
             <div className="font-medium text-sm truncate text-foreground flex-1 min-w-0 flex items-center gap-1.5">
               <PrazoDot prazo={prazoVigente(compra)} status={compra.status} />
-              <span className="truncate">{compra.titulo || compra.fornecedor || "Compra sem título"}</span>
+              <span className="truncate">{compra.titulo || compra.fornecedor || (compra.origem === "demanda" ? "Aquisição sem título" : "Compra sem título")}</span>
             </div>
 
             {compra.numero != null && (
               <span className="text-[10px] text-muted-foreground font-mono shrink-0 mt-0.5">
-                COMPRA-{compra.numero}
+                {codigoCard(compra)}
               </span>
             )}
           </div>
@@ -963,7 +966,7 @@ function Card({
             {compra.solicitante && <div>Solic.: {compra.solicitante}</div>}
             {compra.comprador && <div>Comprador: {compra.comprador}</div>}
             {compra.responsavel_nome && <div>Resp.: {compra.responsavel_nome}</div>}
-            {!compra.tipo_compra && (
+            {compra.origem === "compra" && !compra.tipo_compra && (
               <div>
                 <span className="inline-block rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 text-[10px] font-medium">
                   Sem tipo
