@@ -822,8 +822,8 @@ function DetalheOSDialog({
       const { error } = await supabase.rpc("pat_os_registrar_devolucao", {
         p_os_id: os.id,
         p_data: dataDev,
-        p_responsavel: responsavel.trim() || null,
-        p_observacoes: obs.trim() || null,
+        p_responsavel: responsavel.trim(),
+        p_observacoes: obs.trim(),
         p_linhas: payload as any,
       });
       if (error) throw error;
