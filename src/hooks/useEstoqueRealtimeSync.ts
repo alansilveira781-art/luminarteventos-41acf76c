@@ -93,6 +93,9 @@ export function useEstoqueRealtimeSync() {
       .on("postgres_changes", { event: "*", schema: "public", table: "demanda_anexos" }, onDemandas)
       .on("postgres_changes", { event: "*", schema: "public", table: "pat_itens" }, onPatItens)
       .on("postgres_changes", { event: "*", schema: "public", table: "pat_movimentacoes" }, onPatMovs)
+      .on("postgres_changes", { event: "*", schema: "public", table: "pat_os" }, onPatOS)
+      .on("postgres_changes", { event: "*", schema: "public", table: "pat_os_itens" }, onPatOS)
+      .on("postgres_changes", { event: "*", schema: "public", table: "pat_os_devolucoes" }, onPatOS)
       .on("postgres_changes", { event: "*", schema: "public", table: "estoque_solicitacoes_saida" }, () =>
         qc.invalidateQueries({ queryKey: ["solicitacoes-saida"] }),
       )
