@@ -1165,6 +1165,8 @@ function EditarOSDialog({
   const [dataSaida, setDataSaida] = useState(os.data_saida?.slice(0, 10) ?? hoje());
   const [previsao, setPrevisao] = useState(os.previsao_retorno?.slice(0, 10) ?? "");
   const [responsavel, setResponsavel] = useState(os.responsavel ?? "");
+  const colaboradores = useColaboradoresNomes(os.responsavel);
+
   const [observacoes, setObservacoes] = useState(os.observacoes ?? "");
 
   const tomAtual = tomadores.find((t) => t.id === os.tomador_id) ?? null;
