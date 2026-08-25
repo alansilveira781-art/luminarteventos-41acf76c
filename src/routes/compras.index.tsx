@@ -54,8 +54,11 @@ export const Route = createFileRoute("/compras/")({
   component: ComprasKanban,
 });
 
+type Origem = "compra" | "demanda";
+
 type Compra = {
   id: string;
+  origem: Origem;
   numero: number | null;
   status: CompraStatus;
   titulo: string | null;
@@ -73,9 +76,12 @@ type Compra = {
   responsavel_id: string | null;
   responsavel_nome: string | null;
   tipo_compra: string | null;
+  tipo_demanda?: string | null;
   created_by: string | null;
 };
 
+const codigoCard = (c: { origem: Origem; numero: number | null }) =>
+  c.numero != null ? `${c.origem === "demanda" ? "DEMANDA" : "COMPRA"}-${c.numero}` : "—";
 
 function ComprasKanban() {
   const qc = useQueryClient();
@@ -84,6 +90,10 @@ function ComprasKanban() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [defaultStatus, setDefaultStatus] = useState<CompraStatus>("solicitacao");
+  // Card de Aquisição (tabela demandas)
+  const [openDemanda, setOpenDemanda] = useState(false);
+  const [editDemandaId, setEditDemandaId] = useState<string | null>(null);
+  const [escolherTipo, setEscolherTipo] = useState<CompraStatus | null>(null);
   const [q, setQ] = useState<string>(""); const qd = useDebouncedValue(q, 300);
   const [filters, setFilters] = usePersistedState<Filters>("compras.kanban", {});
   const [migrarCompra, setMigrarCompra] = useState<Compra | null>(null);
@@ -98,6 +108,7 @@ function ComprasKanban() {
       setOpen(true);
     }
   }, []);
+
 
 
   const { data: compras = [] } = useQuery({
