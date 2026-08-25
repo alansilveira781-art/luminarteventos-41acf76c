@@ -67,6 +67,30 @@ const STATUS_LABEL: Record<string, string> = {
 
 const hoje = () => new Date().toISOString().slice(0, 10);
 
+/** Nomes de colaboradores ativos (RH) para os seletores de responsável. */
+function useColaboradoresNomes(atual?: string | null) {
+  const { data } = useQuery({
+    queryKey: ["rh_colaboradores_nomes"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("rh_colaboradores")
+        .select("nome,ativo")
+        .eq("ativo", true)
+        .order("nome");
+      if (error) throw error;
+      return (data ?? []).map((c: any) => String(c.nome ?? "").trim()).filter(Boolean);
+    },
+    staleTime: 5 * 60_000,
+  });
+  return useMemo(() => {
+    const s = new Set<string>(data ?? []);
+    const a = (atual ?? "").trim();
+    if (a) s.add(a);
+    return [...s].sort((x, y) => x.localeCompare(y, "pt-BR"));
+  }, [data, atual]);
+}
+
+
 export function PatrimonioOS() {
   const qc = useQueryClient();
   const { isModuleAdmin } = useAuth();
