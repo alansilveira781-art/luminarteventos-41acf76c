@@ -794,6 +794,7 @@ type PeriodoKey = "hoje" | "amanha" | "semana" | "mes" | "custom";
 
 function ExecucaoRotinas({ rotinas }: { rotinas: Rotina[] }) {
   const [registrar, setRegistrar] = useState<{ rotina: Rotina; date: string } | null>(null);
+  const [verHistorico, setVerHistorico] = useState(false);
   const [periodo, setPeriodo] = useState<PeriodoKey>("hoje");
   const [customFrom, setCustomFrom] = useState(new Date().toISOString().slice(0, 10));
   const [customTo, setCustomTo] = useState(new Date().toISOString().slice(0, 10));
