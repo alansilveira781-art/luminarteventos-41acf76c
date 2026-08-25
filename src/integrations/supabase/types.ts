@@ -5505,6 +5505,7 @@ export type Database = {
           id: string
           item_id: string | null
           observacoes: string | null
+          os_id: string | null
           quantidade: number
           requisicao_numero: number | null
           responsavel: string | null
@@ -5523,6 +5524,7 @@ export type Database = {
           id?: string
           item_id?: string | null
           observacoes?: string | null
+          os_id?: string | null
           quantidade?: number
           requisicao_numero?: number | null
           responsavel?: string | null
@@ -5541,6 +5543,7 @@ export type Database = {
           id?: string
           item_id?: string | null
           observacoes?: string | null
+          os_id?: string | null
           quantidade?: number
           requisicao_numero?: number | null
           responsavel?: string | null
@@ -5557,6 +5560,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "pat_movimentacoes_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "pat_os"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "pat_movimentacoes_saida_origem_id_fkey"
             columns: ["saida_origem_id"]
             isOneToOne: false
@@ -5564,6 +5574,257 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pat_os: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_saida: string
+          evento_projeto: string | null
+          id: string
+          numero: number
+          observacoes: string | null
+          previsao_retorno: string | null
+          responsavel: string | null
+          retirante_cpf: string | null
+          retirante_nome: string | null
+          status: string
+          tipo: string
+          tomador_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_saida?: string
+          evento_projeto?: string | null
+          id?: string
+          numero?: number
+          observacoes?: string | null
+          previsao_retorno?: string | null
+          responsavel?: string | null
+          retirante_cpf?: string | null
+          retirante_nome?: string | null
+          status?: string
+          tipo: string
+          tomador_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_saida?: string
+          evento_projeto?: string | null
+          id?: string
+          numero?: number
+          observacoes?: string | null
+          previsao_retorno?: string | null
+          responsavel?: string | null
+          retirante_cpf?: string | null
+          retirante_nome?: string | null
+          status?: string
+          tipo?: string
+          tomador_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pat_os_tomador_id_fkey"
+            columns: ["tomador_id"]
+            isOneToOne: false
+            referencedRelation: "pat_tomadores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pat_os_devolucao_itens: {
+        Row: {
+          condicao: string | null
+          created_at: string
+          devolucao_id: string
+          id: string
+          justificativa: string | null
+          motivo: string | null
+          os_item_id: string
+          quantidade_devolvida: number
+          quantidade_faltante: number
+        }
+        Insert: {
+          condicao?: string | null
+          created_at?: string
+          devolucao_id: string
+          id?: string
+          justificativa?: string | null
+          motivo?: string | null
+          os_item_id: string
+          quantidade_devolvida?: number
+          quantidade_faltante?: number
+        }
+        Update: {
+          condicao?: string | null
+          created_at?: string
+          devolucao_id?: string
+          id?: string
+          justificativa?: string | null
+          motivo?: string | null
+          os_item_id?: string
+          quantidade_devolvida?: number
+          quantidade_faltante?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pat_os_devolucao_itens_devolucao_id_fkey"
+            columns: ["devolucao_id"]
+            isOneToOne: false
+            referencedRelation: "pat_os_devolucoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pat_os_devolucao_itens_os_item_id_fkey"
+            columns: ["os_item_id"]
+            isOneToOne: false
+            referencedRelation: "pat_os_itens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pat_os_devolucoes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_devolucao: string
+          id: string
+          observacoes: string | null
+          os_id: string
+          responsavel: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_devolucao?: string
+          id?: string
+          observacoes?: string | null
+          os_id: string
+          responsavel?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_devolucao?: string
+          id?: string
+          observacoes?: string | null
+          os_id?: string
+          responsavel?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pat_os_devolucoes_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "pat_os"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pat_os_itens: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string | null
+          mov_id: string | null
+          os_id: string
+          quantidade: number
+          quantidade_devolvida: number
+          quantidade_perdida: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          mov_id?: string | null
+          os_id: string
+          quantidade?: number
+          quantidade_devolvida?: number
+          quantidade_perdida?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          mov_id?: string | null
+          os_id?: string
+          quantidade?: number
+          quantidade_devolvida?: number
+          quantidade_perdida?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pat_os_itens_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "pat_itens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pat_os_itens_mov_id_fkey"
+            columns: ["mov_id"]
+            isOneToOne: false
+            referencedRelation: "pat_movimentacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pat_os_itens_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "pat_os"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pat_tomadores: {
+        Row: {
+          contato_nome: string | null
+          contato_telefone: string | null
+          created_at: string
+          documento: string | null
+          email: string | null
+          endereco: string | null
+          id: string
+          nome: string
+          observacoes: string | null
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          contato_nome?: string | null
+          contato_telefone?: string | null
+          created_at?: string
+          documento?: string | null
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          nome: string
+          observacoes?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          contato_nome?: string | null
+          contato_telefone?: string | null
+          created_at?: string
+          documento?: string | null
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       produtores: {
         Row: {
@@ -6038,6 +6299,17 @@ export type Database = {
       next_pat_requisicao_numero: { Args: never; Returns: number }
       next_proposta_numero: { Args: never; Returns: number }
       next_requisicao_numero: { Args: never; Returns: number }
+      pat_os_criar: { Args: { p_linhas: Json; p_meta: Json }; Returns: string }
+      pat_os_registrar_devolucao: {
+        Args: {
+          p_data: string
+          p_linhas: Json
+          p_observacoes: string
+          p_os_id: string
+          p_responsavel: string
+        }
+        Returns: string
+      }
       pode_lancar_diaria: { Args: { _user_id: string }; Returns: boolean }
       primeira_data_rotina: {
         Args: {
