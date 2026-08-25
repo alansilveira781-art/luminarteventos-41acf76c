@@ -77,6 +77,12 @@ export function useEstoqueRealtimeSync() {
       qc.invalidateQueries({ queryKey: ["pat_devolvido_por_origem"] });
       qc.invalidateQueries({ queryKey: ["pat_devolvido_por_origem_alertas"] });
     };
+    const onPatOS = () => {
+      qc.invalidateQueries({ queryKey: ["pat_os"] });
+      qc.invalidateQueries({ queryKey: ["pat_os_itens"] });
+      qc.invalidateQueries({ queryKey: ["pat_os_devolucoes"] });
+      qc.invalidateQueries({ queryKey: ["pat_itens_os"] });
+    };
 
     // Nome de canal único por aba evita colisão entre múltiplas abas do mesmo navegador
     const channelName = `estoque-sync-${typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2)}`;
@@ -93,6 +99,9 @@ export function useEstoqueRealtimeSync() {
       .on("postgres_changes", { event: "*", schema: "public", table: "demanda_anexos" }, onDemandas)
       .on("postgres_changes", { event: "*", schema: "public", table: "pat_itens" }, onPatItens)
       .on("postgres_changes", { event: "*", schema: "public", table: "pat_movimentacoes" }, onPatMovs)
+      .on("postgres_changes", { event: "*", schema: "public", table: "pat_os" }, onPatOS)
+      .on("postgres_changes", { event: "*", schema: "public", table: "pat_os_itens" }, onPatOS)
+      .on("postgres_changes", { event: "*", schema: "public", table: "pat_os_devolucoes" }, onPatOS)
       .on("postgres_changes", { event: "*", schema: "public", table: "estoque_solicitacoes_saida" }, () =>
         qc.invalidateQueries({ queryKey: ["solicitacoes-saida"] }),
       )

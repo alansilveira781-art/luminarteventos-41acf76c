@@ -127,6 +127,7 @@ const allItems: NavItem[] = [
   { title: "Entradas", url: "/patrimonio/entradas", icon: ArrowDownToLine, group: "Patrimônio", module: "patrimonio" },
   { title: "Saídas", url: "/patrimonio/saidas", icon: ArrowUpFromLine, group: "Patrimônio", module: "patrimonio" },
   { title: "Devoluções", url: "/patrimonio/devolucoes", icon: Undo2, group: "Patrimônio", module: "patrimonio" },
+  { title: "O.S.", url: "/patrimonio/os", icon: ClipboardCheckIcon, group: "Patrimônio", module: "patrimonio" },
   { title: "A receber", url: "/patrimonio/a-receber", icon: PackageCheck, group: "Patrimônio", module: "patrimonio" },
   { title: "Relatórios", url: "/patrimonio/relatorios", icon: FileText, group: "Patrimônio", module: "patrimonio" },
   { title: "Calendário", url: "/eventos", icon: CalendarDays, group: "Eventos", module: "eventos" },
