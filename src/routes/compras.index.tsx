@@ -709,7 +709,7 @@ function ComprasKanban() {
 
               <button
                 type="button"
-                onClick={() => { setEditId(null); setDefaultStatus(s.key); setOpen(true); }}
+                onClick={() => setEscolherTipo(s.key)}
                 className="w-full text-xs text-muted-foreground hover:text-foreground py-1.5 rounded border border-dashed border-border hover:border-primary"
               >
                 + adicionar
@@ -720,6 +720,49 @@ function ComprasKanban() {
       </DndContext>
       )}
 
+      <Dialog open={!!escolherTipo} onOpenChange={(v) => { if (!v) setEscolherTipo(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>O que você quer criar?</DialogTitle>
+            <DialogDescription>
+              Compras e Aquisições ficam no mesmo quadro; o que muda é o código do card.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2">
+            <Button
+              variant="outline"
+              className="justify-start h-auto py-3"
+              onClick={() => {
+                setDefaultStatus(escolherTipo ?? "solicitacao");
+                setEditId(null);
+                setEscolherTipo(null);
+                setOpen(true);
+              }}
+            >
+              <div className="text-left">
+                <div className="font-medium">Compra</div>
+                <div className="text-xs text-muted-foreground">Card padrão de compras (COMPRA-000)</div>
+              </div>
+            </Button>
+            <Button
+              variant="outline"
+              className="justify-start h-auto py-3"
+              onClick={() => {
+                setDefaultStatus(escolherTipo ?? "solicitacao");
+                setEditDemandaId(null);
+                setEscolherTipo(null);
+                setOpenDemanda(true);
+              }}
+            >
+              <div className="text-left">
+                <div className="font-medium">Aquisição</div>
+                <div className="text-xs text-muted-foreground">Card de aquisição (DEMANDA-000)</div>
+              </div>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <CompraDialog
         open={open}
         onOpenChange={setOpen}
@@ -728,7 +771,7 @@ function ComprasKanban() {
         onAdvance={async (compraData, opts) => {
           const target = opts?.deny ? "negada" : opts?.approve ? "aprovada" : nextCompraStatus(compraData.status);
           if (!target) return;
-          await advanceToStatus(compraData as unknown as Compra, target, {
+          await advanceToStatus({ ...(compraData as any), origem: "compra" } as Compra, target, {
             force: !!(opts?.approve || opts?.deny),
             toastMsg: opts?.approve
               ? "Compra aprovada."
@@ -739,6 +782,35 @@ function ComprasKanban() {
           setOpen(false);
         }}
       />
+
+      <DemandaDialog
+        open={openDemanda}
+        onOpenChange={(v) => {
+          setOpenDemanda(v);
+          if (!v) {
+            setEditDemandaId(null);
+            qc.invalidateQueries({ queryKey: ["compras", "demandas-abertas"] });
+            qc.invalidateQueries({ queryKey: ["compras", "pagamentos-quadro-demandas"] });
+          }
+        }}
+        demandaId={editDemandaId}
+        defaultStatus={defaultStatus}
+        onAdvance={async (demandaData: any, opts: any) => {
+          const card = { ...(demandaData as any), origem: "demanda" } as Compra;
+          const target = opts?.deny
+            ? "negada"
+            : opts?.approve
+            ? "aprovada"
+            : proximoStatusDemanda(card.status, card.tipo_demanda ?? null, tiposDespesa.paraRecebimento);
+          if (!target) return;
+          await advanceDemanda(card, target as CompraStatus, {
+            force: true,
+            toastMsg: opts?.approve ? "Aquisição aprovada." : opts?.deny ? "Aquisição reprovada." : undefined,
+          });
+          setOpenDemanda(false);
+        }}
+      />
+
 
       <AvancarCardDialog
         open={!!pendingMove}
