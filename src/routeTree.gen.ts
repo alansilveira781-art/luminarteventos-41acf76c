@@ -17,6 +17,7 @@ import { Route as SaidasRouteImport } from './routes/saidas'
 import { Route as RhRouteImport } from './routes/rh'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as PatrimonioRouteImport } from './routes/patrimonio'
+import { Route as PainelRouteImport } from './routes/painel'
 import { Route as OperacaoRouteImport } from './routes/operacao'
 import { Route as NotificacoesRouteImport } from './routes/notificacoes'
 import { Route as MeusPedidosRouteImport } from './routes/meus-pedidos'
@@ -174,6 +175,11 @@ const RelatoriosRoute = RelatoriosRouteImport.update({
 const PatrimonioRoute = PatrimonioRouteImport.update({
   id: '/patrimonio',
   path: '/patrimonio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PainelRoute = PainelRouteImport.update({
+  id: '/painel',
+  path: '/painel',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OperacaoRoute = OperacaoRouteImport.update({
@@ -811,6 +817,7 @@ export interface FileRoutesByFullPath {
   '/meus-pedidos': typeof MeusPedidosRoute
   '/notificacoes': typeof NotificacoesRoute
   '/operacao': typeof OperacaoRouteWithChildren
+  '/painel': typeof PainelRoute
   '/patrimonio': typeof PatrimonioRouteWithChildren
   '/relatorios': typeof RelatoriosRoute
   '/rh': typeof RhRouteWithChildren
@@ -930,6 +937,7 @@ export interface FileRoutesByTo {
   '/mcp': typeof McpRoute
   '/meus-pedidos': typeof MeusPedidosRoute
   '/notificacoes': typeof NotificacoesRoute
+  '/painel': typeof PainelRoute
   '/relatorios': typeof RelatoriosRoute
   '/saidas': typeof SaidasRoute
   '/solicitantes': typeof SolicitantesRoute
@@ -1056,6 +1064,7 @@ export interface FileRoutesById {
   '/meus-pedidos': typeof MeusPedidosRoute
   '/notificacoes': typeof NotificacoesRoute
   '/operacao': typeof OperacaoRouteWithChildren
+  '/painel': typeof PainelRoute
   '/patrimonio': typeof PatrimonioRouteWithChildren
   '/relatorios': typeof RelatoriosRoute
   '/rh': typeof RhRouteWithChildren
@@ -1186,6 +1195,7 @@ export interface FileRouteTypes {
     | '/meus-pedidos'
     | '/notificacoes'
     | '/operacao'
+    | '/painel'
     | '/patrimonio'
     | '/relatorios'
     | '/rh'
@@ -1305,6 +1315,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/meus-pedidos'
     | '/notificacoes'
+    | '/painel'
     | '/relatorios'
     | '/saidas'
     | '/solicitantes'
@@ -1430,6 +1441,7 @@ export interface FileRouteTypes {
     | '/meus-pedidos'
     | '/notificacoes'
     | '/operacao'
+    | '/painel'
     | '/patrimonio'
     | '/relatorios'
     | '/rh'
@@ -1559,6 +1571,7 @@ export interface RootRouteChildren {
   MeusPedidosRoute: typeof MeusPedidosRoute
   NotificacoesRoute: typeof NotificacoesRoute
   OperacaoRoute: typeof OperacaoRouteWithChildren
+  PainelRoute: typeof PainelRoute
   PatrimonioRoute: typeof PatrimonioRouteWithChildren
   RelatoriosRoute: typeof RelatoriosRoute
   RhRoute: typeof RhRouteWithChildren
@@ -1652,6 +1665,13 @@ declare module '@tanstack/react-router' {
       path: '/patrimonio'
       fullPath: '/patrimonio'
       preLoaderRoute: typeof PatrimonioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/painel': {
+      id: '/painel'
+      path: '/painel'
+      fullPath: '/painel'
+      preLoaderRoute: typeof PainelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/operacao': {
@@ -2760,6 +2780,7 @@ const rootRouteChildren: RootRouteChildren = {
   MeusPedidosRoute: MeusPedidosRoute,
   NotificacoesRoute: NotificacoesRoute,
   OperacaoRoute: OperacaoRouteWithChildren,
+  PainelRoute: PainelRoute,
   PatrimonioRoute: PatrimonioRouteWithChildren,
   RelatoriosRoute: RelatoriosRoute,
   RhRoute: RhRouteWithChildren,
