@@ -1,4 +1,5 @@
 import logoUrl from "@/assets/luminart-logo.png";
+import { compareFamiliaNomeMedida } from "@/lib/patrimonio/ordenacao";
 
 // Relatório de uma O.S. de patrimônio (A4 retrato).
 
