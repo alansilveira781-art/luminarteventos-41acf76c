@@ -209,15 +209,16 @@ export async function gerarOSPdf(p: OSPdfParams) {
     headStyles: { fillColor: [30, 30, 34], textColor: 255, fontSize: 9 },
     styles: { fontSize: 9, cellPadding: 2 },
     head: [["Material", "Identificação", "Un.", "Saiu", "Devolvido", "Perdido", "Pendente"]],
-    body: p.itens.map((i) => [
+    body: agruparItens(p.itens).map((i) => [
       `${i.nome}${i.especificacao ? ` — ${i.especificacao}` : ""}`,
-      i.id_item || "—",
+      i.codigos.size === 1 ? [...i.codigos][0] : i.codigos.size > 1 ? `vários (${i.codigos.size})` : "—",
       i.unidade || "—",
       String(i.quantidade),
       String(i.devolvida),
       String(i.perdida),
       String(Math.max(0, i.quantidade - i.devolvida - i.perdida)),
     ]),
+
     columnStyles: {
       3: { halign: "right", cellWidth: 15 },
       4: { halign: "right", cellWidth: 20 },
