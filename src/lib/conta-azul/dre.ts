@@ -180,8 +180,10 @@ export function calcularIndicadoresCaixa(
   const soma = (rows: ContaRow[]) => rows.reduce((total, row) => total + Math.abs(Number(row.valor || 0)), 0);
   const recebidas = validas(receber);
   const pagas = validas(pagar);
-  const recebido = soma(recebidas.filter((row) => row.status === "pago" && inPeriodo(row.data_pagamento ?? row.data_vencimento, ano, mes)));
-  const pago = soma(pagas.filter((row) => row.status === "pago" && inPeriodo(row.data_pagamento ?? row.data_vencimento, ano, mes)));
+  // A visão consolidada do Conta Azul agrupa os títulos pelo mês de vencimento.
+  // A data da baixa permanece disponível para o DRE em regime de caixa.
+  const recebido = soma(recebidas.filter((row) => row.status === "pago" && inPeriodo(row.data_vencimento, ano, mes)));
+  const pago = soma(pagas.filter((row) => row.status === "pago" && inPeriodo(row.data_vencimento, ano, mes)));
   const aReceber = soma(recebidas.filter((row) => row.status !== "pago" && inPeriodo(row.data_vencimento, ano, mes)));
   const aPagar = soma(pagas.filter((row) => row.status !== "pago" && inPeriodo(row.data_vencimento, ano, mes)));
   return { recebido, pago, saldo: recebido - pago, aReceber, aPagar };
