@@ -248,7 +248,9 @@ function useNavItems(pathname: string) {
     }
     if (i.module === "estoque") return ctx === "estoque" && (isAdmin || hasModule("estoque"));
     if (i.module === "compras") return ctx === "compras" && (isAdmin || hasModule("compras"));
-    if (i.module === "financeiro") return ctx === "financeiro" && (isAdmin || hasModule("financeiro"));
+    // Módulo Aquisições foi extinto para os usuários: agora vive no Quadro de Compras.
+    // Continua acessível apenas para administradores mestres (consulta/manutenção).
+    if (i.module === "financeiro") return ctx === "financeiro" && isMasterAdmin;
     if (i.module === "financeiro_op") {
       if (ctx !== "financeiro_op") return false;
       if (isAdmin || hasModule("financeiro_op")) return true;

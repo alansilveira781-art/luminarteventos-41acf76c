@@ -6,8 +6,9 @@ export const Route = createFileRoute("/financeiro")({
 });
 
 function FinanceiroLayout() {
-  const { isAdmin, hasModule, loading } = useAuth();
+  const { isMasterAdmin, loading } = useAuth();
   if (loading) return null;
-  if (!isAdmin && !hasModule("financeiro")) return <Navigate to="/" />;
+  // Aquisições foi unificado ao Quadro de Compras; a tela antiga fica só para admins mestres.
+  if (!isMasterAdmin) return <Navigate to="/" />;
   return <Outlet />;
 }
