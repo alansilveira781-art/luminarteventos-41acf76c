@@ -836,6 +836,17 @@ function ExecucaoRotinas({ rotinas }: { rotinas: Rotina[] }) {
     return { from: customFrom, to: customTo };
   }, [periodo, customFrom, customTo]);
 
+  // Histórico recente: apenas execuções dos últimos 2 dias (por data de referência)
+  const execucoesRecentes = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - 2);
+    const limite = d.toISOString().slice(0, 10);
+    return execucoes
+      .filter((e) => e.data_referencia >= limite)
+      .sort((a, b) => (a.data_referencia < b.data_referencia ? 1 : -1));
+  }, [execucoes]);
+
   // Map: rotina_id → set de datas com execução registrada
   const execDatasByRotina = useMemo(() => {
     const m: Record<string, Set<string>> = {};
