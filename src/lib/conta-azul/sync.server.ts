@@ -1556,8 +1556,7 @@ export async function reprocessarRateios(
     const POOL = modoLista === "periodo" ? Math.max(max * 10, 500) : Math.max(max * 5, 200);
     let q = sb
       .from(tabela)
-      .select("external_id,detalhe_synced_at")
-      .or(`detalhe_synced_at.is.null,detalhe_synced_at.lt.${inicioIso}`)
+      .select("external_id,detalhe_synced_at,data_pagamento,status")
       .order("detalhe_synced_at", { ascending: true, nullsFirst: true })
       .limit(POOL);
     if (modoLista === "periodo" && periodoFrom && periodoTo) {
@@ -1565,7 +1564,9 @@ export async function reprocessarRateios(
     }
     const { data: invs, error: e1 } = await q;
     if (e1) throw e1;
-    const ordemIds = (invs ?? []).map((r: any) => String(r.external_id));
+    const ordemIds = (invs ?? [])
+      .filter((r: any) => !r.detalhe_synced_at || r.detalhe_synced_at < inicioIso || (r.status === "pago" && !r.data_pagamento))
+      .map((r: any) => String(r.external_id));
     if (ordemIds.length === 0) return [];
     if (modoLista === "periodo") {
       // No modo periodo, processamos na ordem do banco (mais antigos primeiro),
@@ -1605,7 +1606,7 @@ export async function reprocessarRateios(
     let q = sb
       .from(tabela)
       .select("external_id", { count: "exact", head: true })
-      .or(`detalhe_synced_at.is.null,detalhe_synced_at.lt.${inicioIso}`);
+      .or(`detalhe_synced_at.is.null,detalhe_synced_at.lt.${inicioIso},and(status.eq.pago,data_pagamento.is.null)`);
     if (modo === "periodo" && periodoFrom && periodoTo) {
       q = q.gte("data_vencimento", periodoFrom).lte("data_vencimento", periodoTo);
     }
