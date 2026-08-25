@@ -13,7 +13,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { isTransferencia } from "@/lib/conta-azul/dre";
+import { calcularIndicadoresCaixa } from "@/lib/conta-azul/dre";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -80,20 +80,13 @@ function PainelPage() {
         supabase.from("ca_plano_contas").select("external_id,nome"),
       ]);
       const planoMap = new Map(((planos.data ?? []) as any[]).map((p) => [p.external_id, p.nome as string]));
-      const validas = (r: any) =>
-        ((r.data ?? []) as any[]).filter(
-          (x) => !isTransferencia(x.categoria_external_id ? planoMap.get(x.categoria_external_id) : undefined, x.descricao),
-        );
-      const noMes = (d: string | null) => !!d && d >= inicioMes && d <= fimMes;
-      const soma = (rows: any[]) => rows.reduce((s, x) => s + Math.abs(Number(x.valor || 0)), 0);
-
-      const rRows = validas(rec);
-      const pRows = validas(pag);
-      const recebido = soma(rRows.filter((x) => x.status === "pago" && noMes(x.data_pagamento ?? x.data_vencimento)));
-      const pago = soma(pRows.filter((x) => x.status === "pago" && noMes(x.data_pagamento ?? x.data_vencimento)));
-      const aReceber = soma(rRows.filter((x) => x.status !== "pago" && noMes(x.data_vencimento)));
-      const aPagar = soma(pRows.filter((x) => x.status !== "pago" && noMes(x.data_vencimento)));
-      return { recebido, pago, saldo: recebido - pago, aReceber, aPagar };
+      return calcularIndicadoresCaixa(
+        (pag.data ?? []) as any[],
+        (rec.data ?? []) as any[],
+        new Map(Array.from(planoMap, ([id, nome]) => [id, { nome }])),
+        ano,
+        mes + 1,
+      );
     },
   });
 
