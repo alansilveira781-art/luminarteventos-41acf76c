@@ -334,6 +334,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ca_lancamento_baixas: {
+        Row: {
+          baixa_external_id: string
+          created_at: string
+          data_baixa: string
+          id: string
+          lancamento_external_id: string
+          synced_at: string
+          tipo: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          baixa_external_id: string
+          created_at?: string
+          data_baixa: string
+          id?: string
+          lancamento_external_id: string
+          synced_at?: string
+          tipo: string
+          updated_at?: string
+          valor: number
+        }
+        Update: {
+          baixa_external_id?: string
+          created_at?: string
+          data_baixa?: string
+          id?: string
+          lancamento_external_id?: string
+          synced_at?: string
+          tipo?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: []
+      }
       ca_lancamento_rateios: {
         Row: {
           categoria_external_id: string | null

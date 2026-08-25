@@ -283,6 +283,36 @@ function getValorRealizado(it: any): number | null {
   return valorPago > 0 ? Math.round(Math.abs(valorPago) * 100) / 100 : null;
 }
 
+function buildBaixas(it: any, tipo: "pagar" | "receber", syncedAt: string) {
+  const lancamentoId = String(it.id);
+  return getBaixas(it).flatMap((baixa: any, index: number) => {
+    const data = baixa.data_pagamento ? String(baixa.data_pagamento).slice(0, 10) : null;
+    const composicao = baixa.valor_composicao;
+    const valor = Math.abs(Number(composicao?.valor_liquido ?? composicao?.valor_bruto ?? baixa.valor ?? 0));
+    if (!data || !Number.isFinite(valor) || valor <= 0) return [];
+    return [{
+      tipo,
+      lancamento_external_id: lancamentoId,
+      baixa_external_id: String(baixa.id ?? `${lancamentoId}:${data}:${index}`),
+      data_baixa: data,
+      valor: Math.round(valor * 100) / 100,
+      synced_at: syncedAt,
+    }];
+  });
+}
+
+async function persistBaixas(items: any[], tipo: "pagar" | "receber", syncedAt: string) {
+  const ids = items.map((it) => String(it.id));
+  if (ids.length === 0) return;
+  for (let i = 0; i < ids.length; i += 500) {
+    await sb.from("ca_lancamento_baixas").delete().eq("tipo", tipo).in("lancamento_external_id", ids.slice(i, i + 500));
+  }
+  const rows = items.flatMap((it) => buildBaixas(it, tipo, syncedAt));
+  if (rows.length > 0) {
+    await upsertBatched("ca_lancamento_baixas", rows, "tipo,lancamento_external_id,baixa_external_id");
+  }
+}
+
 function mapEvento(it: any, syncedAt: string, pessoaKey: "fornecedor_nome" | "cliente_nome") {
   const pessoaNome =
     pessoaKey === "fornecedor_nome"
@@ -903,6 +933,11 @@ async function persistRateios(items: any[], tipo: "pagar" | "receber", syncedAt:
       .filter((it: any) => enrichedIds.has(String(it.id)))
       .map((it: any) => mapEvento(it, syncedAt, pessoaKey));
     if (parentRows.length > 0) await upsertBatched(tabela, parentRows, "external_id");
+    await persistBaixas(
+      enriched.filter((it: any) => enrichedIds.has(String(it.id))),
+      tipo,
+      syncedAt,
+    );
   }
   const allRateios: any[] = [];
   const lancIdsWithRateios: string[] = [];
@@ -968,6 +1003,11 @@ async function reconciliarExclusoes(
     const chunk = toDelete.slice(i, i + 500);
     await sb
       .from("ca_lancamento_rateios")
+      .delete()
+      .eq("tipo", tipoRateio)
+      .in("lancamento_external_id", chunk);
+    await sb
+      .from("ca_lancamento_baixas")
       .delete()
       .eq("tipo", tipoRateio)
       .in("lancamento_external_id", chunk);
@@ -1677,6 +1717,7 @@ export async function reprocessarRateios(
       const tabela = alvo.tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
       const pessoaKey = alvo.tipo === "pagar" ? "fornecedor_nome" : "cliente_nome";
       await sb.from(tabela).upsert(mapEvento(detail, syncedAt, pessoaKey), { onConflict: "external_id" });
+      await persistBaixas([detail], alvo.tipo, syncedAt);
       const rs = buildRateios(detail, alvo.tipo, syncedAt);
       if (!rs || rs.length === 0) {
         falhas++;
@@ -1701,6 +1742,7 @@ export async function reprocessarRateios(
         try {
           const tabela = alvo.tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
           await sb.from("ca_lancamento_rateios").delete().eq("tipo", alvo.tipo).eq("lancamento_external_id", alvo.id);
+          await sb.from("ca_lancamento_baixas").delete().eq("tipo", alvo.tipo).eq("lancamento_external_id", alvo.id);
           await sb.from(tabela).delete().eq("external_id", alvo.id);
           removidos++;
           if (detalhes.length < 20) detalhes.push(`${alvo.id}: removido (404 no Conta Azul)`);

@@ -72,20 +72,32 @@ function PainelPage() {
     queryKey: ["painel-financeiro", inicioMes, fimMes],
     enabled: isMasterAdmin,
     queryFn: async () => {
-      const cols = "valor,status,data_vencimento,data_pagamento,descricao,categoria_external_id";
-      const orFilter = `and(data_pagamento.gte.${inicioMes},data_pagamento.lte.${fimMes}),and(data_pagamento.is.null,data_vencimento.gte.${inicioMes},data_vencimento.lte.${fimMes})`;
-      const [rec, pag, planos] = await Promise.all([
-        supabase.from("ca_contas_receber").select(cols).or(orFilter).limit(20000),
-        supabase.from("ca_contas_pagar").select(cols).or(orFilter).limit(20000),
+      const cols = "external_id,valor,status,data_vencimento,data_pagamento,descricao,categoria_external_id";
+      const [baixasRec, baixasPag, recAbertas, pagAbertas, planos] = await Promise.all([
+        supabase.from("ca_lancamento_baixas").select("lancamento_external_id,valor,data_baixa").eq("tipo", "receber").gte("data_baixa", inicioMes).lte("data_baixa", fimMes).limit(20000),
+        supabase.from("ca_lancamento_baixas").select("lancamento_external_id,valor,data_baixa").eq("tipo", "pagar").gte("data_baixa", inicioMes).lte("data_baixa", fimMes).limit(20000),
+        supabase.from("ca_contas_receber").select(cols).gte("data_vencimento", inicioMes).lte("data_vencimento", fimMes).limit(20000),
+        supabase.from("ca_contas_pagar").select(cols).gte("data_vencimento", inicioMes).lte("data_vencimento", fimMes).limit(20000),
         supabase.from("ca_plano_contas").select("external_id,nome"),
       ]);
+      const recIds = [...new Set((baixasRec.data ?? []).map((b: any) => b.lancamento_external_id))];
+      const pagIds = [...new Set((baixasPag.data ?? []).map((b: any) => b.lancamento_external_id))];
+      const [recLiquidadas, pagLiquidadas] = await Promise.all([
+        recIds.length ? supabase.from("ca_contas_receber").select(cols).in("external_id", recIds) : Promise.resolve({ data: [] }),
+        pagIds.length ? supabase.from("ca_contas_pagar").select(cols).in("external_id", pagIds) : Promise.resolve({ data: [] }),
+      ]);
+      const unir = (a: any[], b: any[]) => [...new Map([...a, ...b].map((row) => [row.external_id, row])).values()];
+      const rec = unir(recAbertas.data ?? [], recLiquidadas.data ?? []);
+      const pag = unir(pagAbertas.data ?? [], pagLiquidadas.data ?? []);
       const planoMap = new Map(((planos.data ?? []) as any[]).map((p) => [p.external_id, p.nome as string]));
       return calcularIndicadoresCaixa(
-        (pag.data ?? []) as any[],
-        (rec.data ?? []) as any[],
+        pag as any[],
+        rec as any[],
         new Map(Array.from(planoMap, ([id, nome]) => [id, { nome }])),
         ano,
         mes + 1,
+        (baixasPag.data ?? []) as any[],
+        (baixasRec.data ?? []) as any[],
       );
     },
   });
