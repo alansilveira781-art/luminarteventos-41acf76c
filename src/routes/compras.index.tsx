@@ -493,8 +493,12 @@ function ComprasKanban() {
     });
 
   const selectedCompras = useMemo(
-    () => compras.filter((c) => selectedIds.has(c.id)),
-    [compras, selectedIds],
+    () => cards.filter((c) => selectedIds.has(c.id)),
+    [cards, selectedIds],
+  );
+  const selectedTotal = useMemo(
+    () => selectedCompras.reduce((acc, c) => acc + Number(c.valor_total ?? 0), 0),
+    [selectedCompras],
   );
   const todosPendentes =
     selectedCompras.length > 0 && selectedCompras.every((c) => c.status === "pendente_aprovacao");
@@ -505,7 +509,7 @@ function ComprasKanban() {
     let ok = 0;
     const motivos: string[] = [];
     for (const c of selectedCompras) {
-      const atual = compras.find((x) => x.id === c.id) ?? c;
+      const atual = cards.find((x) => x.id === c.id) ?? c;
       const r = await advanceToStatus(atual, target, { force: true, silent: true });
       if (r.ok) ok++;
       else if (r.motivo && !motivos.includes(r.motivo)) motivos.push(r.motivo);
@@ -521,6 +525,15 @@ function ComprasKanban() {
       });
   }
 
+  function abrirCard(c: Compra) {
+    if (c.origem === "demanda") {
+      setEditDemandaId(c.id);
+      setOpenDemanda(true);
+      return;
+    }
+    setEditId(c.id);
+    setOpen(true);
+  }
 
   async function onDragEnd(e: DragEndEvent) {
     const id = String(e.active.id);
@@ -530,13 +543,16 @@ function ComprasKanban() {
     if (COMPRA_STATUSES.some((s) => s.key === overId)) {
       status = overId as CompraStatus;
     } else {
-      const overCompra = compras.find((c) => c.id === overId);
+      const overCompra = cards.find((c) => c.id === overId);
       status = overCompra?.status;
     }
     if (!status) return;
-    const compra = compras.find((c) => c.id === id);
+    const compra = cards.find((c) => c.id === id);
     if (!compra) return;
-    if (!canMoveCompra(compra, user?.id, isAdmin, user?.email, status, compra.status, responsavelDoStatus(status), responsavelDoStatus(compra.status))) {
+    if (
+      compra.origem === "compra" &&
+      !canMoveCompra(compra, user?.id, isAdmin, user?.email, status, compra.status, responsavelDoStatus(status), responsavelDoStatus(compra.status))
+    ) {
       const isPedro = !!user?.email && user.email.trim().toLowerCase() === PEDRO_EMAIL;
       const respIdDest = responsavelDoStatus(status);
       toast.error(
@@ -551,6 +567,7 @@ function ComprasKanban() {
 
     await advanceToStatus(compra, status);
   }
+
 
   return (
     <>
