@@ -241,16 +241,33 @@ export async function gerarOSPdf(p: OSPdfParams) {
       headStyles: { fillColor: [30, 30, 34], textColor: 255, fontSize: 9 },
       styles: { fontSize: 8.5, cellPadding: 2 },
       head: [["Data", "Material", "Devolvido", "Faltante", "Motivo", "Justificativa"]],
-      body: devs.flatMap((d) =>
-        d.linhas.map((l) => [
-          dt(d.data),
-          l.material,
-          String(l.devolvida),
-          String(l.faltante),
-          l.motivo === "perda" ? "Perda" : l.motivo === "emprestimo" ? "Continua emprestado" : "—",
-          l.justificativa || "—",
-        ]),
-      ),
+      body: devs.flatMap((d) => {
+        const map = new Map<string, { material: string; devolvida: number; faltante: number; motivos: Set<string>; justificativas: Set<string> }>();
+        for (const l of d.linhas) {
+          const k = `${l.material}|${l.motivo ?? ""}`;
+          let g = map.get(k);
+          if (!g) {
+            g = { material: l.material, devolvida: 0, faltante: 0, motivos: new Set(), justificativas: new Set() };
+            map.set(k, g);
+          }
+          g.devolvida += Number(l.devolvida || 0);
+          g.faltante += Number(l.faltante || 0);
+          if (l.motivo) g.motivos.add(l.motivo);
+          if (l.justificativa) g.justificativas.add(l.justificativa);
+        }
+        return [...map.values()].map((g) => {
+          const motivo = g.motivos.size === 1 ? [...g.motivos][0] : null;
+          return [
+            dt(d.data),
+            g.material,
+            String(g.devolvida),
+            String(g.faltante),
+            motivo === "perda" ? "Perda" : motivo === "emprestimo" ? "Continua emprestado" : g.motivos.size > 1 ? "Vários" : "—",
+            g.justificativas.size ? [...g.justificativas].join(" · ") : "—",
+          ];
+        });
+      }),
+
       columnStyles: { 2: { halign: "right", cellWidth: 20 }, 3: { halign: "right", cellWidth: 18 } },
       margin: { left: marginX, right: marginX },
     });
