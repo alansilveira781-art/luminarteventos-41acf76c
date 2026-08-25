@@ -77,6 +77,12 @@ export function useEstoqueRealtimeSync() {
       qc.invalidateQueries({ queryKey: ["pat_devolvido_por_origem"] });
       qc.invalidateQueries({ queryKey: ["pat_devolvido_por_origem_alertas"] });
     };
+    const onPatOS = () => {
+      qc.invalidateQueries({ queryKey: ["pat_os"] });
+      qc.invalidateQueries({ queryKey: ["pat_os_itens"] });
+      qc.invalidateQueries({ queryKey: ["pat_os_devolucoes"] });
+      qc.invalidateQueries({ queryKey: ["pat_itens_os"] });
+    };
 
     // Nome de canal único por aba evita colisão entre múltiplas abas do mesmo navegador
     const channelName = `estoque-sync-${typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2)}`;
