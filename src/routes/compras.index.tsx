@@ -124,6 +124,34 @@ function ComprasKanban() {
     },
   });
 
+  // Aquisições (tabela demandas) ainda em aberto — passam a viver no Quadro de Compras
+  const { data: demandasAbertas = [] } = useQuery({
+    queryKey: ["compras", "demandas-abertas"],
+    queryFn: async () => {
+      const { data, error } = await sb
+        .from("demandas")
+        .select("id,numero,status,titulo,solicitante,fornecedor,comprador,data_solicitacao,data_compra,prazo,valor_total,tipo_demanda,responsavel_id,responsavel_nome,created_by")
+        .not("status", "in", "(finalizado,negada)")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  const cards = useMemo<Compra[]>(
+    () => [
+      ...(compras ?? []).map((c: any) => ({ ...c, origem: "compra" as const })),
+      ...(demandasAbertas ?? []).map((d: any) => ({
+        ...d,
+        origem: "demanda" as const,
+        solicitante_id: null,
+        data_servico: null,
+        tipo_compra: null,
+      })),
+    ],
+    [compras, demandasAbertas],
+  );
+
   const { data: pagamentosRows = [] } = useQuery({
     queryKey: ["compras", "pagamentos-quadro"],
     queryFn: async () => {
@@ -135,11 +163,22 @@ function ComprasKanban() {
     staleTime: 30 * 1000,
   });
 
+  const { data: pagamentosDemandaRows = [] } = useQuery({
+    queryKey: ["compras", "pagamentos-quadro-demandas"],
+    queryFn: async () => {
+      const { data } = await sb
+        .from("demanda_pagamentos")
+        .select("demanda_id,forma,valor,parcelamento,data_pagamento,pago,pago_em");
+      return (data ?? []) as any[];
+    },
+    staleTime: 30 * 1000,
+  });
+
   const pagamentosPorCompra = useMemo(() => {
     const m = new Map<string, StatusPagamentos>();
     const grouped = new Map<string, PagamentoLinha[]>();
-    for (const p of pagamentosRows) {
-      const arr = grouped.get(p.compra_id) ?? [];
+    const add = (id: string, p: any) => {
+      const arr = grouped.get(id) ?? [];
       arr.push({
         forma: p.forma ?? null,
         valor: Number(p.valor ?? 0),
@@ -148,11 +187,14 @@ function ComprasKanban() {
         pago: !!p.pago,
         pago_em: p.pago_em ?? null,
       });
-      grouped.set(p.compra_id, arr);
-    }
+      grouped.set(id, arr);
+    };
+    for (const p of pagamentosRows) add(p.compra_id, p);
+    for (const p of pagamentosDemandaRows) add(p.demanda_id, p);
     grouped.forEach((linhas, id) => m.set(id, statusPagamentos(linhas)));
     return m;
-  }, [pagamentosRows]);
+  }, [pagamentosRows, pagamentosDemandaRows]);
+
 
   const { data: statusDefaults = [] } = useQuery({
     queryKey: ["compras_status_defaults"],
