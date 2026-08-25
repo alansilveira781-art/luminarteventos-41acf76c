@@ -40,19 +40,55 @@ export type OSPdfParams = {
 
 const dt = (v?: string | null) => (v ? String(v).slice(0, 10).split("-").reverse().join("/") : "—");
 
-async function carregarLogo(): Promise<string | null> {
-  try {
-    const res = await fetch(logoUrl);
-    const blob = await res.blob();
-    return await new Promise<string>((resolve, reject) => {
-      const fr = new FileReader();
-      fr.onload = () => resolve(String(fr.result));
-      fr.onerror = reject;
-      fr.readAsDataURL(blob);
-    });
-  } catch {
-    return null;
-  }
+// Carrega a logo em data URL, recortando a margem vazia e preservando a proporção real.
+async function carregarLogo(): Promise<{ src: string; w: number; h: number } | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const c = document.createElement("canvas");
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        const ctx = c.getContext("2d")!;
+        ctx.drawImage(img, 0, 0);
+
+        const data = ctx.getImageData(0, 0, c.width, c.height).data;
+        let minX = c.width,
+          minY = c.height,
+          maxX = 0,
+          maxY = 0;
+        for (let y = 0; y < c.height; y++) {
+          for (let x = 0; x < c.width; x++) {
+            const i = (y * c.width + x) * 4;
+            const alpha = data[i + 3];
+            if (alpha > 10 && !(data[i] > 250 && data[i + 1] > 250 && data[i + 2] > 250)) {
+              if (x < minX) minX = x;
+              if (x > maxX) maxX = x;
+              if (y < minY) minY = y;
+              if (y > maxY) maxY = y;
+            }
+          }
+        }
+
+        if (maxX > minX && maxY > minY) {
+          const cropW = maxX - minX + 1;
+          const cropH = maxY - minY + 1;
+          const cropped = document.createElement("canvas");
+          cropped.width = cropW;
+          cropped.height = cropH;
+          cropped.getContext("2d")!.putImageData(ctx.getImageData(minX, minY, cropW, cropH), 0, 0);
+          resolve({ src: cropped.toDataURL("image/png"), w: cropW, h: cropH });
+        } else {
+          resolve({ src: c.toDataURL("image/png"), w: img.naturalWidth, h: img.naturalHeight });
+        }
+      } catch {
+        resolve({ src: img.src, w: img.naturalWidth || 1, h: img.naturalHeight || 1 });
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = logoUrl;
+  });
 }
 
 export async function gerarOSPdf(p: OSPdfParams) {
@@ -67,11 +103,20 @@ export async function gerarOSPdf(p: OSPdfParams) {
   const logo = await carregarLogo();
   if (logo) {
     try {
-      doc.addImage(logo, "PNG", marginX, 10, 34, 12, undefined, "FAST");
+      // mantém a proporção original: altura base de 12 mm, largura limitada a 45 mm
+      const ratio = logo.w / logo.h;
+      let h = 12;
+      let w = h * ratio;
+      if (w > 45) {
+        w = 45;
+        h = w / ratio;
+      }
+      doc.addImage(logo.src, "PNG", marginX, 10, w, h, undefined, "FAST");
     } catch {
       /* ignora falha da logo */
     }
   }
+
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
