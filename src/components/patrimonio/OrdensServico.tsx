@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Trash2, Undo2, X } from "lucide-react";
+import { Pencil, Plus, Printer, Search, Trash2, Undo2, X } from "lucide-react";
+import { gerarOSPdf } from "@/lib/patrimonio/os-pdf";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -76,6 +77,7 @@ export function PatrimonioOS() {
   const [fStatus, setFStatus] = useState("todos");
   const [novaOpen, setNovaOpen] = useState(false);
   const [detalheId, setDetalheId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
 
   /* ---------------- dados ---------------- */
   const { data: itens } = useQuery({
@@ -226,8 +228,7 @@ export function PatrimonioOS() {
 
   const excluirMut = useMutation({
     mutationFn: async (os: OS) => {
-      await supabase.from("pat_movimentacoes").delete().eq("os_id", os.id);
-      const { error } = await supabase.from("pat_os").delete().eq("id", os.id);
+      const { error } = await supabase.rpc("pat_os_excluir", { p_os_id: os.id });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -237,7 +238,66 @@ export function PatrimonioOS() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const imprimirMut = useMutation({
+    mutationFn: async (os: OS) => {
+      const linhas = itensPorOS.get(os.id) ?? [];
+      const tom = os.tomador_id ? (tomadorMap as any)[os.tomador_id] : null;
+      const { data: devs } = await supabase
+        .from("pat_os_devolucoes")
+        .select("*, pat_os_devolucao_itens(*)")
+        .eq("os_id", os.id)
+        .order("created_at", { ascending: true });
+      const nomeDeItem = (osItemId: string) => {
+        const li = linhas.find((l) => l.id === osItemId);
+        const it = li?.item_id ? (itemMap as any)[li.item_id] : null;
+        return it ? `${it.nome}${it.especificacao ? ` — ${it.especificacao}` : ""}` : "—";
+      };
+      await gerarOSPdf({
+        numero: os.numero,
+        tipo: os.tipo,
+        status: STATUS_LABEL[os.status] ?? os.status,
+        dataSaida: os.data_saida,
+        previsaoRetorno: os.previsao_retorno,
+        eventoProjeto: os.evento_projeto,
+        tomadorNome: tom?.nome ?? null,
+        tomadorDocumento: tom?.documento ?? null,
+        tomadorEndereco: tom?.endereco ?? null,
+        tomadorTelefone: tom?.contato_telefone ?? null,
+        retiranteNome: os.retirante_nome,
+        retiranteCpf: os.retirante_cpf,
+        responsavel: os.responsavel,
+        observacoes: os.observacoes,
+        itens: linhas.map((l) => {
+          const it = l.item_id ? (itemMap as any)[l.item_id] : null;
+          return {
+            nome: it?.nome ?? "—",
+            especificacao: it?.especificacao ?? null,
+            id_item: it?.id_item ?? null,
+            unidade: it?.unidade ?? null,
+            quantidade: Number(l.quantidade),
+            devolvida: Number(l.quantidade_devolvida),
+            perdida: Number(l.quantidade_perdida),
+          };
+        }),
+        devolucoes: ((devs ?? []) as any[]).map((d) => ({
+          data: d.data_devolucao,
+          responsavel: d.responsavel,
+          observacoes: d.observacoes,
+          linhas: (d.pat_os_devolucao_itens ?? []).map((li: any) => ({
+            material: nomeDeItem(li.os_item_id),
+            devolvida: Number(li.quantidade_devolvida ?? 0),
+            faltante: Number(li.quantidade_faltante ?? 0),
+            motivo: li.motivo,
+            justificativa: li.justificativa,
+          })),
+        })),
+      });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Falha ao gerar o PDF"),
+  });
+
   const detalhe = (ordens ?? []).find((o) => o.id === detalheId) ?? null;
+  const emEdicao = (ordens ?? []).find((o) => o.id === editId) ?? null;
 
   return (
     <>
@@ -294,7 +354,7 @@ export function PatrimonioOS() {
                 <th className="px-2 py-2 text-right w-24">Pendente</th>
                 <th className="px-2 py-2 w-28">Prev. retorno</th>
                 <th className="px-2 py-2 w-28">Situação</th>
-                <th className="px-2 py-2 w-10"></th>
+                <th className="px-2 py-2 w-28 text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -336,21 +396,48 @@ export function PatrimonioOS() {
                       </Badge>
                     </td>
                     <td className="px-2 py-1.5">
-                      {isAdmin && (
+                      <div className="flex justify-end gap-0.5">
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
+                          title="Imprimir"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (confirm(`Excluir a O.S.-${o.numero}? As movimentações vinculadas serão removidas.`)) {
-                              excluirMut.mutate(o);
-                            }
+                            imprimirMut.mutate(o);
                           }}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Printer className="h-3.5 w-3.5" />
                         </Button>
-                      )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          title="Editar"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditId(o.id);
+                          }}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-rose-600"
+                            title="Excluir"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (confirm(`Excluir a O.S.-${o.numero}? As movimentações vinculadas serão removidas.`)) {
+                                excluirMut.mutate(o);
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -378,6 +465,19 @@ export function PatrimonioOS() {
           itemMap={itemMap}
           tomador={detalhe.tomador_id ? (tomadorMap as any)[detalhe.tomador_id] ?? null : null}
           onClose={() => setDetalheId(null)}
+          onSaved={refetchTudo}
+        />
+      )}
+
+      {emEdicao && (
+        <EditarOSDialog
+          os={emEdicao}
+          itens={itensPorOS.get(emEdicao.id) ?? []}
+          itemMap={itemMap}
+          groups={groups}
+          emUsoPorItem={emUsoPorItem}
+          tomadores={tomadores ?? []}
+          onClose={() => setEditId(null)}
           onSaved={refetchTudo}
         />
       )}
@@ -995,6 +1095,325 @@ function DetalheOSDialog({
           <Button variant="outline" onClick={onClose}>Fechar</Button>
           <Button onClick={() => devolverMut.mutate()} disabled={devolverMut.isPending || os.status === "concluida"}>
             {devolverMut.isPending ? "Salvando…" : "Registrar devolução"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ==================================================================== */
+/* Edição da O.S.                                                       */
+/* ==================================================================== */
+
+type EditLinha = {
+  key: string;
+  osItemId: string | null;
+  groupKey: string;
+  itemId: string | null;
+  label: string;
+  quantidade: string;
+  minimo: number;
+};
+
+function EditarOSDialog({
+  os,
+  itens,
+  itemMap,
+  groups,
+  emUsoPorItem,
+  tomadores,
+  onClose,
+  onSaved,
+}: {
+  os: OS;
+  itens: OSItem[];
+  itemMap: Record<string, any>;
+  groups: ReturnType<typeof buildPatGroups>;
+  emUsoPorItem: Map<string, number>;
+  tomadores: Tomador[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [tipo, setTipo] = useState<"evento" | "emprestimo">(os.tipo === "emprestimo" ? "emprestimo" : "evento");
+  const [evento, setEvento] = useState<string | null>(os.evento_projeto);
+  const [dataSaida, setDataSaida] = useState(os.data_saida?.slice(0, 10) ?? hoje());
+  const [previsao, setPrevisao] = useState(os.previsao_retorno?.slice(0, 10) ?? "");
+  const [responsavel, setResponsavel] = useState(os.responsavel ?? "");
+  const [observacoes, setObservacoes] = useState(os.observacoes ?? "");
+
+  const tomAtual = tomadores.find((t) => t.id === os.tomador_id) ?? null;
+  const [tomadorId, setTomadorId] = useState<string | null>(os.tomador_id);
+  const [tomTipo, setTomTipo] = useState<"PJ" | "PF">((tomAtual?.tipo as any) === "PF" ? "PF" : "PJ");
+  const [tomNome, setTomNome] = useState(tomAtual?.nome ?? "");
+  const [tomDoc, setTomDoc] = useState(tomAtual?.documento ?? "");
+  const [tomEndereco, setTomEndereco] = useState(tomAtual?.endereco ?? "");
+  const [tomTelefone, setTomTelefone] = useState(tomAtual?.contato_telefone ?? "");
+  const [retiranteNome, setRetiranteNome] = useState(os.retirante_nome ?? "");
+  const [retiranteCpf, setRetiranteCpf] = useState(os.retirante_cpf ?? "");
+
+  const [linhas, setLinhas] = useState<EditLinha[]>(() =>
+    itens.map((i) => {
+      const it = i.item_id ? itemMap[i.item_id] : null;
+      return {
+        key: i.id,
+        osItemId: i.id,
+        groupKey: "",
+        itemId: i.item_id,
+        label: it ? `${it.nome}${it.especificacao ? ` — ${it.especificacao}` : ""}${it.id_item ? ` · ${it.id_item}` : ""}` : "—",
+        quantidade: String(Number(i.quantidade)),
+        minimo: Number(i.quantidade_devolvida) + Number(i.quantidade_perdida),
+      };
+    }),
+  );
+
+  const setLinha = (key: string, patch: Partial<EditLinha>) =>
+    setLinhas((c) => c.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+
+  const salvarMut = useMutation({
+    mutationFn: async () => {
+      if (tipo === "evento" && !evento) throw new Error("Informe o evento/projeto.");
+      if (tipo === "emprestimo") {
+        if (!tomNome.trim()) throw new Error("Informe o nome/razão social de quem está solicitando.");
+        if (!tomDoc.trim()) throw new Error(`Informe o ${tomTipo === "PJ" ? "CNPJ" : "CPF"}.`);
+        if (!retiranteNome.trim() || !retiranteCpf.trim())
+          throw new Error("Informe nome e CPF de quem está retirando.");
+      }
+
+      const payload: any[] = [];
+      const usados = new Map<string, number>(emUsoPorItem);
+
+      for (const l of linhas) {
+        const qtd = Number(l.quantidade);
+        if (l.osItemId) {
+          if (!Number.isFinite(qtd) || qtd <= 0) throw new Error("Quantidade inválida em um dos materiais.");
+          if (qtd < l.minimo)
+            throw new Error(`"${l.label}": a quantidade não pode ser menor que o já devolvido/perdido (${l.minimo}).`);
+          payload.push({ os_item_id: l.osItemId, quantidade: qtd });
+        } else {
+          if (!l.groupKey || !(qtd > 0)) continue;
+          const g = groups.find((x) => x.key === l.groupKey);
+          if (!g) throw new Error("Material inválido.");
+          const ids = allocateFromGroup(g, qtd, usados);
+          if (ids.length < qtd)
+            throw new Error(`Quantidade indisponível para "${g.nome}" (disponível: ${ids.length}).`);
+          const contagem = new Map<string, number>();
+          for (const id of ids) {
+            usados.set(id, (usados.get(id) ?? 0) + 1);
+            contagem.set(id, (contagem.get(id) ?? 0) + 1);
+          }
+          contagem.forEach((quantidade, item_id) => payload.push({ item_id, quantidade }));
+        }
+      }
+      if (!payload.length) throw new Error("A O.S. precisa de ao menos um material.");
+
+      let tid = tomadorId;
+      if (tipo === "emprestimo") {
+        const dados = {
+          tipo: tomTipo,
+          nome: tomNome.trim(),
+          documento: tomDoc.trim() || null,
+          endereco: tomEndereco.trim() || null,
+          contato_telefone: tomTelefone.trim() || null,
+        };
+        if (tid) {
+          const { error } = await supabase.from("pat_tomadores").update(dados).eq("id", tid);
+          if (error) throw error;
+        } else {
+          const { data, error } = await supabase.from("pat_tomadores").insert(dados).select("id").single();
+          if (error) throw error;
+          tid = data.id;
+        }
+      } else {
+        tid = null;
+      }
+
+      const { error } = await supabase.rpc("pat_os_editar", {
+        p_os_id: os.id,
+        p_meta: {
+          tipo,
+          evento_projeto: tipo === "evento" ? evento : null,
+          tomador_id: tid,
+          retirante_nome: tipo === "emprestimo" ? retiranteNome.trim() : null,
+          retirante_cpf: tipo === "emprestimo" ? retiranteCpf.trim() : null,
+          data_saida: dataSaida,
+          previsao_retorno: previsao || null,
+          responsavel: responsavel.trim() || null,
+          observacoes: observacoes.trim() || null,
+        } as any,
+        p_linhas: payload as any,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("O.S. atualizada");
+      onSaved();
+      onClose();
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Editar O.S.-{String(os.numero).padStart(3, "0")}</DialogTitle>
+        </DialogHeader>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div>
+            <Label>Tipo</Label>
+            <Select value={tipo} onValueChange={(v) => setTipo(v as any)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="evento">Uso em Evento</SelectItem>
+                <SelectItem value="emprestimo">Empréstimo</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Data de saída</Label>
+            <Input type="date" value={dataSaida} onChange={(e) => setDataSaida(e.target.value)} />
+          </div>
+          <div>
+            <Label>Previsão de retorno</Label>
+            <Input type="date" value={previsao} onChange={(e) => setPrevisao(e.target.value)} />
+          </div>
+        </div>
+
+        {tipo === "evento" ? (
+          <div>
+            <Label>Evento / Projeto</Label>
+            <EventoSheetCombobox value={evento} onChange={setEvento} />
+          </div>
+        ) : (
+          <Card className="p-3 space-y-3">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <Label>Pessoa</Label>
+                <Select value={tomTipo} onValueChange={(v) => setTomTipo(v as any)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PJ">Jurídica (empresa)</SelectItem>
+                    <SelectItem value="PF">Física</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="sm:col-span-2">
+                <Label>{tomTipo === "PJ" ? "Razão social / Empresa" : "Nome completo"}</Label>
+                <Input
+                  value={tomNome}
+                  onChange={(e) => { setTomNome(e.target.value); setTomadorId(null); }}
+                />
+                <TomadorPicker
+                  tomadores={tomadores}
+                  value={tomNome}
+                  onPick={(t) => {
+                    setTomadorId(t.id);
+                    setTomTipo((t.tipo as any) === "PF" ? "PF" : "PJ");
+                    setTomNome(t.nome);
+                    setTomDoc(t.documento ?? "");
+                    setTomEndereco(t.endereco ?? "");
+                    setTomTelefone(t.contato_telefone ?? "");
+                  }}
+                />
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <Label>{tomTipo === "PJ" ? "CNPJ" : "CPF"}</Label>
+                <Input value={tomDoc} onChange={(e) => setTomDoc(e.target.value)} />
+              </div>
+              <div className="sm:col-span-2">
+                <Label>Endereço</Label>
+                <Input value={tomEndereco} onChange={(e) => setTomEndereco(e.target.value)} />
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <Label>Telefone</Label>
+                <Input value={tomTelefone} onChange={(e) => setTomTelefone(e.target.value)} />
+              </div>
+              <div>
+                <Label>Quem está retirando</Label>
+                <Input value={retiranteNome} onChange={(e) => setRetiranteNome(e.target.value)} />
+              </div>
+              <div>
+                <Label>CPF de quem retira</Label>
+                <Input value={retiranteCpf} onChange={(e) => setRetiranteCpf(e.target.value)} />
+              </div>
+            </div>
+          </Card>
+        )}
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <Label>Responsável pela liberação</Label>
+            <Input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} />
+          </div>
+          <div>
+            <Label>Observações</Label>
+            <Textarea rows={1} value={observacoes} onChange={(e) => setObservacoes(e.target.value)} />
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <Label>Materiais</Label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setLinhas((c) => [
+                  ...c,
+                  { key: crypto.randomUUID(), osItemId: null, groupKey: "", itemId: null, label: "", quantidade: "1", minimo: 0 },
+                ])
+              }
+            >
+              <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar
+            </Button>
+          </div>
+          <div className="space-y-2">
+            {linhas.map((l) => (
+              <div key={l.key} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="flex-1">
+                  {l.osItemId ? (
+                    <div className="text-xs px-2 py-2 rounded-md border bg-muted/30">{l.label}</div>
+                  ) : (
+                    <PatGroupSelect
+                      groups={groups}
+                      value={l.groupKey}
+                      onChange={(k) => setLinha(l.key, { groupKey: k })}
+                    />
+                  )}
+                </div>
+                <Input
+                  type="number"
+                  min={l.minimo || 1}
+                  className="w-full sm:w-28"
+                  value={l.quantidade}
+                  onChange={(e) => setLinha(l.key, { quantidade: e.target.value })}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  title={l.minimo > 0 ? "Materiais já devolvidos não podem ser removidos" : "Remover"}
+                  disabled={l.minimo > 0}
+                  onClick={() => setLinhas((c) => c.filter((x) => x.key !== l.key))}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button onClick={() => salvarMut.mutate()} disabled={salvarMut.isPending}>
+            {salvarMut.isPending ? "Salvando…" : "Salvar alterações"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -5907,11 +5907,59 @@ export type Database = {
         }
         Relationships: []
       }
+      rh_colaborador_documentos: {
+        Row: {
+          arquivo_nome: string
+          arquivo_path: string
+          colaborador_id: string
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          id: string
+          tipo: string
+          updated_at: string
+          validade: string | null
+        }
+        Insert: {
+          arquivo_nome: string
+          arquivo_path: string
+          colaborador_id: string
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          id?: string
+          tipo?: string
+          updated_at?: string
+          validade?: string | null
+        }
+        Update: {
+          arquivo_nome?: string
+          arquivo_path?: string
+          colaborador_id?: string
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          id?: string
+          tipo?: string
+          updated_at?: string
+          validade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rh_colaborador_documentos_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "rh_colaboradores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rh_colaboradores: {
         Row: {
           apelido: string | null
           ativo: boolean
           created_at: string
+          data_nascimento: string | null
           departamento: string | null
           documento: string
           funcao: string | null
@@ -5926,6 +5974,7 @@ export type Database = {
           apelido?: string | null
           ativo?: boolean
           created_at?: string
+          data_nascimento?: string | null
           departamento?: string | null
           documento: string
           funcao?: string | null
@@ -5940,6 +5989,7 @@ export type Database = {
           apelido?: string | null
           ativo?: boolean
           created_at?: string
+          data_nascimento?: string | null
           departamento?: string | null
           documento?: string
           funcao?: string | null
@@ -6300,6 +6350,11 @@ export type Database = {
       next_proposta_numero: { Args: never; Returns: number }
       next_requisicao_numero: { Args: never; Returns: number }
       pat_os_criar: { Args: { p_linhas: Json; p_meta: Json }; Returns: string }
+      pat_os_editar: {
+        Args: { p_linhas: Json; p_meta: Json; p_os_id: string }
+        Returns: undefined
+      }
+      pat_os_excluir: { Args: { p_os_id: string }; Returns: undefined }
       pat_os_registrar_devolucao: {
         Args: {
           p_data: string
