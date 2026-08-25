@@ -1373,7 +1373,8 @@ function EditarOSDialog({
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label>Responsável pela liberação</Label>
-            <Input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} />
+            <ComboboxCreatable options={colaboradores} value={responsavel} onChange={setResponsavel} placeholder="Selecione o colaborador…" />
+
           </div>
           <div>
             <Label>Observações</Label>
