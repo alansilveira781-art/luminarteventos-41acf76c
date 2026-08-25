@@ -872,6 +872,8 @@ function DetalheOSDialog({
 }) {
   const [dataDev, setDataDev] = useState(hoje());
   const [responsavel, setResponsavel] = useState("");
+  const colaboradores = useColaboradoresNomes();
+
   const [obs, setObs] = useState("");
   const [novaPrevisao, setNovaPrevisao] = useState(os.previsao_retorno ?? "");
   const [linhas, setLinhas] = useState<Record<string, DevLinha>>(() =>
