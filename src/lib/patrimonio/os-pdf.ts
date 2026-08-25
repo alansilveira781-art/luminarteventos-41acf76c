@@ -40,6 +40,43 @@ export type OSPdfParams = {
 
 const dt = (v?: string | null) => (v ? String(v).slice(0, 10).split("-").reverse().join("/") : "—");
 
+const chaveMaterial = (nome: string, especificacao?: string | null) =>
+  `${(nome || "").trim().toLowerCase()}|${(especificacao || "").trim().toLowerCase()}`;
+
+/** Agrupa lançamentos iguais (nome + especificação) somando as quantidades. */
+function agruparItens(itens: OSPdfItem[]) {
+  const map = new Map<
+    string,
+    OSPdfItem & { codigos: Set<string>; registros: number }
+  >();
+  for (const i of itens) {
+    const k = chaveMaterial(i.nome, i.especificacao);
+    let g = map.get(k);
+    if (!g) {
+      g = {
+        nome: i.nome,
+        especificacao: i.especificacao ?? null,
+        unidade: i.unidade ?? null,
+        id_item: null,
+        quantidade: 0,
+        devolvida: 0,
+        perdida: 0,
+        codigos: new Set<string>(),
+        registros: 0,
+      };
+      map.set(k, g);
+    }
+    g.quantidade += Number(i.quantidade || 0);
+    g.devolvida += Number(i.devolvida || 0);
+    g.perdida += Number(i.perdida || 0);
+    g.registros += 1;
+    if (i.id_item) g.codigos.add(i.id_item);
+    if (!g.unidade && i.unidade) g.unidade = i.unidade;
+  }
+  return [...map.values()].sort((a, b) => compareFamiliaNomeMedida(a, b));
+}
+
+
 // Carrega a logo em data URL, recortando a margem vazia e preservando a proporção real.
 async function carregarLogo(): Promise<{ src: string; w: number; h: number } | null> {
   return new Promise((resolve) => {
