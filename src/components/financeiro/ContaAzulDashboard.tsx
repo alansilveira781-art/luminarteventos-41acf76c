@@ -867,7 +867,7 @@ function PainelFinanceiro() {
           <div className="rounded-md border p-3">
             <div className="text-xs text-muted-foreground">Recebido no mês</div>
             <div className="text-lg font-bold tabular-nums text-emerald-600">{fmtMoney(comparativo.recebido)}</div>
-            <div className="text-xs text-muted-foreground">Total realizado no caixa</div>
+            <div className="text-xs text-muted-foreground">Receita Bruta recebida no mês</div>
           </div>
           <div className="rounded-md border p-3">
             <div className="text-xs text-muted-foreground">Conversão em caixa</div>
