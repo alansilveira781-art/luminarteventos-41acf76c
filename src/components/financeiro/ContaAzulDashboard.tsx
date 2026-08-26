@@ -855,34 +855,41 @@ function PainelFinanceiro() {
           subLabel="% Receita LY"
           subValue={yoyRb === null ? "—" : fmtPct(yoyRb)}
           subColor={yoyRb === null ? "text-muted-foreground" : yoyRb >= 0 ? "text-emerald-600" : "text-rose-600"}
+          action={kpiRefresh("receber", "Receita Bruta")}
         />
         <KpiCard
           icon={Users} label="Pot. de Vendas" value={fmtMoney(Math.abs(pv))} valueColor="text-rose-600"
           subLabel="% PV" subValue={fmtPct(rb ? Math.abs(pv) / rb : 0)}
           subColor="text-rose-600"
+          action={kpiRefresh("pagar", "Pot. de Vendas")}
         />
         <KpiCard
           icon={Building2} label="Despesas" value={fmtMoney(Math.abs(desp))} valueColor="text-rose-600"
           subLabel="% Despesa" subValue={fmtPct(rb ? Math.abs(desp) / rb : 0)}
           subColor="text-rose-600"
+          action={kpiRefresh("pagar", "Despesas")}
         />
         <KpiCard
           icon={BarChart3} label="Custos" value={fmtMoney(Math.abs(custos))} valueColor="text-rose-600"
           subLabel="% Custos" subValue={fmtPct(rb ? Math.abs(custos) / rb : 0)}
           subColor="text-rose-600"
+          action={kpiRefresh("pagar", "Custos")}
         />
         <KpiCard
           icon={Landmark} label="Investimentos" value={fmtMoney(Math.abs(investimentos))} valueColor="text-rose-600"
           subLabel="% Investimento" subValue={fmtPct(rb ? Math.abs(investimentos) / rb : 0)}
           subColor="text-rose-600"
+          action={kpiRefresh("pagar", "Investimentos")}
         />
         <KpiCard
           icon={Sprout} label="Lucro" value={fmtMoney(lucro)}
           valueColor={lucro >= 0 ? "text-emerald-600" : "text-rose-600"}
           subLabel="% Lucro" subValue={fmtPct(rb ? lucro / rb : 0)}
           subColor={lucro >= 0 ? "text-emerald-600" : "text-rose-600"}
+          action={kpiRefresh("ambos", "Lucro")}
         />
       </div>
+
 
 
       {/* Gráficos e análises automáticas */}
