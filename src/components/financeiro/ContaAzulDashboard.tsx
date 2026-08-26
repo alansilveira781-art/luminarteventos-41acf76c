@@ -753,7 +753,7 @@ function PainelFinanceiro() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
         <KpiCard
           icon={Piggy} label="Receita Bruta" value={fmtMoney(rb)}
           subLabel="% Receita LY"
@@ -761,26 +761,33 @@ function PainelFinanceiro() {
           subColor={yoyRb === null ? "text-muted-foreground" : yoyRb >= 0 ? "text-emerald-600" : "text-rose-600"}
         />
         <KpiCard
-          icon={Users} label="Pot. de Vendas" value={fmtMoney(pv)}
-          subLabel="% PV" subValue={fmtPct(rb ? pv / rb : 0)}
-          subColor={pv >= 0 ? "text-emerald-600" : "text-rose-600"}
-        />
-        <KpiCard
-          icon={Building2} label="Despesas" value={fmtMoney(desp)}
-          subLabel="% Despesa" subValue={fmtPct(rb ? desp / rb : 0)}
+          icon={Users} label="Pot. de Vendas" value={fmtMoney(Math.abs(pv))} valueColor="text-rose-600"
+          subLabel="% PV" subValue={fmtPct(rb ? Math.abs(pv) / rb : 0)}
           subColor="text-rose-600"
         />
         <KpiCard
-          icon={BarChart3} label="Custos" value={fmtMoney(custos)}
-          subLabel="% Custos" subValue={fmtPct(rb ? custos / rb : 0)}
+          icon={Building2} label="Despesas" value={fmtMoney(Math.abs(desp))} valueColor="text-rose-600"
+          subLabel="% Despesa" subValue={fmtPct(rb ? Math.abs(desp) / rb : 0)}
+          subColor="text-rose-600"
+        />
+        <KpiCard
+          icon={BarChart3} label="Custos" value={fmtMoney(Math.abs(custos))} valueColor="text-rose-600"
+          subLabel="% Custos" subValue={fmtPct(rb ? Math.abs(custos) / rb : 0)}
+          subColor="text-rose-600"
+        />
+        <KpiCard
+          icon={Landmark} label="Investimentos" value={fmtMoney(Math.abs(investimentos))} valueColor="text-rose-600"
+          subLabel="% Investimento" subValue={fmtPct(rb ? Math.abs(investimentos) / rb : 0)}
           subColor="text-rose-600"
         />
         <KpiCard
           icon={Sprout} label="Lucro" value={fmtMoney(lucro)}
+          valueColor={lucro >= 0 ? "text-emerald-600" : "text-rose-600"}
           subLabel="% Lucro" subValue={fmtPct(rb ? lucro / rb : 0)}
           subColor={lucro >= 0 ? "text-emerald-600" : "text-rose-600"}
         />
       </div>
+
 
       {/* Gráficos e análises automáticas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
