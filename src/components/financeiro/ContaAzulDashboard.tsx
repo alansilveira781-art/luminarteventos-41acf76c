@@ -62,7 +62,6 @@ type ContaReceber = ContaPagar & { cliente_nome: string | null };
 type PlanoConta = { external_id: string; nome: string; tipo: string | null; codigo: string | null; pai_external_id: string | null };
 type CentroCusto = { external_id: string; nome: string };
 type Extrato = { external_id: string; conta_bancaria: string | null; valor: number };
-type Baixa = { lancamento_external_id: string; valor: number; data_baixa: string };
 
 const fmtMoney = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 });
@@ -208,7 +207,7 @@ function useContaAzulData(ano?: number, mes?: number) {
       return (data ?? []) as (Extrato & { data: string | null; descricao: string | null; categoria_external_id: string | null })[];
     },
   });
-  return { planos, centros, pagar, receber, baixasPagar, baixasReceber, extrato };
+  return { planos, centros, pagar, receber, extrato };
 }
 
 
@@ -401,7 +400,7 @@ function PainelFinanceiro() {
   const [ano, setAno] = useState<number>(new Date().getFullYear());
   const [mes, setMes] = useState(new Date().getMonth() + 1);
   const anoEfetivo = ano;
-  const { planos, pagar, receber, baixasPagar, baixasReceber } = useContaAzulData(anoEfetivo, mes);
+  const { planos, pagar, receber } = useContaAzulData(anoEfetivo, mes);
   const { isAdmin, isModuleAdmin } = useAuth();
   const canReprocess = isAdmin || isModuleAdmin("financeiro");
   const qc = useQueryClient();
@@ -438,8 +437,8 @@ function PainelFinanceiro() {
   const rbAnt = totaisAnt.RB ?? 0;
   const yoyRb = rbAnt > 0 ? (rb - rbAnt) / rbAnt : null;
   const caixaAtual = useMemo(
-    () => calcularIndicadoresCaixa(pagar.data ?? [], receber.data ?? [], planoMap, anoEfetivo, mes, baixasPagar.data ?? [], baixasReceber.data ?? []),
-    [pagar.data, receber.data, planoMap, anoEfetivo, mes, baixasPagar.data, baixasReceber.data],
+    () => calcularIndicadoresCaixa(pagar.data ?? [], receber.data ?? [], planoMap, anoEfetivo, mes),
+    [pagar.data, receber.data, planoMap, anoEfetivo, mes],
   );
 
   // ----- Período anterior (mês anterior) para as análises automáticas -----
@@ -458,8 +457,8 @@ function PainelFinanceiro() {
     [prevData.pagar.data, prevData.receber.data, planoMap, prevPer, dreEstrutura],
   );
   const caixaAnterior = useMemo(
-    () => calcularIndicadoresCaixa(prevData.pagar.data ?? [], prevData.receber.data ?? [], planoMap, prevPer.ano, prevPer.mes, prevData.baixasPagar.data ?? [], prevData.baixasReceber.data ?? []),
-    [prevData.pagar.data, prevData.receber.data, prevData.baixasPagar.data, prevData.baixasReceber.data, planoMap, prevPer],
+    () => calcularIndicadoresCaixa(prevData.pagar.data ?? [], prevData.receber.data ?? [], planoMap, prevPer.ano, prevPer.mes),
+    [prevData.pagar.data, prevData.receber.data, planoMap, prevPer],
   );
 
   const receitasFatias = useMemo(() => comOutros(fatiasDoGrupo(grupos, "RB", planoMap)), [grupos, planoMap]);
