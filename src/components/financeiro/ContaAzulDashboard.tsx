@@ -538,8 +538,18 @@ function PainelFinanceiro() {
   const anoData = useContaAzulData(anoEfetivo, 0);
   const serieOperacao = useMemo(
     () =>
-      serieCustoOperacao(anoEfetivo, (a, m) =>
-        calcularDRECaixa(anoData.pagar.data ?? [], anoData.receber.data ?? [], planoMap, a, m, dreEstrutura, undefined, undefined, "caixa", anoData.baixas.data ?? [], anoData.rateios.data ?? []).totais,
+      serieCustoOperacao(
+        anoEfetivo,
+        (a, m) =>
+          calcularDRECaixa(anoData.pagar.data ?? [], anoData.receber.data ?? [], planoMap, a, m, dreEstrutura, undefined, undefined, "caixa", anoData.baixas.data ?? [], anoData.rateios.data ?? []).totais,
+        (a, m) => {
+          const prefix = `${a}-${String(m).padStart(2, "0")}`;
+          const qtdPagamentos = (anoData.baixas.data ?? []).filter((b) => b.tipo === "pagar" && b.data_baixa?.startsWith(prefix)).length;
+          // Um mês operacional completo possui recorrência de pagamentos; cargas
+          // pontuais não devem ser interpretadas como custo zero ou fechamento real.
+          // Evita validar como fechamento um lote isolado (ex.: uma única baixa).
+          return qtdPagamentos >= 20;
+        },
       ),
     [anoData.pagar.data, anoData.receber.data, anoData.baixas.data, anoData.rateios.data, planoMap, anoEfetivo, dreEstrutura],
   );
@@ -875,12 +885,12 @@ function PainelFinanceiro() {
           <div>
             <div className="text-sm font-semibold">Custo de operação x Receita — {anoEfetivo}</div>
             <div className="text-xs text-muted-foreground">
-              Soma de todas as saídas do demonstrativo (exceto Outras Saídas) sobre a Receita Bruta — visão anual, não muda com o filtro de mês
+              Potencial de Vendas + Custos + Despesas sobre a Receita Bruta — visão anual, não muda com o filtro de mês
             </div>
 
           </div>
           <div className="rounded-md border px-4 py-2 bg-muted/40">
-            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Média dos meses completos</div>
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Índice consolidado</div>
             <div className="text-2xl font-bold tabular-nums" style={{ color: CHART_ACCENT }}>
               {resumoOperacao.media === null ? "—" : fmtPct(resumoOperacao.media)}
             </div>
@@ -926,6 +936,9 @@ function PainelFinanceiro() {
                           <span>% de operação</span>
                           <span className="tabular-nums">{p.pct === null ? "—" : fmtPct(p.pct)}</span>
                         </div>
+                        {!p.completo && p.receita > 0 ? (
+                          <div className="mt-1 border-t pt-1 font-medium text-amber-600">Dados de saídas incompletos</div>
+                        ) : null}
                         {p.detalhe?.length ? (
                           <div className="mt-1 pt-1 border-t space-y-0.5">
                             {p.detalhe.map((d: any) => (
@@ -952,7 +965,7 @@ function PainelFinanceiro() {
                   stroke={CHART_ACCENT}
                   strokeWidth={2}
                   dot={{ r: 3 }}
-                  connectNulls
+                  connectNulls={false}
                   isAnimationActive={false}
                 />
               </ComposedChart>
@@ -962,7 +975,7 @@ function PainelFinanceiro() {
         <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
           {resumoOperacao.media === null
             ? "Ainda não há meses completos com receita neste ano para calcular a média."
-            : `Em média, ${fmtPct(resumoOperacao.media)} da receita é consumida para operar a empresa (média de ${resumoOperacao.meses} mês(es) completo(s) de ${anoEfetivo}).` +
+            : `No consolidado, ${fmtPct(resumoOperacao.media)} da receita é consumida para operar a empresa (${resumoOperacao.meses} mês(es) completo(s) de ${anoEfetivo}).` +
               (resumoOperacao.melhor && resumoOperacao.pior
                 ? ` Melhor mês: ${resumoOperacao.melhor.label} (${fmtPct(resumoOperacao.melhor.pct as number)}); pior mês: ${resumoOperacao.pior.label} (${fmtPct(resumoOperacao.pior.pct as number)}).`
                 : "")}
