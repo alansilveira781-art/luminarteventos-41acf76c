@@ -869,6 +869,7 @@ function ComprasKanban() {
           setOpenDemanda(v);
           if (!v) {
             setEditDemandaId(null);
+            limparLink();
             qc.invalidateQueries({ queryKey: ["compras", "demandas"] });
             qc.invalidateQueries({ queryKey: ["compras", "pagamentos-quadro-demandas"] });
           }
