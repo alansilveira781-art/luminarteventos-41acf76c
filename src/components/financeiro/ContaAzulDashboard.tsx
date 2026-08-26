@@ -10,7 +10,7 @@ import {
 } from "recharts";
 import { PiggyBank as Piggy, Building2, BarChart3, Sprout, Users, Landmark, X, ChevronRight, ChevronDown, Printer, RefreshCw, Loader2, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DRE_STRUCTURE, grupoDoPlanoNome, isTransferencia, buildPrefixIndex, calcularDRECaixa, calcularIndicadoresCaixa, expandirBaixas, inPeriodo, montarLinhasPorCentro, type BaixaRow, type DreGroupId, type DreLine, type RateioRow } from "@/lib/conta-azul/dre";
+import { DRE_STRUCTURE, grupoDoPlanoNome, isTransferencia, buildPrefixIndex, calcularDRECaixa, expandirBaixas, inPeriodo, montarLinhasPorCentro, type BaixaRow, type DreGroupId, type DreLine, type RateioRow } from "@/lib/conta-azul/dre";
 import { useDreEstrutura } from "@/hooks/useDreEstrutura";
 import { agruparParcelamentos, type GroupedLancRow } from "@/lib/conta-azul/agrupar-parcelas";
 import {
