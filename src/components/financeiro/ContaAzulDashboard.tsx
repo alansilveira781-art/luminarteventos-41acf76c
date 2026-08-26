@@ -644,11 +644,13 @@ function PainelFinanceiro() {
         mes,
         kpis: [
           { label: "Receita Bruta", value: fmtMoney(rb), sub: `% Receita LY: ${yoyRb === null ? "—" : fmtPct(yoyRb)}` },
-          { label: "Pot. de Vendas", value: fmtMoney(pv), sub: `% PV: ${fmtPct(rb ? pv / rb : 0)}` },
-          { label: "Despesas", value: fmtMoney(desp), sub: `% Despesa: ${fmtPct(rb ? desp / rb : 0)}` },
-          { label: "Custos", value: fmtMoney(custos), sub: `% Custos: ${fmtPct(rb ? custos / rb : 0)}` },
+          { label: "Pot. de Vendas", value: fmtMoney(Math.abs(pv)), sub: `% PV: ${fmtPct(rb ? Math.abs(pv) / rb : 0)}` },
+          { label: "Despesas", value: fmtMoney(Math.abs(desp)), sub: `% Despesa: ${fmtPct(rb ? Math.abs(desp) / rb : 0)}` },
+          { label: "Custos", value: fmtMoney(Math.abs(custos)), sub: `% Custos: ${fmtPct(rb ? Math.abs(custos) / rb : 0)}` },
+          { label: "Investimentos", value: fmtMoney(Math.abs(investimentos)), sub: `% Investimento: ${fmtPct(rb ? Math.abs(investimentos) / rb : 0)}` },
           { label: "Lucro", value: fmtMoney(lucro), sub: `% Lucro: ${fmtPct(rb ? lucro / rb : 0)}` },
         ],
+
         graficos: [
           {
             titulo: "Receitas do período",
