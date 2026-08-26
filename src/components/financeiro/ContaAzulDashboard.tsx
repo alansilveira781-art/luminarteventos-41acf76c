@@ -413,7 +413,102 @@ function CategoryReprocessButton({
 }
 
 
+/** Botão de atualização de um card do painel.
+ *  Varre o ano inteiro no Conta Azul (por vencimento), importa títulos/baixas que faltam
+ *  e reprocessa os rateios dos lançamentos divergentes; depois recarrega os dados do painel. */
+function CardRefreshButton({
+  ano,
+  escopo,
+  label,
+  onDone,
+}: {
+  ano: number;
+  escopo: "receber" | "pagar" | "ambos";
+  label: string;
+  onDone: () => void;
+}) {
+  const [etapa, setEtapa] = useState<string | null>(null);
+  const running = etapa !== null;
+
+  const tipos: Array<"receber" | "pagar"> = escopo === "ambos" ? ["receber", "pagar"] : [escopo];
+
+  const handleClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (running) return;
+    setEtapa("varrendo");
+    let importados = 0;
+    let falhas = 0;
+    let divergentes = 0;
+    try {
+      const headers = { ...(await authHeaders()), "Content-Type": "application/json" };
+      for (const tipo of tipos) {
+        setEtapa(`varrendo ${ano}`);
+        const res = await fetch("/api/contaazul/conferencia", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            acao: "conferir",
+            tipo,
+            vencDe: `${ano}-01-01`,
+            vencAte: `${ano}-12-31`,
+          }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const conf = (await res.json()) as { ids: string[]; divergentes: number };
+        let fila = conf.ids ?? [];
+        divergentes += conf.divergentes ?? 0;
+        const total = fila.length;
+        while (fila.length > 0) {
+          setEtapa(`${total - fila.length}/${total}`);
+          const fix = await fetch("/api/contaazul/conferencia", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ acao: "corrigir", tipo, ids: fila.slice(0, 40) }),
+          });
+          if (!fix.ok) throw new Error(await fix.text());
+          const r = (await fix.json()) as { corrigidos?: number; falhas?: number };
+          importados += r.corrigidos ?? 0;
+          falhas += r.falhas ?? 0;
+          fila = fila.slice(40);
+        }
+      }
+      if (divergentes === 0) {
+        toast.success(`${label}: painel já está em dia com o Conta Azul.`);
+      } else {
+        const partes = [`${importados} atualizados`];
+        if (falhas > 0) partes.push(`${falhas} falhas`);
+        (falhas > 0 ? toast.message : toast.success)(`${label} (${ano}): ${partes.join(" · ")}`);
+      }
+      onDone();
+    } catch (err: any) {
+      toast.error(`Erro ao atualizar ${label}: ${String(err?.message ?? err)}`);
+    } finally {
+      setEtapa(null);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={running}
+      title={`Atualizar ${label} — varre todo o ano de ${ano} no Conta Azul`}
+      className="opacity-40 hover:opacity-100 focus:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted/60 shrink-0"
+    >
+      {running ? (
+        <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          {etapa}
+        </span>
+      ) : (
+        <RefreshCw className="h-3.5 w-3.5" />
+      )}
+    </button>
+  );
+}
+
 const GROUP_LABEL: Record<string, string> = {
+
   RB: "(+) Receita Bruta",
   DR: "(-) Deduções da Receita",
   RL: "(=) Receita Líquida",
