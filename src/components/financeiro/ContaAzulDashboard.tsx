@@ -10,7 +10,7 @@ import {
 } from "recharts";
 import { PiggyBank as Piggy, Building2, BarChart3, Sprout, Users, X, ChevronRight, ChevronDown, Printer, RefreshCw, Loader2, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DRE_STRUCTURE, grupoDoPlanoNome, isTransferencia, buildPrefixIndex, calcularDRECaixa, calcularIndicadoresCaixa, inPeriodo, montarLinhasPorCentro, type DreGroupId, type DreLine } from "@/lib/conta-azul/dre";
+import { DRE_STRUCTURE, grupoDoPlanoNome, isTransferencia, buildPrefixIndex, calcularDRECaixa, calcularIndicadoresCaixa, expandirBaixas, inPeriodo, montarLinhasPorCentro, type BaixaRow, type DreGroupId, type DreLine, type RateioRow } from "@/lib/conta-azul/dre";
 import { useDreEstrutura } from "@/hooks/useDreEstrutura";
 import { agruparParcelamentos, type GroupedLancRow } from "@/lib/conta-azul/agrupar-parcelas";
 import {
@@ -161,10 +161,9 @@ async function fetchPaged<T>(build: (from: number, to: number) => any): Promise<
 function useContaAzulData(ano?: number, mes?: number) {
   const planos = useQuery({
     queryKey: ["ca-plano"],
-    queryFn: async () => {
-      const { data } = await sb.from("ca_plano_contas").select("external_id,nome,tipo,codigo,pai_external_id");
-      return (data ?? []) as PlanoConta[];
-    },
+    queryFn: () => fetchPaged<PlanoConta>((from, to) =>
+      sb.from("ca_plano_contas").select("external_id,nome,tipo,codigo,pai_external_id").range(from, to),
+    ),
   });
   const centros = useQuery({
     queryKey: ["ca-centros"],
@@ -182,23 +181,64 @@ function useContaAzulData(ano?: number, mes?: number) {
   const pagarCols = "external_id,descricao,fornecedor_nome,categoria_external_id,centro_custo_external_id,valor,data_vencimento,data_pagamento,status,observacoes";
   const receberCols = "external_id,descricao,cliente_nome,categoria_external_id,centro_custo_external_id,valor,data_vencimento,data_pagamento,status,observacoes";
 
+  const baixas = useQuery({
+    queryKey: ["ca-baixas", hasPeriodo ? a : "all", hasPeriodo ? m : "all"],
+    queryFn: () => fetchPaged<BaixaRow>((from, to) => {
+      let q = sb.from("ca_lancamento_baixas").select("tipo,lancamento_external_id,valor,data_baixa");
+      if (hasPeriodo) q = q.gte("data_baixa", inicio).lte("data_baixa", fim);
+      return q.range(from, to);
+    }),
+  });
+
+  const idsBaixas = useMemo(() => ({
+    pagar: Array.from(new Set((baixas.data ?? []).filter((b) => b.tipo === "pagar").map((b) => b.lancamento_external_id))),
+    receber: Array.from(new Set((baixas.data ?? []).filter((b) => b.tipo === "receber").map((b) => b.lancamento_external_id))),
+  }), [baixas.data]);
+
+  const carregarTitulos = async <T,>(tabela: string, cols: string, ids: string[]): Promise<T[]> => {
+    const porVencimento = await fetchPaged<T>((from, to) => {
+      let q = sb.from(tabela).select(cols);
+      if (hasPeriodo) q = q.gte("data_vencimento", inicio).lte("data_vencimento", fim);
+      return q.range(from, to);
+    });
+    if (!hasPeriodo || ids.length === 0) return porVencimento;
+    const porId: T[] = [];
+    for (let i = 0; i < ids.length; i += 200) {
+      const { data, error } = await sb.from(tabela).select(cols).in("external_id", ids.slice(i, i + 200));
+      if (error) throw error;
+      porId.push(...((data ?? []) as T[]));
+    }
+    const unicos = new Map<string, T>();
+    [...porVencimento, ...porId].forEach((row: any) => unicos.set(String(row.external_id), row));
+    return Array.from(unicos.values());
+  };
+
   const pagar = useQuery({
     queryKey: ["ca-pagar", hasPeriodo ? a : "all", hasPeriodo ? m : "all"],
-    queryFn: () =>
-      fetchPaged<ContaPagar>((from, to) => {
-        let q = sb.from("ca_contas_pagar").select(pagarCols);
-        if (hasPeriodo) q = q.gte("data_vencimento", inicio).lte("data_vencimento", fim);
-        return q.range(from, to);
-      }),
+    enabled: !hasPeriodo || baixas.isSuccess,
+    queryFn: () => carregarTitulos<ContaPagar>("ca_contas_pagar", pagarCols, idsBaixas.pagar),
   });
   const receber = useQuery({
     queryKey: ["ca-receber", hasPeriodo ? a : "all", hasPeriodo ? m : "all"],
-    queryFn: () =>
-      fetchPaged<ContaReceber>((from, to) => {
-        let q = sb.from("ca_contas_receber").select(receberCols);
-        if (hasPeriodo) q = q.gte("data_vencimento", inicio).lte("data_vencimento", fim);
-        return q.range(from, to);
-      }),
+    enabled: !hasPeriodo || baixas.isSuccess,
+    queryFn: () => carregarTitulos<ContaReceber>("ca_contas_receber", receberCols, idsBaixas.receber),
+  });
+  const rateios = useQuery({
+    queryKey: ["ca-rateios-caixa", idsBaixas.pagar, idsBaixas.receber],
+    enabled: baixas.isSuccess && idsBaixas.pagar.length + idsBaixas.receber.length > 0,
+    queryFn: async () => {
+      const rows: RateioRow[] = [];
+      for (const [tipo, ids] of Object.entries(idsBaixas)) {
+        for (let i = 0; i < ids.length; i += 200) {
+          const { data, error } = await sb.from("ca_lancamento_rateios")
+            .select("tipo,lancamento_external_id,categoria_external_id,centro_custo_external_id,valor")
+            .eq("tipo", tipo).in("lancamento_external_id", ids.slice(i, i + 200));
+          if (error) throw error;
+          rows.push(...((data ?? []) as RateioRow[]));
+        }
+      }
+      return rows;
+    },
   });
   const extrato = useQuery({
     queryKey: ["ca-extrato"],
@@ -207,7 +247,7 @@ function useContaAzulData(ano?: number, mes?: number) {
       return (data ?? []) as (Extrato & { data: string | null; descricao: string | null; categoria_external_id: string | null })[];
     },
   });
-  return { planos, centros, pagar, receber, extrato };
+  return { planos, centros, pagar, receber, baixas, rateios, extrato };
 }
 
 
@@ -400,7 +440,7 @@ function PainelFinanceiro() {
   const [ano, setAno] = useState<number>(new Date().getFullYear());
   const [mes, setMes] = useState(new Date().getMonth() + 1);
   const anoEfetivo = ano;
-  const { planos, pagar, receber } = useContaAzulData(anoEfetivo, mes);
+  const { planos, pagar, receber, baixas, rateios } = useContaAzulData(anoEfetivo, mes);
   const { isAdmin, isModuleAdmin } = useAuth();
   const canReprocess = isAdmin || isModuleAdmin("financeiro");
   const qc = useQueryClient();
@@ -420,8 +460,8 @@ function PainelFinanceiro() {
 
   // DRE ano corrente (caixa = realizado)
   const { totais, grupos } = useMemo(
-    () => calcularDRECaixa(pagar.data ?? [], receber.data ?? [], planoMap, anoEfetivo, mes, dreEstrutura),
-    [pagar.data, receber.data, planoMap, anoEfetivo, mes, dreEstrutura],
+    () => calcularDRECaixa(pagar.data ?? [], receber.data ?? [], planoMap, anoEfetivo, mes, dreEstrutura, undefined, undefined, "caixa", baixas.data ?? [], rateios.data ?? []),
+    [pagar.data, receber.data, baixas.data, rateios.data, planoMap, anoEfetivo, mes, dreEstrutura],
   );
   // DRE ano anterior (mesmo mês) para comparativo de Receita LY
   const totaisAnt = useMemo(
@@ -437,8 +477,8 @@ function PainelFinanceiro() {
   const rbAnt = totaisAnt.RB ?? 0;
   const yoyRb = rbAnt > 0 ? (rb - rbAnt) / rbAnt : null;
   const caixaAtual = useMemo(
-    () => calcularIndicadoresCaixa(pagar.data ?? [], receber.data ?? [], planoMap, anoEfetivo, mes),
-    [pagar.data, receber.data, planoMap, anoEfetivo, mes],
+    () => calcularIndicadoresCaixa(pagar.data ?? [], receber.data ?? [], planoMap, anoEfetivo, mes, baixas.data ?? []),
+    [pagar.data, receber.data, baixas.data, planoMap, anoEfetivo, mes],
   );
 
   // ----- Período anterior (mês anterior) para as análises automáticas -----
@@ -452,13 +492,13 @@ function PainelFinanceiro() {
         planoMap,
         prevPer.ano,
         prevPer.mes,
-        dreEstrutura,
+        dreEstrutura, undefined, undefined, "caixa", prevData.baixas.data ?? [], prevData.rateios.data ?? [],
       ),
-    [prevData.pagar.data, prevData.receber.data, planoMap, prevPer, dreEstrutura],
+    [prevData.pagar.data, prevData.receber.data, prevData.baixas.data, prevData.rateios.data, planoMap, prevPer, dreEstrutura],
   );
   const caixaAnterior = useMemo(
-    () => calcularIndicadoresCaixa(prevData.pagar.data ?? [], prevData.receber.data ?? [], planoMap, prevPer.ano, prevPer.mes),
-    [prevData.pagar.data, prevData.receber.data, planoMap, prevPer],
+    () => calcularIndicadoresCaixa(prevData.pagar.data ?? [], prevData.receber.data ?? [], planoMap, prevPer.ano, prevPer.mes, prevData.baixas.data ?? []),
+    [prevData.pagar.data, prevData.receber.data, prevData.baixas.data, planoMap, prevPer],
   );
 
   const receitasFatias = useMemo(() => comOutros(fatiasDoGrupo(grupos, "RB", planoMap)), [grupos, planoMap]);
@@ -499,9 +539,9 @@ function PainelFinanceiro() {
   const serieOperacao = useMemo(
     () =>
       serieCustoOperacao(anoEfetivo, (a, m) =>
-        calcularDRECaixa(anoData.pagar.data ?? [], anoData.receber.data ?? [], planoMap, a, m, dreEstrutura).totais,
+        calcularDRECaixa(anoData.pagar.data ?? [], anoData.receber.data ?? [], planoMap, a, m, dreEstrutura, undefined, undefined, "caixa", anoData.baixas.data ?? [], anoData.rateios.data ?? []).totais,
       ),
-    [anoData.pagar.data, anoData.receber.data, planoMap, anoEfetivo, dreEstrutura],
+    [anoData.pagar.data, anoData.receber.data, anoData.baixas.data, anoData.rateios.data, planoMap, anoEfetivo, dreEstrutura],
   );
   const resumoOperacao = useMemo(() => mediaMesesCompletos(serieOperacao, anoEfetivo), [serieOperacao, anoEfetivo]);
 
@@ -513,12 +553,10 @@ function PainelFinanceiro() {
   // Lançamentos do período (regime de caixa, sem transferências)
   const lancamentos = useMemo<LancRow[]>(() => {
     const list: LancRow[] = [];
+    const realizados = expandirBaixas(pagar.data ?? [], receber.data ?? [], baixas.data ?? [], rateios.data ?? []);
     const push = (rows: any[], isReceber: boolean) => {
       rows.forEach((c) => {
-        if (c.status !== "pago") return;
-        // TEMP: regime de caixa exige data_pagamento; fallback p/ data_vencimento
-        // enquanto o sync do Conta Azul não popula data_pagamento.
-        const dataRef = c.data_pagamento ?? c.data_vencimento;
+        const dataRef = c.data_pagamento;
         if (!inPeriodo(dataRef, anoEfetivo, mes)) return;
         const plano = c.categoria_external_id ? planoMap.get(c.categoria_external_id) : undefined;
         if (isTransferencia(plano?.nome, c.descricao)) return;
@@ -535,10 +573,10 @@ function PainelFinanceiro() {
 
       });
     };
-    push(receber.data ?? [], true);
-    push(pagar.data ?? [], false);
+    push(realizados.receber, true);
+    push(realizados.pagar, false);
     return list.sort((a, b) => (a.data ?? "").localeCompare(b.data ?? ""));
-  }, [pagar.data, receber.data, planoMap, anoEfetivo, mes]);
+  }, [pagar.data, receber.data, baixas.data, rateios.data, planoMap, anoEfetivo, mes]);
 
   const lancFiltrados = useMemo(
     () => (categoriaSel ? lancamentos.filter((l) => l.categoria_external_id === categoriaSel) : lancamentos),
