@@ -1059,7 +1059,8 @@ function ReceberDemandaDialog({ demandaId, demandaNumero, onClose }: { demandaId
       });
     },
     onSuccess: () => {
-      toast.success("Aquisição devolvida para 'Em Andamento' no Quadro de Aquisições");
+      toast.success("Aquisição devolvida para 'Em Andamento' no Quadro de Compras");
+      qc.invalidateQueries({ queryKey: ["compras", "demandas"] });
       qc.invalidateQueries({ queryKey: ["demandas"] });
       qc.invalidateQueries({ queryKey: ["demandas-receber"] });
       setDevolverOpen(false);
@@ -1280,7 +1281,7 @@ function ReceberDemandaDialog({ demandaId, demandaNumero, onClose }: { demandaId
               onClick={() => setDevolverOpen(true)}
               disabled={!!statusBlocked || finalizar.isPending}
             >
-              <Undo2 className="h-4 w-4 mr-1" /> Devolver para Aquisições
+              <Undo2 className="h-4 w-4 mr-1" /> Devolver para Compras
             </Button>
             <div className="text-sm">
               <span className="text-muted-foreground">Total do recebimento: </span>
@@ -1309,7 +1310,7 @@ function ReceberDemandaDialog({ demandaId, demandaNumero, onClose }: { demandaId
               </DialogHeader>
               <div className="space-y-3 py-2">
                 <p className="text-sm text-muted-foreground">
-                  O card voltará para a coluna <strong>Aquisição Em Andamento</strong> no Quadro de Aquisições. O motivo ficará registrado nos comentários da aquisição.
+                  O card voltará para a coluna <strong>Compra Em Andamento</strong> no Quadro de Compras. O motivo ficará registrado nos comentários da aquisição.
                 </p>
                 <div>
                   <label className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">
