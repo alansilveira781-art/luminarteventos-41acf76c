@@ -253,15 +253,16 @@ function useContaAzulData(ano?: number, mes?: number) {
 
 
 function KpiCard({
-  icon: Icon, label, value, subLabel, subValue, subColor,
-}: { icon: any; label: string; value: string; subLabel?: string; subValue?: string; subColor?: string }) {
+  icon: Icon, label, value, subLabel, subValue, subColor, valueColor,
+}: { icon: any; label: string; value: string; subLabel?: string; subValue?: string; subColor?: string; valueColor?: string }) {
   return (
     <Card className="p-4">
       <div className="flex items-start justify-between">
         <div className="text-sm font-semibold text-muted-foreground">{label}</div>
         <Icon className="h-5 w-5 text-muted-foreground" />
       </div>
-      <div className="text-xl font-bold mt-2 tabular-nums">{value}</div>
+      <div className={`text-xl font-bold mt-2 tabular-nums ${valueColor ?? ""}`}>{value}</div>
+
       {subLabel && (
         <div className="mt-3 text-xs text-muted-foreground border-t pt-2">
           {subLabel}: <span className={subColor ?? "text-foreground"}>{subValue}</span>
