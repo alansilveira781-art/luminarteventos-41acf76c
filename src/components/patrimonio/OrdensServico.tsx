@@ -21,6 +21,7 @@ import {
   allocateFromGroup,
   type PatItem,
 } from "@/components/patrimonio/PatGroupSelect";
+import { ComboboxCreatable } from "@/components/ComboboxCreatable";
 import { normalize } from "@/lib/utils";
 
 type OS = {
@@ -66,6 +67,30 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const hoje = () => new Date().toISOString().slice(0, 10);
+
+/** Nomes de colaboradores ativos (RH) para os seletores de responsável. */
+function useColaboradoresNomes(atual?: string | null) {
+  const { data } = useQuery({
+    queryKey: ["rh_colaboradores_nomes"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("rh_colaboradores")
+        .select("nome,ativo")
+        .eq("ativo", true)
+        .order("nome");
+      if (error) throw error;
+      return (data ?? []).map((c: any) => String(c.nome ?? "").trim()).filter(Boolean);
+    },
+    staleTime: 5 * 60_000,
+  });
+  return useMemo(() => {
+    const s = new Set<string>(data ?? []);
+    const a = (atual ?? "").trim();
+    if (a) s.add(a);
+    return [...s].sort((x, y) => x.localeCompare(y, "pt-BR"));
+  }, [data, atual]);
+}
+
 
 export function PatrimonioOS() {
   const qc = useQueryClient();
@@ -563,6 +588,8 @@ function NovaOSDialog({
   const [dataSaida, setDataSaida] = useState(hoje());
   const [previsao, setPrevisao] = useState("");
   const [responsavel, setResponsavel] = useState("");
+  const colaboradores = useColaboradoresNomes();
+
   const [observacoes, setObservacoes] = useState("");
 
   const [tomadorId, setTomadorId] = useState<string | null>(null);
@@ -756,7 +783,7 @@ function NovaOSDialog({
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label>Responsável pela liberação</Label>
-            <Input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} />
+            <ComboboxCreatable options={colaboradores} value={responsavel} onChange={setResponsavel} placeholder="Selecione o colaborador…" />
           </div>
           <div>
             <Label>Observações</Label>
@@ -848,6 +875,8 @@ function DetalheOSDialog({
 }) {
   const [dataDev, setDataDev] = useState(hoje());
   const [responsavel, setResponsavel] = useState("");
+  const colaboradores = useColaboradoresNomes();
+
   const [obs, setObs] = useState("");
   const [novaPrevisao, setNovaPrevisao] = useState(os.previsao_retorno ?? "");
   const [linhas, setLinhas] = useState<Record<string, DevLinha>>(() =>
@@ -978,7 +1007,8 @@ function DetalheOSDialog({
           </div>
           <div>
             <Label>Recebido por</Label>
-            <Input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} />
+            <ComboboxCreatable options={colaboradores} value={responsavel} onChange={setResponsavel} placeholder="Selecione o colaborador…" />
+
           </div>
           <div>
             <Label>Observações</Label>
@@ -1140,6 +1170,8 @@ function EditarOSDialog({
   const [dataSaida, setDataSaida] = useState(os.data_saida?.slice(0, 10) ?? hoje());
   const [previsao, setPrevisao] = useState(os.previsao_retorno?.slice(0, 10) ?? "");
   const [responsavel, setResponsavel] = useState(os.responsavel ?? "");
+  const colaboradores = useColaboradoresNomes(os.responsavel);
+
   const [observacoes, setObservacoes] = useState(os.observacoes ?? "");
 
   const tomAtual = tomadores.find((t) => t.id === os.tomador_id) ?? null;
@@ -1349,7 +1381,8 @@ function EditarOSDialog({
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label>Responsável pela liberação</Label>
-            <Input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} />
+            <ComboboxCreatable options={colaboradores} value={responsavel} onChange={setResponsavel} placeholder="Selecione o colaborador…" />
+
           </div>
           <div>
             <Label>Observações</Label>

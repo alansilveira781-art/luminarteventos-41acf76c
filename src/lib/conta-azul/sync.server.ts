@@ -253,11 +253,59 @@ function normalizeStatus(s?: string) {
   return "em_aberto";
 }
 
+function getBaixas(it: any): any[] {
+  return Array.isArray(it?.baixas)
+    ? it.baixas.filter((baixa: any) => baixa && typeof baixa === "object")
+    : [];
+}
+
+function getDataPagamento(it: any): string | null {
+  if (it?.data_pagamento) return String(it.data_pagamento).slice(0, 10);
+  const datas = getBaixas(it)
+    .map((baixa: any) => baixa.data_pagamento)
+    .filter(Boolean)
+    .map((data: unknown) => String(data).slice(0, 10))
+    .sort();
+  return datas.at(-1) ?? null;
+}
+
+
+function buildBaixas(it: any, tipo: "pagar" | "receber", syncedAt: string) {
+  const lancamentoId = String(it.id);
+  return getBaixas(it).flatMap((baixa: any, index: number) => {
+    const data = baixa.data_pagamento ? String(baixa.data_pagamento).slice(0, 10) : null;
+    const composicao = baixa.valor_composicao;
+    const valor = Math.abs(Number(composicao?.valor_bruto ?? composicao?.valor_liquido ?? baixa.valor ?? 0));
+    if (!data || !Number.isFinite(valor) || valor <= 0) return [];
+    return [{
+      tipo,
+      lancamento_external_id: lancamentoId,
+      baixa_external_id: String(baixa.id ?? `${lancamentoId}:${data}:${index}`),
+      data_baixa: data,
+      valor: Math.round(valor * 100) / 100,
+      synced_at: syncedAt,
+    }];
+  });
+}
+
+async function persistBaixas(items: any[], tipo: "pagar" | "receber", syncedAt: string) {
+  const ids = items.map((it) => String(it.id));
+  if (ids.length === 0) return;
+  for (let i = 0; i < ids.length; i += 500) {
+    await sb.from("ca_lancamento_baixas").delete().eq("tipo", tipo).in("lancamento_external_id", ids.slice(i, i + 500));
+  }
+  const rows = items.flatMap((it) => buildBaixas(it, tipo, syncedAt));
+  if (rows.length > 0) {
+    await upsertBatched("ca_lancamento_baixas", rows, "tipo,lancamento_external_id,baixa_external_id");
+  }
+}
+
 function mapEvento(it: any, syncedAt: string, pessoaKey: "fornecedor_nome" | "cliente_nome") {
   const pessoaNome =
     pessoaKey === "fornecedor_nome"
       ? (it.fornecedor?.nome ?? null)
       : (it.cliente?.nome ?? it.fornecedor?.nome ?? null);
+  const status = normalizeStatus(it.status_traduzido ?? it.status);
   return {
     external_id: String(it.id),
     descricao: it.descricao ?? null,
@@ -267,10 +315,10 @@ function mapEvento(it: any, syncedAt: string, pessoaKey: "fornecedor_nome" | "cl
       it.centros_de_custo?.[0]?.id ? String(it.centros_de_custo[0].id)
       : it.centros_custo?.[0]?.id ? String(it.centros_custo[0].id)
       : null,
-    valor: Number(it.total ?? 0),
+    valor: Number(it.total ?? it.valor_composicao?.valor_liquido ?? 0),
     data_vencimento: it.data_vencimento ?? null,
-    data_pagamento: it.data_pagamento ?? null,
-    status: normalizeStatus(it.status_traduzido ?? it.status),
+    data_pagamento: getDataPagamento(it),
+    status,
     documento: it.numero_documento ?? null,
     observacoes: it.observacoes ?? null,
     synced_at: syncedAt,
@@ -666,6 +714,8 @@ function isRateado(it: any): boolean {
  *   - é rateado (>=2 centros ou categorias) — precisa do detalhe p/ valor da fatia; OU
  *   - não tem centro OU não tem categoria na listagem. */
 function needsDetail(it: any): boolean {
+  const status = normalizeStatus(it.status_traduzido ?? it.status);
+  if (status === "pago" && !getDataPagamento(it)) return true;
   if (isRateado(it)) return true;
   const ccs = Array.isArray(it.centros_de_custo) ? it.centros_de_custo : [];
   const cats = Array.isArray(it.categorias) ? it.categorias : [];
@@ -840,14 +890,30 @@ async function persistRateios(items: any[], tipo: "pagar" | "receber", syncedAt:
   if (ids.length > 0) {
     const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
     const cutoff = new Date(Date.now() - CACHE_TTL_MS).toISOString();
+    const idsComBaixa = new Set<string>();
     for (let i = 0; i < ids.length; i += 500) {
       const chunk = ids.slice(i, i + 500);
+      const { data: baixasExistentes } = await sb
+        .from("ca_lancamento_baixas")
+        .select("lancamento_external_id")
+        .eq("tipo", tipo)
+        .in("lancamento_external_id", chunk);
+      (baixasExistentes ?? []).forEach((r: any) => idsComBaixa.add(String(r.lancamento_external_id)));
       const { data } = await sb
         .from(tabela)
-        .select("external_id,detalhe_synced_at")
+        .select("external_id,detalhe_synced_at,data_pagamento,status")
         .in("external_id", chunk)
         .gte("detalhe_synced_at", cutoff);
-      (data ?? []).forEach((r: any) => alreadyEnriched.add(String(r.external_id)));
+      (data ?? []).forEach((r: any) => {
+        const item = items.find((it: any) => String(it.id) === String(r.external_id));
+        const itemPago = normalizeStatus(item?.status_traduzido ?? item?.status) === "pago";
+        // Um título liquidado só está completo quando o detalhe também gerou
+        // sua(s) baixa(s). Antes desta regra, detalhe_synced_at fazia o cache
+        // ignorar centenas de pagamentos sem registro em ca_lancamento_baixas.
+        if (!itemPago || idsComBaixa.has(String(r.external_id))) {
+          alreadyEnriched.add(String(r.external_id));
+        }
+      });
     }
   }
 
@@ -857,6 +923,23 @@ async function persistRateios(items: any[], tipo: "pagar" | "receber", syncedAt:
     deadline,
     alreadyEnriched,
   );
+  if (enrichedIds.size > 0) {
+    const pessoaKey = tipo === "pagar" ? "fornecedor_nome" : "cliente_nome";
+    const parentRows = enriched
+      .filter((it: any) => enrichedIds.has(String(it.id)))
+      .map((it: any) => {
+        // O payload de detalhe não traz `categorias`/`centros_de_custo`; omitir
+        // essas colunas preserva o que a listagem já gravou (antes eram zeradas).
+        const { categoria_external_id, centro_custo_external_id, ...row } = mapEvento(it, syncedAt, pessoaKey);
+        return row;
+      });
+    if (parentRows.length > 0) await upsertBatched(tabela, parentRows, "external_id");
+    await persistBaixas(
+      enriched.filter((it: any) => enrichedIds.has(String(it.id))),
+      tipo,
+      syncedAt,
+    );
+  }
   const allRateios: any[] = [];
   const lancIdsWithRateios: string[] = [];
   for (const it of enriched) {
@@ -921,6 +1004,11 @@ async function reconciliarExclusoes(
     const chunk = toDelete.slice(i, i + 500);
     await sb
       .from("ca_lancamento_rateios")
+      .delete()
+      .eq("tipo", tipoRateio)
+      .in("lancamento_external_id", chunk);
+    await sb
+      .from("ca_lancamento_baixas")
       .delete()
       .eq("tipo", tipoRateio)
       .in("lancamento_external_id", chunk);
@@ -1464,9 +1552,10 @@ export async function reprocessarRateios(
     ids?: string[];
     tipo?: "pagar" | "receber";
     limite?: number;
-    modo?: "suspeitos" | "todos" | "periodo";
+    modo?: "suspeitos" | "todos" | "periodo" | "liquidacoes";
     from?: string;
     to?: string;
+    antesDe?: string;
   } = {},
 ): Promise<{
   tentados: number;
@@ -1476,13 +1565,13 @@ export async function reprocessarRateios(
   detalhes: string[];
   restantes: number;
   concluido: boolean;
-  modo: "suspeitos" | "todos" | "periodo";
+  modo: "suspeitos" | "todos" | "periodo" | "liquidacoes";
 }> {
 
   const limite = Math.min(Math.max(opts.limite ?? 40, 1), 500);
-  const modo: "suspeitos" | "todos" | "periodo" = opts.modo ?? "suspeitos";
-  const periodoFrom = modo === "periodo" ? opts.from : undefined;
-  const periodoTo = modo === "periodo" ? opts.to : undefined;
+  const modo: "suspeitos" | "todos" | "periodo" | "liquidacoes" = opts.modo ?? "suspeitos";
+  const periodoFrom = modo === "periodo" || modo === "liquidacoes" ? opts.from : undefined;
+  const periodoTo = modo === "periodo" || modo === "liquidacoes" ? opts.to : undefined;
   const tipos: Array<"pagar" | "receber"> = opts.tipo ? [opts.tipo] : ["pagar", "receber"];
   const inicioMs = Date.now();
   const inicioIso = new Date(inicioMs).toISOString();
@@ -1496,7 +1585,7 @@ export async function reprocessarRateios(
    *  do Worker e causava resposta 0/500). */
   async function listarCandidatos(
     tipo: "pagar" | "receber",
-    modoLista: "suspeitos" | "todos" | "periodo",
+    modoLista: "suspeitos" | "todos" | "periodo" | "liquidacoes",
     max: number,
   ): Promise<string[]> {
     if (modoLista === "suspeitos") {
@@ -1508,25 +1597,75 @@ export async function reprocessarRateios(
       return ((data ?? []) as any[]).map((r) => String(r.external_id)).filter(Boolean);
     }
 
-    // Modo "todos" ou "periodo": todo lançamento é candidato. Em "periodo",
+    // Reconciliação de um período já carregado: usa a data efetiva da baixa,
+    // não o vencimento do título. `antesDe` permanece fixo entre lotes, então
+    // cada registro atualizado sai da fila e o processamento é retomável.
+    if (modoLista === "liquidacoes" && periodoFrom && periodoTo && opts.antesDe) {
+      const { data, error } = await sb
+        .from("ca_lancamento_baixas")
+        .select("lancamento_external_id")
+        .eq("tipo", tipo)
+        .gte("data_baixa", periodoFrom)
+        .lte("data_baixa", periodoTo)
+        .lt("synced_at", opts.antesDe)
+        .order("synced_at", { ascending: true })
+        .limit(max);
+      if (error) throw error;
+      return Array.from(new Set<string>((data ?? []).map((r: any) => String(r.lancamento_external_id))));
+    }
+
+    // Modo "todos", "periodo" ou "liquidacoes": todo lançamento é candidato. Em "periodo",
     // filtramos por data_vencimento dentro da janela; ordem prioriza os que
     // nunca foram sincronizados ou sincronizados antes deste início.
     const tabela = tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
-    const POOL = modoLista === "periodo" ? Math.max(max * 10, 500) : Math.max(max * 5, 200);
+    const POOL = modoLista === "liquidacoes"
+      ? 5000
+      : modoLista === "periodo"
+        ? Math.max(max * 15, 600)
+        : Math.max(max * 5, 200);
     let q = sb
       .from(tabela)
-      .select("external_id,detalhe_synced_at")
-      .or(`detalhe_synced_at.is.null,detalhe_synced_at.lt.${inicioIso}`)
-      .order("detalhe_synced_at", { ascending: true, nullsFirst: true })
+      .select("external_id,detalhe_synced_at,data_pagamento,status")
+      .order(modoLista === "liquidacoes" ? "data_vencimento" : "detalhe_synced_at", { ascending: false, nullsFirst: false })
       .limit(POOL);
+    if (modoLista === "liquidacoes") {
+      q = q.eq("status", "pago");
+      if (periodoFrom && periodoTo) {
+        q = q.gte("data_pagamento", periodoFrom).lte("data_pagamento", periodoTo);
+      }
+    }
+    // Em liquidações não podemos filtrar pelo vencimento: o objetivo é justamente
+    // descobrir pagamentos do período pertencentes a títulos vencidos em outros meses.
     if (modoLista === "periodo" && periodoFrom && periodoTo) {
       q = q.gte("data_vencimento", periodoFrom).lte("data_vencimento", periodoTo);
     }
     const { data: invs, error: e1 } = await q;
     if (e1) throw e1;
-    const ordemIds = (invs ?? []).map((r: any) => String(r.external_id));
+    let rows = (invs ?? []) as any[];
+    if (modoLista === "liquidacoes") {
+      rows = rows.filter((r) => r.status === "pago");
+      const rowIds = rows.map((r) => String(r.external_id));
+      const idsComBaixa = new Set<string>();
+      for (let i = 0; i < rowIds.length; i += 200) {
+        const { data: baixas, error } = await sb
+          .from("ca_lancamento_baixas")
+          .select("lancamento_external_id")
+          .eq("tipo", tipo)
+          .in("lancamento_external_id", rowIds.slice(i, i + 200));
+        if (error) throw error;
+        (baixas ?? []).forEach((r: any) => idsComBaixa.add(String(r.lancamento_external_id)));
+      }
+      rows = rows.filter((r) => !idsComBaixa.has(String(r.external_id)));
+    }
+    const ordemIds = rows
+      .filter((r: any) => modoLista === "periodo"
+        ? !r.detalhe_synced_at || (r.status === "pago" && !r.data_pagamento)
+        : modoLista === "liquidacoes"
+          ? true
+        : !r.detalhe_synced_at || r.detalhe_synced_at < inicioIso || (r.status === "pago" && !r.data_pagamento))
+      .map((r: any) => String(r.external_id));
     if (ordemIds.length === 0) return [];
-    if (modoLista === "periodo") {
+    if (modoLista === "periodo" || modoLista === "liquidacoes") {
       // No modo periodo, processamos na ordem do banco (mais antigos primeiro),
       // sem re-priorização por contagem de fatias — todos precisam ser refeitos.
       return ordemIds.slice(0, max);
@@ -1561,10 +1700,28 @@ export async function reprocessarRateios(
    *  aqueles sem `detalhe_synced_at` ou com timestamp anterior ao início. */
   async function contarPendentes(tipo: "pagar" | "receber"): Promise<number> {
     const tabela = tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
+    if (modo === "liquidacoes") {
+      if (periodoFrom && periodoTo && opts.antesDe) {
+        const { count, error } = await sb
+          .from("ca_lancamento_baixas")
+          .select("id", { count: "exact", head: true })
+          .eq("tipo", tipo)
+          .gte("data_baixa", periodoFrom)
+          .lte("data_baixa", periodoTo)
+          .lt("synced_at", opts.antesDe);
+        if (error) throw error;
+        return count ?? 0;
+      }
+      const candidatos = await listarCandidatos(tipo, "liquidacoes", 500);
+      return candidatos.length;
+    }
+    const pendencia = modo === "periodo"
+      ? "detalhe_synced_at.is.null,and(status.eq.pago,data_pagamento.is.null)"
+      : `detalhe_synced_at.is.null,detalhe_synced_at.lt.${inicioIso},and(status.eq.pago,data_pagamento.is.null)`;
     let q = sb
       .from(tabela)
       .select("external_id", { count: "exact", head: true })
-      .or(`detalhe_synced_at.is.null,detalhe_synced_at.lt.${inicioIso}`);
+      .or(pendencia);
     if (modo === "periodo" && periodoFrom && periodoTo) {
       q = q.gte("data_vencimento", periodoFrom).lte("data_vencimento", periodoTo);
     }
@@ -1621,6 +1778,10 @@ export async function reprocessarRateios(
     processados++;
     try {
       const detail = await fetchDetalheComRetry(alvo.id);
+      const tabela = alvo.tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
+      const pessoaKey = alvo.tipo === "pagar" ? "fornecedor_nome" : "cliente_nome";
+      await sb.from(tabela).upsert(mapEvento(detail, syncedAt, pessoaKey), { onConflict: "external_id" });
+      await persistBaixas([detail], alvo.tipo, syncedAt);
       const rs = buildRateios(detail, alvo.tipo, syncedAt);
       if (!rs || rs.length === 0) {
         falhas++;
@@ -1628,14 +1789,12 @@ export async function reprocessarRateios(
           detalhes.push(`${alvo.id}: payload sem valor/percentual por centro`);
         }
         // Ainda assim marcamos como "visto" para não travar a fila neste item.
-        const tabela = alvo.tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
         await sb.from(tabela).update({ detalhe_synced_at: syncedAt }).eq("external_id", alvo.id);
         await new Promise((r) => setTimeout(r, SLEEP_MS));
         continue;
       }
       await sb.from("ca_lancamento_rateios").delete().eq("tipo", alvo.tipo).eq("lancamento_external_id", alvo.id);
       await sb.from("ca_lancamento_rateios").insert(rs);
-      const tabela = alvo.tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
       await sb.from(tabela).update({ detalhe_synced_at: syncedAt }).eq("external_id", alvo.id);
       corrigidos++;
       if (detalhes.length < 20) detalhes.push(`${alvo.id}: ${rs.length} fatias atualizadas`);
@@ -1647,6 +1806,7 @@ export async function reprocessarRateios(
         try {
           const tabela = alvo.tipo === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
           await sb.from("ca_lancamento_rateios").delete().eq("tipo", alvo.tipo).eq("lancamento_external_id", alvo.id);
+          await sb.from("ca_lancamento_baixas").delete().eq("tipo", alvo.tipo).eq("lancamento_external_id", alvo.id);
           await sb.from(tabela).delete().eq("external_id", alvo.id);
           removidos++;
           if (detalhes.length < 20) detalhes.push(`${alvo.id}: removido (404 no Conta Azul)`);
@@ -1666,7 +1826,7 @@ export async function reprocessarRateios(
   // ainda não sincronizados nesta rodada (detalhe_synced_at nulo ou anterior
   // ao início). Em "suspeitos"/ids explícitos, cai no cálculo local.
   let restantes = Math.max(0, allTargets.length - processados);
-  if (!opts.ids && (modo === "todos" || modo === "periodo")) {
+  if (!opts.ids && (modo === "todos" || modo === "periodo" || modo === "liquidacoes")) {
     let total = 0;
     for (const t of tipos) total += await contarPendentes(t);
     restantes = total;

@@ -58,9 +58,9 @@ function ContaAzulPage() {
     detalhes?: string[];
     restantes: number;
     concluido: boolean;
-    modo: "suspeitos" | "todos" | "periodo";
+    modo: "suspeitos" | "todos" | "periodo" | "liquidacoes";
   };
-  const [reprocMode, setReprocMode] = useState<"suspeitos" | "todos" | "periodo" | null>(null);
+  const [reprocMode, setReprocMode] = useState<"suspeitos" | "todos" | "periodo" | "liquidacoes" | null>(null);
   const [reprocProgress, setReprocProgress] = useState<ReprocResult | null>(null);
   const [reprocLastResult, setReprocLastResult] = useState<ReprocResult | null>(null);
   const [reprocTotals, setReprocTotals] = useState<{ corrigidos: number; falhas: number; lotes: number }>({
@@ -179,7 +179,7 @@ function ContaAzulPage() {
 
   async function runReprocessLoop(
     body: Record<string, unknown>,
-    modoLabel: "suspeitos" | "todos" | "periodo",
+    modoLabel: "suspeitos" | "todos" | "periodo" | "liquidacoes",
     autoLoop: boolean,
   ): Promise<ReprocResult | null> {
     const headers = { ...(await authHeaders()), "Content-Type": "application/json" };
@@ -227,6 +227,25 @@ function ContaAzulPage() {
       }
     } catch (e: any) {
       toast.error(`Erro ao reprocessar: ${String(e?.message ?? e)}`);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleReprocessarLiquidacoes() {
+    setBusy("reproc");
+    try {
+      const lastResult = await runReprocessLoop({ modo: "liquidacoes", from, to }, "liquidacoes", true);
+      setReprocLastResult(lastResult);
+      if (lastResult?.concluido) toast.success("Liquidações reconciliadas com o Conta Azul.");
+      else if (lastResult) toast.message(`Liquidações: restam ${lastResult.restantes} lançamentos para conferir.`);
+      await qc.invalidateQueries({ queryKey: ["ca-baixas"] });
+      await qc.invalidateQueries({ queryKey: ["ca-pagar"] });
+      await qc.invalidateQueries({ queryKey: ["ca-receber"] });
+      await qc.invalidateQueries({ queryKey: ["ca-rateios-caixa"] });
+      await qc.invalidateQueries({ queryKey: ["painel-financeiro"] });
+    } catch (e: any) {
+      toast.error(`Erro ao reconciliar liquidações: ${String(e?.message ?? e)}`);
     } finally {
       setBusy(null);
     }
@@ -460,6 +479,17 @@ function ContaAzulPage() {
               "Reprocessar tudo" refaz todos os lançamentos rateados, em lotes.
             </p>
             <div className="flex flex-wrap gap-2">
+              <Button
+                disabled={!canManage || !connected || busy !== null}
+                onClick={handleReprocessarLiquidacoes}
+              >
+                {busy === "reproc" && reprocMode === "liquidacoes" ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                )}
+                Reconciliar recebidos e pagos
+              </Button>
               <Button
                 variant="outline"
                 disabled={!canManage || !connected || busy !== null}

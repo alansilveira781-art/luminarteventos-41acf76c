@@ -85,6 +85,7 @@ export function grupoDoPlanoNome(
 
 
 export type ContaRow = {
+  external_id?: string;
   valor: number | string | null;
   data_vencimento: string | null;
   data_pagamento: string | null;
@@ -93,6 +94,71 @@ export type ContaRow = {
   centro_custo_external_id?: string | null;
   descricao?: string | null;
 };
+
+export type BaixaRow = {
+  tipo?: "pagar" | "receber" | string;
+  lancamento_external_id: string;
+  valor: number | string | null;
+  data_baixa: string;
+};
+
+export type RateioRow = {
+  tipo?: "pagar" | "receber" | string;
+  lancamento_external_id: string;
+  categoria_external_id: string | null;
+  centro_custo_external_id?: string | null;
+  valor: number | string | null;
+};
+
+/** Converte baixas reais em linhas classificáveis no DRE. Quando o título possui
+ * rateios, o valor efetivamente pago é distribuído na mesma proporção das fatias. */
+export function expandirBaixas(
+  pagar: ContaRow[],
+  receber: ContaRow[],
+  baixas: BaixaRow[],
+  rateios: RateioRow[] = [],
+): { pagar: ContaRow[]; receber: ContaRow[] } {
+  const titulos = new Map<string, ContaRow>();
+  pagar.forEach((row) => row.external_id && titulos.set(`pagar:${row.external_id}`, row));
+  receber.forEach((row) => row.external_id && titulos.set(`receber:${row.external_id}`, row));
+  const porLancamento = new Map<string, RateioRow[]>();
+  rateios.forEach((rateio) => {
+    const key = `${rateio.tipo ?? ""}:${rateio.lancamento_external_id}`;
+    const atual = porLancamento.get(key) ?? [];
+    atual.push(rateio);
+    porLancamento.set(key, atual);
+  });
+  const out = { pagar: [] as ContaRow[], receber: [] as ContaRow[] };
+  baixas.forEach((baixa) => {
+    const tipo = baixa.tipo === "pagar" ? "pagar" : "receber";
+    const titulo = titulos.get(`${tipo}:${baixa.lancamento_external_id}`);
+    if (!titulo) return;
+    const valorBaixa = Math.abs(Number(baixa.valor || 0));
+    if (!valorBaixa) return;
+    const fatias = porLancamento.get(`${tipo}:${baixa.lancamento_external_id}`) ?? [];
+    const somaFatias = fatias.reduce((s, f) => s + Math.abs(Number(f.valor || 0)), 0);
+    if (fatias.length === 0 || somaFatias <= 0) {
+      out[tipo].push({ ...titulo, valor: valorBaixa, data_pagamento: baixa.data_baixa, status: "pago" });
+      return;
+    }
+    let alocado = 0;
+    fatias.forEach((fatia, index) => {
+      const valor = index === fatias.length - 1
+        ? Math.round((valorBaixa - alocado) * 100) / 100
+        : Math.round(valorBaixa * (Math.abs(Number(fatia.valor || 0)) / somaFatias) * 100) / 100;
+      alocado += valor;
+      out[tipo].push({
+        ...titulo,
+        valor,
+        data_pagamento: baixa.data_baixa,
+        status: "pago",
+        categoria_external_id: fatia.categoria_external_id ?? titulo.categoria_external_id,
+        centro_custo_external_id: fatia.centro_custo_external_id ?? titulo.centro_custo_external_id,
+      });
+    });
+  });
+  return out;
+}
 
 export type PlanoMin = { external_id: string; nome: string };
 
@@ -126,10 +192,9 @@ function inPeriodoStr(date: string | null, ano: number, mes: number): boolean {
 
 function passaVisao(row: ContaRow, visao: Visao, ano: number, mes: number): boolean {
   if (visao === "realizado") {
-    // Já pago (caixa efetivo) — usa data de pagamento; se ausente, cai para vencimento.
+    // Já pago — período de referência é o vencimento do título (competência do mês).
     if (row.status !== "pago") return false;
-    const data = row.data_pagamento ?? row.data_vencimento;
-    return inPeriodoStr(data, ano, mes);
+    return inPeriodoStr(row.data_vencimento, ano, mes);
   }
   // Projetado: ainda não pago (em aberto ou atrasado) — usa data de vencimento
   if (row.status === "pago") return false;
@@ -155,6 +220,45 @@ export function isTransferencia(planoNome: string | undefined | null, descricao?
   }
   if (descricao && TRANSFER_DESC_PATTERNS.some((re) => re.test(descricao))) return true;
   return false;
+}
+
+export type IndicadoresCaixa = {
+  recebido: number;
+  pago: number;
+  saldo: number;
+  aReceber: number;
+  aPagar: number;
+};
+
+/** Indicadores de caixa compartilhados pelo Painel e pelo Dashboard Financeiro. */
+export function calcularIndicadoresCaixa(
+  pagar: ContaRow[],
+  receber: ContaRow[],
+  planoMap: Map<string, { nome: string }>,
+  ano: number,
+  mes: number,
+  baixas: BaixaRow[] = [],
+): IndicadoresCaixa {
+  const validas = (rows: ContaRow[]) => rows.filter((row) => {
+    const plano = row.categoria_external_id ? planoMap.get(row.categoria_external_id) : undefined;
+    return !isTransferencia(plano?.nome, row.descricao);
+  });
+  const soma = (rows: ContaRow[]) => rows.reduce((total, row) => total + Math.abs(Number(row.valor || 0)), 0);
+  const recebidas = validas(receber);
+  const pagas = validas(pagar);
+  const idsValidosReceber = new Set(recebidas.map((row) => row.external_id).filter(Boolean));
+  const idsValidosPagar = new Set(pagas.map((row) => row.external_id).filter(Boolean));
+  const recebido = baixas.length > 0
+    ? baixas.filter((b) => b.tipo === "receber" && idsValidosReceber.has(b.lancamento_external_id) && inPeriodo(b.data_baixa, ano, mes))
+      .reduce((s, b) => s + Math.abs(Number(b.valor || 0)), 0)
+    : soma(recebidas.filter((row) => row.status === "pago" && inPeriodo(row.data_pagamento, ano, mes)));
+  const pago = baixas.length > 0
+    ? baixas.filter((b) => b.tipo === "pagar" && idsValidosPagar.has(b.lancamento_external_id) && inPeriodo(b.data_baixa, ano, mes))
+      .reduce((s, b) => s + Math.abs(Number(b.valor || 0)), 0)
+    : soma(pagas.filter((row) => row.status === "pago" && inPeriodo(row.data_pagamento, ano, mes)));
+  const aReceber = soma(recebidas.filter((row) => row.status !== "pago" && inPeriodo(row.data_vencimento, ano, mes)));
+  const aPagar = soma(pagas.filter((row) => row.status !== "pago" && inPeriodo(row.data_vencimento, ano, mes)));
+  return { recebido, pago, saldo: recebido - pago, aReceber, aPagar };
 }
 
 export function montarDRE(
@@ -352,8 +456,17 @@ export function montarLinhasPorCentro(
 export function inPeriodo(date: string | null, ano: number, mes: number): boolean {
   if (!date) return false;
   if (!ano) return true;
+  // Datas financeiras chegam como YYYY-MM-DD. Ler com `new Date()` converte
+  // meia-noite UTC para o dia anterior em fusos brasileiros e joga baixas do
+  // dia 1 no mês errado. O período contábil deve usar a data civil recebida.
+  const match = date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    if (Number(match[1]) !== ano) return false;
+    if (mes > 0 && Number(match[2]) !== mes) return false;
+    return true;
+  }
   const d = new Date(date);
-  if (d.getFullYear() !== ano) return false;
+  if (Number.isNaN(d.getTime()) || d.getFullYear() !== ano) return false;
   if (mes > 0 && d.getMonth() + 1 !== mes) return false;
   return true;
 }
@@ -372,6 +485,8 @@ export function calcularDRECaixa(
   centroCustoId?: string,
   idsPermitidos?: Set<string>,
   regime: "caixa" | "competencia" = "caixa",
+  baixas: BaixaRow[] = [],
+  rateios: RateioRow[] = [],
 ): { totais: Partial<Record<DreGroupId, number>>; grupos: Map<DreGroupId, Map<string, number>> } {
   const grupos = new Map<DreGroupId, Map<string, number>>();
   const totalSum = new Map<DreGroupId, number>();
@@ -398,8 +513,14 @@ export function calcularDRECaixa(
       totalSum.set(g, (totalSum.get(g) ?? 0) + v);
     });
   };
-  acumula(pagar);
-  acumula(receber);
+  if (regime === "caixa" && baixas.length > 0) {
+    const realizado = expandirBaixas(pagar, receber, baixas, rateios);
+    acumula(realizado.pagar);
+    acumula(realizado.receber);
+  } else {
+    acumula(pagar);
+    acumula(receber);
+  }
 
   const totais: Partial<Record<DreGroupId, number>> = {};
   const getVal = (id: DreGroupId): number => {
