@@ -235,11 +235,14 @@ function ContaAzulPage() {
   async function handleReprocessarLiquidacoes() {
     setBusy("reproc");
     try {
-      const lastResult = await runReprocessLoop({ modo: "liquidacoes" }, "liquidacoes", true);
+      const lastResult = await runReprocessLoop({ modo: "liquidacoes", from, to }, "liquidacoes", true);
       setReprocLastResult(lastResult);
       if (lastResult?.concluido) toast.success("Liquidações reconciliadas com o Conta Azul.");
       else if (lastResult) toast.message(`Liquidações: restam ${lastResult.restantes} lançamentos para conferir.`);
       await qc.invalidateQueries({ queryKey: ["ca-baixas"] });
+      await qc.invalidateQueries({ queryKey: ["ca-pagar"] });
+      await qc.invalidateQueries({ queryKey: ["ca-receber"] });
+      await qc.invalidateQueries({ queryKey: ["ca-rateios-caixa"] });
       await qc.invalidateQueries({ queryKey: ["painel-financeiro"] });
     } catch (e: any) {
       toast.error(`Erro ao reconciliar liquidações: ${String(e?.message ?? e)}`);
