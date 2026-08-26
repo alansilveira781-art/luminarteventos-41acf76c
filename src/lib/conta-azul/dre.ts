@@ -132,9 +132,22 @@ export function expandirBaixas(
   baixas.forEach((baixa) => {
     const tipo = baixa.tipo === "pagar" ? "pagar" : "receber";
     const titulo = titulos.get(`${tipo}:${baixa.lancamento_external_id}`);
-    if (!titulo) return;
     const valorBaixa = Math.abs(Number(baixa.valor || 0));
     if (!valorBaixa) return;
+    if (!titulo) {
+      // Liquidação sem título carregado: o valor entrou/saiu do caixa e não pode sumir.
+      out[tipo].push({
+        external_id: baixa.lancamento_external_id,
+        valor: valorBaixa,
+        data_vencimento: baixa.data_baixa,
+        data_pagamento: baixa.data_baixa,
+        status: "pago",
+        categoria_external_id: null,
+        descricao: "Liquidação sem título sincronizado",
+      });
+      return;
+    }
+
     const fatias = porLancamento.get(`${tipo}:${baixa.lancamento_external_id}`) ?? [];
     const somaFatias = fatias.reduce((s, f) => s + Math.abs(Number(f.valor || 0)), 0);
     if (fatias.length === 0 || somaFatias <= 0) {
@@ -239,27 +252,37 @@ export function calcularIndicadoresCaixa(
   mes: number,
   baixas: BaixaRow[] = [],
 ): IndicadoresCaixa {
-  const validas = (rows: ContaRow[]) => rows.filter((row) => {
+  const ehTransferencia = (row: ContaRow) => {
     const plano = row.categoria_external_id ? planoMap.get(row.categoria_external_id) : undefined;
-    return !isTransferencia(plano?.nome, row.descricao);
-  });
+    return isTransferencia(plano?.nome, row.descricao);
+  };
+  const validas = (rows: ContaRow[]) => rows.filter((row) => !ehTransferencia(row));
   const soma = (rows: ContaRow[]) => rows.reduce((total, row) => total + Math.abs(Number(row.valor || 0)), 0);
   const recebidas = validas(receber);
   const pagas = validas(pagar);
-  const idsValidosReceber = new Set(recebidas.map((row) => row.external_id).filter(Boolean));
-  const idsValidosPagar = new Set(pagas.map((row) => row.external_id).filter(Boolean));
+  // Baixas cujo título é transferência ficam de fora; baixas sem título carregado
+  // continuam contando — o dinheiro entrou/saiu do caixa no período.
+  const transferenciasReceber = new Set(
+    receber.filter((row) => row.external_id && ehTransferencia(row)).map((row) => row.external_id as string),
+  );
+  const transferenciasPagar = new Set(
+    pagar.filter((row) => row.external_id && ehTransferencia(row)).map((row) => row.external_id as string),
+  );
+  const somaBaixas = (tipo: "pagar" | "receber", excluidos: Set<string>) =>
+    baixas
+      .filter((b) => b.tipo === tipo && !excluidos.has(b.lancamento_external_id) && inPeriodo(b.data_baixa, ano, mes))
+      .reduce((s, b) => s + Math.abs(Number(b.valor || 0)), 0);
   const recebido = baixas.length > 0
-    ? baixas.filter((b) => b.tipo === "receber" && idsValidosReceber.has(b.lancamento_external_id) && inPeriodo(b.data_baixa, ano, mes))
-      .reduce((s, b) => s + Math.abs(Number(b.valor || 0)), 0)
+    ? somaBaixas("receber", transferenciasReceber)
     : soma(recebidas.filter((row) => row.status === "pago" && inPeriodo(row.data_pagamento, ano, mes)));
   const pago = baixas.length > 0
-    ? baixas.filter((b) => b.tipo === "pagar" && idsValidosPagar.has(b.lancamento_external_id) && inPeriodo(b.data_baixa, ano, mes))
-      .reduce((s, b) => s + Math.abs(Number(b.valor || 0)), 0)
+    ? somaBaixas("pagar", transferenciasPagar)
     : soma(pagas.filter((row) => row.status === "pago" && inPeriodo(row.data_pagamento, ano, mes)));
   const aReceber = soma(recebidas.filter((row) => row.status !== "pago" && inPeriodo(row.data_vencimento, ano, mes)));
   const aPagar = soma(pagas.filter((row) => row.status !== "pago" && inPeriodo(row.data_vencimento, ano, mes)));
   return { recebido, pago, saldo: recebido - pago, aReceber, aPagar };
 }
+
 
 export function montarDRE(
   pagar: ContaRow[],
