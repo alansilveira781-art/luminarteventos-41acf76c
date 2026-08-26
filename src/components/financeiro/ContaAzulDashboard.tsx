@@ -10,7 +10,7 @@ import {
 } from "recharts";
 import { PiggyBank as Piggy, Building2, BarChart3, Sprout, Users, Landmark, X, ChevronRight, ChevronDown, Printer, RefreshCw, Loader2, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DRE_STRUCTURE, grupoDoPlanoNome, isTransferencia, buildPrefixIndex, calcularDRECaixa, calcularIndicadoresCaixa, expandirBaixas, inPeriodo, montarLinhasPorCentro, type BaixaRow, type DreGroupId, type DreLine, type RateioRow } from "@/lib/conta-azul/dre";
+import { DRE_STRUCTURE, grupoDoPlanoNome, isTransferencia, buildPrefixIndex, calcularDRECaixa, expandirBaixas, inPeriodo, montarLinhasPorCentro, type BaixaRow, type DreGroupId, type DreLine, type RateioRow } from "@/lib/conta-azul/dre";
 import { useDreEstrutura } from "@/hooks/useDreEstrutura";
 import { agruparParcelamentos, type GroupedLancRow } from "@/lib/conta-azul/agrupar-parcelas";
 import {
@@ -479,10 +479,6 @@ function PainelFinanceiro() {
 
   const rbAnt = totaisAnt.RB ?? 0;
   const yoyRb = rbAnt > 0 ? (rb - rbAnt) / rbAnt : null;
-  const caixaAtual = useMemo(
-    () => calcularIndicadoresCaixa(pagar.data ?? [], receber.data ?? [], planoMap, anoEfetivo, mes, baixas.data ?? []),
-    [pagar.data, receber.data, baixas.data, planoMap, anoEfetivo, mes],
-  );
 
   // ----- Período anterior (mês anterior) para as análises automáticas -----
   const prevPer = useMemo(() => periodoAnterior(anoEfetivo, mes), [anoEfetivo, mes]);
@@ -498,10 +494,6 @@ function PainelFinanceiro() {
         dreEstrutura, undefined, undefined, "caixa", prevData.baixas.data ?? [], prevData.rateios.data ?? [],
       ),
     [prevData.pagar.data, prevData.receber.data, prevData.baixas.data, prevData.rateios.data, planoMap, prevPer, dreEstrutura],
-  );
-  const caixaAnterior = useMemo(
-    () => calcularIndicadoresCaixa(prevData.pagar.data ?? [], prevData.receber.data ?? [], planoMap, prevPer.ano, prevPer.mes, prevData.baixas.data ?? []),
-    [prevData.pagar.data, prevData.receber.data, prevData.baixas.data, planoMap, prevPer],
   );
 
   const receitasFatias = useMemo(() => comOutros(fatiasDoGrupo(grupos, "RB", planoMap)), [grupos, planoMap]);
@@ -528,13 +520,14 @@ function PainelFinanceiro() {
     () =>
       compararFaturamento(
         (vendasQ.data?.rows ?? []).map((v) => ({ dataRegistro: v.dataRegistro, valorFinal: v.valorFinal })),
-        caixaAtual.recebido,
-        caixaAnterior.recebido,
+        rb,
+        rbAnt,
         anoEfetivo,
         mes,
       ),
-    [vendasQ.data, caixaAtual.recebido, caixaAnterior.recebido, anoEfetivo, mes],
+    [vendasQ.data, rb, rbAnt, anoEfetivo, mes],
   );
+
   const textoFat = useMemo(() => textoFaturamento(comparativo, anoEfetivo, mes), [comparativo, anoEfetivo, mes]);
 
   // ----- Custo de operação x Receita (ano inteiro, independente do filtro de mês) -----
@@ -866,7 +859,7 @@ function PainelFinanceiro() {
           <div className="rounded-md border p-3">
             <div className="text-xs text-muted-foreground">Recebido no mês</div>
             <div className="text-lg font-bold tabular-nums text-emerald-600">{fmtMoney(comparativo.recebido)}</div>
-            <div className="text-xs text-muted-foreground">Total realizado no caixa</div>
+            <div className="text-xs text-muted-foreground">Receita Bruta recebida no mês</div>
           </div>
           <div className="rounded-md border p-3">
             <div className="text-xs text-muted-foreground">Conversão em caixa</div>
