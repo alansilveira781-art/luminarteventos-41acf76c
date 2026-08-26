@@ -456,8 +456,17 @@ export function montarLinhasPorCentro(
 export function inPeriodo(date: string | null, ano: number, mes: number): boolean {
   if (!date) return false;
   if (!ano) return true;
+  // Datas financeiras chegam como YYYY-MM-DD. Ler com `new Date()` converte
+  // meia-noite UTC para o dia anterior em fusos brasileiros e joga baixas do
+  // dia 1 no mês errado. O período contábil deve usar a data civil recebida.
+  const match = date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    if (Number(match[1]) !== ano) return false;
+    if (mes > 0 && Number(match[2]) !== mes) return false;
+    return true;
+  }
   const d = new Date(date);
-  if (d.getFullYear() !== ano) return false;
+  if (Number.isNaN(d.getTime()) || d.getFullYear() !== ano) return false;
   if (mes > 0 && d.getMonth() + 1 !== mes) return false;
   return true;
 }

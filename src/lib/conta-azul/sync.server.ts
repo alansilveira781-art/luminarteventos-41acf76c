@@ -1630,6 +1630,9 @@ export async function reprocessarRateios(
       .limit(POOL);
     if (modoLista === "liquidacoes") {
       q = q.eq("status", "pago");
+      if (periodoFrom && periodoTo) {
+        q = q.gte("data_pagamento", periodoFrom).lte("data_pagamento", periodoTo);
+      }
     }
     // Em liquidações não podemos filtrar pelo vencimento: o objetivo é justamente
     // descobrir pagamentos do período pertencentes a títulos vencidos em outros meses.

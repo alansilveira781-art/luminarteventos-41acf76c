@@ -215,48 +215,44 @@ export type PontoCustoOperacao = {
   pct: number | null;
   /** Composição do custo de operação, grupo a grupo (mesmos rótulos do demonstrativo) */
   detalhe: DetalheGrupo[];
+  /** Há saídas de caixa classificadas suficientes para calcular o percentual do mês. */
+  completo: boolean;
 };
 
 type CalcDre = (ano: number, mes: number) => Partial<Record<DreGroupId, number>>;
+type TemCobertura = (ano: number, mes: number) => boolean;
 
-/** Grupos de saída somados no custo de operação (todo o demonstrativo, exceto Outras Saídas). */
-const GRUPOS_OPERACAO: { id: DreGroupId; label: string }[] = [
-  { id: "DR" as DreGroupId, label: "Deduções da Receita" },
-  { id: "AC" as DreGroupId, label: "Aquisição de Clientes" },
-  { id: "DM" as DreGroupId, label: "Despesas com Marketing" },
-  { id: "DC" as DreGroupId, label: "Despesas Comerciais" },
-  { id: "CV" as DreGroupId, label: "Custos Variáveis" },
-  { id: "CD" as DreGroupId, label: "Custos Diretos" },
-  { id: "CI" as DreGroupId, label: "Custos Indiretos" },
-  { id: "DS" as DreGroupId, label: "Despesas com Sócio" },
-  { id: "DA" as DreGroupId, label: "Despesas Administrativas" },
-  { id: "DT" as DreGroupId, label: "Despesas Tributárias" },
-  { id: "DF" as DreGroupId, label: "Despesas Financeiras" },
-  { id: "IN" as DreGroupId, label: "Investimentos" },
+/** Composição gerencial acordada para o indicador de custo de operação. */
+const COMPOSICAO_OPERACAO: { id: DreGroupId; label: string; grupos: DreGroupId[] }[] = [
+  { id: "RV", label: "Potencial de Vendas", grupos: ["AC", "DM", "DC"] },
+  { id: "RO", label: "Custos", grupos: ["CV", "CD", "CI"] },
+  { id: "RG", label: "Despesas", grupos: ["DS", "DA", "DT", "DR", "DF"] },
 ];
 
 /**
- * Série Jan..Dez do ano: Receita Bruta x custo total para operar a empresa
- * (todos os grupos de saída do demonstrativo, exceto Outras Saídas).
+ * Série Jan..Dez do ano: Receita Bruta x custo gerencial para operar a empresa.
+ * Investimentos, Outras Saídas e subtotais calculados não entram no indicador.
  */
-export function serieCustoOperacao(ano: number, calc: CalcDre): PontoCustoOperacao[] {
+export function serieCustoOperacao(ano: number, calc: CalcDre, temCobertura?: TemCobertura): PontoCustoOperacao[] {
   const out: PontoCustoOperacao[] = [];
   for (let m = 1; m <= 12; m++) {
     const t = calc(ano, m);
     const receita = t.RB ?? 0;
-    const detalhe = GRUPOS_OPERACAO.map((g) => ({
+    const detalhe = COMPOSICAO_OPERACAO.map((g) => ({
       id: g.id,
       label: g.label,
-      valor: Math.abs(t[g.id] ?? 0),
+      valor: g.grupos.reduce((s, id) => s + Math.abs(t[id] ?? 0), 0),
     })).filter((d) => d.valor > 0);
     const custoOperacao = detalhe.reduce((s, d) => s + d.valor, 0);
+    const completo = receita > 0 && custoOperacao > 0 && (temCobertura?.(ano, m) ?? true);
     out.push({
       mes: m,
       label: MESES_CURTOS[m],
       receita,
       custoOperacao,
-      pct: receita > 0 ? custoOperacao / receita : null,
+      pct: completo ? custoOperacao / receita : null,
       detalhe,
+      completo,
     });
   }
   return out;
@@ -270,14 +266,16 @@ export type ResumoCustoOperacao = {
   pior: PontoCustoOperacao | null;
 };
 
-/** Média do percentual considerando apenas meses completos (exclui o mês corrente e futuros). */
+/** Percentual consolidado dos meses completos (exclui mês corrente, futuros e dados incompletos). */
 export function mediaMesesCompletos(serie: PontoCustoOperacao[], ano: number): ResumoCustoOperacao {
   const hoje = new Date();
   const ultimoCompleto =
     ano < hoje.getFullYear() ? 12 : ano > hoje.getFullYear() ? 0 : hoje.getMonth(); // mês anterior ao corrente
-  const validos = serie.filter((p) => p.mes <= ultimoCompleto && p.pct !== null && p.receita > 0);
+  const validos = serie.filter((p) => p.mes <= ultimoCompleto && p.completo && p.pct !== null);
   if (validos.length === 0) return { media: null, meses: 0, melhor: null, pior: null };
-  const media = validos.reduce((s, p) => s + (p.pct as number), 0) / validos.length;
+  const receitaTotal = validos.reduce((s, p) => s + p.receita, 0);
+  const custoTotal = validos.reduce((s, p) => s + p.custoOperacao, 0);
+  const media = receitaTotal > 0 ? custoTotal / receitaTotal : null;
   const ord = [...validos].sort((a, b) => (a.pct as number) - (b.pct as number));
   return { media, meses: validos.length, melhor: ord[0], pior: ord[ord.length - 1] };
 }
