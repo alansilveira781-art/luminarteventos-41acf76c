@@ -10,8 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, ChevronRight, ArrowRightLeft } from "lucide-react";
 import { CompraDialog } from "@/components/CompraDialog";
-import { DemandaDialog } from "@/components/DemandaDialog";
-import { proximoStatusDemanda } from "@/lib/demandas";
 import { COMPRA_STATUSES, canEditCompra, canMoveCompra, compraBackStatus, isNatanaelShortcut, moveBlockedMessage, nextCompraStatus, PEDRO_EMAIL, PEDRO_MOVE_BLOCKED_MSG, type CompraStatus } from "@/lib/compras";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -56,11 +54,8 @@ export const Route = createFileRoute("/compras/")({
   component: ComprasKanban,
 });
 
-type Origem = "compra" | "demanda";
-
 type Compra = {
   id: string;
-  origem: Origem;
   numero: number | null;
   status: CompraStatus;
   titulo: string | null;
@@ -78,12 +73,9 @@ type Compra = {
   responsavel_id: string | null;
   responsavel_nome: string | null;
   tipo_compra: string | null;
-  tipo_demanda?: string | null;
   created_by: string | null;
 };
 
-const codigoCard = (c: { origem: Origem; numero: number | null }) =>
-  c.numero != null ? `${c.origem === "demanda" ? "DEMANDA" : "COMPRA"}-${c.numero}` : "—";
 
 function ComprasKanban() {
   const qc = useQueryClient();
@@ -92,14 +84,9 @@ function ComprasKanban() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [defaultStatus, setDefaultStatus] = useState<CompraStatus>("solicitacao");
-  // Card de Aquisição (tabela demandas)
-  const [openDemanda, setOpenDemanda] = useState(false);
-  const [editDemandaId, setEditDemandaId] = useState<string | null>(null);
-  const [escolherTipo, setEscolherTipo] = useState<CompraStatus | null>(null);
   const [q, setQ] = useState<string>(""); const qd = useDebouncedValue(q, 300);
   const [filters, setFilters] = usePersistedState<Filters>("compras.kanban", {});
   const [migrarCompra, setMigrarCompra] = useState<Compra | null>(null);
-  const tiposDespesa = useTiposDespesa();
 
   // Abre o card automaticamente quando a URL tem ?id=...
   useEffect(() => {
@@ -107,16 +94,10 @@ function ComprasKanban() {
     const params = new URLSearchParams(window.location.search);
     const id = params.get("id");
     if (id) {
-      if (params.get("origem") === "demanda") {
-        setEditDemandaId(id);
-        setOpenDemanda(true);
-      } else {
-        setEditId(id);
-        setOpen(true);
-      }
+      setEditId(id);
+      setOpen(true);
     }
   }, []);
-
 
 
   const { data: compras = [] } = useQuery({
@@ -132,34 +113,6 @@ function ComprasKanban() {
     },
   });
 
-  // Aquisições (tabela demandas) vivem definitivamente no Quadro de Compras,
-  // inclusive quando finalizadas ou negadas.
-  const { data: demandas = [] } = useQuery({
-    queryKey: ["compras", "demandas"],
-    queryFn: async () => {
-      const { data, error } = await sb
-        .from("demandas")
-        .select("id,numero,status,titulo,solicitante,fornecedor,comprador,data_solicitacao,data_compra,prazo,valor_total,tipo_demanda,responsavel_id,responsavel_nome,created_by")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as any[];
-    },
-  });
-
-  const cards = useMemo<Compra[]>(
-    () => [
-      ...(compras ?? []).map((c: any) => ({ ...c, origem: "compra" as const })),
-      ...(demandas ?? []).map((d: any) => ({
-        ...d,
-        origem: "demanda" as const,
-        solicitante_id: null,
-        data_servico: null,
-        tipo_compra: null,
-      })),
-    ],
-    [compras, demandas],
-  );
-
   const { data: pagamentosRows = [] } = useQuery({
     queryKey: ["compras", "pagamentos-quadro"],
     queryFn: async () => {
@@ -171,22 +124,11 @@ function ComprasKanban() {
     staleTime: 30 * 1000,
   });
 
-  const { data: pagamentosDemandaRows = [] } = useQuery({
-    queryKey: ["compras", "pagamentos-quadro-demandas"],
-    queryFn: async () => {
-      const { data } = await sb
-        .from("demanda_pagamentos")
-        .select("demanda_id,forma,valor,parcelamento,data_pagamento,pago,pago_em");
-      return (data ?? []) as any[];
-    },
-    staleTime: 30 * 1000,
-  });
-
   const pagamentosPorCompra = useMemo(() => {
     const m = new Map<string, StatusPagamentos>();
     const grouped = new Map<string, PagamentoLinha[]>();
-    const add = (id: string, p: any) => {
-      const arr = grouped.get(id) ?? [];
+    for (const p of pagamentosRows) {
+      const arr = grouped.get(p.compra_id) ?? [];
       arr.push({
         forma: p.forma ?? null,
         valor: Number(p.valor ?? 0),
@@ -195,32 +137,17 @@ function ComprasKanban() {
         pago: !!p.pago,
         pago_em: p.pago_em ?? null,
       });
-      grouped.set(id, arr);
-    };
-    for (const p of pagamentosRows) add(p.compra_id, p);
-    for (const p of pagamentosDemandaRows) add(p.demanda_id, p);
+      grouped.set(p.compra_id, arr);
+    }
     grouped.forEach((linhas, id) => m.set(id, statusPagamentos(linhas)));
     return m;
-  }, [pagamentosRows, pagamentosDemandaRows]);
-
+  }, [pagamentosRows]);
 
   const { data: statusDefaults = [] } = useQuery({
     queryKey: ["compras_status_defaults"],
     queryFn: async () => {
       const { data } = await sb
         .from("compras_status_defaults")
-        .select("status, responsavel_id, responsavel_nome");
-      return (data ?? []) as { status: CompraStatus; responsavel_id: string | null; responsavel_nome: string | null }[];
-    },
-    staleTime: 1000 * 60 * 5,
-  });
-
-  // Responsáveis padrão das Aquisições (tabela demandas)
-  const { data: statusDefaultsDemanda = [] } = useQuery({
-    queryKey: ["financeiro_status_defaults"],
-    queryFn: async () => {
-      const { data } = await sb
-        .from("financeiro_status_defaults")
         .select("status, responsavel_id, responsavel_nome");
       return (data ?? []) as { status: CompraStatus; responsavel_id: string | null; responsavel_nome: string | null }[];
     },
@@ -244,12 +171,11 @@ function ComprasKanban() {
 
   const filterFields = useMemo<FieldDef<Compra>[]>(() => [
     { key: "status", label: "Status", type: "multi", getValue: (r) => r.status, formatValue: (v) => COMPRA_STATUSES.find((s) => s.key === v)?.label ?? v },
-    { key: "origem", label: "Origem", type: "multi", getValue: (r) => (r.origem === "demanda" ? "Aquisição" : "Compra") },
     { key: "fornecedor", label: "Fornecedor", type: "multi", getValue: (r) => r.fornecedor },
     { key: "solicitante", label: "Solicitante", type: "multi", getValue: (r) => r.solicitante },
     { key: "comprador", label: "Comprador", type: "multi", getValue: (r) => r.comprador },
     { key: "responsavel_nome", label: "Responsável", type: "multi", getValue: (r) => r.responsavel_nome },
-    { key: "tipo_compra", label: "Tipo", type: "multi", getValue: (r) => r.tipo_compra ?? r.tipo_demanda },
+    { key: "tipo_compra", label: "Tipo", type: "multi", getValue: (r) => r.tipo_compra },
     { key: "empresa_faturada", label: "Empresa faturada", type: "multi", getValue: (r) => (r as any).empresa_faturada },
     { key: "tem_nf", label: "Tem NF", type: "multi", getValue: (r) => ((r as any).tem_nf === false ? "Não" : (r as any).tem_nf === true ? "Sim" : null) },
     { key: "data_compra", label: "Data de compra", type: "date-range", getValue: (r) => r.data_compra },
@@ -258,16 +184,15 @@ function ComprasKanban() {
   ], []);
 
   const filteredCompras = useMemo(() => {
-    let base = applyKanbanFilters(cards, filters, filterFields);
+    let base = applyKanbanFilters(compras, filters, filterFields);
     const s = qd.toLowerCase().trim();
     if (!s) return base;
     return base.filter((c) => {
-      const num = codigoCard(c).toLowerCase();
+      const num = c.numero != null ? `compra-${c.numero}` : "";
       return [num, String(c.numero ?? ""), c.titulo, c.solicitante, c.fornecedor, c.comprador]
         .some((v) => String(v ?? "").toLowerCase().includes(s));
     });
-  }, [cards, qd, filters, filterFields]);
-
+  }, [compras, qd, filters, filterFields]);
 
   const byStatus = useMemo(() => {
     const m: Record<CompraStatus, Compra[]> = {} as any;
@@ -312,77 +237,7 @@ function ComprasKanban() {
     },
   });
 
-  const moveDemandaStatus = useMutation({
-    mutationFn: async (vars: { id: string; status: CompraStatus; responsavelId?: string | null; responsavelNome?: string | null }) => {
-      const patch: any = { status: vars.status };
-      if (vars.responsavelId) {
-        patch.responsavel_id = vars.responsavelId;
-        patch.responsavel_nome = vars.responsavelNome ?? null;
-      }
-      const { error } = await sb.from("demandas").update(patch).eq("id", vars.id);
-      if (error) throw error;
-    },
-    onMutate: async ({ id, status }) => {
-      const queryKey = ["compras", "demandas"] as const;
-      await qc.cancelQueries({ queryKey });
-      const prev = qc.getQueryData<any[]>(queryKey);
-      qc.setQueryData<any[]>(queryKey, (old) =>
-        (old ?? []).map((card) => (card.id === id ? { ...card, status } : card)),
-      );
-      return { prev };
-    },
-    onError: (_error, _vars, context) => {
-      if (context?.prev) qc.setQueryData(["compras", "demandas"], context.prev);
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["compras", "demandas"] });
-      qc.invalidateQueries({ queryKey: ["demandas"] });
-      qc.invalidateQueries({ queryKey: ["demandas-receber"] });
-    },
-  });
-
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
-
-  // Movimentação de cards de Aquisição (tabela demandas), com as mesmas regras
-  // do antigo Quadro de Aquisições (inclusive comunicação com Estoque/Patrimônio).
-  async function advanceDemanda(
-    card: Compra,
-    status: CompraStatus,
-    opts?: { force?: boolean; toastMsg?: string; silent?: boolean },
-  ): Promise<{ ok: boolean; motivo?: string }> {
-    const fail = (motivo: string) => {
-      if (!opts?.silent) toast.error(motivo);
-      return { ok: false, motivo };
-    };
-    if (card.status === status) return { ok: true };
-    if (status === "a_receber" && !tiposDespesa.vaiParaRecebimento(card.tipo_demanda)) {
-      return fail('Este tipo de aquisição não gera recebimento em Estoque ou Patrimônio, então não pode ir para "A Receber".');
-    }
-    const titulo = card.titulo || card.fornecedor || `Aquisição ${card.numero ?? ""}`;
-    const statusLabel = COMPRA_STATUSES.find((s) => s.key === status)?.label || status;
-    const def = statusDefaultsDemanda.find((d) => d.status === status && d.responsavel_id);
-    try {
-      await moveDemandaStatus.mutateAsync({
-        id: card.id,
-        status,
-        responsavelId: def?.responsavel_id ?? null,
-        responsavelNome: def?.responsavel_nome ?? null,
-      });
-    } catch (e: any) {
-      return fail(String(e?.message ?? "Não foi possível mover o card."));
-    }
-    if (def?.responsavel_id) {
-      notifyResponsavel({
-        userId: def.responsavel_id,
-        titulo: `Aquisição: ${statusLabel}`,
-        mensagem: titulo,
-        link: `/compras?id=${card.id}&origem=demanda`,
-        tipo: "compra_responsavel",
-      }).catch(() => {});
-    }
-    if (!opts?.silent) toast.success(opts?.toastMsg ?? "Card movido.");
-    return { ok: true };
-  }
 
   async function advanceToStatus(
     compra: Compra,
@@ -394,8 +249,6 @@ function ComprasKanban() {
       return { ok: false, motivo };
     };
     if (compra.status === status) return { ok: true };
-    if (compra.origem === "demanda") return advanceDemanda(compra, status, opts);
-
 
     if (!canMoveCompra(compra, user?.id, isAdmin, user?.email, status, compra.status, responsavelDoStatus(status), responsavelDoStatus(compra.status))) {
       const isPedro = !!user?.email && user.email.trim().toLowerCase() === PEDRO_EMAIL;
@@ -513,12 +366,8 @@ function ComprasKanban() {
     });
 
   const selectedCompras = useMemo(
-    () => cards.filter((c) => selectedIds.has(c.id)),
-    [cards, selectedIds],
-  );
-  const selectedTotal = useMemo(
-    () => selectedCompras.reduce((acc, c) => acc + Number(c.valor_total ?? 0), 0),
-    [selectedCompras],
+    () => compras.filter((c) => selectedIds.has(c.id)),
+    [compras, selectedIds],
   );
   const todosPendentes =
     selectedCompras.length > 0 && selectedCompras.every((c) => c.status === "pendente_aprovacao");
@@ -529,7 +378,7 @@ function ComprasKanban() {
     let ok = 0;
     const motivos: string[] = [];
     for (const c of selectedCompras) {
-      const atual = cards.find((x) => x.id === c.id) ?? c;
+      const atual = compras.find((x) => x.id === c.id) ?? c;
       const r = await advanceToStatus(atual, target, { force: true, silent: true });
       if (r.ok) ok++;
       else if (r.motivo && !motivos.includes(r.motivo)) motivos.push(r.motivo);
@@ -545,15 +394,6 @@ function ComprasKanban() {
       });
   }
 
-  function abrirCard(c: Compra) {
-    if (c.origem === "demanda") {
-      setEditDemandaId(c.id);
-      setOpenDemanda(true);
-      return;
-    }
-    setEditId(c.id);
-    setOpen(true);
-  }
 
   async function onDragEnd(e: DragEndEvent) {
     const id = String(e.active.id);
@@ -563,16 +403,13 @@ function ComprasKanban() {
     if (COMPRA_STATUSES.some((s) => s.key === overId)) {
       status = overId as CompraStatus;
     } else {
-      const overCompra = cards.find((c) => c.id === overId);
+      const overCompra = compras.find((c) => c.id === overId);
       status = overCompra?.status;
     }
     if (!status) return;
-    const compra = cards.find((c) => c.id === id);
+    const compra = compras.find((c) => c.id === id);
     if (!compra) return;
-    if (
-      compra.origem === "compra" &&
-      !canMoveCompra(compra, user?.id, isAdmin, user?.email, status, compra.status, responsavelDoStatus(status), responsavelDoStatus(compra.status))
-    ) {
+    if (!canMoveCompra(compra, user?.id, isAdmin, user?.email, status, compra.status, responsavelDoStatus(status), responsavelDoStatus(compra.status))) {
       const isPedro = !!user?.email && user.email.trim().toLowerCase() === PEDRO_EMAIL;
       const respIdDest = responsavelDoStatus(status);
       toast.error(
@@ -588,14 +425,13 @@ function ComprasKanban() {
     await advanceToStatus(compra, status);
   }
 
-
   return (
     <>
       <PageHeader
         title="Compras"
         description="Arraste os cards entre as colunas para alterar o status"
         actions={
-          <Button onClick={() => setEscolherTipo("solicitacao")}>
+          <Button onClick={() => { setEditId(null); setDefaultStatus("solicitacao"); setOpen(true); }}>
             <Plus className="h-4 w-4 mr-1" /> Nova compra
           </Button>
         }
@@ -611,15 +447,12 @@ function ComprasKanban() {
             className="pl-9"
           />
         </div>
-        <KanbanFilters rows={cards} fields={filterFields} value={filters} onChange={setFilters} />
+        <KanbanFilters rows={compras} fields={filterFields} value={filters} onChange={setFilters} />
       </div>
 
       {selectedIds.size > 0 && (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm">
           <span className="font-medium">{selectedIds.size} card(s) selecionado(s)</span>
-          <span className="rounded bg-background/70 px-2 py-0.5 font-semibold">
-            Total: {formatBRL(selectedTotal)}
-          </span>
           <div className="flex flex-wrap items-center gap-2 ml-auto">
             <Select value={bulkTarget} onValueChange={(v) => setBulkTarget(v as CompraStatus)}>
               <SelectTrigger className="h-8 w-56">
@@ -662,14 +495,14 @@ function ComprasKanban() {
               <button
                 key={c.id}
                 type="button"
-                onClick={() => abrirCard(c)}
+                onClick={() => { setEditId(c.id); setOpen(true); }}
                 className="w-full text-left p-3 hover:bg-muted/50 flex items-center gap-3 text-sm"
               >
-                <span className="text-[11px] font-mono text-muted-foreground w-28 shrink-0">
-                  {codigoCard(c)}
+                <span className="text-[11px] font-mono text-muted-foreground w-24 shrink-0">
+                  {c.numero != null ? `COMPRA-${c.numero}` : "—"}
                 </span>
                 <span className="flex-1 min-w-0 truncate font-medium">
-                  {c.titulo || c.fornecedor || (c.origem === "demanda" ? "Aquisição sem título" : "Compra sem título")}
+                  {c.titulo || c.fornecedor || "Compra sem título"}
                 </span>
                 <span className="hidden sm:block text-xs text-muted-foreground truncate w-32">
                   {c.fornecedor || "—"}
@@ -693,19 +526,14 @@ function ComprasKanban() {
           {COMPRA_STATUSES.map((s) => (
             <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={byStatus[s.key]?.length ?? 0}>
               {(byStatus[s.key] ?? []).map((c) => {
-                const isDemanda = c.origem === "demanda";
-                const next = isDemanda
-                  ? proximoStatusDemanda(c.status, c.tipo_demanda ?? null, tiposDespesa.paraRecebimento)
-                  : nextCompraStatus(c.status);
+                const next = nextCompraStatus(c.status);
                 const back = compraBackStatus(c.status);
                 const atalho = isNatanaelShortcut(user?.email, c.status, "finalizado");
-                const canMove = isDemanda
-                  ? true
-                  : atalho ||
-                    canMoveCompra(c, user?.id, isAdmin, user?.email, next ?? undefined, c.status, responsavelDoStatus(next), responsavelDoStatus(c.status)) ||
-                    (!!back && canMoveCompra(c, user?.id, isAdmin, user?.email, back, c.status, responsavelDoStatus(back), responsavelDoStatus(c.status)));
+                const canMove =
+                  atalho ||
+                  canMoveCompra(c, user?.id, isAdmin, user?.email, next ?? undefined, c.status, responsavelDoStatus(next), responsavelDoStatus(c.status)) ||
+                  (!!back && canMoveCompra(c, user?.id, isAdmin, user?.email, back, c.status, responsavelDoStatus(back), responsavelDoStatus(c.status)));
                 const canMigrate =
-                  !isDemanda &&
                   (c.status === "solicitacao" || c.status === "a_receber") &&
                   canEditCompra(c, user?.id, isAdmin, user?.email, responsavelDoStatus(c.status));
 
@@ -713,7 +541,7 @@ function ComprasKanban() {
                   <Card
                     key={c.id}
                     compra={c}
-                    onOpen={() => abrirCard(c)}
+                    onOpen={() => { setEditId(c.id); setOpen(true); }}
                     nextStatusLabel={next ? (COMPRA_STATUSES.find((x) => x.key === next)?.label ?? null) : null}
                     onAdvance={next ? () => { void advanceToStatus(c, next); } : undefined}
                     canMove={canMove}
@@ -726,10 +554,9 @@ function ComprasKanban() {
                 );
 
               })}
-
               <button
                 type="button"
-                onClick={() => setEscolherTipo(s.key)}
+                onClick={() => { setEditId(null); setDefaultStatus(s.key); setOpen(true); }}
                 className="w-full text-xs text-muted-foreground hover:text-foreground py-1.5 rounded border border-dashed border-border hover:border-primary"
               >
                 + adicionar
@@ -740,49 +567,6 @@ function ComprasKanban() {
       </DndContext>
       )}
 
-      <Dialog open={!!escolherTipo} onOpenChange={(v) => { if (!v) setEscolherTipo(null); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>O que você quer criar?</DialogTitle>
-            <DialogDescription>
-              Compras e Aquisições ficam no mesmo quadro; o que muda é o código do card.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-2">
-            <Button
-              variant="outline"
-              className="justify-start h-auto py-3"
-              onClick={() => {
-                setDefaultStatus(escolherTipo ?? "solicitacao");
-                setEditId(null);
-                setEscolherTipo(null);
-                setOpen(true);
-              }}
-            >
-              <div className="text-left">
-                <div className="font-medium">Compra</div>
-                <div className="text-xs text-muted-foreground">Card padrão de compras (COMPRA-000)</div>
-              </div>
-            </Button>
-            <Button
-              variant="outline"
-              className="justify-start h-auto py-3"
-              onClick={() => {
-                setDefaultStatus(escolherTipo ?? "solicitacao");
-                setEditDemandaId(null);
-                setEscolherTipo(null);
-                setOpenDemanda(true);
-              }}
-            >
-              <div className="text-left">
-                <div className="font-medium">Aquisição</div>
-                <div className="text-xs text-muted-foreground">Card de aquisição (DEMANDA-000)</div>
-              </div>
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       <CompraDialog
         open={open}
         onOpenChange={setOpen}
@@ -791,7 +575,7 @@ function ComprasKanban() {
         onAdvance={async (compraData, opts) => {
           const target = opts?.deny ? "negada" : opts?.approve ? "aprovada" : nextCompraStatus(compraData.status);
           if (!target) return;
-          await advanceToStatus({ ...(compraData as any), origem: "compra" } as Compra, target, {
+          await advanceToStatus(compraData as unknown as Compra, target, {
             force: !!(opts?.approve || opts?.deny),
             toastMsg: opts?.approve
               ? "Compra aprovada."
@@ -802,35 +586,6 @@ function ComprasKanban() {
           setOpen(false);
         }}
       />
-
-      <DemandaDialog
-        open={openDemanda}
-        onOpenChange={(v) => {
-          setOpenDemanda(v);
-          if (!v) {
-            setEditDemandaId(null);
-            qc.invalidateQueries({ queryKey: ["compras", "demandas"] });
-            qc.invalidateQueries({ queryKey: ["compras", "pagamentos-quadro-demandas"] });
-          }
-        }}
-        demandaId={editDemandaId}
-        defaultStatus={defaultStatus}
-        onAdvance={async (demandaData: any, opts: any) => {
-          const card = { ...(demandaData as any), origem: "demanda" } as Compra;
-          const target = opts?.deny
-            ? "negada"
-            : opts?.approve
-            ? "aprovada"
-            : proximoStatusDemanda(card.status, card.tipo_demanda ?? null, tiposDespesa.paraRecebimento);
-          if (!target) return;
-          await advanceDemanda(card, target as CompraStatus, {
-            force: true,
-            toastMsg: opts?.approve ? "Aquisição aprovada." : opts?.deny ? "Aquisição reprovada." : undefined,
-          });
-          setOpenDemanda(false);
-        }}
-      />
-
 
       <AvancarCardDialog
         open={!!pendingMove}
@@ -943,12 +698,12 @@ function Card({
           <div className="flex items-start justify-between gap-2">
             <div className="font-medium text-sm truncate text-foreground flex-1 min-w-0 flex items-center gap-1.5">
               <PrazoDot prazo={prazoVigente(compra)} status={compra.status} />
-              <span className="truncate">{compra.titulo || compra.fornecedor || (compra.origem === "demanda" ? "Aquisição sem título" : "Compra sem título")}</span>
+              <span className="truncate">{compra.titulo || compra.fornecedor || "Compra sem título"}</span>
             </div>
 
             {compra.numero != null && (
               <span className="text-[10px] text-muted-foreground font-mono shrink-0 mt-0.5">
-                {codigoCard(compra)}
+                COMPRA-{compra.numero}
               </span>
             )}
           </div>
@@ -983,7 +738,7 @@ function Card({
             {compra.solicitante && <div>Solic.: {compra.solicitante}</div>}
             {compra.comprador && <div>Comprador: {compra.comprador}</div>}
             {compra.responsavel_nome && <div>Resp.: {compra.responsavel_nome}</div>}
-            {compra.origem === "compra" && !compra.tipo_compra && (
+            {!compra.tipo_compra && (
               <div>
                 <span className="inline-block rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 text-[10px] font-medium">
                   Sem tipo

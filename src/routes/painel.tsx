@@ -13,7 +13,6 @@ import {
   Wallet,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { calcularIndicadoresCaixa } from "@/lib/conta-azul/dre";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -67,46 +66,23 @@ function PainelPage() {
     },
   });
 
-  /* ---------- indicadores financeiros (caixa, igual ao dashboard financeiro) ---------- */
+  /* ---------- indicadores financeiros (caixa) ---------- */
   const { data: fin } = useQuery({
     queryKey: ["painel-financeiro", inicioMes, fimMes],
     enabled: isMasterAdmin,
     queryFn: async () => {
-      const cols = "external_id,valor,status,data_vencimento,data_pagamento,descricao,categoria_external_id";
-      const [baixasRes, recVenc, pagVenc, planos] = await Promise.all([
-        supabase.from("ca_lancamento_baixas").select("tipo,lancamento_external_id,valor,data_baixa").gte("data_baixa", inicioMes).lte("data_baixa", fimMes).limit(20000),
-        supabase.from("ca_contas_receber").select(cols).gte("data_vencimento", inicioMes).lte("data_vencimento", fimMes).limit(20000),
-        supabase.from("ca_contas_pagar").select(cols).gte("data_vencimento", inicioMes).lte("data_vencimento", fimMes).limit(20000),
-        supabase.from("ca_plano_contas").select("external_id,nome"),
+      const [rec, pag, aReceber, aPagar] = await Promise.all([
+        supabase.from("ca_contas_receber").select("valor").gte("data_pagamento", inicioMes).lte("data_pagamento", fimMes),
+        supabase.from("ca_contas_pagar").select("valor").gte("data_pagamento", inicioMes).lte("data_pagamento", fimMes),
+        supabase.from("ca_contas_receber").select("valor").is("data_pagamento", null).gte("data_vencimento", inicioMes).lte("data_vencimento", fimMes),
+        supabase.from("ca_contas_pagar").select("valor").is("data_pagamento", null).gte("data_vencimento", inicioMes).lte("data_vencimento", fimMes),
       ]);
-      const baixas = (baixasRes.data ?? []) as any[];
-      const carregarPagos = async (tabela: "ca_contas_receber" | "ca_contas_pagar", tipo: string) => {
-        const ids = Array.from(new Set(baixas.filter((b) => b.tipo === tipo).map((b) => String(b.lancamento_external_id))));
-        const rows: any[] = [];
-        for (let i = 0; i < ids.length; i += 200) {
-          const { data, error } = await supabase.from(tabela).select(cols).in("external_id", ids.slice(i, i + 200));
-          if (error) throw error;
-          rows.push(...(data ?? []));
-        }
-        return rows;
-      };
-      const [recPagos, pagPagos] = await Promise.all([
-        carregarPagos("ca_contas_receber", "receber"),
-        carregarPagos("ca_contas_pagar", "pagar"),
-      ]);
-      const unir = (a: any[], b: any[]) => Array.from(new Map([...a, ...b].map((r) => [r.external_id, r])).values());
-      const planoMap = new Map(((planos.data ?? []) as any[]).map((p) => [p.external_id, p.nome as string]));
-      return calcularIndicadoresCaixa(
-        unir((pagVenc.data ?? []) as any[], pagPagos),
-        unir((recVenc.data ?? []) as any[], recPagos),
-        new Map(Array.from(planoMap, ([id, nome]) => [id, { nome }])),
-        ano,
-        mes + 1,
-        baixas,
-      );
+      const soma = (r: any) => (r.data ?? []).reduce((s: number, x: any) => s + Number(x.valor || 0), 0);
+      const recebido = soma(rec);
+      const pago = soma(pag);
+      return { recebido, pago, saldo: recebido - pago, aReceber: soma(aReceber), aPagar: soma(aPagar) };
     },
   });
-
 
   /* ---------- uber ---------- */
   const { data: uber } = useQuery({

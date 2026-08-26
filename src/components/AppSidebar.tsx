@@ -89,6 +89,10 @@ const allItems: NavItem[] = [
   { title: "Quadro de Compras", url: "/compras", icon: KanbanSquare, group: "Compras", module: "compras" },
   { title: "Relatórios", url: "/compras/relatorios", icon: FileBarChart, group: "Compras", module: "compras" },
   { title: "Configurações", url: "/compras/configuracoes", icon: Settings, group: "Compras", module: "compras", moduleAdminOnly: "compras" },
+  { title: "Dashboard", url: "/financeiro/dashboard", icon: BarChart3, group: "Aquisições", module: "financeiro" },
+  { title: "Quadro de Aquisições", url: "/financeiro", icon: KanbanSquare, group: "Aquisições", module: "financeiro" },
+  { title: "Configurações", url: "/financeiro/configuracoes", icon: Settings, group: "Aquisições", module: "financeiro", moduleAdminOnly: "financeiro" },
+
   { title: "Dashboard", url: "/financeiro-op/dashboard", icon: BarChart3, group: "Financeiro", module: "financeiro_op" },
   { title: "Diaristas", url: "/financeiro-op/diaristas", icon: Users2, group: "Financeiro", module: "financeiro_op", diaristaLancador: true },
   { title: "Quadro Financeiro", url: "/financeiro-op/quadro", icon: KanbanSquare, group: "Financeiro", module: "financeiro_op" },
@@ -141,7 +145,7 @@ const allItems: NavItem[] = [
   { title: "Administração", url: "/admin", icon: Shield, group: "Administração", adminOnly: true },
 ];
 
-const groups = ["Visão geral", "Estoque", "Compras", "Financeiro", "Comercial", "Eventos", "Contábil", "Jurídico", "Patrimônio", "Operação", "Recursos Humanos", "Administração"];
+const groups = ["Visão geral", "Estoque", "Compras", "Aquisições", "Financeiro", "Comercial", "Eventos", "Contábil", "Jurídico", "Patrimônio", "Operação", "Recursos Humanos", "Administração"];
 
 
 const ESTOQUE_ROUTES = ["/dashboard", "/estoque", "/solicitantes", "/fornecedores", "/entradas", "/saidas", "/devolucoes", "/relatorios"];
@@ -244,9 +248,7 @@ function useNavItems(pathname: string) {
     }
     if (i.module === "estoque") return ctx === "estoque" && (isAdmin || hasModule("estoque"));
     if (i.module === "compras") return ctx === "compras" && (isAdmin || hasModule("compras"));
-    // Módulo Aquisições foi extinto para os usuários: agora vive no Quadro de Compras.
-    // Continua acessível apenas para administradores mestres (consulta/manutenção).
-    if (i.module === "financeiro") return ctx === "financeiro" && isMasterAdmin;
+    if (i.module === "financeiro") return ctx === "financeiro" && (isAdmin || hasModule("financeiro"));
     if (i.module === "financeiro_op") {
       if (ctx !== "financeiro_op") return false;
       if (isAdmin || hasModule("financeiro_op")) return true;

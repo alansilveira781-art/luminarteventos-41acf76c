@@ -1,5 +1,4 @@
 import logoUrl from "@/assets/luminart-logo.png";
-import { compareFamiliaNomeMedida } from "@/lib/patrimonio/ordenacao";
 
 // Relatório de uma O.S. de patrimônio (A4 retrato).
 
@@ -41,92 +40,19 @@ export type OSPdfParams = {
 
 const dt = (v?: string | null) => (v ? String(v).slice(0, 10).split("-").reverse().join("/") : "—");
 
-const chaveMaterial = (nome: string, especificacao?: string | null) =>
-  `${(nome || "").trim().toLowerCase()}|${(especificacao || "").trim().toLowerCase()}`;
-
-/** Agrupa lançamentos iguais (nome + especificação) somando as quantidades. */
-function agruparItens(itens: OSPdfItem[]) {
-  const map = new Map<
-    string,
-    OSPdfItem & { codigos: Set<string>; registros: number }
-  >();
-  for (const i of itens) {
-    const k = chaveMaterial(i.nome, i.especificacao);
-    let g = map.get(k);
-    if (!g) {
-      g = {
-        nome: i.nome,
-        especificacao: i.especificacao ?? null,
-        unidade: i.unidade ?? null,
-        id_item: null,
-        quantidade: 0,
-        devolvida: 0,
-        perdida: 0,
-        codigos: new Set<string>(),
-        registros: 0,
-      };
-      map.set(k, g);
-    }
-    g.quantidade += Number(i.quantidade || 0);
-    g.devolvida += Number(i.devolvida || 0);
-    g.perdida += Number(i.perdida || 0);
-    g.registros += 1;
-    if (i.id_item) g.codigos.add(i.id_item);
-    if (!g.unidade && i.unidade) g.unidade = i.unidade;
+async function carregarLogo(): Promise<string | null> {
+  try {
+    const res = await fetch(logoUrl);
+    const blob = await res.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result));
+      fr.onerror = reject;
+      fr.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
   }
-  return [...map.values()].sort((a, b) => compareFamiliaNomeMedida(a, b));
-}
-
-
-// Carrega a logo em data URL, recortando a margem vazia e preservando a proporção real.
-async function carregarLogo(): Promise<{ src: string; w: number; h: number } | null> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      try {
-        const c = document.createElement("canvas");
-        c.width = img.naturalWidth;
-        c.height = img.naturalHeight;
-        const ctx = c.getContext("2d")!;
-        ctx.drawImage(img, 0, 0);
-
-        const data = ctx.getImageData(0, 0, c.width, c.height).data;
-        let minX = c.width,
-          minY = c.height,
-          maxX = 0,
-          maxY = 0;
-        for (let y = 0; y < c.height; y++) {
-          for (let x = 0; x < c.width; x++) {
-            const i = (y * c.width + x) * 4;
-            const alpha = data[i + 3];
-            if (alpha > 10 && !(data[i] > 250 && data[i + 1] > 250 && data[i + 2] > 250)) {
-              if (x < minX) minX = x;
-              if (x > maxX) maxX = x;
-              if (y < minY) minY = y;
-              if (y > maxY) maxY = y;
-            }
-          }
-        }
-
-        if (maxX > minX && maxY > minY) {
-          const cropW = maxX - minX + 1;
-          const cropH = maxY - minY + 1;
-          const cropped = document.createElement("canvas");
-          cropped.width = cropW;
-          cropped.height = cropH;
-          cropped.getContext("2d")!.putImageData(ctx.getImageData(minX, minY, cropW, cropH), 0, 0);
-          resolve({ src: cropped.toDataURL("image/png"), w: cropW, h: cropH });
-        } else {
-          resolve({ src: c.toDataURL("image/png"), w: img.naturalWidth, h: img.naturalHeight });
-        }
-      } catch {
-        resolve({ src: img.src, w: img.naturalWidth || 1, h: img.naturalHeight || 1 });
-      }
-    };
-    img.onerror = () => resolve(null);
-    img.src = logoUrl;
-  });
 }
 
 export async function gerarOSPdf(p: OSPdfParams) {
@@ -141,20 +67,11 @@ export async function gerarOSPdf(p: OSPdfParams) {
   const logo = await carregarLogo();
   if (logo) {
     try {
-      // mantém a proporção original: altura base de 12 mm, largura limitada a 45 mm
-      const ratio = logo.w / logo.h;
-      let h = 12;
-      let w = h * ratio;
-      if (w > 45) {
-        w = 45;
-        h = w / ratio;
-      }
-      doc.addImage(logo.src, "PNG", marginX, 10, w, h, undefined, "FAST");
+      doc.addImage(logo, "PNG", marginX, 10, 34, 12, undefined, "FAST");
     } catch {
       /* ignora falha da logo */
     }
   }
-
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
@@ -209,16 +126,15 @@ export async function gerarOSPdf(p: OSPdfParams) {
     headStyles: { fillColor: [30, 30, 34], textColor: 255, fontSize: 9 },
     styles: { fontSize: 9, cellPadding: 2 },
     head: [["Material", "Identificação", "Un.", "Saiu", "Devolvido", "Perdido", "Pendente"]],
-    body: agruparItens(p.itens).map((i) => [
+    body: p.itens.map((i) => [
       `${i.nome}${i.especificacao ? ` — ${i.especificacao}` : ""}`,
-      i.codigos.size === 1 ? [...i.codigos][0] : i.codigos.size > 1 ? `vários (${i.codigos.size})` : "—",
+      i.id_item || "—",
       i.unidade || "—",
       String(i.quantidade),
       String(i.devolvida),
       String(i.perdida),
       String(Math.max(0, i.quantidade - i.devolvida - i.perdida)),
     ]),
-
     columnStyles: {
       3: { halign: "right", cellWidth: 15 },
       4: { halign: "right", cellWidth: 20 },
@@ -241,33 +157,16 @@ export async function gerarOSPdf(p: OSPdfParams) {
       headStyles: { fillColor: [30, 30, 34], textColor: 255, fontSize: 9 },
       styles: { fontSize: 8.5, cellPadding: 2 },
       head: [["Data", "Material", "Devolvido", "Faltante", "Motivo", "Justificativa"]],
-      body: devs.flatMap((d) => {
-        const map = new Map<string, { material: string; devolvida: number; faltante: number; motivos: Set<string>; justificativas: Set<string> }>();
-        for (const l of d.linhas) {
-          const k = `${l.material}|${l.motivo ?? ""}`;
-          let g = map.get(k);
-          if (!g) {
-            g = { material: l.material, devolvida: 0, faltante: 0, motivos: new Set(), justificativas: new Set() };
-            map.set(k, g);
-          }
-          g.devolvida += Number(l.devolvida || 0);
-          g.faltante += Number(l.faltante || 0);
-          if (l.motivo) g.motivos.add(l.motivo);
-          if (l.justificativa) g.justificativas.add(l.justificativa);
-        }
-        return [...map.values()].map((g) => {
-          const motivo = g.motivos.size === 1 ? [...g.motivos][0] : null;
-          return [
-            dt(d.data),
-            g.material,
-            String(g.devolvida),
-            String(g.faltante),
-            motivo === "perda" ? "Perda" : motivo === "emprestimo" ? "Continua emprestado" : g.motivos.size > 1 ? "Vários" : "—",
-            g.justificativas.size ? [...g.justificativas].join(" · ") : "—",
-          ];
-        });
-      }),
-
+      body: devs.flatMap((d) =>
+        d.linhas.map((l) => [
+          dt(d.data),
+          l.material,
+          String(l.devolvida),
+          String(l.faltante),
+          l.motivo === "perda" ? "Perda" : l.motivo === "emprestimo" ? "Continua emprestado" : "—",
+          l.justificativa || "—",
+        ]),
+      ),
       columnStyles: { 2: { halign: "right", cellWidth: 20 }, 3: { halign: "right", cellWidth: 18 } },
       margin: { left: marginX, right: marginX },
     });

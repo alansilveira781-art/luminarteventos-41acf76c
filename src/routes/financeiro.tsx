@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, Navigate, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Outlet, Navigate } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/AuthContext";
 
 export const Route = createFileRoute("/financeiro")({
@@ -6,12 +6,8 @@ export const Route = createFileRoute("/financeiro")({
 });
 
 function FinanceiroLayout() {
-  const { isMasterAdmin, loading } = useAuth();
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const { isAdmin, hasModule, loading } = useAuth();
   if (loading) return null;
-  // O quadro antigo foi desativado: todas as aquisições vivem em Compras.
-  if (pathname === "/financeiro" || pathname === "/financeiro/") return <Navigate to="/compras" />;
-  // Dashboard/configurações legados permanecem restritos durante a transição.
-  if (!isMasterAdmin) return <Navigate to="/" />;
+  if (!isAdmin && !hasModule("financeiro")) return <Navigate to="/" />;
   return <Outlet />;
 }

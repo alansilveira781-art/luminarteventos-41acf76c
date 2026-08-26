@@ -32,7 +32,7 @@ export const Route = createFileRoute("/eventos/configuracoes")({
 
 const sb = supabase as any;
 
-type Produtor = { id: string; nome: string; ativo: boolean };
+type Produtor = { id: string; nome: string };
 
 function EventosConfiguracoes() {
   const { isAdmin, hasModule, loading } = useAuth();
@@ -42,9 +42,9 @@ function EventosConfiguracoes() {
   const [nome, setNome] = useState("");
 
   const { data: produtores = [] } = useQuery({
-    queryKey: ["comercial-produtores-ativos"],
+    queryKey: ["produtores"],
     queryFn: async () => {
-      const { data, error } = await sb.from("comercial_produtores").select("id,nome,ativo").order("nome");
+      const { data, error } = await sb.from("produtores").select("id,nome").order("nome");
       if (error) throw error;
       return (data ?? []) as Produtor[];
     },
@@ -56,19 +56,18 @@ function EventosConfiguracoes() {
       if (!nomeTrim) throw new Error("Informe o nome do produtor");
       if (editing) {
         const { error } = await sb
-          .from("comercial_produtores")
+          .from("produtores")
           .update({ nome: nomeTrim })
           .eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await sb.from("comercial_produtores").insert({ nome: nomeTrim, ativo: true });
+        const { error } = await sb.from("produtores").insert({ nome: nomeTrim });
         if (error) throw error;
       }
     },
     onSuccess: () => {
       toast.success("Produtor salvo");
-      qc.invalidateQueries({ queryKey: ["comercial-produtores-ativos"] });
-      qc.invalidateQueries({ queryKey: ["comercial-produtores"] });
+      qc.invalidateQueries({ queryKey: ["produtores"] });
       setOpen(false);
       setEditing(null);
       setNome("");
@@ -78,13 +77,12 @@ function EventosConfiguracoes() {
 
   const excluir = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await sb.from("comercial_produtores").delete().eq("id", id);
+      const { error } = await sb.from("produtores").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Produtor excluído");
-      qc.invalidateQueries({ queryKey: ["comercial-produtores-ativos"] });
-      qc.invalidateQueries({ queryKey: ["comercial-produtores"] });
+      qc.invalidateQueries({ queryKey: ["produtores"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao excluir"),
   });
@@ -96,7 +94,7 @@ function EventosConfiguracoes() {
     <div className="p-6 space-y-4">
       <PageHeader
         title="Configurações de Eventos"
-        description="Cadastro de produtores (mesma lista usada na Bonificação)"
+        description="Cadastro de produtores"
         actions={
           <Button
             onClick={() => {

@@ -1,11 +1,10 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileDown } from "lucide-react";
-import { toast } from "sonner";
+import { Printer } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, CartesianGrid,
@@ -14,13 +13,11 @@ import { fetchAllRows } from "@/lib/fetch-all";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { UberAnalises } from "@/components/financeiro/UberAnalises";
 import { CHART_SERIES, CHART_BASE } from "@/lib/financeiro/chart-colors";
-import { capturarGraficos, gerarUberPdf } from "@/lib/uber/uber-pdf";
-
 
 export function UberDashboard() {
   return (
     <Tabs defaultValue="painel" className="w-full">
-      <TabsList className="mb-4">
+      <TabsList className="mb-4 print:hidden">
         <TabsTrigger value="painel">Painel Uber</TabsTrigger>
         <TabsTrigger value="analises">Análises</TabsTrigger>
       </TabsList>
@@ -96,7 +93,6 @@ function UberPainel() {
 
   const allTrips = data ?? [];
 
-  const areaRef = useRef<HTMLDivElement>(null);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [solicitante, setSolicitante] = useState("__all__");
@@ -304,85 +300,28 @@ function UberPainel() {
     return parts.length ? parts.join(" · ") : "Base completa";
   })();
 
-  async function exportarPdf() {
-    try {
-      const imgs = await capturarGraficos(areaRef.current);
-      await gerarUberPdf({
-        titulo: "Relatório Uber — Painel",
-        subtitulo: periodoLabel,
-        orientacao: "landscape",
-        arquivo: `relatorio-uber-painel-${todayIso()}`,
-        kpis: [
-          { label: "Gasto total", value: fmt(kpis.total) },
-          { label: "Nº de corridas", value: fmtN(kpis.count) },
-          { label: "Ticket médio", value: fmt(kpis.ticket) },
-          { label: "Solicitantes únicos", value: fmtN(solicitantesUnicos) },
-        ],
-        secoes: [
-          ...(comparacoes
-            ? [{
-                tipo: "lista" as const,
-                titulo: "Comparativos",
-                itens: [
-                  [
-                    `${comparacoes.mesLabel}${comparacoes.mesPrevLabel ? ` vs ${comparacoes.mesPrevLabel}` : ""}`,
-                    `${fmt(comparacoes.mesAtual)}${comparacoes.mesAnterior !== null ? ` (anterior ${fmt(comparacoes.mesAnterior)})` : ""}`,
-                  ] as [string, string],
-                  [
-                    `${comparacoes.yCur} vs ${comparacoes.yPrev}`,
-                    `${fmt(comparacoes.anoAtual)}${comparacoes.anoAnterior !== null ? ` (anterior ${fmt(comparacoes.anoAnterior)})` : ""}`,
-                  ] as [string, string],
-                ],
-              }]
-            : []),
-          { tipo: "grafico" as const, titulo: "Gasto mensal (R$)", imagem: imgs["Gasto mensal (R$)"] ?? null, altura: 75 },
-          { tipo: "grafico" as const, titulo: "Gasto por serviço", imagem: imgs["Gasto por serviço"] ?? null, altura: 75 },
-          {
-            tipo: "tabela" as const,
-            titulo: "Top solicitantes",
-            head: ["Nome", "Viagens", "Total", "Ticket"],
-            alignRight: [1, 2, 3],
-            body: topPessoas.map((s) => [s.nome, s.viagens, fmt(s.total), fmt(s.total / s.viagens)]),
-          },
-          {
-            tipo: "tabela" as const,
-            titulo: "Endereços recorrentes",
-            head: ["Endereço", "Vezes", "%"],
-            alignRight: [1, 2],
-            body: enderecos.map((e) => [e.endereco, e.count, `${e.pct.toFixed(1)}%`]),
-          },
-          {
-            tipo: "tabela" as const,
-            titulo: "Relatório de corridas",
-            head: ["Data", "Turno", "Hora", "Nome", "Partida", "Destino", "Detalhamento", "Programa", "Valor"],
-            alignRight: [8],
-            body: [
-              ...corridasRelatorio.map((c) => [
-                new Date(c.data_solicitacao + "T00:00:00").toLocaleDateString("pt-BR"),
-                c.periodo,
-                c.hora_solicitacao || "—",
-                c.pessoa,
-                c.endereco_partida || "—",
-                c.endereco_destino || "—",
-                c.detalhamento || "—",
-                c.projeto || "—",
-                fmt(c.valor),
-              ]),
-              ["Total", "", "", "", "", "", "", "", fmt(corridasRelatorio.reduce((s, c) => s + (c.valor ?? 0), 0))],
-            ],
-          },
-        ],
-      });
-    } catch (e: any) {
-      toast.error(e?.message ?? "Falha ao gerar o PDF");
-    }
-  }
-
   return (
-    <div className="space-y-4" ref={areaRef}>
-      {/* Filtros */}
-      <Card className="p-3">
+    <div className="space-y-4 print-area">
+      <style>{`
+        @media print {
+          @page { size: A4 landscape; margin: 12mm; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          body * { visibility: hidden !important; }
+          .print-area, .print-area * { visibility: visible !important; }
+          .print-area { position: absolute; inset: 0; padding: 0; }
+        }
+      `}</style>
 
+      <div className="hidden print:block mb-2">
+        <h1 className="text-xl font-bold">Dashboard Uber — Grupo Luminart</h1>
+        <p className="text-sm text-muted-foreground">{periodoLabel}</p>
+        <p className="text-xs text-muted-foreground">
+          Emitido em {new Date().toLocaleString("pt-BR")}
+        </p>
+      </div>
+
+      {/* Filtros */}
+      <Card className="p-3 print:hidden">
         <div className="flex flex-wrap items-end gap-3">
           <div>
             <label className="text-[11px] uppercase text-muted-foreground block mb-1">De</label>
@@ -420,14 +359,14 @@ function UberPainel() {
             <Button size="sm" variant="outline" onClick={setUltimos3}>Últimos 3 meses</Button>
             <Button size="sm" variant="outline" onClick={setEsteAno}>Este ano</Button>
             <Button size="sm" variant="ghost" onClick={limparFiltros}>Tudo</Button>
-            <Button size="sm" variant="outline" className="gap-2" onClick={exportarPdf}>
-              <FileDown className="h-4 w-4" /> Exportar PDF
+            <Button size="sm" variant="outline" className="gap-2" onClick={() => window.print()}>
+              <Printer className="h-4 w-4" /> Imprimir
             </Button>
           </div>
         </div>
       </Card>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 [&>*]:print:break-inside-avoid">
         <Stat label="Gasto total" value={fmt(kpis.total)} />
         <Stat label="Nº de corridas" value={fmtN(kpis.count)} />
         <Stat label="Ticket médio" value={fmt(kpis.ticket)} />
@@ -435,7 +374,7 @@ function UberPainel() {
       </div>
 
       {comparacoes && (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 [&>*]:print:break-inside-avoid">
           <CompareCard
             label={`${comparacoes.mesLabel}${comparacoes.mesPrevLabel ? ` vs ${comparacoes.mesPrevLabel}` : ""}`}
             cur={comparacoes.mesAtual}
@@ -449,9 +388,9 @@ function UberPainel() {
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2 [&>*]:print:break-inside-avoid">
         <ChartCard title="Gasto mensal (R$)">
-          <div className="h-[260px]" data-pdf-chart="Gasto mensal (R$)">
+          <div className="h-[260px] print:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={porMes}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
@@ -465,7 +404,7 @@ function UberPainel() {
         </ChartCard>
 
         <ChartCard title="Gasto por serviço">
-          <div className="h-[260px]" data-pdf-chart="Gasto por serviço">
+          <div className="h-[260px] print:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={porServico} dataKey="valor" nameKey="nome" outerRadius={90} label>
@@ -479,8 +418,8 @@ function UberPainel() {
         </ChartCard>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="p-4">
+      <div className="grid gap-4 lg:grid-cols-2 [&>*]:print:break-inside-avoid">
+        <Card className="p-4 print:break-inside-avoid">
           <div className="text-sm font-semibold mb-3">Top solicitantes</div>
           <div className="overflow-auto">
             <table className="w-full text-sm">
@@ -506,7 +445,7 @@ function UberPainel() {
           </div>
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-4 print:break-inside-avoid">
           <div className="text-sm font-semibold mb-3">Endereços recorrentes</div>
           <div className="overflow-auto">
             <table className="w-full text-sm">
@@ -531,7 +470,7 @@ function UberPainel() {
         </Card>
       </div>
 
-      <Card className="p-4">
+      <Card className="p-4 print:break-inside-avoid">
         <div className="text-sm font-semibold mb-3">Relatório de corridas</div>
         <div className="overflow-auto">
           <table className="w-full text-sm">
@@ -617,7 +556,7 @@ function CompareCard({ label, cur, prev }: { label: string; cur: number; prev: n
 
 function ChartCard({ title, children, className = "" }: { title: string; children: React.ReactNode; className?: string }) {
   return (
-    <Card className={`p-4 ${className}`}>
+    <Card className={`p-4 print:break-inside-avoid ${className}`}>
       <div className="text-sm font-semibold mb-3">{title}</div>
       {children}
     </Card>

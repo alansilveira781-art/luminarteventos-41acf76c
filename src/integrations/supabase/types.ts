@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -330,42 +330,6 @@ export type Database = {
           id?: string
           synced_at?: string
           tipo?: string | null
-          valor?: number
-        }
-        Relationships: []
-      }
-      ca_lancamento_baixas: {
-        Row: {
-          baixa_external_id: string
-          created_at: string
-          data_baixa: string
-          id: string
-          lancamento_external_id: string
-          synced_at: string
-          tipo: string
-          updated_at: string
-          valor: number
-        }
-        Insert: {
-          baixa_external_id: string
-          created_at?: string
-          data_baixa: string
-          id?: string
-          lancamento_external_id: string
-          synced_at?: string
-          tipo: string
-          updated_at?: string
-          valor: number
-        }
-        Update: {
-          baixa_external_id?: string
-          created_at?: string
-          data_baixa?: string
-          id?: string
-          lancamento_external_id?: string
-          synced_at?: string
-          tipo?: string
-          updated_at?: string
           valor?: number
         }
         Relationships: []
@@ -3214,7 +3178,7 @@ export type Database = {
             foreignKeyName: "eventos_produtor_id_fkey"
             columns: ["produtor_id"]
             isOneToOne: false
-            referencedRelation: "comercial_produtores"
+            referencedRelation: "produtores"
             referencedColumns: ["id"]
           },
           {
