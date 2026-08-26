@@ -1631,7 +1631,9 @@ export async function reprocessarRateios(
     if (modoLista === "liquidacoes") {
       q = q.eq("status", "pago");
     }
-    if ((modoLista === "periodo" || modoLista === "liquidacoes") && periodoFrom && periodoTo) {
+    // Em liquidações não podemos filtrar pelo vencimento: o objetivo é justamente
+    // descobrir pagamentos do período pertencentes a títulos vencidos em outros meses.
+    if (modoLista === "periodo" && periodoFrom && periodoTo) {
       q = q.gte("data_vencimento", periodoFrom).lte("data_vencimento", periodoTo);
     }
     const { data: invs, error: e1 } = await q;

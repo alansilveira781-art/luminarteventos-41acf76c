@@ -73,18 +73,36 @@ function PainelPage() {
     enabled: isMasterAdmin,
     queryFn: async () => {
       const cols = "external_id,valor,status,data_vencimento,data_pagamento,descricao,categoria_external_id";
-      const [recRes, pagRes, planos] = await Promise.all([
+      const [baixasRes, recVenc, pagVenc, planos] = await Promise.all([
+        supabase.from("ca_lancamento_baixas").select("tipo,lancamento_external_id,valor,data_baixa").gte("data_baixa", inicioMes).lte("data_baixa", fimMes).limit(20000),
         supabase.from("ca_contas_receber").select(cols).gte("data_vencimento", inicioMes).lte("data_vencimento", fimMes).limit(20000),
         supabase.from("ca_contas_pagar").select(cols).gte("data_vencimento", inicioMes).lte("data_vencimento", fimMes).limit(20000),
         supabase.from("ca_plano_contas").select("external_id,nome"),
       ]);
+      const baixas = (baixasRes.data ?? []) as any[];
+      const carregarPagos = async (tabela: "ca_contas_receber" | "ca_contas_pagar", tipo: string) => {
+        const ids = Array.from(new Set(baixas.filter((b) => b.tipo === tipo).map((b) => String(b.lancamento_external_id))));
+        const rows: any[] = [];
+        for (let i = 0; i < ids.length; i += 200) {
+          const { data, error } = await supabase.from(tabela).select(cols).in("external_id", ids.slice(i, i + 200));
+          if (error) throw error;
+          rows.push(...(data ?? []));
+        }
+        return rows;
+      };
+      const [recPagos, pagPagos] = await Promise.all([
+        carregarPagos("ca_contas_receber", "receber"),
+        carregarPagos("ca_contas_pagar", "pagar"),
+      ]);
+      const unir = (a: any[], b: any[]) => Array.from(new Map([...a, ...b].map((r) => [r.external_id, r])).values());
       const planoMap = new Map(((planos.data ?? []) as any[]).map((p) => [p.external_id, p.nome as string]));
       return calcularIndicadoresCaixa(
-        (pagRes.data ?? []) as any[],
-        (recRes.data ?? []) as any[],
+        unir((pagVenc.data ?? []) as any[], pagPagos),
+        unir((recVenc.data ?? []) as any[], recPagos),
         new Map(Array.from(planoMap, ([id, nome]) => [id, { nome }])),
         ano,
         mes + 1,
+        baixas,
       );
     },
   });
