@@ -479,10 +479,6 @@ function PainelFinanceiro() {
 
   const rbAnt = totaisAnt.RB ?? 0;
   const yoyRb = rbAnt > 0 ? (rb - rbAnt) / rbAnt : null;
-  const caixaAtual = useMemo(
-    () => calcularIndicadoresCaixa(pagar.data ?? [], receber.data ?? [], planoMap, anoEfetivo, mes, baixas.data ?? []),
-    [pagar.data, receber.data, baixas.data, planoMap, anoEfetivo, mes],
-  );
 
   // ----- Período anterior (mês anterior) para as análises automáticas -----
   const prevPer = useMemo(() => periodoAnterior(anoEfetivo, mes), [anoEfetivo, mes]);
