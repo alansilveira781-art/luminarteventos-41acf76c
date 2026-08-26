@@ -53,6 +53,10 @@ import { notifyResponsavel } from "@/lib/notify";
 const sb = supabase as any;
 
 export const Route = createFileRoute("/compras/")({
+  validateSearch: (search: Record<string, unknown>): { id?: string; origem?: string } => ({
+    id: typeof search.id === "string" && search.id ? search.id : undefined,
+    origem: typeof search.origem === "string" && search.origem ? search.origem : undefined,
+  }),
   component: ComprasKanban,
 });
 
