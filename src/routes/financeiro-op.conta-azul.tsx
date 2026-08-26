@@ -73,6 +73,133 @@ function ContaAzulPage() {
   const [histTo, setHistTo] = useState("2025-12-31");
   const [recorteLabel, setRecorteLabel] = useState<string | null>(null);
 
+  type ConfDiv = {
+    id: string;
+    tipo: "pagar" | "receber";
+    descricao: string | null;
+    data_vencimento: string | null;
+    pago_api: number;
+    baixas_db: number;
+    diferenca: number;
+    existe_no_banco: boolean;
+  };
+  type ConfResumo = {
+    tipo: "pagar" | "receber";
+    ano: number;
+    titulos_pagos: number;
+    pago_api: number;
+    baixas_db: number;
+    divergentes: number;
+    diferenca: number;
+  };
+  const anoAtual = new Date().getFullYear();
+  const [confDe, setConfDe] = useState(String(anoAtual - 3));
+  const [confAte, setConfAte] = useState(String(anoAtual + 1));
+  const [confBusy, setConfBusy] = useState<null | "conferir" | "corrigir">(null);
+  const [confEtapa, setConfEtapa] = useState<string | null>(null);
+  const [confResumo, setConfResumo] = useState<ConfResumo[]>([]);
+  const [confDivs, setConfDivs] = useState<ConfDiv[]>([]);
+  const [confIds, setConfIds] = useState<{ pagar: string[]; receber: string[] }>({ pagar: [], receber: [] });
+
+  const fmtBRL = (v: number) =>
+    v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
+
+  async function handleConferir() {
+    setConfBusy("conferir");
+    setConfResumo([]);
+    setConfDivs([]);
+    setConfIds({ pagar: [], receber: [] });
+    try {
+      const headers = { ...(await authHeaders()), "Content-Type": "application/json" };
+      const de = Number(confDe);
+      const ate = Number(confAte);
+      if (!Number.isFinite(de) || !Number.isFinite(ate) || de > ate) {
+        toast.error("Informe um intervalo de anos válido.");
+        return;
+      }
+      const resumo: ConfResumo[] = [];
+      const divs: ConfDiv[] = [];
+      const ids: { pagar: string[]; receber: string[] } = { pagar: [], receber: [] };
+      for (const tipo of ["receber", "pagar"] as const) {
+        for (let ano = de; ano <= ate; ano++) {
+          setConfEtapa(`${tipo === "receber" ? "Recebimentos" : "Pagamentos"} — vencimentos de ${ano}`);
+          const res = await fetch("/api/contaazul/conferencia", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              acao: "conferir",
+              tipo,
+              vencDe: `${ano}-01-01`,
+              vencAte: `${ano}-12-31`,
+            }),
+          });
+          if (!res.ok) throw new Error(await res.text());
+          const r = await res.json();
+          resumo.push({
+            tipo,
+            ano,
+            titulos_pagos: r.titulos_pagos,
+            pago_api: r.pago_api,
+            baixas_db: r.baixas_db,
+            divergentes: r.divergentes,
+            diferenca: r.diferenca,
+          });
+          divs.push(...(r.amostra ?? []));
+          ids[tipo].push(...(r.ids ?? []));
+          setConfResumo([...resumo]);
+        }
+      }
+      setConfDivs(divs);
+      setConfIds(ids);
+      const totalDiv = resumo.reduce((s, r) => s + r.divergentes, 0);
+      if (totalDiv === 0) toast.success("Nenhuma divergência: banco em dia com o Conta Azul.");
+      else
+        toast.message(
+          `${totalDiv} lançamento(s) divergentes — diferença de ${fmtBRL(resumo.reduce((s, r) => s + r.diferenca, 0))}.`,
+        );
+    } catch (e: any) {
+      toast.error(`Erro na conferência: ${String(e?.message ?? e)}`);
+    } finally {
+      setConfBusy(null);
+      setConfEtapa(null);
+    }
+  }
+
+  async function handleCorrigirDivergencias() {
+    setConfBusy("corrigir");
+    try {
+      const headers = { ...(await authHeaders()), "Content-Type": "application/json" };
+      let corrigidos = 0;
+      let falhas = 0;
+      for (const tipo of ["receber", "pagar"] as const) {
+        let fila = [...confIds[tipo]];
+        while (fila.length > 0) {
+          setConfEtapa(`Importando ${tipo === "receber" ? "recebimentos" : "pagamentos"} — restam ${fila.length}`);
+          const res = await fetch("/api/contaazul/conferencia", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ acao: "corrigir", tipo, ids: fila.slice(0, 40) }),
+          });
+          if (!res.ok) throw new Error(await res.text());
+          const r = await res.json();
+          corrigidos += r.corrigidos ?? 0;
+          falhas += r.falhas ?? 0;
+          fila = fila.slice(40);
+        }
+      }
+      toast.success(`Correção concluída — ${corrigidos} lançamentos atualizados${falhas ? `, ${falhas} falhas` : ""}.`);
+      setConfDivs([]);
+      setConfIds({ pagar: [], receber: [] });
+      await qc.invalidateQueries({ queryKey: ["painel-financeiro"] });
+    } catch (e: any) {
+      toast.error(`Erro ao corrigir: ${String(e?.message ?? e)}`);
+    } finally {
+      setConfBusy(null);
+      setConfEtapa(null);
+    }
+  }
+
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("connected") === "1") {
