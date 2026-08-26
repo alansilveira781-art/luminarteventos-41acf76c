@@ -253,13 +253,16 @@ function useContaAzulData(ano?: number, mes?: number) {
 
 
 function KpiCard({
-  icon: Icon, label, value, subLabel, subValue, subColor, valueColor,
-}: { icon: any; label: string; value: string; subLabel?: string; subValue?: string; subColor?: string; valueColor?: string }) {
+  icon: Icon, label, value, subLabel, subValue, subColor, valueColor, action,
+}: { icon: any; label: string; value: string; subLabel?: string; subValue?: string; subColor?: string; valueColor?: string; action?: React.ReactNode }) {
   return (
     <Card className="p-4">
       <div className="flex items-start justify-between">
         <div className="text-sm font-semibold text-muted-foreground">{label}</div>
-        <Icon className="h-5 w-5 text-muted-foreground" />
+        <div className="flex items-center gap-1">
+          {action ? <span className="print:hidden">{action}</span> : null}
+          <Icon className="h-5 w-5 text-muted-foreground" />
+        </div>
       </div>
       <div className={`text-xl font-bold mt-2 tabular-nums ${valueColor ?? ""}`}>{value}</div>
 
@@ -271,6 +274,7 @@ function KpiCard({
     </Card>
   );
 }
+
 
 type LancRow = {
   data: string | null;
