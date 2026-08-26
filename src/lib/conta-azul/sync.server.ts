@@ -1746,16 +1746,24 @@ export async function reprocessarRateios(
   let allTargets: Array<{ id: string; tipo: "pagar" | "receber" }> = [];
   if (opts.ids && opts.ids.length > 0) {
     const ids = Array.from(new Set(opts.ids.map((id) => String(id)).filter(Boolean)));
-    for (const t of tipos) {
-      const tabela = t === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
-      for (let i = 0; i < ids.length; i += 200) {
-        const chunk = ids.slice(i, i + 200);
-        const { data, error } = await sb.from(tabela).select("external_id").in("external_id", chunk);
-        if (error) throw error;
-        (data ?? []).forEach((r: any) => allTargets.push({ id: String(r.external_id), tipo: t }));
+    if (opts.permitirNovos) {
+      // Importação: aceita IDs que ainda não existem no banco (títulos com
+      // vencimento fora da janela sincronizada, porém liquidados no período).
+      const t = opts.tipo ?? "receber";
+      ids.forEach((id) => allTargets.push({ id, tipo: t }));
+    } else {
+      for (const t of tipos) {
+        const tabela = t === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
+        for (let i = 0; i < ids.length; i += 200) {
+          const chunk = ids.slice(i, i + 200);
+          const { data, error } = await sb.from(tabela).select("external_id").in("external_id", chunk);
+          if (error) throw error;
+          (data ?? []).forEach((r: any) => allTargets.push({ id: String(r.external_id), tipo: t }));
+        }
       }
     }
   } else {
+
     for (const t of tipos) {
       const cands = await listarCandidatos(t, modo, limite);
       cands.forEach((id) => allTargets.push({ id, tipo: t }));
