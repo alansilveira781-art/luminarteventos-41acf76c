@@ -308,15 +308,17 @@ function MultiEditor<T>({
     let hasEmpty = false;
     for (const r of rows) {
       const raw = field.getValue(r);
-      if (raw == null || String(raw).trim() === "") {
-        hasEmpty = true;
-      } else {
-        s.add(String(raw));
+      const list = Array.isArray(raw) ? raw : [raw];
+      if (list.length === 0) hasEmpty = true;
+      for (const v of list) {
+        if (v == null || String(v).trim() === "") hasEmpty = true;
+        else s.add(String(v));
       }
     }
     const arr = [...s].sort((a, b) => a.localeCompare(b, "pt-BR"));
     if (hasEmpty) arr.push("__empty__");
     return arr;
+
   }, [rows, field]);
 
   const filtered = q.trim()
