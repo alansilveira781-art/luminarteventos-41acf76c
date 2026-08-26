@@ -508,6 +508,127 @@ function ContaAzulPage() {
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
+              <CheckCircle2 className="h-4 w-4" /> Conferência de liquidações
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Compara, título a título, o valor liquidado no Conta Azul com as baixas gravadas aqui — inclusive
+              parcelas vencidas em outros anos que foram pagas dentro do período analisado (a causa das diferenças
+              de valor recebido por mês). A varredura percorre todos os vencimentos do intervalo de anos abaixo.
+            </p>
+            <div className="grid grid-cols-2 gap-3 max-w-sm">
+              <div className="space-y-1">
+                <Label className="text-xs">Vencimentos de (ano)</Label>
+                <Input inputMode="numeric" value={confDe} onChange={(e) => setConfDe(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">até (ano)</Label>
+                <Input inputMode="numeric" value={confAte} onChange={(e) => setConfAte(e.target.value)} />
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button disabled={!canManage || !connected || busy !== null || confBusy !== null} onClick={handleConferir}>
+                {confBusy === "conferir" ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                )}
+                Conferir liquidações
+              </Button>
+              {(confIds.pagar.length > 0 || confIds.receber.length > 0) && (
+                <Button
+                  variant="outline"
+                  disabled={!canManage || !connected || confBusy !== null}
+                  onClick={handleCorrigirDivergencias}
+                >
+                  {confBusy === "corrigir" ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                  )}
+                  Corrigir {confIds.pagar.length + confIds.receber.length} divergência(s)
+                </Button>
+              )}
+            </div>
+            {confEtapa && <p className="text-xs text-muted-foreground">{confEtapa}…</p>}
+
+            {confResumo.length > 0 && (
+              <div className="overflow-x-auto rounded-md border">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="p-2 text-left">Tipo</th>
+                      <th className="p-2 text-left">Vencimentos</th>
+                      <th className="p-2 text-right">Liquidado (Conta Azul)</th>
+                      <th className="p-2 text-right">Registrado aqui</th>
+                      <th className="p-2 text-right">Diferença</th>
+                      <th className="p-2 text-right">Títulos</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {confResumo
+                      .filter((r) => r.titulos_pagos > 0)
+                      .map((r) => (
+                        <tr key={`${r.tipo}-${r.ano}`} className="border-t">
+                          <td className="p-2">{r.tipo === "receber" ? "Recebimentos" : "Pagamentos"}</td>
+                          <td className="p-2">{r.ano}</td>
+                          <td className="p-2 text-right tabular-nums">{fmtBRL(r.pago_api)}</td>
+                          <td className="p-2 text-right tabular-nums">{fmtBRL(r.baixas_db)}</td>
+                          <td
+                            className={`p-2 text-right tabular-nums ${Math.abs(r.diferenca) > 0.02 ? "text-destructive font-medium" : ""}`}
+                          >
+                            {fmtBRL(r.diferenca)}
+                          </td>
+                          <td className="p-2 text-right tabular-nums">{r.divergentes}/{r.titulos_pagos}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {confDivs.length > 0 && (
+              <div className="space-y-1">
+                <div className="text-xs font-medium">Lançamentos divergentes (amostra)</div>
+                <div className="max-h-64 overflow-auto rounded-md border">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted/50 sticky top-0">
+                      <tr>
+                        <th className="p-2 text-left">Descrição</th>
+                        <th className="p-2 text-left">Vencimento</th>
+                        <th className="p-2 text-right">Conta Azul</th>
+                        <th className="p-2 text-right">Aqui</th>
+                        <th className="p-2 text-left">Situação</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {confDivs.map((d) => (
+                        <tr key={`${d.tipo}-${d.id}`} className="border-t">
+                          <td className="p-2">{d.descricao ?? d.id}</td>
+                          <td className="p-2">
+                            {d.data_vencimento
+                              ? new Date(`${d.data_vencimento}T12:00:00`).toLocaleDateString("pt-BR")
+                              : "—"}
+                          </td>
+                          <td className="p-2 text-right tabular-nums">{fmtBRL(d.pago_api)}</td>
+                          <td className="p-2 text-right tabular-nums">{fmtBRL(d.baixas_db)}</td>
+                          <td className="p-2">{d.existe_no_banco ? "Baixa incompleta" : "Título ausente"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+
+
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
               <RefreshCw className="h-4 w-4" /> Recortes rápidos (sincronismo + rateios)
             </CardTitle>
           </CardHeader>
