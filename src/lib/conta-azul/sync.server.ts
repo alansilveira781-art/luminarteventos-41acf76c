@@ -1566,6 +1566,9 @@ export async function reprocessarRateios(
     from?: string;
     to?: string;
     antesDe?: string;
+    /** Permite processar IDs que ainda não existem no banco (importação). */
+    permitirNovos?: boolean;
+
   } = {},
 ): Promise<{
   tentados: number;
