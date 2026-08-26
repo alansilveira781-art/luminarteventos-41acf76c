@@ -1,16 +1,18 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Printer } from "lucide-react";
+import { FileDown } from "lucide-react";
+import { toast } from "sonner";
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, CartesianGrid, BarChart,
 } from "recharts";
 import { fetchAllRows } from "@/lib/fetch-all";
 import { CHART_SERIES, CHART_BASE, CHART_ACCENT } from "@/lib/financeiro/chart-colors";
+import { capturarGraficos, gerarUberPdf } from "@/lib/uber/uber-pdf";
 import {
   bucketDe, diffDays, escolherGranularidade, faixaHoraria, diaDaSemana,
   granularidadeLabel, granularidadeLabelPlural,
@@ -77,6 +79,7 @@ export function UberAnalises() {
 
   const allTrips = data ?? [];
 
+  const areaRef = useRef<HTMLDivElement>(null);
   const [dateFrom, setDateFrom] = useState(() => firstOfMonthIso(-2));
   const [dateTo, setDateTo] = useState(() => todayIso());
   const [solicitante, setSolicitante] = useState("__all__");
@@ -189,28 +192,67 @@ export function UberAnalises() {
     );
   }
 
+  async function exportarPdf() {
+    try {
+      const imgs = await capturarGraficos(areaRef.current);
+      const tabela = (titulo: string, col: string, data: Agg[], limit = 15) => ({
+        tipo: "tabela" as const,
+        titulo,
+        head: [col, "Corridas", "Total", "%"],
+        alignRight: [1, 2, 3],
+        body: data.slice(0, limit).map((r) => [
+          r.label,
+          r.corridas,
+          fmt(r.total),
+          `${kpis.total ? ((r.total / kpis.total) * 100).toFixed(1) : "0.0"}%`,
+        ]),
+      });
+      await gerarUberPdf({
+        titulo: "Relatório Uber — Análises",
+        subtitulo: filtrosLabel,
+        arquivo: `relatorio-uber-analises-${limites.ini}-a-${limites.fim}`,
+        kpis: [
+          { label: "Gasto total no período", value: fmt(kpis.total) },
+          { label: "Corridas", value: fmtN(kpis.count) },
+          { label: "Ticket médio", value: fmt(kpis.ticket) },
+          { label: `Média por ${granularidadeLabel[gran]}`, value: fmt(kpis.media) },
+          { label: "Solicitantes únicos", value: fmtN(kpis.pessoas) },
+          { label: "Projetos distintos", value: fmtN(kpis.projetos) },
+          { label: `Maior ${granularidadeLabel[gran]}`, value: kpis.maior ? fmt(kpis.maior.valor) : "—", hint: kpis.maior?.label },
+          { label: `Menor ${granularidadeLabel[gran]}`, value: kpis.menor ? fmt(kpis.menor.valor) : "—", hint: kpis.menor?.label },
+        ],
+        secoes: [
+          { tipo: "grafico" as const, titulo: `Evolução por ${granularidadeLabel[gran]}`, imagem: imgs["Evolução"] ?? null, altura: 80 },
+          tabela("Solicitantes", "Pessoa", porPessoa),
+          tabela("Projetos", "Projeto", porProjeto),
+          { tipo: "grafico" as const, titulo: "Distribuição por serviço", imagem: imgs["Serviço"] ?? null, altura: 70 },
+          { tipo: "grafico" as const, titulo: "Corridas por dia da semana", imagem: imgs["Dia da semana"] ?? null, altura: 70 },
+          tabela("Faixa de horário", "Faixa", porFaixa, 6),
+          tabela("Top cidades", "Cidade", porCidade, 8),
+          tabela("Top destinos", "Destino", porDestino, 8),
+          {
+            tipo: "lista" as const,
+            titulo: "Índices do período",
+            itens: [
+              ["Maior solicitação (pessoa, em valor)", porPessoa[0] ? `${porPessoa[0].label} — ${fmt(porPessoa[0].total)}` : "—"],
+              ["Menor solicitação (pessoa, em valor)", porPessoa.length ? `${porPessoa[porPessoa.length - 1].label} — ${fmt(porPessoa[porPessoa.length - 1].total)}` : "—"],
+              ["Projeto mais solicitado (qtd)", projetoMais ? `${projetoMais.label} — ${projetoMais.corridas} corridas` : "—"],
+              ["Projeto menos solicitado (qtd)", projetoMenos ? `${projetoMenos.label} — ${projetoMenos.corridas} corridas` : "—"],
+              ["Média de corridas por solicitante", kpis.pessoas ? (kpis.count / kpis.pessoas).toFixed(1) : "—"],
+              ["Concentração top 3 solicitantes", kpis.total ? `${((porPessoa.slice(0, 3).reduce((s, p) => s + p.total, 0) / kpis.total) * 100).toFixed(1)}% do gasto` : "—"],
+            ] as [string, string][],
+          },
+        ],
+      });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao gerar o PDF");
+    }
+  }
+
   return (
-    <div className="space-y-4 uber-analises-print">
-      <style>{`
-        @media print {
-          @page { size: A4 portrait; margin: 10mm; }
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          body * { visibility: hidden !important; }
-          .uber-analises-print, .uber-analises-print * { visibility: visible !important; }
-          .uber-analises-print { position: absolute; inset: 0; padding: 0; }
-          .uber-analises-print .print-block { break-inside: avoid; page-break-inside: avoid; }
-          .uber-analises-print table { font-size: 10px; }
-        }
-      `}</style>
-
-      <div className="hidden print:block mb-3">
-        <h1 className="text-lg font-bold">Uber — Relatório de Análises</h1>
-        <p className="text-xs">{filtrosLabel}</p>
-        <p className="text-[10px] text-muted-foreground">Emitido em {new Date().toLocaleString("pt-BR")}</p>
-      </div>
-
+    <div className="space-y-4" ref={areaRef}>
       {/* Filtros */}
-      <Card className="p-3 print:hidden">
+      <Card className="p-3">
         <div className="flex flex-wrap items-end gap-3">
           <div>
             <label className="text-[11px] uppercase text-muted-foreground block mb-1">De</label>
@@ -257,8 +299,8 @@ export function UberAnalises() {
             <Button size="sm" variant="outline" onClick={() => { setDateFrom(firstOfMonthIso(0)); setDateTo(todayIso()); }}>Este mês</Button>
             <Button size="sm" variant="outline" onClick={() => { setDateFrom(firstOfMonthIso(-2)); setDateTo(todayIso()); }}>Últimos 3 meses</Button>
             <Button size="sm" variant="outline" onClick={() => { setDateFrom(firstOfYearIso()); setDateTo(todayIso()); }}>Este ano</Button>
-            <Button size="sm" variant="outline" className="gap-2" onClick={() => window.print()}>
-              <Printer className="h-4 w-4" /> Imprimir
+            <Button size="sm" variant="outline" className="gap-2" onClick={exportarPdf}>
+              <FileDown className="h-4 w-4" /> Exportar PDF
             </Button>
           </div>
         </div>
@@ -274,14 +316,14 @@ export function UberAnalises() {
       ) : (
         <>
           {/* Cards de totais */}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 print-block">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Stat label="Gasto total no período" value={fmt(kpis.total)} />
             <Stat label="Corridas" value={fmtN(kpis.count)} />
             <Stat label="Ticket médio" value={fmt(kpis.ticket)} />
             <Stat label={`Média por ${granularidadeLabel[gran]}`} value={fmt(kpis.media)} />
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 print-block">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Stat label="Solicitantes únicos" value={fmtN(kpis.pessoas)} />
             <Stat label="Projetos distintos" value={fmtN(kpis.projetos)} />
             <Stat
@@ -296,7 +338,7 @@ export function UberAnalises() {
             />
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 print-block">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Stat
               label={`Variação último ${granularidadeLabel[gran]}`}
               value={kpis.variacao === null ? "—" : `${kpis.variacao >= 0 ? "▲" : "▼"} ${Math.abs(kpis.variacao).toFixed(1)}%`}
@@ -309,11 +351,11 @@ export function UberAnalises() {
           </div>
 
           {/* Evolução */}
-          <Card className="p-4 print-block">
+          <Card className="p-4">
             <div className="text-sm font-semibold mb-3">
               Evolução por {granularidadeLabel[gran]} — valor (R$) e nº de corridas
             </div>
-            <div className="h-[300px] print:h-56">
+            <div className="h-[300px]" data-pdf-chart="Evolução">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={evolucao}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
@@ -343,9 +385,9 @@ export function UberAnalises() {
 
           {/* Distribuições */}
           <div className="grid gap-4 lg:grid-cols-2">
-            <Card className="p-4 print-block">
+            <Card className="p-4">
               <div className="text-sm font-semibold mb-3">Distribuição por serviço</div>
-              <div className="h-[260px] print:h-52">
+              <div className="h-[260px]" data-pdf-chart="Serviço">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={porServico} dataKey="total" nameKey="label" outerRadius={90} label>
@@ -358,9 +400,9 @@ export function UberAnalises() {
               </div>
             </Card>
 
-            <Card className="p-4 print-block">
+            <Card className="p-4">
               <div className="text-sm font-semibold mb-3">Corridas por dia da semana</div>
-              <div className="h-[260px] print:h-52">
+              <div className="h-[260px]" data-pdf-chart="Dia da semana">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={porDiaSemana}>
                     <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
@@ -380,7 +422,7 @@ export function UberAnalises() {
             <RankTable title="Top destinos" col="Destino" data={porDestino} total={kpis.total} limit={8} />
           </div>
 
-          <Card className="p-4 print-block">
+          <Card className="p-4">
             <div className="text-sm font-semibold mb-3">Índices do período</div>
             <div className="grid gap-2 sm:grid-cols-2 text-sm">
               <Indice label="Maior solicitação (pessoa, em valor)" v={porPessoa[0] ? `${porPessoa[0].label} — ${fmt(porPessoa[0].total)}` : "—"} />
@@ -410,7 +452,7 @@ function Indice({ label, v }: { label: string; v: string }) {
 
 function Stat({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: "up" | "down" }) {
   return (
-    <Card className="p-4 print-block">
+    <Card className="p-4">
       <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className={`text-xl font-semibold mt-1 ${tone === "up" ? "text-emerald-600" : tone === "down" ? "text-red-600" : ""}`}>
         {value}
@@ -422,9 +464,9 @@ function Stat({ label, value, hint, tone }: { label: string; value: string; hint
 
 function RankChart({ title, data, color }: { title: string; data: Agg[]; color: string }) {
   return (
-    <Card className="p-4 print-block">
+    <Card className="p-4">
       <div className="text-sm font-semibold mb-3">{title}</div>
-      <div style={{ height: Math.max(220, data.length * 28) }} className="print:h-56">
+      <div style={{ height: Math.max(220, data.length * 28) }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} layout="vertical" margin={{ left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
@@ -442,7 +484,7 @@ function RankChart({ title, data, color }: { title: string; data: Agg[]; color: 
 function RankTable({ title, col, data, total, limit = 15 }: { title: string; col: string; data: Agg[]; total: number; limit?: number }) {
   const rows = data.slice(0, limit);
   return (
-    <Card className="p-4 print-block">
+    <Card className="p-4">
       <div className="text-sm font-semibold mb-3">{title}</div>
       <div className="overflow-auto">
         <table className="w-full text-sm">

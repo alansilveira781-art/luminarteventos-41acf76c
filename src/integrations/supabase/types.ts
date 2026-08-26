@@ -3214,7 +3214,7 @@ export type Database = {
             foreignKeyName: "eventos_produtor_id_fkey"
             columns: ["produtor_id"]
             isOneToOne: false
-            referencedRelation: "produtores"
+            referencedRelation: "comercial_produtores"
             referencedColumns: ["id"]
           },
           {
