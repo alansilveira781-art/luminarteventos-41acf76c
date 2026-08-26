@@ -803,7 +803,7 @@ export function DemandaDialog({
             )}
             {demandaId && (
               <span className="ml-2 inline-block align-middle">
-                <CopiarLinkButton path={`/financeiro?id=${demandaId}`} />
+                <CopiarLinkButton path={`/compras?id=${demandaId}&origem=demanda`} />
               </span>
             )}
           </div>
