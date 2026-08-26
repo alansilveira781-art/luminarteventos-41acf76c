@@ -542,17 +542,10 @@ function PainelFinanceiro() {
         anoEfetivo,
         (a, m) =>
           calcularDRECaixa(anoData.pagar.data ?? [], anoData.receber.data ?? [], planoMap, a, m, dreEstrutura, undefined, undefined, "caixa", anoData.baixas.data ?? [], anoData.rateios.data ?? []).totais,
-        (a, m) => {
-          const prefix = `${a}-${String(m).padStart(2, "0")}`;
-          const qtdPagamentos = (anoData.baixas.data ?? []).filter((b) => b.tipo === "pagar" && b.data_baixa?.startsWith(prefix)).length;
-          // Um mês operacional completo possui recorrência de pagamentos; cargas
-          // pontuais não devem ser interpretadas como custo zero ou fechamento real.
-          // Evita validar como fechamento um lote isolado (ex.: uma única baixa).
-          return qtdPagamentos >= 20;
-        },
       ),
     [anoData.pagar.data, anoData.receber.data, anoData.baixas.data, anoData.rateios.data, planoMap, anoEfetivo, dreEstrutura],
   );
+
   const resumoOperacao = useMemo(() => mediaMesesCompletos(serieOperacao, anoEfetivo), [serieOperacao, anoEfetivo]);
 
   const pieRef = useRef<HTMLDivElement>(null);
@@ -936,9 +929,10 @@ function PainelFinanceiro() {
                           <span>% de operação</span>
                           <span className="tabular-nums">{p.pct === null ? "—" : fmtPct(p.pct)}</span>
                         </div>
-                        {!p.completo && p.receita > 0 ? (
-                          <div className="mt-1 border-t pt-1 font-medium text-amber-600">Dados de saídas incompletos</div>
+                        {p.receita <= 0 || p.custoOperacao <= 0 ? (
+                          <div className="mt-1 border-t pt-1 font-medium text-amber-600">Sem movimento liquidado suficiente no mês</div>
                         ) : null}
+
                         {p.detalhe?.length ? (
                           <div className="mt-1 pt-1 border-t space-y-0.5">
                             {p.detalhe.map((d: any) => (
@@ -974,8 +968,8 @@ function PainelFinanceiro() {
         </div>
         <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
           {resumoOperacao.media === null
-            ? "Ainda não há meses completos com receita neste ano para calcular a média."
-            : `No consolidado, ${fmtPct(resumoOperacao.media)} da receita é consumida para operar a empresa (${resumoOperacao.meses} mês(es) completo(s) de ${anoEfetivo}).` +
+            ? "Ainda não há meses fechados com recebimentos e pagamentos liquidados neste ano para calcular a média."
+            : `No consolidado, ${fmtPct(resumoOperacao.media)} da receita recebida é consumida para operar a empresa (${resumoOperacao.meses} mês(es) fechado(s) de ${anoEfetivo}, pela data de baixa).` +
               (resumoOperacao.melhor && resumoOperacao.pior
                 ? ` Melhor mês: ${resumoOperacao.melhor.label} (${fmtPct(resumoOperacao.melhor.pct as number)}); pior mês: ${resumoOperacao.pior.label} (${fmtPct(resumoOperacao.pior.pct as number)}).`
                 : "")}

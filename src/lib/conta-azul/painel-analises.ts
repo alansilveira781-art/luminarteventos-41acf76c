@@ -233,7 +233,7 @@ const COMPOSICAO_OPERACAO: { id: DreGroupId; label: string; grupos: DreGroupId[]
  * Série Jan..Dez do ano: Receita Bruta x custo gerencial para operar a empresa.
  * Investimentos, Outras Saídas e subtotais calculados não entram no indicador.
  */
-export function serieCustoOperacao(ano: number, calc: CalcDre, temCobertura?: TemCobertura): PontoCustoOperacao[] {
+export function serieCustoOperacao(ano: number, calc: CalcDre, _temCobertura?: TemCobertura): PontoCustoOperacao[] {
   const out: PontoCustoOperacao[] = [];
   for (let m = 1; m <= 12; m++) {
     const t = calc(ano, m);
@@ -244,7 +244,8 @@ export function serieCustoOperacao(ano: number, calc: CalcDre, temCobertura?: Te
       valor: g.grupos.reduce((s, id) => s + Math.abs(t[id] ?? 0), 0),
     })).filter((d) => d.valor > 0);
     const custoOperacao = detalhe.reduce((s, d) => s + d.valor, 0);
-    const completo = receita > 0 && custoOperacao > 0 && (temCobertura?.(ano, m) ?? true);
+    // Todo mês com movimento (recebimento e pagamento liquidados) entra na série.
+    const completo = receita > 0 && custoOperacao > 0;
     out.push({
       mes: m,
       label: MESES_CURTOS[m],
@@ -257,6 +258,7 @@ export function serieCustoOperacao(ano: number, calc: CalcDre, temCobertura?: Te
   }
   return out;
 }
+
 
 
 export type ResumoCustoOperacao = {
