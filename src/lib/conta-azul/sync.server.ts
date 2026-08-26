@@ -269,21 +269,6 @@ function getDataPagamento(it: any): string | null {
   return datas.at(-1) ?? null;
 }
 
-function getValorRealizado(it: any): number | null {
-  const baixas = getBaixas(it);
-  if (baixas.length > 0) {
-    const total = baixas.reduce((soma: number, baixa: any) => {
-      const composicao = baixa.valor_composicao;
-      // Os cards "Recebidos" e "Pagos" do Conta Azul usam o valor bruto
-      // liquidado; taxas/descontos aparecem separadamente na composição.
-      const valor = composicao?.valor_bruto ?? composicao?.valor_liquido ?? baixa.valor ?? 0;
-      return soma + Math.abs(Number(valor || 0));
-    }, 0);
-    if (total > 0) return Math.round(total * 100) / 100;
-  }
-  const valorPago = Number(it?.valor_pago ?? it?.pago ?? 0);
-  return valorPago > 0 ? Math.round(Math.abs(valorPago) * 100) / 100 : null;
-}
 
 function buildBaixas(it: any, tipo: "pagar" | "receber", syncedAt: string) {
   const lancamentoId = String(it.id);
@@ -321,7 +306,6 @@ function mapEvento(it: any, syncedAt: string, pessoaKey: "fornecedor_nome" | "cl
       ? (it.fornecedor?.nome ?? null)
       : (it.cliente?.nome ?? it.fornecedor?.nome ?? null);
   const status = normalizeStatus(it.status_traduzido ?? it.status);
-  const valorRealizado = status === "pago" ? getValorRealizado(it) : null;
   return {
     external_id: String(it.id),
     descricao: it.descricao ?? null,
@@ -331,7 +315,7 @@ function mapEvento(it: any, syncedAt: string, pessoaKey: "fornecedor_nome" | "cl
       it.centros_de_custo?.[0]?.id ? String(it.centros_de_custo[0].id)
       : it.centros_custo?.[0]?.id ? String(it.centros_custo[0].id)
       : null,
-    valor: valorRealizado ?? Number(it.total ?? it.valor_composicao?.valor_liquido ?? 0),
+    valor: Number(it.total ?? it.valor_composicao?.valor_liquido ?? 0),
     data_vencimento: it.data_vencimento ?? null,
     data_pagamento: getDataPagamento(it),
     status,
@@ -943,7 +927,12 @@ async function persistRateios(items: any[], tipo: "pagar" | "receber", syncedAt:
     const pessoaKey = tipo === "pagar" ? "fornecedor_nome" : "cliente_nome";
     const parentRows = enriched
       .filter((it: any) => enrichedIds.has(String(it.id)))
-      .map((it: any) => mapEvento(it, syncedAt, pessoaKey));
+      .map((it: any) => {
+        // O payload de detalhe não traz `categorias`/`centros_de_custo`; omitir
+        // essas colunas preserva o que a listagem já gravou (antes eram zeradas).
+        const { categoria_external_id, centro_custo_external_id, ...row } = mapEvento(it, syncedAt, pessoaKey);
+        return row;
+      });
     if (parentRows.length > 0) await upsertBatched(tabela, parentRows, "external_id");
     await persistBaixas(
       enriched.filter((it: any) => enrichedIds.has(String(it.id))),

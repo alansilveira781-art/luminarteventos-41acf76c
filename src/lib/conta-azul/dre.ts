@@ -133,10 +133,9 @@ function inPeriodoStr(date: string | null, ano: number, mes: number): boolean {
 
 function passaVisao(row: ContaRow, visao: Visao, ano: number, mes: number): boolean {
   if (visao === "realizado") {
-    // Já pago (caixa efetivo) — usa data de pagamento; se ausente, cai para vencimento.
+    // Já pago — período de referência é o vencimento do título (competência do mês).
     if (row.status !== "pago") return false;
-    const data = row.data_pagamento ?? row.data_vencimento;
-    return inPeriodoStr(data, ano, mes);
+    return inPeriodoStr(row.data_vencimento, ano, mes);
   }
   // Projetado: ainda não pago (em aberto ou atrasado) — usa data de vencimento
   if (row.status === "pago") return false;
@@ -179,8 +178,6 @@ export function calcularIndicadoresCaixa(
   planoMap: Map<string, { nome: string }>,
   ano: number,
   mes: number,
-  baixasPagar: BaixaRow[] = [],
-  baixasReceber: BaixaRow[] = [],
 ): IndicadoresCaixa {
   const validas = (rows: ContaRow[]) => rows.filter((row) => {
     const plano = row.categoria_external_id ? planoMap.get(row.categoria_external_id) : undefined;
@@ -189,16 +186,9 @@ export function calcularIndicadoresCaixa(
   const soma = (rows: ContaRow[]) => rows.reduce((total, row) => total + Math.abs(Number(row.valor || 0)), 0);
   const recebidas = validas(receber);
   const pagas = validas(pagar);
-  // Realizado vem das baixas individuais; títulos em aberto permanecem por vencimento.
-  const recebidasMap = new Map(recebidas.map((row) => [row.external_id, row]));
-  const pagasMap = new Map(pagas.map((row) => [row.external_id, row]));
-  const somaBaixas = (baixas: BaixaRow[], contas: Map<string | undefined, ContaRow>) =>
-    baixas.reduce((total, baixa) => {
-      if (!inPeriodo(baixa.data_baixa, ano, mes) || !contas.has(baixa.lancamento_external_id)) return total;
-      return total + Math.abs(Number(baixa.valor || 0));
-    }, 0);
-  const recebido = somaBaixas(baixasReceber, recebidasMap);
-  const pago = somaBaixas(baixasPagar, pagasMap);
+  // Realizado: título com status "pago" no mês do seu vencimento.
+  const recebido = soma(recebidas.filter((row) => row.status === "pago" && inPeriodo(row.data_vencimento, ano, mes)));
+  const pago = soma(pagas.filter((row) => row.status === "pago" && inPeriodo(row.data_vencimento, ano, mes)));
   const aReceber = soma(recebidas.filter((row) => row.status !== "pago" && inPeriodo(row.data_vencimento, ano, mes)));
   const aPagar = soma(pagas.filter((row) => row.status !== "pago" && inPeriodo(row.data_vencimento, ano, mes)));
   return { recebido, pago, saldo: recebido - pago, aReceber, aPagar };

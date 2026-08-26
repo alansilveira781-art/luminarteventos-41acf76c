@@ -62,7 +62,6 @@ type ContaReceber = ContaPagar & { cliente_nome: string | null };
 type PlanoConta = { external_id: string; nome: string; tipo: string | null; codigo: string | null; pai_external_id: string | null };
 type CentroCusto = { external_id: string; nome: string };
 type Extrato = { external_id: string; conta_bancaria: string | null; valor: number };
-type Baixa = { lancamento_external_id: string; valor: number; data_baixa: string };
 
 const fmtMoney = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 });
@@ -179,56 +178,27 @@ function useContaAzulData(ano?: number, mes?: number) {
   const a = ano ?? new Date().getFullYear();
   const m = mes ?? 0;
   const { inicio, fim } = buildPeriodo(a, m);
-  const orFilter = `and(data_pagamento.gte.${inicio},data_pagamento.lte.${fim}),and(data_pagamento.is.null,data_vencimento.gte.${inicio},data_vencimento.lte.${fim})`;
 
   const pagarCols = "external_id,descricao,fornecedor_nome,categoria_external_id,centro_custo_external_id,valor,data_vencimento,data_pagamento,status,observacoes";
   const receberCols = "external_id,descricao,cliente_nome,categoria_external_id,centro_custo_external_id,valor,data_vencimento,data_pagamento,status,observacoes";
 
   const pagar = useQuery({
     queryKey: ["ca-pagar", hasPeriodo ? a : "all", hasPeriodo ? m : "all"],
-    queryFn: async () => {
-      const base = await fetchPaged<ContaPagar>((from, to) => {
+    queryFn: () =>
+      fetchPaged<ContaPagar>((from, to) => {
         let q = sb.from("ca_contas_pagar").select(pagarCols);
-        if (hasPeriodo) q = q.or(orFilter);
+        if (hasPeriodo) q = q.gte("data_vencimento", inicio).lte("data_vencimento", fim);
         return q.range(from, to);
-      });
-      if (!hasPeriodo) return base;
-      const baixas = await fetchPaged<Baixa>((from, to) => sb.from("ca_lancamento_baixas").select("lancamento_external_id,valor,data_baixa").eq("tipo", "pagar").gte("data_baixa", inicio).lte("data_baixa", fim).range(from, to));
-      const ids = [...new Set(baixas.map((b) => b.lancamento_external_id))];
-      const extras: ContaPagar[] = [];
-      for (let i = 0; i < ids.length; i += 500) {
-        const { data } = await sb.from("ca_contas_pagar").select(pagarCols).in("external_id", ids.slice(i, i + 500));
-        extras.push(...((data ?? []) as ContaPagar[]));
-      }
-      return [...new Map([...base, ...extras].map((row) => [row.external_id, row])).values()];
-    },
+      }),
   });
   const receber = useQuery({
     queryKey: ["ca-receber", hasPeriodo ? a : "all", hasPeriodo ? m : "all"],
-    queryFn: async () => {
-      const base = await fetchPaged<ContaReceber>((from, to) => {
+    queryFn: () =>
+      fetchPaged<ContaReceber>((from, to) => {
         let q = sb.from("ca_contas_receber").select(receberCols);
-        if (hasPeriodo) q = q.or(orFilter);
+        if (hasPeriodo) q = q.gte("data_vencimento", inicio).lte("data_vencimento", fim);
         return q.range(from, to);
-      });
-      if (!hasPeriodo) return base;
-      const baixas = await fetchPaged<Baixa>((from, to) => sb.from("ca_lancamento_baixas").select("lancamento_external_id,valor,data_baixa").eq("tipo", "receber").gte("data_baixa", inicio).lte("data_baixa", fim).range(from, to));
-      const ids = [...new Set(baixas.map((b) => b.lancamento_external_id))];
-      const extras: ContaReceber[] = [];
-      for (let i = 0; i < ids.length; i += 500) {
-        const { data } = await sb.from("ca_contas_receber").select(receberCols).in("external_id", ids.slice(i, i + 500));
-        extras.push(...((data ?? []) as ContaReceber[]));
-      }
-      return [...new Map([...base, ...extras].map((row) => [row.external_id, row])).values()];
-    },
-  });
-  const baixasPagar = useQuery({
-    queryKey: ["ca-baixas-pagar", a, m],
-    queryFn: () => fetchPaged<Baixa>((from, to) => sb.from("ca_lancamento_baixas").select("lancamento_external_id,valor,data_baixa").eq("tipo", "pagar").gte("data_baixa", inicio).lte("data_baixa", fim).range(from, to)),
-  });
-  const baixasReceber = useQuery({
-    queryKey: ["ca-baixas-receber", a, m],
-    queryFn: () => fetchPaged<Baixa>((from, to) => sb.from("ca_lancamento_baixas").select("lancamento_external_id,valor,data_baixa").eq("tipo", "receber").gte("data_baixa", inicio).lte("data_baixa", fim).range(from, to)),
+      }),
   });
   const extrato = useQuery({
     queryKey: ["ca-extrato"],
@@ -237,7 +207,7 @@ function useContaAzulData(ano?: number, mes?: number) {
       return (data ?? []) as (Extrato & { data: string | null; descricao: string | null; categoria_external_id: string | null })[];
     },
   });
-  return { planos, centros, pagar, receber, baixasPagar, baixasReceber, extrato };
+  return { planos, centros, pagar, receber, extrato };
 }
 
 
@@ -430,7 +400,7 @@ function PainelFinanceiro() {
   const [ano, setAno] = useState<number>(new Date().getFullYear());
   const [mes, setMes] = useState(new Date().getMonth() + 1);
   const anoEfetivo = ano;
-  const { planos, pagar, receber, baixasPagar, baixasReceber } = useContaAzulData(anoEfetivo, mes);
+  const { planos, pagar, receber } = useContaAzulData(anoEfetivo, mes);
   const { isAdmin, isModuleAdmin } = useAuth();
   const canReprocess = isAdmin || isModuleAdmin("financeiro");
   const qc = useQueryClient();
@@ -467,8 +437,8 @@ function PainelFinanceiro() {
   const rbAnt = totaisAnt.RB ?? 0;
   const yoyRb = rbAnt > 0 ? (rb - rbAnt) / rbAnt : null;
   const caixaAtual = useMemo(
-    () => calcularIndicadoresCaixa(pagar.data ?? [], receber.data ?? [], planoMap, anoEfetivo, mes, baixasPagar.data ?? [], baixasReceber.data ?? []),
-    [pagar.data, receber.data, planoMap, anoEfetivo, mes, baixasPagar.data, baixasReceber.data],
+    () => calcularIndicadoresCaixa(pagar.data ?? [], receber.data ?? [], planoMap, anoEfetivo, mes),
+    [pagar.data, receber.data, planoMap, anoEfetivo, mes],
   );
 
   // ----- Período anterior (mês anterior) para as análises automáticas -----
@@ -487,8 +457,8 @@ function PainelFinanceiro() {
     [prevData.pagar.data, prevData.receber.data, planoMap, prevPer, dreEstrutura],
   );
   const caixaAnterior = useMemo(
-    () => calcularIndicadoresCaixa(prevData.pagar.data ?? [], prevData.receber.data ?? [], planoMap, prevPer.ano, prevPer.mes, prevData.baixasPagar.data ?? [], prevData.baixasReceber.data ?? []),
-    [prevData.pagar.data, prevData.receber.data, prevData.baixasPagar.data, prevData.baixasReceber.data, planoMap, prevPer],
+    () => calcularIndicadoresCaixa(prevData.pagar.data ?? [], prevData.receber.data ?? [], planoMap, prevPer.ano, prevPer.mes),
+    [prevData.pagar.data, prevData.receber.data, planoMap, prevPer],
   );
 
   const receitasFatias = useMemo(() => comOutros(fatiasDoGrupo(grupos, "RB", planoMap)), [grupos, planoMap]);
