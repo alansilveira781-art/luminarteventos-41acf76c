@@ -634,11 +634,11 @@ function PainelFinanceiro() {
       compararFaturamento(
         (vendasQ.data?.rows ?? []).map((v) => ({ dataRegistro: v.dataRegistro, valorFinal: v.valorFinal })),
         rb,
-        rbAnt,
+        totaisPrev.RB ?? 0,
         anoEfetivo,
         mes,
       ),
-    [vendasQ.data, rb, rbAnt, anoEfetivo, mes],
+    [vendasQ.data, rb, totaisPrev, anoEfetivo, mes],
   );
 
   const textoFat = useMemo(() => textoFaturamento(comparativo, anoEfetivo, mes), [comparativo, anoEfetivo, mes]);
