@@ -139,7 +139,7 @@ function ComprasKanban() {
     queryFn: async () => {
       const { data, error } = await sb
         .from("demandas")
-        .select("id,numero,status,titulo,solicitante,fornecedor,comprador,data_solicitacao,data_compra,prazo,valor_total,tipo_demanda,responsavel_id,responsavel_nome,created_by")
+        .select("id,numero,status,titulo,solicitante,fornecedor,comprador,data_solicitacao,data_compra,prazo,valor_total,tipo_demanda,responsavel_id,responsavel_nome,condicao_pagamento,created_by")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as any[];
