@@ -272,21 +272,26 @@ function getDataPagamento(it: any): string | null {
 
 function buildBaixas(it: any, tipo: "pagar" | "receber", syncedAt: string) {
   const lancamentoId = String(it.id);
+  const contaParcela = it?.conta_financeira ?? null;
   return getBaixas(it).flatMap((baixa: any, index: number) => {
     const data = baixa.data_pagamento ? String(baixa.data_pagamento).slice(0, 10) : null;
     const composicao = baixa.valor_composicao;
     const valor = Math.abs(Number(composicao?.valor_bruto ?? composicao?.valor_liquido ?? baixa.valor ?? 0));
     if (!data || !Number.isFinite(valor) || valor <= 0) return [];
+    const conta = baixa?.conta_financeira ?? contaParcela;
     return [{
       tipo,
       lancamento_external_id: lancamentoId,
       baixa_external_id: String(baixa.id ?? `${lancamentoId}:${data}:${index}`),
       data_baixa: data,
       valor: Math.round(valor * 100) / 100,
+      conta_bancaria: conta?.nome ?? conta?.descricao ?? null,
+      conta_bancaria_external_id: conta?.id ? String(conta.id) : null,
       synced_at: syncedAt,
     }];
   });
 }
+
 
 async function persistBaixas(items: any[], tipo: "pagar" | "receber", syncedAt: string) {
   const ids = items.map((it) => String(it.id));
