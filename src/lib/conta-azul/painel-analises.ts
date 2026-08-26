@@ -215,6 +215,8 @@ export type PontoCustoOperacao = {
   pct: number | null;
   /** Composição do custo de operação, grupo a grupo (mesmos rótulos do demonstrativo) */
   detalhe: DetalheGrupo[];
+  /** Investimentos do mês — informativo, fora do custo de operação */
+  investimentos: number;
   /** Há saídas de caixa classificadas suficientes para calcular o percentual do mês. */
   completo: boolean;
 };
@@ -222,11 +224,19 @@ export type PontoCustoOperacao = {
 type CalcDre = (ano: number, mes: number) => Partial<Record<DreGroupId, number>>;
 type TemCobertura = (ano: number, mes: number) => boolean;
 
-/** Composição gerencial acordada para o indicador de custo de operação. */
-const COMPOSICAO_OPERACAO: { id: DreGroupId; label: string; grupos: DreGroupId[] }[] = [
-  { id: "RV", label: "Potencial de Vendas", grupos: ["AC", "DM", "DC"] },
-  { id: "RO", label: "Custos", grupos: ["CV", "CD", "CI"] },
-  { id: "RG", label: "Despesas", grupos: ["DS", "DA", "DT", "DR", "DF"] },
+/** Composição gerencial acordada para o indicador de custo de operação (grupo a grupo). */
+const COMPOSICAO_OPERACAO: { id: DreGroupId; label: string }[] = [
+  { id: "DR", label: "Deduções da Receita" },
+  { id: "AC", label: "Aquisição de Clientes" },
+  { id: "DM", label: "Despesas com Marketing" },
+  { id: "DC", label: "Despesas Comerciais" },
+  { id: "CV", label: "Custos Variáveis" },
+  { id: "CD", label: "Custos Diretos" },
+  { id: "CI", label: "Custos Indiretos" },
+  { id: "DS", label: "Despesas com Sócio" },
+  { id: "DA", label: "Despesas Administrativas" },
+  { id: "DT", label: "Despesas Tributárias" },
+  { id: "DF", label: "Despesas Financeiras" },
 ];
 
 /**
@@ -241,7 +251,7 @@ export function serieCustoOperacao(ano: number, calc: CalcDre, _temCobertura?: T
     const detalhe = COMPOSICAO_OPERACAO.map((g) => ({
       id: g.id,
       label: g.label,
-      valor: g.grupos.reduce((s, id) => s + Math.abs(t[id] ?? 0), 0),
+      valor: Math.abs(t[g.id] ?? 0),
     })).filter((d) => d.valor > 0);
     const custoOperacao = detalhe.reduce((s, d) => s + d.valor, 0);
     // Todo mês com movimento (recebimento e pagamento liquidados) entra na série.
@@ -253,11 +263,13 @@ export function serieCustoOperacao(ano: number, calc: CalcDre, _temCobertura?: T
       custoOperacao,
       pct: completo ? custoOperacao / receita : null,
       detalhe,
+      investimentos: Math.abs(t.IN ?? 0),
       completo,
     });
   }
   return out;
 }
+
 
 
 
