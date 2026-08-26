@@ -8,7 +8,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   ComposedChart, Line, Legend, PieChart, Pie, Cell, LabelList,
 } from "recharts";
-import { PiggyBank as Piggy, Building2, BarChart3, Sprout, Users, X, ChevronRight, ChevronDown, Printer, RefreshCw, Loader2, FileDown } from "lucide-react";
+import { PiggyBank as Piggy, Building2, BarChart3, Sprout, Users, Landmark, X, ChevronRight, ChevronDown, Printer, RefreshCw, Loader2, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DRE_STRUCTURE, grupoDoPlanoNome, isTransferencia, buildPrefixIndex, calcularDRECaixa, calcularIndicadoresCaixa, expandirBaixas, inPeriodo, montarLinhasPorCentro, type BaixaRow, type DreGroupId, type DreLine, type RateioRow } from "@/lib/conta-azul/dre";
 import { useDreEstrutura } from "@/hooks/useDreEstrutura";
@@ -253,15 +253,16 @@ function useContaAzulData(ano?: number, mes?: number) {
 
 
 function KpiCard({
-  icon: Icon, label, value, subLabel, subValue, subColor,
-}: { icon: any; label: string; value: string; subLabel?: string; subValue?: string; subColor?: string }) {
+  icon: Icon, label, value, subLabel, subValue, subColor, valueColor,
+}: { icon: any; label: string; value: string; subLabel?: string; subValue?: string; subColor?: string; valueColor?: string }) {
   return (
     <Card className="p-4">
       <div className="flex items-start justify-between">
         <div className="text-sm font-semibold text-muted-foreground">{label}</div>
         <Icon className="h-5 w-5 text-muted-foreground" />
       </div>
-      <div className="text-xl font-bold mt-2 tabular-nums">{value}</div>
+      <div className={`text-xl font-bold mt-2 tabular-nums ${valueColor ?? ""}`}>{value}</div>
+
       {subLabel && (
         <div className="mt-3 text-xs text-muted-foreground border-t pt-2">
           {subLabel}: <span className={subColor ?? "text-foreground"}>{subValue}</span>
@@ -471,9 +472,11 @@ function PainelFinanceiro() {
 
   const rb = totais.RB ?? 0;
   const pv = (totais.AC ?? 0) + (totais.DM ?? 0) + (totais.DC ?? 0); // já negativo
-  const desp = (totais.DS ?? 0) + (totais.DA ?? 0) + (totais.DT ?? 0);
+  const desp = (totais.DS ?? 0) + (totais.DA ?? 0) + (totais.DT ?? 0) + (totais.DF ?? 0);
   const custos = (totais.CV ?? 0) + (totais.CD ?? 0) + (totais.CI ?? 0);
+  const investimentos = totais.IN ?? 0;
   const lucro = totais.LU ?? 0;
+
   const rbAnt = totaisAnt.RB ?? 0;
   const yoyRb = rbAnt > 0 ? (rb - rbAnt) / rbAnt : null;
   const caixaAtual = useMemo(
@@ -641,11 +644,13 @@ function PainelFinanceiro() {
         mes,
         kpis: [
           { label: "Receita Bruta", value: fmtMoney(rb), sub: `% Receita LY: ${yoyRb === null ? "—" : fmtPct(yoyRb)}` },
-          { label: "Pot. de Vendas", value: fmtMoney(pv), sub: `% PV: ${fmtPct(rb ? pv / rb : 0)}` },
-          { label: "Despesas", value: fmtMoney(desp), sub: `% Despesa: ${fmtPct(rb ? desp / rb : 0)}` },
-          { label: "Custos", value: fmtMoney(custos), sub: `% Custos: ${fmtPct(rb ? custos / rb : 0)}` },
+          { label: "Pot. de Vendas", value: fmtMoney(Math.abs(pv)), sub: `% PV: ${fmtPct(rb ? Math.abs(pv) / rb : 0)}` },
+          { label: "Despesas", value: fmtMoney(Math.abs(desp)), sub: `% Despesa: ${fmtPct(rb ? Math.abs(desp) / rb : 0)}` },
+          { label: "Custos", value: fmtMoney(Math.abs(custos)), sub: `% Custos: ${fmtPct(rb ? Math.abs(custos) / rb : 0)}` },
+          { label: "Investimentos", value: fmtMoney(Math.abs(investimentos)), sub: `% Investimento: ${fmtPct(rb ? Math.abs(investimentos) / rb : 0)}` },
           { label: "Lucro", value: fmtMoney(lucro), sub: `% Lucro: ${fmtPct(rb ? lucro / rb : 0)}` },
         ],
+
         graficos: [
           {
             titulo: "Receitas do período",
@@ -705,6 +710,8 @@ function PainelFinanceiro() {
             page-break-inside: avoid;
           }
           body.printing-painel .print-portal .lg\\:grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+          body.printing-painel .print-portal .lg\\:grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+
           body.printing-painel .print-portal .lg\\:col-span-2 { grid-column: span 2 / span 2 !important; }
           body.printing-painel .print-portal .lg\\:col-span-3 { grid-column: span 3 / span 3 !important; }
           body.printing-painel .print-portal [class*="shadow"] { box-shadow: none !important; }
@@ -750,7 +757,7 @@ function PainelFinanceiro() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
         <KpiCard
           icon={Piggy} label="Receita Bruta" value={fmtMoney(rb)}
           subLabel="% Receita LY"
@@ -758,26 +765,33 @@ function PainelFinanceiro() {
           subColor={yoyRb === null ? "text-muted-foreground" : yoyRb >= 0 ? "text-emerald-600" : "text-rose-600"}
         />
         <KpiCard
-          icon={Users} label="Pot. de Vendas" value={fmtMoney(pv)}
-          subLabel="% PV" subValue={fmtPct(rb ? pv / rb : 0)}
-          subColor={pv >= 0 ? "text-emerald-600" : "text-rose-600"}
-        />
-        <KpiCard
-          icon={Building2} label="Despesas" value={fmtMoney(desp)}
-          subLabel="% Despesa" subValue={fmtPct(rb ? desp / rb : 0)}
+          icon={Users} label="Pot. de Vendas" value={fmtMoney(Math.abs(pv))} valueColor="text-rose-600"
+          subLabel="% PV" subValue={fmtPct(rb ? Math.abs(pv) / rb : 0)}
           subColor="text-rose-600"
         />
         <KpiCard
-          icon={BarChart3} label="Custos" value={fmtMoney(custos)}
-          subLabel="% Custos" subValue={fmtPct(rb ? custos / rb : 0)}
+          icon={Building2} label="Despesas" value={fmtMoney(Math.abs(desp))} valueColor="text-rose-600"
+          subLabel="% Despesa" subValue={fmtPct(rb ? Math.abs(desp) / rb : 0)}
+          subColor="text-rose-600"
+        />
+        <KpiCard
+          icon={BarChart3} label="Custos" value={fmtMoney(Math.abs(custos))} valueColor="text-rose-600"
+          subLabel="% Custos" subValue={fmtPct(rb ? Math.abs(custos) / rb : 0)}
+          subColor="text-rose-600"
+        />
+        <KpiCard
+          icon={Landmark} label="Investimentos" value={fmtMoney(Math.abs(investimentos))} valueColor="text-rose-600"
+          subLabel="% Investimento" subValue={fmtPct(rb ? Math.abs(investimentos) / rb : 0)}
           subColor="text-rose-600"
         />
         <KpiCard
           icon={Sprout} label="Lucro" value={fmtMoney(lucro)}
+          valueColor={lucro >= 0 ? "text-emerald-600" : "text-rose-600"}
           subLabel="% Lucro" subValue={fmtPct(rb ? lucro / rb : 0)}
           subColor={lucro >= 0 ? "text-emerald-600" : "text-rose-600"}
         />
       </div>
+
 
       {/* Gráficos e análises automáticas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -943,6 +957,13 @@ function PainelFinanceiro() {
                             ))}
                           </div>
                         ) : null}
+                        {p.investimentos > 0 ? (
+                          <div className="mt-1 pt-1 border-t flex justify-between gap-4 text-muted-foreground">
+                            <span>Investimentos <span className="opacity-70">(fora do índice)</span></span>
+                            <span className="tabular-nums">{fmtMoney(p.investimentos)}</span>
+                          </div>
+                        ) : null}
+
                       </div>
                     );
                   }}

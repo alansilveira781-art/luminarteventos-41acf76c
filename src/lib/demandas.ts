@@ -4,16 +4,19 @@ import type { CompraStatus } from "./compras";
 // tem rótulos e ordem próprios (sem "Compras a Receber").
 export type DemandaStatus = CompraStatus;
 
+// Rótulos alinhados às colunas do Quadro de Compras (quadro unificado):
+// a origem do card continua sinalizada pelo prefixo do ID (COMPRA- / DEMANDA-).
 export const DEMANDA_STATUSES: { key: DemandaStatus; label: string; color: string }[] = [
-  { key: "solicitacao", label: "Solicitação de Aquisição", color: "bg-slate-500" },
-  { key: "analise", label: "Análise", color: "bg-blue-500" },
+  { key: "solicitacao", label: "Solicitação de Compra", color: "bg-slate-500" },
+  { key: "analise", label: "Análise de Compra", color: "bg-blue-500" },
   { key: "pendente_aprovacao", label: "Pendente Aprovação", color: "bg-amber-500" },
-  { key: "aprovada", label: "Aquisição Aprovada", color: "bg-emerald-500" },
-  { key: "em_andamento", label: "Aquisição Em Andamento", color: "bg-indigo-500" },
+  { key: "aprovada", label: "Compra Aprovada", color: "bg-emerald-500" },
+  { key: "em_andamento", label: "Compra Em Andamento", color: "bg-indigo-500" },
   { key: "a_receber", label: "A Receber", color: "bg-cyan-500" },
   { key: "finalizado", label: "Finalizado", color: "bg-success" },
-  { key: "negada", label: "Aquisição Negada", color: "bg-destructive" },
+  { key: "negada", label: "Compra Negada", color: "bg-destructive" },
 ];
+
 
 // Tipos que exigem grid de ITENS no lugar do descritivo livre
 export const TIPOS_COM_ITENS: string[] = [

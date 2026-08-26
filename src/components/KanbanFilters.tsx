@@ -36,9 +36,13 @@ export function applyKanbanFilters<T>(rows: T[], filters: Filters, fields: Field
       if (!f) return true;
       const raw = f.getValue(row);
       if (val.type === "multi") {
-        const s = raw == null || String(raw).trim() === "" ? "__empty__" : String(raw);
-        return val.values.includes(s);
+        // getValue pode devolver um valor único ou uma lista (ex.: card com
+        // mais de uma forma de pagamento) — nesse caso basta um valor bater.
+        const list = Array.isArray(raw) ? raw : [raw];
+        const norm = list.length === 0 ? ["__empty__"] : list.map((v) => (v == null || String(v).trim() === "" ? "__empty__" : String(v)));
+        return norm.some((s) => val.values.includes(s));
       }
+
       if (val.type === "date-range") {
         if (!raw) return false;
         const d = String(raw).slice(0, 10);
@@ -304,15 +308,17 @@ function MultiEditor<T>({
     let hasEmpty = false;
     for (const r of rows) {
       const raw = field.getValue(r);
-      if (raw == null || String(raw).trim() === "") {
-        hasEmpty = true;
-      } else {
-        s.add(String(raw));
+      const list = Array.isArray(raw) ? raw : [raw];
+      if (list.length === 0) hasEmpty = true;
+      for (const v of list) {
+        if (v == null || String(v).trim() === "") hasEmpty = true;
+        else s.add(String(v));
       }
     }
     const arr = [...s].sort((a, b) => a.localeCompare(b, "pt-BR"));
     if (hasEmpty) arr.push("__empty__");
     return arr;
+
   }, [rows, field]);
 
   const filtered = q.trim()
