@@ -710,6 +710,8 @@ function PainelFinanceiro() {
             page-break-inside: avoid;
           }
           body.printing-painel .print-portal .lg\\:grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+          body.printing-painel .print-portal .lg\\:grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+
           body.printing-painel .print-portal .lg\\:col-span-2 { grid-column: span 2 / span 2 !important; }
           body.printing-painel .print-portal .lg\\:col-span-3 { grid-column: span 3 / span 3 !important; }
           body.printing-painel .print-portal [class*="shadow"] { box-shadow: none !important; }
