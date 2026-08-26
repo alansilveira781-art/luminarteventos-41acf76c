@@ -107,8 +107,13 @@ function ComprasKanban() {
     const params = new URLSearchParams(window.location.search);
     const id = params.get("id");
     if (id) {
-      setEditId(id);
-      setOpen(true);
+      if (params.get("origem") === "demanda") {
+        setEditDemandaId(id);
+        setOpenDemanda(true);
+      } else {
+        setEditId(id);
+        setOpen(true);
+      }
     }
   }, []);
 
@@ -127,14 +132,14 @@ function ComprasKanban() {
     },
   });
 
-  // Aquisições (tabela demandas) ainda em aberto — passam a viver no Quadro de Compras
-  const { data: demandasAbertas = [] } = useQuery({
-    queryKey: ["compras", "demandas-abertas"],
+  // Aquisições (tabela demandas) vivem definitivamente no Quadro de Compras,
+  // inclusive quando finalizadas ou negadas.
+  const { data: demandas = [] } = useQuery({
+    queryKey: ["compras", "demandas"],
     queryFn: async () => {
       const { data, error } = await sb
         .from("demandas")
         .select("id,numero,status,titulo,solicitante,fornecedor,comprador,data_solicitacao,data_compra,prazo,valor_total,tipo_demanda,responsavel_id,responsavel_nome,created_by")
-        .not("status", "in", "(finalizado,negada)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as any[];
@@ -144,7 +149,7 @@ function ComprasKanban() {
   const cards = useMemo<Compra[]>(
     () => [
       ...(compras ?? []).map((c: any) => ({ ...c, origem: "compra" as const })),
-      ...(demandasAbertas ?? []).map((d: any) => ({
+      ...(demandas ?? []).map((d: any) => ({
         ...d,
         origem: "demanda" as const,
         solicitante_id: null,
@@ -152,7 +157,7 @@ function ComprasKanban() {
         tipo_compra: null,
       })),
     ],
-    [compras, demandasAbertas],
+    [compras, demandas],
   );
 
   const { data: pagamentosRows = [] } = useQuery({
@@ -317,8 +322,20 @@ function ComprasKanban() {
       const { error } = await sb.from("demandas").update(patch).eq("id", vars.id);
       if (error) throw error;
     },
+    onMutate: async ({ id, status }) => {
+      const queryKey = ["compras", "demandas"] as const;
+      await qc.cancelQueries({ queryKey });
+      const prev = qc.getQueryData<any[]>(queryKey);
+      qc.setQueryData<any[]>(queryKey, (old) =>
+        (old ?? []).map((card) => (card.id === id ? { ...card, status } : card)),
+      );
+      return { prev };
+    },
+    onError: (_error, _vars, context) => {
+      if (context?.prev) qc.setQueryData(["compras", "demandas"], context.prev);
+    },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["compras", "demandas-abertas"] });
+      qc.invalidateQueries({ queryKey: ["compras", "demandas"] });
       qc.invalidateQueries({ queryKey: ["demandas"] });
       qc.invalidateQueries({ queryKey: ["demandas-receber"] });
     },
@@ -359,7 +376,7 @@ function ComprasKanban() {
         userId: def.responsavel_id,
         titulo: `Aquisição: ${statusLabel}`,
         mensagem: titulo,
-        link: `/compras?id=${card.id}`,
+        link: `/compras?id=${card.id}&origem=demanda`,
         tipo: "compra_responsavel",
       }).catch(() => {});
     }
@@ -792,7 +809,7 @@ function ComprasKanban() {
           setOpenDemanda(v);
           if (!v) {
             setEditDemandaId(null);
-            qc.invalidateQueries({ queryKey: ["compras", "demandas-abertas"] });
+            qc.invalidateQueries({ queryKey: ["compras", "demandas"] });
             qc.invalidateQueries({ queryKey: ["compras", "pagamentos-quadro-demandas"] });
           }
         }}

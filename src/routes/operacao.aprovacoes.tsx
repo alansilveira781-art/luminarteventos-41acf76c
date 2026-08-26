@@ -71,7 +71,11 @@ function Aprovacoes() {
             {rows.map((r) => (
               <TableRow key={r.id}>
                 <TableCell className="font-mono text-xs">
-                  <Link to={base} search={{ id: r.id } as any} className="hover:underline">
+                  <Link
+                    to={base}
+                    search={{ id: r.id, ...(tabela === "demandas" ? { origem: "demanda" } : {}) } as any}
+                    className="hover:underline"
+                  >
                     {tabela === "compras" ? "COMPRA" : "AQUISIÇÃO"}-{r.numero ?? "?"}
                   </Link>
                 </TableCell>
@@ -109,7 +113,7 @@ function Aprovacoes() {
       </div>
       <div className="space-y-2">
         <div className="text-sm font-medium">Aquisições ({demandas.length})</div>
-        <Tab tabela="demandas" rows={demandas} base="/financeiro" />
+        <Tab tabela="demandas" rows={demandas} base="/compras" />
       </div>
     </div>
   );
