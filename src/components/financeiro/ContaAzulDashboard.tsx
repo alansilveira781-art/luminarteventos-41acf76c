@@ -955,6 +955,13 @@ function PainelFinanceiro() {
                             ))}
                           </div>
                         ) : null}
+                        {p.investimentos > 0 ? (
+                          <div className="mt-1 pt-1 border-t flex justify-between gap-4 text-muted-foreground">
+                            <span>Investimentos <span className="opacity-70">(fora do índice)</span></span>
+                            <span className="tabular-nums">{fmtMoney(p.investimentos)}</span>
+                          </div>
+                        ) : null}
+
                       </div>
                     );
                   }}
