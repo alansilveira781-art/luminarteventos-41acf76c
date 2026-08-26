@@ -545,6 +545,20 @@ function PainelFinanceiro() {
   const canReprocess = isAdmin || isModuleAdmin("financeiro");
   const qc = useQueryClient();
 
+  // Recarrega tudo o que alimenta cards, gráficos, comparativos e demonstrativo.
+  const recarregarPainel = () => {
+    ["ca-baixas", "ca-pagar", "ca-receber", "ca-rateios-caixa", "ca-extrato", "ca-planos"].forEach((k) =>
+      qc.invalidateQueries({ queryKey: [k] }),
+    );
+  };
+
+  const kpiRefresh = (escopo: "receber" | "pagar" | "ambos", label: string) =>
+    canReprocess ? (
+      <CardRefreshButton ano={anoEfetivo} escopo={escopo} label={label} onDone={recarregarPainel} />
+    ) : undefined;
+
+
+
   const [categoriaSel, setCategoriaSel] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
