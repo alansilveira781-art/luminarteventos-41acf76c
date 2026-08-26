@@ -279,16 +279,21 @@ function buildBaixas(it: any, tipo: "pagar" | "receber", syncedAt: string) {
     const valor = Math.abs(Number(composicao?.valor_bruto ?? composicao?.valor_liquido ?? baixa.valor ?? 0));
     if (!data || !Number.isFinite(valor) || valor <= 0) return [];
     const conta = baixa?.conta_financeira ?? contaParcela;
+    const liquido = Number(composicao?.valor_liquido);
+    const taxa = Number(composicao?.taxa);
     return [{
       tipo,
       lancamento_external_id: lancamentoId,
       baixa_external_id: String(baixa.id ?? `${lancamentoId}:${data}:${index}`),
       data_baixa: data,
       valor: Math.round(valor * 100) / 100,
+      valor_liquido: Number.isFinite(liquido) ? Math.round(Math.abs(liquido) * 100) / 100 : null,
+      taxa: Number.isFinite(taxa) ? Math.round(Math.abs(taxa) * 100) / 100 : null,
       conta_bancaria: conta?.nome ?? conta?.descricao ?? null,
       conta_bancaria_external_id: conta?.id ? String(conta.id) : null,
       synced_at: syncedAt,
     }];
+
   });
 }
 
@@ -1561,6 +1566,9 @@ export async function reprocessarRateios(
     from?: string;
     to?: string;
     antesDe?: string;
+    /** Permite processar IDs que ainda não existem no banco (importação). */
+    permitirNovos?: boolean;
+
   } = {},
 ): Promise<{
   tentados: number;
@@ -1738,16 +1746,24 @@ export async function reprocessarRateios(
   let allTargets: Array<{ id: string; tipo: "pagar" | "receber" }> = [];
   if (opts.ids && opts.ids.length > 0) {
     const ids = Array.from(new Set(opts.ids.map((id) => String(id)).filter(Boolean)));
-    for (const t of tipos) {
-      const tabela = t === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
-      for (let i = 0; i < ids.length; i += 200) {
-        const chunk = ids.slice(i, i + 200);
-        const { data, error } = await sb.from(tabela).select("external_id").in("external_id", chunk);
-        if (error) throw error;
-        (data ?? []).forEach((r: any) => allTargets.push({ id: String(r.external_id), tipo: t }));
+    if (opts.permitirNovos) {
+      // Importação: aceita IDs que ainda não existem no banco (títulos com
+      // vencimento fora da janela sincronizada, porém liquidados no período).
+      const t = opts.tipo ?? "receber";
+      ids.forEach((id) => allTargets.push({ id, tipo: t }));
+    } else {
+      for (const t of tipos) {
+        const tabela = t === "pagar" ? "ca_contas_pagar" : "ca_contas_receber";
+        for (let i = 0; i < ids.length; i += 200) {
+          const chunk = ids.slice(i, i + 200);
+          const { data, error } = await sb.from(tabela).select("external_id").in("external_id", chunk);
+          if (error) throw error;
+          (data ?? []).forEach((r: any) => allTargets.push({ id: String(r.external_id), tipo: t }));
+        }
       }
     }
   } else {
+
     for (const t of tipos) {
       const cands = await listarCandidatos(t, modo, limite);
       cands.forEach((id) => allTargets.push({ id, tipo: t }));
@@ -1864,3 +1880,118 @@ export async function reprocessarRateios(
 }
 
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Conferência de liquidações
+//
+// A sincronização normal busca títulos pela JANELA DE VENCIMENTO. Uma parcela
+// vencida fora dessa janela (ex.: 2025) mas paga dentro do mês analisado nunca
+// chegava ao banco — o painel, que soma por data de baixa, ficava abaixo do
+// Conta Azul. Esta rotina varre uma faixa ampla de vencimentos e compara, título
+// a título, o valor pago na API com a soma das baixas gravadas localmente.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type ConferenciaDivergencia = {
+  id: string;
+  tipo: "pagar" | "receber";
+  descricao: string | null;
+  data_vencimento: string | null;
+  pago_api: number;
+  baixas_db: number;
+  diferenca: number;
+  existe_no_banco: boolean;
+};
+
+export async function conferirLiquidacoes(opts: {
+  tipo: "pagar" | "receber";
+  vencDe: string;
+  vencAte: string;
+  maxDivergencias?: number;
+}): Promise<{
+  tipo: "pagar" | "receber";
+  venc_de: string;
+  venc_ate: string;
+  titulos: number;
+  titulos_pagos: number;
+  pago_api: number;
+  baixas_db: number;
+  divergentes: number;
+  diferenca: number;
+  amostra: ConferenciaDivergencia[];
+  ids: string[];
+}> {
+  const { tipo, vencDe, vencAte } = opts;
+  const maxAmostra = opts.maxDivergencias ?? 50;
+  const basePath =
+    tipo === "pagar"
+      ? "/financeiro/eventos-financeiros/contas-a-pagar/buscar"
+      : "/financeiro/eventos-financeiros/contas-a-receber/buscar";
+
+  const items = await fetchPaged(basePath, {
+    data_vencimento_de: vencDe,
+    data_vencimento_ate: vencAte,
+  });
+
+  const pagos = items.filter((it: any) => Math.abs(Number(it?.pago ?? 0)) > 0.004);
+  const ids = pagos.map((it: any) => String(it.id));
+
+  const somaBaixas = new Map<string, number>();
+  const existentes = new Set<string>();
+  for (let i = 0; i < ids.length; i += 200) {
+    const chunk = ids.slice(i, i + 200);
+    const { data, error } = await sb
+      .from("ca_lancamento_baixas")
+      .select("lancamento_external_id,valor")
+      .eq("tipo", tipo)
+      .in("lancamento_external_id", chunk);
+    if (error) throw error;
+    (data ?? []).forEach((r: any) => {
+      const id = String(r.lancamento_external_id);
+      somaBaixas.set(id, (somaBaixas.get(id) ?? 0) + Number(r.valor ?? 0));
+      existentes.add(id);
+    });
+  }
+
+  let pagoApi = 0;
+  let baixasDb = 0;
+  let diferenca = 0;
+  const amostra: ConferenciaDivergencia[] = [];
+  const idsDivergentes: string[] = [];
+
+  for (const it of pagos) {
+    const id = String(it.id);
+    const pago = Math.round(Math.abs(Number(it.pago ?? 0)) * 100) / 100;
+    const db = Math.round((somaBaixas.get(id) ?? 0) * 100) / 100;
+    pagoApi += pago;
+    baixasDb += db;
+    if (Math.abs(pago - db) <= 0.02) continue;
+    diferenca += pago - db;
+    idsDivergentes.push(id);
+    if (amostra.length < maxAmostra) {
+      amostra.push({
+        id,
+        tipo,
+        descricao: it.descricao ?? null,
+        data_vencimento: it.data_vencimento ? String(it.data_vencimento).slice(0, 10) : null,
+        pago_api: pago,
+        baixas_db: db,
+        diferenca: Math.round((pago - db) * 100) / 100,
+        existe_no_banco: existentes.has(id),
+      });
+    }
+  }
+
+  return {
+    tipo,
+    venc_de: vencDe,
+    venc_ate: vencAte,
+    titulos: items.length,
+    titulos_pagos: pagos.length,
+    pago_api: Math.round(pagoApi * 100) / 100,
+    baixas_db: Math.round(baixasDb * 100) / 100,
+    divergentes: idsDivergentes.length,
+    diferenca: Math.round(diferenca * 100) / 100,
+    amostra,
+    ids: idsDivergentes.slice(0, 500),
+  };
+}

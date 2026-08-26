@@ -73,6 +73,133 @@ function ContaAzulPage() {
   const [histTo, setHistTo] = useState("2025-12-31");
   const [recorteLabel, setRecorteLabel] = useState<string | null>(null);
 
+  type ConfDiv = {
+    id: string;
+    tipo: "pagar" | "receber";
+    descricao: string | null;
+    data_vencimento: string | null;
+    pago_api: number;
+    baixas_db: number;
+    diferenca: number;
+    existe_no_banco: boolean;
+  };
+  type ConfResumo = {
+    tipo: "pagar" | "receber";
+    ano: number;
+    titulos_pagos: number;
+    pago_api: number;
+    baixas_db: number;
+    divergentes: number;
+    diferenca: number;
+  };
+  const anoAtual = new Date().getFullYear();
+  const [confDe, setConfDe] = useState(String(anoAtual - 3));
+  const [confAte, setConfAte] = useState(String(anoAtual + 1));
+  const [confBusy, setConfBusy] = useState<null | "conferir" | "corrigir">(null);
+  const [confEtapa, setConfEtapa] = useState<string | null>(null);
+  const [confResumo, setConfResumo] = useState<ConfResumo[]>([]);
+  const [confDivs, setConfDivs] = useState<ConfDiv[]>([]);
+  const [confIds, setConfIds] = useState<{ pagar: string[]; receber: string[] }>({ pagar: [], receber: [] });
+
+  const fmtBRL = (v: number) =>
+    v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
+
+  async function handleConferir() {
+    setConfBusy("conferir");
+    setConfResumo([]);
+    setConfDivs([]);
+    setConfIds({ pagar: [], receber: [] });
+    try {
+      const headers = { ...(await authHeaders()), "Content-Type": "application/json" };
+      const de = Number(confDe);
+      const ate = Number(confAte);
+      if (!Number.isFinite(de) || !Number.isFinite(ate) || de > ate) {
+        toast.error("Informe um intervalo de anos válido.");
+        return;
+      }
+      const resumo: ConfResumo[] = [];
+      const divs: ConfDiv[] = [];
+      const ids: { pagar: string[]; receber: string[] } = { pagar: [], receber: [] };
+      for (const tipo of ["receber", "pagar"] as const) {
+        for (let ano = de; ano <= ate; ano++) {
+          setConfEtapa(`${tipo === "receber" ? "Recebimentos" : "Pagamentos"} — vencimentos de ${ano}`);
+          const res = await fetch("/api/contaazul/conferencia", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              acao: "conferir",
+              tipo,
+              vencDe: `${ano}-01-01`,
+              vencAte: `${ano}-12-31`,
+            }),
+          });
+          if (!res.ok) throw new Error(await res.text());
+          const r = await res.json();
+          resumo.push({
+            tipo,
+            ano,
+            titulos_pagos: r.titulos_pagos,
+            pago_api: r.pago_api,
+            baixas_db: r.baixas_db,
+            divergentes: r.divergentes,
+            diferenca: r.diferenca,
+          });
+          divs.push(...(r.amostra ?? []));
+          ids[tipo].push(...(r.ids ?? []));
+          setConfResumo([...resumo]);
+        }
+      }
+      setConfDivs(divs);
+      setConfIds(ids);
+      const totalDiv = resumo.reduce((s, r) => s + r.divergentes, 0);
+      if (totalDiv === 0) toast.success("Nenhuma divergência: banco em dia com o Conta Azul.");
+      else
+        toast.message(
+          `${totalDiv} lançamento(s) divergentes — diferença de ${fmtBRL(resumo.reduce((s, r) => s + r.diferenca, 0))}.`,
+        );
+    } catch (e: any) {
+      toast.error(`Erro na conferência: ${String(e?.message ?? e)}`);
+    } finally {
+      setConfBusy(null);
+      setConfEtapa(null);
+    }
+  }
+
+  async function handleCorrigirDivergencias() {
+    setConfBusy("corrigir");
+    try {
+      const headers = { ...(await authHeaders()), "Content-Type": "application/json" };
+      let corrigidos = 0;
+      let falhas = 0;
+      for (const tipo of ["receber", "pagar"] as const) {
+        let fila = [...confIds[tipo]];
+        while (fila.length > 0) {
+          setConfEtapa(`Importando ${tipo === "receber" ? "recebimentos" : "pagamentos"} — restam ${fila.length}`);
+          const res = await fetch("/api/contaazul/conferencia", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ acao: "corrigir", tipo, ids: fila.slice(0, 40) }),
+          });
+          if (!res.ok) throw new Error(await res.text());
+          const r = await res.json();
+          corrigidos += r.corrigidos ?? 0;
+          falhas += r.falhas ?? 0;
+          fila = fila.slice(40);
+        }
+      }
+      toast.success(`Correção concluída — ${corrigidos} lançamentos atualizados${falhas ? `, ${falhas} falhas` : ""}.`);
+      setConfDivs([]);
+      setConfIds({ pagar: [], receber: [] });
+      await qc.invalidateQueries({ queryKey: ["painel-financeiro"] });
+    } catch (e: any) {
+      toast.error(`Erro ao corrigir: ${String(e?.message ?? e)}`);
+    } finally {
+      setConfBusy(null);
+      setConfEtapa(null);
+    }
+  }
+
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("connected") === "1") {
@@ -377,6 +504,127 @@ function ContaAzulPage() {
             </p>
           </CardContent>
         </Card>
+
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <CheckCircle2 className="h-4 w-4" /> Conferência de liquidações
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Compara, título a título, o valor liquidado no Conta Azul com as baixas gravadas aqui — inclusive
+              parcelas vencidas em outros anos que foram pagas dentro do período analisado (a causa das diferenças
+              de valor recebido por mês). A varredura percorre todos os vencimentos do intervalo de anos abaixo.
+            </p>
+            <div className="grid grid-cols-2 gap-3 max-w-sm">
+              <div className="space-y-1">
+                <Label className="text-xs">Vencimentos de (ano)</Label>
+                <Input inputMode="numeric" value={confDe} onChange={(e) => setConfDe(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">até (ano)</Label>
+                <Input inputMode="numeric" value={confAte} onChange={(e) => setConfAte(e.target.value)} />
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button disabled={!canManage || !connected || busy !== null || confBusy !== null} onClick={handleConferir}>
+                {confBusy === "conferir" ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                )}
+                Conferir liquidações
+              </Button>
+              {(confIds.pagar.length > 0 || confIds.receber.length > 0) && (
+                <Button
+                  variant="outline"
+                  disabled={!canManage || !connected || confBusy !== null}
+                  onClick={handleCorrigirDivergencias}
+                >
+                  {confBusy === "corrigir" ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                  )}
+                  Corrigir {confIds.pagar.length + confIds.receber.length} divergência(s)
+                </Button>
+              )}
+            </div>
+            {confEtapa && <p className="text-xs text-muted-foreground">{confEtapa}…</p>}
+
+            {confResumo.length > 0 && (
+              <div className="overflow-x-auto rounded-md border">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="p-2 text-left">Tipo</th>
+                      <th className="p-2 text-left">Vencimentos</th>
+                      <th className="p-2 text-right">Liquidado (Conta Azul)</th>
+                      <th className="p-2 text-right">Registrado aqui</th>
+                      <th className="p-2 text-right">Diferença</th>
+                      <th className="p-2 text-right">Títulos</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {confResumo
+                      .filter((r) => r.titulos_pagos > 0)
+                      .map((r) => (
+                        <tr key={`${r.tipo}-${r.ano}`} className="border-t">
+                          <td className="p-2">{r.tipo === "receber" ? "Recebimentos" : "Pagamentos"}</td>
+                          <td className="p-2">{r.ano}</td>
+                          <td className="p-2 text-right tabular-nums">{fmtBRL(r.pago_api)}</td>
+                          <td className="p-2 text-right tabular-nums">{fmtBRL(r.baixas_db)}</td>
+                          <td
+                            className={`p-2 text-right tabular-nums ${Math.abs(r.diferenca) > 0.02 ? "text-destructive font-medium" : ""}`}
+                          >
+                            {fmtBRL(r.diferenca)}
+                          </td>
+                          <td className="p-2 text-right tabular-nums">{r.divergentes}/{r.titulos_pagos}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {confDivs.length > 0 && (
+              <div className="space-y-1">
+                <div className="text-xs font-medium">Lançamentos divergentes (amostra)</div>
+                <div className="max-h-64 overflow-auto rounded-md border">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted/50 sticky top-0">
+                      <tr>
+                        <th className="p-2 text-left">Descrição</th>
+                        <th className="p-2 text-left">Vencimento</th>
+                        <th className="p-2 text-right">Conta Azul</th>
+                        <th className="p-2 text-right">Aqui</th>
+                        <th className="p-2 text-left">Situação</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {confDivs.map((d) => (
+                        <tr key={`${d.tipo}-${d.id}`} className="border-t">
+                          <td className="p-2">{d.descricao ?? d.id}</td>
+                          <td className="p-2">
+                            {d.data_vencimento
+                              ? new Date(`${d.data_vencimento}T12:00:00`).toLocaleDateString("pt-BR")
+                              : "—"}
+                          </td>
+                          <td className="p-2 text-right tabular-nums">{fmtBRL(d.pago_api)}</td>
+                          <td className="p-2 text-right tabular-nums">{fmtBRL(d.baixas_db)}</td>
+                          <td className="p-2">{d.existe_no_banco ? "Baixa incompleta" : "Título ausente"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+
 
         <Card className="md:col-span-2">
           <CardHeader>

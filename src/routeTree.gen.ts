@@ -129,6 +129,7 @@ import { Route as ApiContaazulScheduleRouteImport } from './routes/api/contaazul
 import { Route as ApiContaazulReprocessarRateiosRouteImport } from './routes/api/contaazul/reprocessar-rateios'
 import { Route as ApiContaazulReprocessarFalhasRouteImport } from './routes/api/contaazul/reprocessar-falhas'
 import { Route as ApiContaazulHistoricoRouteImport } from './routes/api/contaazul/historico'
+import { Route as ApiContaazulConferenciaRouteImport } from './routes/api/contaazul/conferencia'
 import { Route as ApiAssistenteChatRouteImport } from './routes/api/assistente/chat'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
@@ -755,6 +756,11 @@ const ApiContaazulHistoricoRoute = ApiContaazulHistoricoRouteImport.update({
   path: '/api/contaazul/historico',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiContaazulConferenciaRoute = ApiContaazulConferenciaRouteImport.update({
+  id: '/api/contaazul/conferencia',
+  path: '/api/contaazul/conferencia',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAssistenteChatRoute = ApiAssistenteChatRouteImport.update({
   id: '/api/assistente/chat',
   path: '/api/assistente/chat',
@@ -895,6 +901,7 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/assistente/chat': typeof ApiAssistenteChatRoute
+  '/api/contaazul/conferencia': typeof ApiContaazulConferenciaRoute
   '/api/contaazul/historico': typeof ApiContaazulHistoricoRoute
   '/api/contaazul/reprocessar-falhas': typeof ApiContaazulReprocessarFalhasRoute
   '/api/contaazul/reprocessar-rateios': typeof ApiContaazulReprocessarRateiosRoute
@@ -1012,6 +1019,7 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/assistente/chat': typeof ApiAssistenteChatRoute
+  '/api/contaazul/conferencia': typeof ApiContaazulConferenciaRoute
   '/api/contaazul/historico': typeof ApiContaazulHistoricoRoute
   '/api/contaazul/reprocessar-falhas': typeof ApiContaazulReprocessarFalhasRoute
   '/api/contaazul/reprocessar-rateios': typeof ApiContaazulReprocessarRateiosRoute
@@ -1142,6 +1150,7 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/assistente/chat': typeof ApiAssistenteChatRoute
+  '/api/contaazul/conferencia': typeof ApiContaazulConferenciaRoute
   '/api/contaazul/historico': typeof ApiContaazulHistoricoRoute
   '/api/contaazul/reprocessar-falhas': typeof ApiContaazulReprocessarFalhasRoute
   '/api/contaazul/reprocessar-rateios': typeof ApiContaazulReprocessarRateiosRoute
@@ -1273,6 +1282,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/api/assistente/chat'
+    | '/api/contaazul/conferencia'
     | '/api/contaazul/historico'
     | '/api/contaazul/reprocessar-falhas'
     | '/api/contaazul/reprocessar-rateios'
@@ -1390,6 +1400,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/api/assistente/chat'
+    | '/api/contaazul/conferencia'
     | '/api/contaazul/historico'
     | '/api/contaazul/reprocessar-falhas'
     | '/api/contaazul/reprocessar-rateios'
@@ -1519,6 +1530,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/api/assistente/chat'
+    | '/api/contaazul/conferencia'
     | '/api/contaazul/historico'
     | '/api/contaazul/reprocessar-falhas'
     | '/api/contaazul/reprocessar-rateios'
@@ -1589,6 +1601,7 @@ export interface RootRouteChildren {
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiAssistenteChatRoute: typeof ApiAssistenteChatRoute
+  ApiContaazulConferenciaRoute: typeof ApiContaazulConferenciaRoute
   ApiContaazulHistoricoRoute: typeof ApiContaazulHistoricoRoute
   ApiContaazulReprocessarFalhasRoute: typeof ApiContaazulReprocessarFalhasRoute
   ApiContaazulReprocessarRateiosRoute: typeof ApiContaazulReprocessarRateiosRoute
@@ -2451,6 +2464,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiContaazulHistoricoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/contaazul/conferencia': {
+      id: '/api/contaazul/conferencia'
+      path: '/api/contaazul/conferencia'
+      fullPath: '/api/contaazul/conferencia'
+      preLoaderRoute: typeof ApiContaazulConferenciaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/assistente/chat': {
       id: '/api/assistente/chat'
       path: '/api/assistente/chat'
@@ -2799,6 +2819,7 @@ const rootRouteChildren: RootRouteChildren = {
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiAssistenteChatRoute: ApiAssistenteChatRoute,
+  ApiContaazulConferenciaRoute: ApiContaazulConferenciaRoute,
   ApiContaazulHistoricoRoute: ApiContaazulHistoricoRoute,
   ApiContaazulReprocessarFalhasRoute: ApiContaazulReprocessarFalhasRoute,
   ApiContaazulReprocessarRateiosRoute: ApiContaazulReprocessarRateiosRoute,

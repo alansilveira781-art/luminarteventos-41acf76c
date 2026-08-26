@@ -344,9 +344,11 @@ export type Database = {
           id: string
           lancamento_external_id: string
           synced_at: string
+          taxa: number | null
           tipo: string
           updated_at: string
           valor: number
+          valor_liquido: number | null
         }
         Insert: {
           baixa_external_id: string
@@ -357,9 +359,11 @@ export type Database = {
           id?: string
           lancamento_external_id: string
           synced_at?: string
+          taxa?: number | null
           tipo: string
           updated_at?: string
           valor: number
+          valor_liquido?: number | null
         }
         Update: {
           baixa_external_id?: string
@@ -370,9 +374,11 @@ export type Database = {
           id?: string
           lancamento_external_id?: string
           synced_at?: string
+          taxa?: number | null
           tipo?: string
           updated_at?: string
           valor?: number
+          valor_liquido?: number | null
         }
         Relationships: []
       }
