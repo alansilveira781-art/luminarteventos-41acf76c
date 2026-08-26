@@ -528,13 +528,14 @@ function PainelFinanceiro() {
     () =>
       compararFaturamento(
         (vendasQ.data?.rows ?? []).map((v) => ({ dataRegistro: v.dataRegistro, valorFinal: v.valorFinal })),
-        caixaAtual.recebido,
-        caixaAnterior.recebido,
+        rb,
+        rbAnt,
         anoEfetivo,
         mes,
       ),
-    [vendasQ.data, caixaAtual.recebido, caixaAnterior.recebido, anoEfetivo, mes],
+    [vendasQ.data, rb, rbAnt, anoEfetivo, mes],
   );
+
   const textoFat = useMemo(() => textoFaturamento(comparativo, anoEfetivo, mes), [comparativo, anoEfetivo, mes]);
 
   // ----- Custo de operação x Receita (ano inteiro, independente do filtro de mês) -----
