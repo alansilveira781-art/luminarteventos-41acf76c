@@ -269,21 +269,6 @@ function getDataPagamento(it: any): string | null {
   return datas.at(-1) ?? null;
 }
 
-function getValorRealizado(it: any): number | null {
-  const baixas = getBaixas(it);
-  if (baixas.length > 0) {
-    const total = baixas.reduce((soma: number, baixa: any) => {
-      const composicao = baixa.valor_composicao;
-      // Os cards "Recebidos" e "Pagos" do Conta Azul usam o valor bruto
-      // liquidado; taxas/descontos aparecem separadamente na composição.
-      const valor = composicao?.valor_bruto ?? composicao?.valor_liquido ?? baixa.valor ?? 0;
-      return soma + Math.abs(Number(valor || 0));
-    }, 0);
-    if (total > 0) return Math.round(total * 100) / 100;
-  }
-  const valorPago = Number(it?.valor_pago ?? it?.pago ?? 0);
-  return valorPago > 0 ? Math.round(Math.abs(valorPago) * 100) / 100 : null;
-}
 
 function buildBaixas(it: any, tipo: "pagar" | "receber", syncedAt: string) {
   const lancamentoId = String(it.id);
