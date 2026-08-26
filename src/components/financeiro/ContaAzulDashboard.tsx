@@ -214,12 +214,12 @@ function useContaAzulData(ano?: number, mes?: number) {
   };
 
   const pagar = useQuery({
-    queryKey: ["ca-pagar", hasPeriodo ? a : "all", hasPeriodo ? m : "all"],
+    queryKey: ["ca-pagar", hasPeriodo ? a : "all", hasPeriodo ? m : "all", idsBaixas.pagar],
     enabled: !hasPeriodo || baixas.isSuccess,
     queryFn: () => carregarTitulos<ContaPagar>("ca_contas_pagar", pagarCols, idsBaixas.pagar),
   });
   const receber = useQuery({
-    queryKey: ["ca-receber", hasPeriodo ? a : "all", hasPeriodo ? m : "all"],
+    queryKey: ["ca-receber", hasPeriodo ? a : "all", hasPeriodo ? m : "all", idsBaixas.receber],
     enabled: !hasPeriodo || baixas.isSuccess,
     queryFn: () => carregarTitulos<ContaReceber>("ca_contas_receber", receberCols, idsBaixas.receber),
   });
