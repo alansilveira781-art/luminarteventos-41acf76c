@@ -839,7 +839,13 @@ function ComprasKanban() {
 
       <CompraDialog
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={(v) => {
+          setOpen(v);
+          if (!v) {
+            setEditId(null);
+            limparLink();
+          }
+        }}
         compraId={editId}
         defaultStatus={defaultStatus}
         onAdvance={async (compraData, opts) => {
