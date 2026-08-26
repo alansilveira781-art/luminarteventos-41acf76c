@@ -105,21 +105,44 @@ function ComprasKanban() {
   const [migrarCompra, setMigrarCompra] = useState<Compra | null>(null);
   const tiposDespesa = useTiposDespesa();
 
-  // Abre o card automaticamente quando a URL tem ?id=...
+  // Abre o card automaticamente quando o link tem ?id=... (reativo à URL)
+  const search = Route.useSearch();
+  const navigate = useNavigate();
+  const limparLink = () => {
+    if (search.id) navigate({ to: "/compras", search: {}, replace: true });
+  };
+
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get("id");
-    if (id) {
-      if (params.get("origem") === "demanda") {
+    const id = search.id;
+    if (!id) return;
+    let cancelado = false;
+    (async () => {
+      let origem = search.origem === "demanda" ? "demanda" : search.origem === "compra" ? "compra" : null;
+      if (!origem) {
+        const [{ data: c }, { data: d }] = await Promise.all([
+          sb.from("compras").select("id").eq("id", id).maybeSingle(),
+          sb.from("demandas").select("id").eq("id", id).maybeSingle(),
+        ]);
+        origem = c ? "compra" : d ? "demanda" : null;
+      }
+      if (cancelado) return;
+      if (!origem) {
+        toast.error("Card não encontrado ou você não tem acesso a ele.");
+        navigate({ to: "/compras", search: {}, replace: true });
+        return;
+      }
+      if (origem === "demanda") {
         setEditDemandaId(id);
         setOpenDemanda(true);
       } else {
         setEditId(id);
         setOpen(true);
       }
-    }
-  }, []);
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [search.id, search.origem, navigate]);
 
 
 
