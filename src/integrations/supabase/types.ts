@@ -337,6 +337,8 @@ export type Database = {
       ca_lancamento_baixas: {
         Row: {
           baixa_external_id: string
+          conta_bancaria: string | null
+          conta_bancaria_external_id: string | null
           created_at: string
           data_baixa: string
           id: string
@@ -348,6 +350,8 @@ export type Database = {
         }
         Insert: {
           baixa_external_id: string
+          conta_bancaria?: string | null
+          conta_bancaria_external_id?: string | null
           created_at?: string
           data_baixa: string
           id?: string
@@ -359,6 +363,8 @@ export type Database = {
         }
         Update: {
           baixa_external_id?: string
+          conta_bancaria?: string | null
+          conta_bancaria_external_id?: string | null
           created_at?: string
           data_baixa?: string
           id?: string
