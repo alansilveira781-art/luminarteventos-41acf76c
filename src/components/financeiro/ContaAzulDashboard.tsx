@@ -495,10 +495,6 @@ function PainelFinanceiro() {
       ),
     [prevData.pagar.data, prevData.receber.data, prevData.baixas.data, prevData.rateios.data, planoMap, prevPer, dreEstrutura],
   );
-  const caixaAnterior = useMemo(
-    () => calcularIndicadoresCaixa(prevData.pagar.data ?? [], prevData.receber.data ?? [], planoMap, prevPer.ano, prevPer.mes, prevData.baixas.data ?? []),
-    [prevData.pagar.data, prevData.receber.data, prevData.baixas.data, planoMap, prevPer],
-  );
 
   const receitasFatias = useMemo(() => comOutros(fatiasDoGrupo(grupos, "RB", planoMap)), [grupos, planoMap]);
   const receitasFatiasPrev = useMemo(() => fatiasDoGrupo(gruposPrev, "RB", planoMap), [gruposPrev, planoMap]);
