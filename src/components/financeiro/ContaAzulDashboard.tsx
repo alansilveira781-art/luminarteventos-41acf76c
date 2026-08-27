@@ -24,6 +24,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { IndicadoresEventos } from "@/components/financeiro/IndicadoresEventos";
 import { CHART_SERIES, CHART_POSITIVE, CHART_NEGATIVE, CHART_ACCENT, CHART_BASE } from "@/lib/financeiro/chart-colors";
+import { calcularImpostosPresumido, type Aliquota } from "@/lib/contabil/calculo";
 
 
 
@@ -1518,22 +1519,179 @@ function AnaliseDetalhada() {
     return { agg, catNames };
   }, [saidasEstoque.data, enabled, centroSelNomeEarly, planoPorNome]);
 
+  /* ---------- Impostos (Contábil) e Uber do evento selecionado ---------- */
+
+  // Recebimentos registrados na aba Contábil (base da apuração por evento/empresa).
+  const recebimentosContabeis = useQuery({
+    queryKey: ["contabil-recebimentos-analise"],
+    enabled,
+    queryFn: async () => {
+      const rows = await fetchPaged<{
+        id: string;
+        empresa: string | null;
+        nome_evento: string | null;
+        numero_nf: string | null;
+        valor_recebido: number | null;
+        data_recebimento: string | null;
+        contabil_notas_fiscais: { nome_evento: string | null; numero: string | null } | null;
+      }>((from, to) =>
+        sb
+          .from("contabil_recebimentos")
+          .select(
+            "id, empresa, nome_evento, numero_nf, valor_recebido, data_recebimento, contabil_notas_fiscais(nome_evento, numero)",
+          )
+          .order("id")
+          .range(from, to),
+      );
+      return rows;
+    },
+  });
+
+  const aliquotasContabeis = useQuery({
+    queryKey: ["contabil-aliquotas-analise"],
+    enabled,
+    queryFn: async () => {
+      const { data } = await sb
+        .from("contabil_configuracao_aliquotas")
+        .select("empresa, imposto, aliquota, base_calculo, aliquota_adicional, observacoes")
+        .eq("ativo", true);
+      return (data ?? []) as Array<Aliquota & { empresa: string | null }>;
+    },
+  });
+
+  const uberCorridas = useQuery({
+    queryKey: ["uber-corridas-analise"],
+    enabled,
+    queryFn: async () => {
+      return fetchPaged<{
+        id: string;
+        data_solicitacao: string | null;
+        nome: string | null;
+        sobrenome: string | null;
+        servico: string | null;
+        projeto: string | null;
+        endereco_partida: string | null;
+        endereco_destino: string | null;
+        valor: number | null;
+      }>((from, to) =>
+        sb
+          .from("uber_corridas")
+          .select("id, data_solicitacao, nome, sobrenome, servico, projeto, endereco_partida, endereco_destino, valor")
+          .order("id")
+          .range(from, to),
+      );
+    },
+  });
+
+  const IMPOSTOS_DR = ["IRPJ", "CSLL", "PIS", "COFINS"] as const;
+
+  // Impostos por evento: soma os recebimentos casados, agrupa por empresa e aplica as alíquotas.
+  const impostosEvento = useMemo(() => {
+    const porImposto = new Map<string, number>();
+    const detalhes: Array<{
+      imposto: string;
+      valor: number;
+      data: string | null;
+      empresa: string | null;
+      nf: string | null;
+    }> = [];
+    if (!enabled) return { porImposto, detalhes };
+    const needle = centroNeedle(centroSelNomeEarly);
+    if (!needle) return { porImposto, detalhes };
+
+    const recs = (recebimentosContabeis.data ?? []).filter((r) => {
+      const ev = r.nome_evento ?? r.contabil_notas_fiscais?.nome_evento ?? "";
+      return !!ev && rowMatchesText({ descricao: ev }, needle);
+    });
+    if (!recs.length) return { porImposto, detalhes };
+
+    const porEmpresa = new Map<string, typeof recs>();
+    recs.forEach((r) => {
+      const key = r.empresa ?? "—";
+      const arr = porEmpresa.get(key) ?? [];
+      arr.push(r);
+      porEmpresa.set(key, arr);
+    });
+
+    const aliqs = aliquotasContabeis.data ?? [];
+    porEmpresa.forEach((lista, empresa) => {
+      const cfg = aliqs.filter((a) => (a.empresa ?? "—") === empresa);
+      if (!cfg.length) return;
+      const total = lista.reduce((s, r) => s + Number(r.valor_recebido || 0), 0);
+      if (total <= 0) return;
+      const apur = calcularImpostosPresumido(total, cfg);
+      apur.itens.forEach((it) => {
+        const nome = it.imposto.toUpperCase();
+        if (!(IMPOSTOS_DR as readonly string[]).includes(nome)) return;
+        const v = Number(it.total || 0);
+        if (!v) return;
+        porImposto.set(nome, (porImposto.get(nome) ?? 0) + v);
+        lista.forEach((r) => {
+          const parte = (Number(r.valor_recebido || 0) / total) * v;
+          if (!parte) return;
+          detalhes.push({
+            imposto: nome,
+            valor: parte,
+            data: r.data_recebimento,
+            empresa,
+            nf: r.numero_nf ?? r.contabil_notas_fiscais?.numero ?? null,
+          });
+        });
+      });
+    });
+
+    return { porImposto, detalhes };
+  }, [enabled, centroSelNomeEarly, recebimentosContabeis.data, aliquotasContabeis.data]);
+
+  // Corridas de Uber casadas com o evento selecionado.
+  const uberEvento = useMemo(() => {
+    const rows = (uberCorridas.data ?? []).filter((c) => {
+      if (!enabled) return false;
+      const needle = centroNeedle(centroSelNomeEarly);
+      if (!needle) return false;
+      return !!c.projeto && rowMatchesText({ descricao: c.projeto }, needle);
+    });
+    const total = rows.reduce((s, c) => s + Number(c.valor || 0), 0);
+    return { rows, total };
+  }, [uberCorridas.data, enabled, centroSelNomeEarly]);
+
+  // Agregado combinado (estoque + impostos + uber) usado no DRE.
+  const extrasAgg = useMemo(() => {
+    const agg = new Map<DreGroupId, Map<string, number>>();
+    const catNames = new Map<string, string>(stockAgg.catNames);
+    stockAgg.agg.forEach((det, g) => agg.set(g, new Map(det)));
+
+    const add = (g: DreGroupId, key: string, label: string, valor: number) => {
+      if (!valor) return;
+      const det = agg.get(g) ?? new Map<string, number>();
+      det.set(key, (det.get(key) ?? 0) + valor);
+      agg.set(g, det);
+      catNames.set(key, label);
+    };
+
+    impostosEvento.porImposto.forEach((valor, imposto) => add("DR", `imposto:${imposto}`, imposto, valor));
+    add("CD", "uber:total", "Uber", uberEvento.total);
+
+    return { agg, catNames };
+  }, [stockAgg, impostosEvento, uberEvento]);
+
+
   // Estrutura efetiva do DRE: se houver saídas em SC, adiciona a linha SC (sum, sign -1).
   const estruturaEfetiva = useMemo<DreLine[]>(() => {
-    if (!stockAgg.agg.has("SC")) return dreEstrutura;
+    if (!extrasAgg.agg.has("SC")) return dreEstrutura;
     if (dreEstrutura.some((l) => l.id === "SC")) return dreEstrutura;
     return [...dreEstrutura, { id: "SC", label: "(?) Sem classificação", kind: "sum", sign: -1, prefixes: [] }];
-  }, [dreEstrutura, stockAgg.agg]);
+  }, [dreEstrutura, extrasAgg.agg]);
 
   // Servidor já fatiou pelo centro de custo — sem filtro client-side adicional.
   // Depois, soma por cima as saídas de estoque (não altera lógica do Conta Azul).
   const { totais, grupos } = useMemo(() => {
     const base = calcularDRECaixa(pagarRows, receberRows, planoMap, 0, 0, estruturaEfetiva, undefined, undefined, "competencia");
-    if (stockAgg.agg.size === 0) return base;
+    if (extrasAgg.agg.size === 0) return base;
     const grupos = new Map(base.grupos);
     const totais: Partial<Record<DreGroupId, number>> = { ...base.totais };
     // Merge dos detalhes em grupos.
-    stockAgg.agg.forEach((det, g) => {
+    extrasAgg.agg.forEach((det, g) => {
       const cur = grupos.get(g) ?? new Map<string, number>();
       det.forEach((v, k) => cur.set(k, (cur.get(k) ?? 0) + v));
       grupos.set(g, cur);
@@ -1559,14 +1717,14 @@ function AnaliseDetalhada() {
     (Object.keys(totais) as DreGroupId[]).forEach((k) => delete totais[k]);
     estruturaEfetiva.forEach((l) => getVal(l.id));
     return { totais, grupos };
-  }, [pagarRows, receberRows, planoMap, estruturaEfetiva, stockAgg]);
+  }, [pagarRows, receberRows, planoMap, estruturaEfetiva, extrasAgg]);
 
   // planoMap estendido com nomes das categorias de estoque, para o rótulo em linhasDre.
   const planoMapExt = useMemo(() => {
     const m = new Map(planoMap);
-    stockAgg.catNames.forEach((nome, key) => m.set(key, { nome }));
+    extrasAgg.catNames.forEach((nome, key) => m.set(key, { nome }));
     return m;
-  }, [planoMap, stockAgg.catNames]);
+  }, [planoMap, extrasAgg.catNames]);
 
   const rb = totais.RB ?? 0;
   const pv = (totais.AC ?? 0) + (totais.DM ?? 0) + (totais.DC ?? 0);
@@ -1627,8 +1785,36 @@ function AnaliseDetalhada() {
       });
     });
 
+    // Impostos apurados (Contábil) — um item por recebimento do evento.
+    impostosEvento.detalhes.forEach((d, i) => {
+      list.push({
+        data: d.data,
+        nome: d.empresa,
+        descricao: `[Imposto] ${d.imposto}${d.nf ? ` — NF ${d.nf}` : ""}${d.empresa ? ` — ${d.empresa}` : ""}`,
+        valor: -d.valor,
+        categoria_external_id: `imposto:${d.imposto}`,
+        external_id: `imposto-${d.imposto}-${i}`,
+      });
+    });
+
+    // Corridas de Uber do evento.
+    uberEvento.rows.forEach((c) => {
+      const valor = Number(c.valor || 0);
+      if (!valor) return;
+      const passageiro = [c.nome, c.sobrenome].filter(Boolean).join(" ");
+      const trajeto = [c.endereco_partida, c.endereco_destino].filter(Boolean).join(" → ");
+      list.push({
+        data: c.data_solicitacao,
+        nome: passageiro || null,
+        descricao: `[Uber] ${[c.servico, trajeto].filter(Boolean).join(" — ") || "Corrida"}`,
+        valor: -valor,
+        categoria_external_id: "uber:total",
+        external_id: c.id,
+      });
+    });
+
     return list.sort((a, b) => (a.data ?? "").localeCompare(b.data ?? ""));
-  }, [pagarRows, receberRows, planoMap, saidasEstoque.data, centroSelNomeEarly, planoPorNome]);
+  }, [pagarRows, receberRows, planoMap, saidasEstoque.data, centroSelNomeEarly, planoPorNome, impostosEvento, uberEvento]);
 
 
 
@@ -1639,7 +1825,7 @@ function AnaliseDetalhada() {
     [lancamentos, categoriaSel],
   );
   const totalLanc = lancFiltrados.reduce((s, l) => s + l.valor, 0);
-  const categoriaSelNome = categoriaSel ? planoMap.get(categoriaSel)?.nome ?? "" : "";
+  const categoriaSelNome = categoriaSel ? planoMapExt.get(categoriaSel)?.nome ?? "" : "";
 
   // Agrupa parcelamentos (N/M - ... N/M) em uma linha única, expansível.
   // Só ativa quando uma rubrica está selecionada (evita agrupar globalmente).
