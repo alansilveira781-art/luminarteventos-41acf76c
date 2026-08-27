@@ -1519,6 +1519,163 @@ function AnaliseDetalhada() {
     return { agg, catNames };
   }, [saidasEstoque.data, enabled, centroSelNomeEarly, planoPorNome]);
 
+  /* ---------- Impostos (Contábil) e Uber do evento selecionado ---------- */
+
+  // Recebimentos registrados na aba Contábil (base da apuração por evento/empresa).
+  const recebimentosContabeis = useQuery({
+    queryKey: ["contabil-recebimentos-analise"],
+    enabled,
+    queryFn: async () => {
+      const rows = await fetchPaged<{
+        id: string;
+        empresa: string | null;
+        nome_evento: string | null;
+        numero_nf: string | null;
+        valor_recebido: number | null;
+        data_recebimento: string | null;
+        contabil_notas_fiscais: { nome_evento: string | null; numero: string | null } | null;
+      }>((from, to) =>
+        sb
+          .from("contabil_recebimentos")
+          .select(
+            "id, empresa, nome_evento, numero_nf, valor_recebido, data_recebimento, contabil_notas_fiscais(nome_evento, numero)",
+          )
+          .order("id")
+          .range(from, to),
+      );
+      return rows;
+    },
+  });
+
+  const aliquotasContabeis = useQuery({
+    queryKey: ["contabil-aliquotas-analise"],
+    enabled,
+    queryFn: async () => {
+      const { data } = await sb
+        .from("contabil_configuracao_aliquotas")
+        .select("empresa, imposto, aliquota, base_calculo, aliquota_adicional, observacoes")
+        .eq("ativo", true);
+      return (data ?? []) as Array<Aliquota & { empresa: string | null }>;
+    },
+  });
+
+  const uberCorridas = useQuery({
+    queryKey: ["uber-corridas-analise"],
+    enabled,
+    queryFn: async () => {
+      return fetchPaged<{
+        id: string;
+        data_solicitacao: string | null;
+        nome: string | null;
+        sobrenome: string | null;
+        servico: string | null;
+        projeto: string | null;
+        endereco_partida: string | null;
+        endereco_destino: string | null;
+        valor: number | null;
+      }>((from, to) =>
+        sb
+          .from("uber_corridas")
+          .select("id, data_solicitacao, nome, sobrenome, servico, projeto, endereco_partida, endereco_destino, valor")
+          .order("id")
+          .range(from, to),
+      );
+    },
+  });
+
+  const IMPOSTOS_DR = ["IRPJ", "CSLL", "PIS", "COFINS"] as const;
+
+  // Impostos por evento: soma os recebimentos casados, agrupa por empresa e aplica as alíquotas.
+  const impostosEvento = useMemo(() => {
+    const porImposto = new Map<string, number>();
+    const detalhes: Array<{
+      imposto: string;
+      valor: number;
+      data: string | null;
+      empresa: string | null;
+      nf: string | null;
+    }> = [];
+    if (!enabled) return { porImposto, detalhes };
+    const needle = centroNeedle(centroSelNomeEarly);
+    if (!needle) return { porImposto, detalhes };
+
+    const recs = (recebimentosContabeis.data ?? []).filter((r) => {
+      const ev = r.nome_evento ?? r.contabil_notas_fiscais?.nome_evento ?? "";
+      return !!ev && rowMatchesText({ descricao: ev }, needle);
+    });
+    if (!recs.length) return { porImposto, detalhes };
+
+    const porEmpresa = new Map<string, typeof recs>();
+    recs.forEach((r) => {
+      const key = r.empresa ?? "—";
+      const arr = porEmpresa.get(key) ?? [];
+      arr.push(r);
+      porEmpresa.set(key, arr);
+    });
+
+    const aliqs = aliquotasContabeis.data ?? [];
+    porEmpresa.forEach((lista, empresa) => {
+      const cfg = aliqs.filter((a) => (a.empresa ?? "—") === empresa);
+      if (!cfg.length) return;
+      const total = lista.reduce((s, r) => s + Number(r.valor_recebido || 0), 0);
+      if (total <= 0) return;
+      const apur = calcularImpostosPresumido(total, cfg);
+      apur.itens.forEach((it) => {
+        const nome = it.imposto.toUpperCase();
+        if (!(IMPOSTOS_DR as readonly string[]).includes(nome)) return;
+        const v = Number(it.total || 0);
+        if (!v) return;
+        porImposto.set(nome, (porImposto.get(nome) ?? 0) + v);
+        lista.forEach((r) => {
+          const parte = (Number(r.valor_recebido || 0) / total) * v;
+          if (!parte) return;
+          detalhes.push({
+            imposto: nome,
+            valor: parte,
+            data: r.data_recebimento,
+            empresa,
+            nf: r.numero_nf ?? r.contabil_notas_fiscais?.numero ?? null,
+          });
+        });
+      });
+    });
+
+    return { porImposto, detalhes };
+  }, [enabled, centroSelNomeEarly, recebimentosContabeis.data, aliquotasContabeis.data]);
+
+  // Corridas de Uber casadas com o evento selecionado.
+  const uberEvento = useMemo(() => {
+    const rows = (uberCorridas.data ?? []).filter((c) => {
+      if (!enabled) return false;
+      const needle = centroNeedle(centroSelNomeEarly);
+      if (!needle) return false;
+      return !!c.projeto && rowMatchesText({ descricao: c.projeto }, needle);
+    });
+    const total = rows.reduce((s, c) => s + Number(c.valor || 0), 0);
+    return { rows, total };
+  }, [uberCorridas.data, enabled, centroSelNomeEarly]);
+
+  // Agregado combinado (estoque + impostos + uber) usado no DRE.
+  const extrasAgg = useMemo(() => {
+    const agg = new Map<DreGroupId, Map<string, number>>();
+    const catNames = new Map<string, string>(stockAgg.catNames);
+    stockAgg.agg.forEach((det, g) => agg.set(g, new Map(det)));
+
+    const add = (g: DreGroupId, key: string, label: string, valor: number) => {
+      if (!valor) return;
+      const det = agg.get(g) ?? new Map<string, number>();
+      det.set(key, (det.get(key) ?? 0) + valor);
+      agg.set(g, det);
+      catNames.set(key, label);
+    };
+
+    impostosEvento.porImposto.forEach((valor, imposto) => add("DR", `imposto:${imposto}`, imposto, valor));
+    add("CD", "uber:total", "Uber", uberEvento.total);
+
+    return { agg, catNames };
+  }, [stockAgg, impostosEvento, uberEvento]);
+
+
   // Estrutura efetiva do DRE: se houver saídas em SC, adiciona a linha SC (sum, sign -1).
   const estruturaEfetiva = useMemo<DreLine[]>(() => {
     if (!stockAgg.agg.has("SC")) return dreEstrutura;
