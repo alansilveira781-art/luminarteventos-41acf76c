@@ -24,6 +24,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { IndicadoresEventos } from "@/components/financeiro/IndicadoresEventos";
 import { CHART_SERIES, CHART_POSITIVE, CHART_NEGATIVE, CHART_ACCENT, CHART_BASE } from "@/lib/financeiro/chart-colors";
+import { calcularImpostosPresumido, type Aliquota } from "@/lib/contabil/calculo";
 
 
 
