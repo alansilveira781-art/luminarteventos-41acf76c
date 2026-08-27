@@ -1605,29 +1605,46 @@ function AnaliseDetalhada() {
     });
     if (!recs.length) return { porImposto, detalhes };
 
-    const porEmpresa = new Map<string, typeof recs>();
+    // Rateio no mesmo critério da aba Contábil > Relatórios:
+    // apura o imposto da empresa no mês inteiro (com adicional de IRPJ)
+    // e distribui proporcionalmente ao que o evento recebeu naquele mês.
+    const mesDe = (d: string | null) => (d ?? "").slice(0, 7);
+
+    // Denominador: total recebido por empresa+mês (todos os eventos).
+    const totalMes = new Map<string, number>();
+    (recebimentosContabeis.data ?? []).forEach((r) => {
+      const key = `${r.empresa ?? "—"}|${mesDe(r.data_recebimento)}`;
+      totalMes.set(key, (totalMes.get(key) ?? 0) + Number(r.valor_recebido || 0));
+    });
+
+    // Numerador: recebimentos do evento agrupados por empresa+mês.
+    const porChave = new Map<string, typeof recs>();
     recs.forEach((r) => {
-      const key = r.empresa ?? "—";
-      const arr = porEmpresa.get(key) ?? [];
+      const key = `${r.empresa ?? "—"}|${mesDe(r.data_recebimento)}`;
+      const arr = porChave.get(key) ?? [];
       arr.push(r);
-      porEmpresa.set(key, arr);
+      porChave.set(key, arr);
     });
 
     const aliqs = aliquotasContabeis.data ?? [];
-    porEmpresa.forEach((lista, empresa) => {
+    porChave.forEach((lista, key) => {
+      const empresa = key.split("|")[0];
       const cfg = aliqs.filter((a) => (a.empresa ?? "—") === empresa);
       if (!cfg.length) return;
-      const total = lista.reduce((s, r) => s + Number(r.valor_recebido || 0), 0);
-      if (total <= 0) return;
-      const apur = calcularImpostosPresumido(total, cfg);
+      const baseMes = totalMes.get(key) ?? 0;
+      if (baseMes <= 0) return;
+      const totalEvento = lista.reduce((s, r) => s + Number(r.valor_recebido || 0), 0);
+      if (totalEvento <= 0) return;
+      const fatia = totalEvento / baseMes;
+      const apur = calcularImpostosPresumido(baseMes, cfg);
       apur.itens.forEach((it) => {
         const nome = it.imposto.toUpperCase();
         if (!(IMPOSTOS_DR as readonly string[]).includes(nome)) return;
-        const v = Number(it.total || 0);
+        const v = +(Number(it.total || 0) * fatia).toFixed(2);
         if (!v) return;
         porImposto.set(nome, (porImposto.get(nome) ?? 0) + v);
         lista.forEach((r) => {
-          const parte = (Number(r.valor_recebido || 0) / total) * v;
+          const parte = (Number(r.valor_recebido || 0) / totalEvento) * v;
           if (!parte) return;
           detalhes.push({
             imposto: nome,
@@ -1639,6 +1656,7 @@ function AnaliseDetalhada() {
         });
       });
     });
+
 
     return { porImposto, detalhes };
   }, [enabled, centroSelNomeEarly, recebimentosContabeis.data, aliquotasContabeis.data]);
