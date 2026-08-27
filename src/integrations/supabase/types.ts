@@ -4529,6 +4529,7 @@ export type Database = {
           recorrencia_intervalo: number
           recorrencia_qtd: number | null
           serie_id: string | null
+          somente_dias_uteis: boolean
           status: string
           titulo: string
           updated_at: string
@@ -4551,6 +4552,7 @@ export type Database = {
           recorrencia_intervalo?: number
           recorrencia_qtd?: number | null
           serie_id?: string | null
+          somente_dias_uteis?: boolean
           status?: string
           titulo: string
           updated_at?: string
@@ -4573,6 +4575,7 @@ export type Database = {
           recorrencia_intervalo?: number
           recorrencia_qtd?: number | null
           serie_id?: string | null
+          somente_dias_uteis?: boolean
           status?: string
           titulo?: string
           updated_at?: string
