@@ -1678,20 +1678,20 @@ function AnaliseDetalhada() {
 
   // Estrutura efetiva do DRE: se houver saídas em SC, adiciona a linha SC (sum, sign -1).
   const estruturaEfetiva = useMemo<DreLine[]>(() => {
-    if (!stockAgg.agg.has("SC")) return dreEstrutura;
+    if (!extrasAgg.agg.has("SC")) return dreEstrutura;
     if (dreEstrutura.some((l) => l.id === "SC")) return dreEstrutura;
     return [...dreEstrutura, { id: "SC", label: "(?) Sem classificação", kind: "sum", sign: -1, prefixes: [] }];
-  }, [dreEstrutura, stockAgg.agg]);
+  }, [dreEstrutura, extrasAgg.agg]);
 
   // Servidor já fatiou pelo centro de custo — sem filtro client-side adicional.
   // Depois, soma por cima as saídas de estoque (não altera lógica do Conta Azul).
   const { totais, grupos } = useMemo(() => {
     const base = calcularDRECaixa(pagarRows, receberRows, planoMap, 0, 0, estruturaEfetiva, undefined, undefined, "competencia");
-    if (stockAgg.agg.size === 0) return base;
+    if (extrasAgg.agg.size === 0) return base;
     const grupos = new Map(base.grupos);
     const totais: Partial<Record<DreGroupId, number>> = { ...base.totais };
     // Merge dos detalhes em grupos.
-    stockAgg.agg.forEach((det, g) => {
+    extrasAgg.agg.forEach((det, g) => {
       const cur = grupos.get(g) ?? new Map<string, number>();
       det.forEach((v, k) => cur.set(k, (cur.get(k) ?? 0) + v));
       grupos.set(g, cur);
@@ -1717,14 +1717,14 @@ function AnaliseDetalhada() {
     (Object.keys(totais) as DreGroupId[]).forEach((k) => delete totais[k]);
     estruturaEfetiva.forEach((l) => getVal(l.id));
     return { totais, grupos };
-  }, [pagarRows, receberRows, planoMap, estruturaEfetiva, stockAgg]);
+  }, [pagarRows, receberRows, planoMap, estruturaEfetiva, extrasAgg]);
 
   // planoMap estendido com nomes das categorias de estoque, para o rótulo em linhasDre.
   const planoMapExt = useMemo(() => {
     const m = new Map(planoMap);
-    stockAgg.catNames.forEach((nome, key) => m.set(key, { nome }));
+    extrasAgg.catNames.forEach((nome, key) => m.set(key, { nome }));
     return m;
-  }, [planoMap, stockAgg.catNames]);
+  }, [planoMap, extrasAgg.catNames]);
 
   const rb = totais.RB ?? 0;
   const pv = (totais.AC ?? 0) + (totais.DM ?? 0) + (totais.DC ?? 0);
