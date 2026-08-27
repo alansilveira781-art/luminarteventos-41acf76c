@@ -1785,8 +1785,36 @@ function AnaliseDetalhada() {
       });
     });
 
+    // Impostos apurados (Contábil) — um item por recebimento do evento.
+    impostosEvento.detalhes.forEach((d, i) => {
+      list.push({
+        data: d.data,
+        nome: d.empresa,
+        descricao: `[Imposto] ${d.imposto}${d.nf ? ` — NF ${d.nf}` : ""}${d.empresa ? ` — ${d.empresa}` : ""}`,
+        valor: -d.valor,
+        categoria_external_id: `imposto:${d.imposto}`,
+        external_id: `imposto-${d.imposto}-${i}`,
+      });
+    });
+
+    // Corridas de Uber do evento.
+    uberEvento.rows.forEach((c) => {
+      const valor = Number(c.valor || 0);
+      if (!valor) return;
+      const passageiro = [c.nome, c.sobrenome].filter(Boolean).join(" ");
+      const trajeto = [c.endereco_partida, c.endereco_destino].filter(Boolean).join(" → ");
+      list.push({
+        data: c.data_solicitacao,
+        nome: passageiro || null,
+        descricao: `[Uber] ${[c.servico, trajeto].filter(Boolean).join(" — ") || "Corrida"}`,
+        valor: -valor,
+        categoria_external_id: "uber:total",
+        external_id: c.id,
+      });
+    });
+
     return list.sort((a, b) => (a.data ?? "").localeCompare(b.data ?? ""));
-  }, [pagarRows, receberRows, planoMap, saidasEstoque.data, centroSelNomeEarly, planoPorNome]);
+  }, [pagarRows, receberRows, planoMap, saidasEstoque.data, centroSelNomeEarly, planoPorNome, impostosEvento, uberEvento]);
 
 
 
