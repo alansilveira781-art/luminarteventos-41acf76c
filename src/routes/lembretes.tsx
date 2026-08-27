@@ -62,7 +62,8 @@ function mudouRecorrencia(atual: LembreteTarefa, v: TarefaFormValues): boolean {
     atual.recorrencia !== v.recorrencia ||
     (atual.recorrencia_intervalo ?? 1) !== (v.recorrencia_intervalo ?? 1) ||
     (atual.recorrencia_fim ?? null) !== (v.recorrencia_fim ?? null) ||
-    (atual.recorrencia_qtd ?? null) !== (v.recorrencia_qtd ?? null)
+    (atual.recorrencia_qtd ?? null) !== (v.recorrencia_qtd ?? null) ||
+    (atual.somente_dias_uteis ?? false) !== v.somente_dias_uteis
   );
 }
 
@@ -209,7 +210,8 @@ function LembretesPage() {
       escopo: EscopoSerie;
       atual: LembreteTarefa | null;
     }): Promise<{ acao: "criada" | "atualizada" | "regerada"; qtd: number }> => {
-      const { somente_dias_uteis: diasUteis, ...vals } = values;
+      const diasUteis = values.somente_dias_uteis;
+      const vals = values;
       if (atual) {
         const emSerie = escopo !== "esta" && !!atual.serie_id;
 

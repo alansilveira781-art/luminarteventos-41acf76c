@@ -27,6 +27,7 @@ export type LembreteTarefa = {
   recorrencia_fim?: string | null;
   recorrencia_qtd?: number | null;
   serie_id?: string | null;
+  somente_dias_uteis: boolean;
   prioridade: LembretePrioridade;
   status: LembreteStatus;
   concluida_em: string | null;
@@ -322,5 +323,6 @@ export function rotuloRecorrencia(t: LembreteTarefa): string {
   const r = RECORRENCIAS.find((x) => x.value === t.recorrencia);
   const n = t.recorrencia_intervalo ?? 1;
   if (!r || t.recorrencia === "nenhuma") return "";
-  return n > 1 ? `${r.label} (a cada ${n})` : r.label;
+  const frequencia = n > 1 ? `${r.label} (a cada ${n})` : r.label;
+  return t.somente_dias_uteis ? `${frequencia} · dias úteis` : frequencia;
 }

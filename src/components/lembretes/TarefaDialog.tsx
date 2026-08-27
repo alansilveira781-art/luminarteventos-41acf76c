@@ -34,7 +34,6 @@ export type TarefaFormValues = {
   recorrencia_intervalo: number;
   recorrencia_fim: string | null;
   recorrencia_qtd: number | null;
-  /** Não é coluna do banco: usado apenas para gerar as ocorrências. */
   somente_dias_uteis: boolean;
   prioridade: LembretePrioridade;
 };
@@ -93,7 +92,7 @@ export function TarefaDialog({
       setFimTipo(tarefa.recorrencia_fim ? "ate" : tarefa.recorrencia_qtd ? "qtd" : "qtd");
       setFimQtd(tarefa.recorrencia_qtd ?? 10);
       setFimData(tarefa.recorrencia_fim ?? "");
-      setDiasUteis(false);
+      setDiasUteis(tarefa.somente_dias_uteis ?? false);
       setPrioridade(tarefa.prioridade);
     } else {
       setTitulo("");
@@ -326,11 +325,7 @@ export function TarefaDialog({
               </div>
 
               {previa && <p className="text-xs text-muted-foreground">{previa}</p>}
-              {tarefa && (
-                <p className="text-xs text-muted-foreground">
-                  Alterar a repetição de uma tarefa já criada não gera novas ocorrências.
-                </p>
-              )}
+              {tarefa && <p className="text-xs text-muted-foreground">Alterações na repetição reprogramam o escopo selecionado.</p>}
             </div>
           )}
 
