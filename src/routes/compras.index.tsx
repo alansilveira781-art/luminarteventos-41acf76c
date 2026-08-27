@@ -8,11 +8,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, ChevronRight, ArrowRightLeft } from "lucide-react";
+import { Plus, Search, ChevronRight } from "lucide-react";
 import { CompraDialog } from "@/components/CompraDialog";
 import { DemandaDialog } from "@/components/DemandaDialog";
 import { proximoStatusDemanda } from "@/lib/demandas";
-import { COMPRA_STATUSES, canEditCompra, canMoveCompra, compraBackStatus, isNatanaelShortcut, moveBlockedMessage, nextCompraStatus, PEDRO_EMAIL, PEDRO_MOVE_BLOCKED_MSG, type CompraStatus } from "@/lib/compras";
+import { COMPRA_STATUSES, canMoveCompra, compraBackStatus, isNatanaelShortcut, moveBlockedMessage, nextCompraStatus, PEDRO_EMAIL, PEDRO_MOVE_BLOCKED_MSG, type CompraStatus } from "@/lib/compras";
 import { Checkbox } from "@/components/ui/checkbox";
 
 import { useTiposDespesa } from "@/hooks/useTiposDespesa";
@@ -102,7 +102,6 @@ function ComprasKanban() {
   const [escolherTipo, setEscolherTipo] = useState<CompraStatus | null>(null);
   const [q, setQ] = useState<string>(""); const qd = useDebouncedValue(q, 300);
   const [filters, setFilters] = usePersistedState<Filters>("compras.kanban", {});
-  const [migrarCompra, setMigrarCompra] = useState<Compra | null>(null);
   const tiposDespesa = useTiposDespesa();
 
   // Abre o card automaticamente quando o link tem ?id=... (reativo à URL)
@@ -758,11 +757,6 @@ function ComprasKanban() {
                   : atalho ||
                     canMoveCompra(c, user?.id, isAdmin, user?.email, next ?? undefined, c.status, responsavelDoStatus(next), responsavelDoStatus(c.status)) ||
                     (!!back && canMoveCompra(c, user?.id, isAdmin, user?.email, back, c.status, responsavelDoStatus(back), responsavelDoStatus(c.status)));
-                const canMigrate =
-                  !isDemanda &&
-                  (c.status === "solicitacao" || c.status === "a_receber") &&
-                  canEditCompra(c, user?.id, isAdmin, user?.email, responsavelDoStatus(c.status));
-
                 return (
                   <Card
                     key={c.id}
@@ -772,7 +766,6 @@ function ComprasKanban() {
                     onAdvance={next ? () => { void advanceToStatus(c, next); } : undefined}
                     canMove={canMove}
                     blockedMsg={canMove ? null : statusMoveBlockedMessage(next)}
-                    onMigrar={canMigrate ? () => setMigrarCompra(c) : undefined}
                     pagto={pagamentosPorCompra.get(c.id) ?? null}
                     selected={selectedIds.has(c.id)}
                     onToggleSelect={() => toggleSelect(c.id)}
@@ -921,16 +914,6 @@ function ComprasKanban() {
 
 
 
-      <MigrarCompraDialog
-        compra={migrarCompra}
-        onClose={() => setMigrarCompra(null)}
-        onDone={() => {
-          setMigrarCompra(null);
-          qc.invalidateQueries({ queryKey: ["compras"] });
-          qc.invalidateQueries({ queryKey: ["demandas"] });
-        }}
-      />
-
     </>
   );
 }
@@ -957,7 +940,7 @@ function Column({
 }
 
 function Card({
-  compra, onOpen, onAdvance, nextStatusLabel, canMove = true, blockedMsg = null, onMigrar, pagto = null,
+  compra, onOpen, onAdvance, nextStatusLabel, canMove = true, blockedMsg = null, pagto = null,
   selected = false, onToggleSelect,
 }: {
   compra: Compra;
@@ -966,7 +949,6 @@ function Card({
   nextStatusLabel?: string | null;
   canMove?: boolean;
   blockedMsg?: string | null;
-  onMigrar?: () => void;
   pagto?: StatusPagamentos | null;
   selected?: boolean;
   onToggleSelect?: () => void;
@@ -1064,18 +1046,6 @@ function Card({
             )}
           </div>
         </div>
-        {onMigrar && (
-          <button
-            type="button"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => { e.stopPropagation(); onMigrar(); }}
-            className="shrink-0 p-0.5 text-muted-foreground hover:text-primary"
-            title="Migrar para Aquisição"
-            aria-label="Migrar para Aquisição"
-          >
-            <ArrowRightLeft className="h-4 w-4" />
-          </button>
-        )}
         {onAdvance && nextStatusLabel && (
           <button
             type="button"
@@ -1102,249 +1072,3 @@ function formatDate(d: string) {
   try { return new Date(d).toLocaleDateString("pt-BR"); } catch { return d; }
 }
 
-function MigrarCompraDialog({
-  compra,
-  onClose,
-  onDone,
-}: {
-  compra: Compra | null;
-  onClose: () => void;
-  onDone: () => void;
-}) {
-  const [tipo, setTipo] = useState<string>("");
-  const [saving, setSaving] = useState(false);
-  const tiposDespesa = useTiposDespesa();
-
-
-  useEffect(() => {
-    if (compra) setTipo("");
-  }, [compra?.id]);
-
-  if (!compra) return null;
-
-  async function handleConfirm() {
-    if (!tipo) {
-      toast.error("Escolha o tipo de aquisição.");
-      return;
-    }
-    if (!compra) return;
-    setSaving(true);
-    try {
-      // 1) Buscar itens da compra
-      const { data: itens, error: itensErr } = await sb
-        .from("compra_itens")
-        .select("descricao,quantidade,unidade,valor_unitario,evento_projeto")
-        .eq("compra_id", compra.id);
-      if (itensErr) throw itensErr;
-
-      // 2) Buscar campos completos da compra
-      const { data: full, error: fullErr } = await sb
-        .from("compras")
-        .select(
-          "titulo,fornecedor,fornecedor_id,solicitante,solicitante_id,valor_total,observacoes,data_solicitacao,data_compra,comprador,responsavel_id,responsavel_nome,numero_nf,numeros_nf,tem_nf,parcelamento,condicao_pagamento,documento,created_by,solicitante_email,prazo,origem,op_ordem_id,status_financeiro",
-        )
-        .eq("id", compra.id)
-        .maybeSingle();
-      if (fullErr) throw fullErr;
-      if (!full) throw new Error("Compra não encontrada");
-
-      // 2b) Anexos, pagamentos e comentários da compra
-      const [anexosRes, pagsRes, comsRes] = await Promise.all([
-        sb.from("compra_anexos").select("*").eq("compra_id", compra.id),
-        sb.from("compra_pagamentos").select("*").eq("compra_id", compra.id),
-        sb.from("compra_comentarios").select("*").eq("compra_id", compra.id),
-      ]);
-      if (anexosRes.error) throw anexosRes.error;
-      if (pagsRes.error) throw pagsRes.error;
-      if (comsRes.error) throw comsRes.error;
-      const anexos = (anexosRes.data ?? []) as any[];
-      const pagamentos = (pagsRes.data ?? []) as any[];
-      const comentarios = (comsRes.data ?? []) as any[];
-
-      const usaItens = tiposDespesa.exigeItens(tipo);
-      let observacoes: string | null = full.observacoes ?? null;
-      if (!usaItens && itens && itens.length) {
-        const linhas = itens.map((it: any) => {
-          const q = Number(it.quantidade) || 0;
-          const v = Number(it.valor_unitario) || 0;
-          const val = v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-          return `${q}x ${it.descricao ?? ""} — ${val}`;
-        });
-        const texto = linhas.join("; ");
-        observacoes = observacoes ? `${observacoes}\n\n${texto}` : texto;
-      }
-
-      const payload: any = {
-        titulo: full.titulo,
-        fornecedor: full.fornecedor,
-        fornecedor_id: full.fornecedor_id,
-        solicitante: full.solicitante,
-        solicitante_id: full.solicitante_id,
-        solicitante_email: full.solicitante_email,
-        valor_total: full.valor_total,
-        observacoes,
-        data_solicitacao: full.data_solicitacao,
-        data_compra: full.data_compra,
-        comprador: full.comprador,
-        responsavel_id: full.responsavel_id,
-        responsavel_nome: full.responsavel_nome,
-        numero_nf: full.numero_nf,
-        numeros_nf: full.numeros_nf,
-        tem_nf: full.tem_nf,
-        parcelamento: full.parcelamento,
-        condicao_pagamento: full.condicao_pagamento,
-        documento: full.documento,
-        created_by: full.created_by,
-        prazo: full.prazo,
-        origem: full.origem,
-        op_ordem_id: full.op_ordem_id,
-        status_financeiro: full.status_financeiro,
-        tipo_demanda: tipo,
-        status: compra.status === "a_receber" ? "a_receber" : "solicitacao",
-      };
-
-      // 3) Criar demanda
-      const { data: novaDem, error: demErr } = await sb
-        .from("demandas")
-        .insert(payload)
-        .select("id")
-        .single();
-      if (demErr) throw demErr;
-
-      // 4) Copiar itens quando aplicável
-      if (usaItens && itens && itens.length) {
-        const rows = itens.map((it: any) => ({
-          demanda_id: novaDem.id,
-          descricao: it.descricao,
-          quantidade: it.quantidade,
-          unidade: it.unidade,
-          valor_unitario: it.valor_unitario,
-          evento_projeto: it.evento_projeto ?? null,
-        }));
-        const { error: insItErr } = await sb.from("demanda_itens").insert(rows);
-        if (insItErr) throw insItErr;
-      }
-
-      // 4b) Copiar anexos (download do bucket de compras → upload no de aquisições)
-      const pathsAntigos: string[] = [];
-      for (const a of anexos) {
-        const { data: blob, error: dlErr } = await sb.storage
-          .from("compra-anexos")
-          .download(a.path);
-        if (dlErr || !blob) throw new Error(`Falha ao copiar anexo "${a.nome}"`);
-        const safeName = (a.nome ?? "arquivo")
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .replace(/[^a-zA-Z0-9._-]/g, "_");
-        const novoPath = `${novaDem.id}/${Date.now()}_${safeName}`;
-        const { error: upErr } = await sb.storage
-          .from("demanda-anexos")
-          .upload(novoPath, blob, { contentType: a.mime_type ?? undefined, upsert: false });
-        if (upErr) throw new Error(`Falha ao enviar anexo "${a.nome}": ${upErr.message}`);
-        const { error: insAnErr } = await sb.from("demanda_anexos").insert({
-          demanda_id: novaDem.id,
-          nome: a.nome,
-          path: novoPath,
-          mime_type: a.mime_type,
-          tamanho: a.tamanho,
-          uploaded_by: a.uploaded_by,
-        });
-        if (insAnErr) throw insAnErr;
-        pathsAntigos.push(a.path);
-      }
-
-      // 4c) Copiar pagamentos
-      if (pagamentos.length) {
-        const rows = pagamentos.map((p) => ({
-          demanda_id: novaDem.id,
-          forma: p.forma,
-          parcelamento: p.parcelamento,
-          valor: p.valor,
-          ordem: p.ordem,
-          observacao: p.observacao,
-          data_pagamento: p.data_pagamento,
-          pago: p.pago,
-          pago_em: p.pago_em,
-        }));
-        const { error: pagErr } = await sb.from("demanda_pagamentos").insert(rows);
-        if (pagErr) throw pagErr;
-      }
-
-      // 4d) Copiar comentários
-      if (comentarios.length) {
-        const rows = comentarios.map((c) => ({
-          demanda_id: novaDem.id,
-          user_id: c.user_id,
-          user_nome: c.user_nome,
-          texto: c.texto,
-          mencoes: c.mencoes,
-          created_at: c.created_at,
-        }));
-        const { error: comErr } = await sb.from("demanda_comentarios").insert(rows);
-        if (comErr) throw comErr;
-      }
-
-      // 5) Só agora limpar os registros da compra
-      if (pathsAntigos.length) {
-        await sb.storage.from("compra-anexos").remove(pathsAntigos);
-      }
-      await sb.from("compra_anexos").delete().eq("compra_id", compra.id);
-      await sb.from("compra_pagamentos").delete().eq("compra_id", compra.id);
-      await sb.from("compra_comentarios").delete().eq("compra_id", compra.id);
-      await sb.from("compra_itens").delete().eq("compra_id", compra.id);
-      const { error: delErr } = await sb.from("compras").delete().eq("id", compra.id);
-      if (delErr) throw delErr;
-
-
-      toast.success("Compra migrada para Aquisição");
-      onDone();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao migrar compra");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <Dialog open={!!compra} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Migrar para Aquisição</DialogTitle>
-          <DialogDescription>
-            Esta compra será convertida em uma aquisição e removida do Quadro de Compras.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Tipo de aquisição</label>
-          <Select value={tipo} onValueChange={setTipo}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione o tipo…" />
-            </SelectTrigger>
-            <SelectContent>
-              {tiposDespesa.options.map((o) => (
-                <SelectItem key={o.value} value={o.value}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {tipo && !tiposDespesa.exigeItens(tipo) && (
-            <p className="text-xs text-muted-foreground">
-              Os itens da compra serão convertidos em texto no campo de observações.
-            </p>
-          )}
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saving}>
-            Cancelar
-          </Button>
-          <Button onClick={handleConfirm} disabled={saving || !tipo}>
-            {saving ? "Migrando…" : "Confirmar migração"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
