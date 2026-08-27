@@ -8,11 +8,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, ChevronRight, ArrowRightLeft } from "lucide-react";
+import { Plus, Search, ChevronRight } from "lucide-react";
 import { CompraDialog } from "@/components/CompraDialog";
 import { DemandaDialog } from "@/components/DemandaDialog";
 import { proximoStatusDemanda } from "@/lib/demandas";
-import { COMPRA_STATUSES, canEditCompra, canMoveCompra, compraBackStatus, isNatanaelShortcut, moveBlockedMessage, nextCompraStatus, PEDRO_EMAIL, PEDRO_MOVE_BLOCKED_MSG, type CompraStatus } from "@/lib/compras";
+import { COMPRA_STATUSES, canMoveCompra, compraBackStatus, isNatanaelShortcut, moveBlockedMessage, nextCompraStatus, PEDRO_EMAIL, PEDRO_MOVE_BLOCKED_MSG, type CompraStatus } from "@/lib/compras";
 import { Checkbox } from "@/components/ui/checkbox";
 
 import { useTiposDespesa } from "@/hooks/useTiposDespesa";
