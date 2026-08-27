@@ -1,0 +1,1 @@
+update public.modulos set ativo = false where slug = 'financeiro';
