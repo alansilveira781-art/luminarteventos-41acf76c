@@ -390,15 +390,22 @@ export function CompraDialog({
     setItens((p) => p.map((it, i) => {
       if (i !== idx) return it;
       const next = { ...it, ...patch };
-      const cot = parseFloat(String(next.cotacao ?? "").replace(",", "."));
       const desc = Number(next.desconto_percentual ?? 0);
-      if (!Number.isNaN(cot) && Number.isFinite(cot)) {
-        const sugerido = cot * (1 - (desc || 0) / 100);
-        next.valor_unitario = Number(sugerido.toFixed(4));
+      let bruto = parseFloat(String(next.cotacao ?? "").replace(",", "."));
+      // Sem cotação informada: o valor unitário atual vira o preço cheio de
+      // referência (revertendo um desconto anterior para não descontar em cima de desconto).
+      if (!Number.isFinite(bruto)) {
+        const atual = Number(it.valor_unitario ?? 0);
+        if (!atual) return next;
+        const descAnterior = Number(it.desconto_percentual ?? 0);
+        bruto = descAnterior && descAnterior < 100 ? atual / (1 - descAnterior / 100) : atual;
+        next.cotacao = String(Number(bruto.toFixed(4))).replace(".", ",");
       }
+      next.valor_unitario = Number((bruto * (1 - (desc || 0) / 100)).toFixed(4));
       return next;
     }));
   }
+
   function removeItem(idx: number) { setItens((p) => p.filter((_, i) => i !== idx)); }
 
   return (
