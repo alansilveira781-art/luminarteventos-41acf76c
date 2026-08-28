@@ -1119,11 +1119,14 @@ function EntradaEditForm({ original, itens, fornecedores, onEditFornecedor, onSu
     observacoes: original.observacoes ?? "",
   });
   const set = (k: string, v: any) => setForm((p) => ({ ...p, [k]: v }));
+  const { locked, tryLock } = useSubmitLock(submitting);
 
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
+      if (submitting || locked) return;
       if (!form.item_id || Number(form.quantidade) <= 0) return toast.error("Item e quantidade obrigatórios");
+      if (!tryLock()) return;
       onSubmit({
         data_movimento: new Date(form.data_movimento).toISOString(),
         entrada_tipo: form.entrada_tipo,
