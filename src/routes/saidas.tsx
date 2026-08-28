@@ -312,23 +312,16 @@ function SaidasPage() {
     },
   });
 
-  // Filtros + agrupamento por requisicao_numero (ajustes de estoque ficam ocultos na lista)
+  // Filtros de grupo (ajustes de estoque ficam ocultos na lista).
+  // A busca por item é aplicada depois do agrupamento, para que a requisição
+  // inteira apareça mesmo quando só um dos itens casa com o termo buscado.
   const filteredBaseList = (saidas ?? []).filter((m: any) => {
     if (isAjusteMovimentacao(m)) return false;
-    if (filterItemQd.trim()) {
-      const itemHay = `${m.item?.codigo ?? ""} ${m.item?.nome ?? ""}`;
-      if (!matchTokens(itemHay, filterItemQd)) return false;
-    }
     if (filterEvento !== "__all" && (m.evento_projeto ?? "") !== filterEvento) return false;
     if (filterEmpresa !== "__all" && (m.empresa ?? "") !== filterEmpresa) return false;
-    if (!qd.trim()) return true;
-    const hay = [
-      m.item?.nome, m.item?.codigo, m.evento_projeto, m.solicitante?.nome,
-      m.saida_tipo, m.finalidade, m.observacoes, m.saida_status,
-      m.requisicao_numero ? `req-${String(m.requisicao_numero).padStart(4, "0")}` : "",
-    ].join(" ");
-    return matchTokens(hay, qd);
+    return true;
   });
+
 
   const grupos = useMemo(() => {
     const map = new Map<string, any>();
