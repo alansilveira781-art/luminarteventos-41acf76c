@@ -926,6 +926,7 @@ function SaidaEditForm({ original, itens, solicitantes, onEditSolicitante, event
       if (!form.item_id || Number(form.quantidade) <= 0) return toast.error("Item e quantidade obrigatórios");
       if (isEvento && !form.evento_projeto) return toast.error("Evento/Projeto é obrigatório");
       if (form.sera_devolvido === "sim" && !form.data_prevista_devolucao) return toast.error("Informe a data prevista de devolução");
+      if (!tryLock()) return;
       onSubmit({
         data_movimento: fromBRTInputDateTime(form.data_movimento),
         saida_tipo: form.saida_tipo,
