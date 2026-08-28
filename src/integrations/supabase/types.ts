@@ -6346,6 +6346,12 @@ export type Database = {
         }
         Returns: string
       }
+      compras_estoque_categorias: {
+        Args: never
+        Returns: {
+          categoria: string
+        }[]
+      }
       compras_estoque_listar: {
         Args: {
           _busca?: string
