@@ -260,8 +260,27 @@ function EntradasPage() {
       g.qtd_total += Number(m.quantidade);
       g.valor_total += Number(m.valor_unitario ?? 0) * Number(m.quantidade ?? 0);
     }
-    const arr = Array.from(map.values());
+    let arr = Array.from(map.values());
+    if (filterItemQd.trim()) {
+      arr = arr.filter((g: any) =>
+        g.linhas.some((l: any) =>
+          matchTokens(`${l.item?.codigo ?? ""} ${l.item?.nome ?? ""}`, filterItemQd),
+        ),
+      );
+    }
+    if (qd.trim()) {
+      arr = arr.filter((g: any) => {
+        const hay = [
+          g.fornecedor?.nome, g.fornecedor?.documento, g.entrada_tipo, g.nota_fiscal,
+          g.responsavel_lancamento, g.observacoes,
+          g.numero ? `req-${String(g.numero).padStart(4, "0")}` : "",
+          ...g.linhas.flatMap((l: any) => [l.item?.nome, l.item?.codigo]),
+        ].join(" ");
+        return matchTokens(hay, qd);
+      });
+    }
     return applySort(arr, (g: any, k: string) => {
+
       if (k === "data_movimento") return g.data_movimento;
       if (k === "fornecedor") return g.fornecedor?.nome;
       if (k === "valor_total") return g.valor_total;
