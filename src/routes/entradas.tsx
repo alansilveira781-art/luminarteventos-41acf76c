@@ -219,22 +219,15 @@ function EntradasPage() {
     },
   });
 
-  // Filtros + agrupamento por requisicao_numero (ajustes de estoque ficam ocultos na lista)
+  // Filtros de grupo (ajustes de estoque ficam ocultos na lista).
+  // A busca por item é aplicada depois do agrupamento, para que a nota/requisição
+  // inteira apareça mesmo quando só um dos itens casa com o termo buscado.
   const filteredBaseList = (entradas ?? []).filter((m: any) => {
     if (isAjusteMovimentacao(m)) return false;
-    if (filterItemQd.trim()) {
-      const itemHay = `${m.item?.codigo ?? ""} ${m.item?.nome ?? ""}`;
-      if (!matchTokens(itemHay, filterItemQd)) return false;
-    }
     if (filterEvento !== "__all" && (m.evento_projeto ?? "") !== filterEvento) return false;
-    if (!qd.trim()) return true;
-    const hay = [
-      m.item?.nome, m.item?.codigo, m.fornecedor?.nome, m.fornecedor?.documento,
-      m.entrada_tipo, m.nota_fiscal, m.responsavel_lancamento, m.observacoes,
-      m.requisicao_numero ? `req-${String(m.requisicao_numero).padStart(4, "0")}` : "",
-    ].join(" ");
-    return matchTokens(hay, qd);
+    return true;
   });
+
   // Lista distinct de eventos para o filtro
   const eventosDisponiveis = useMemo(() => {
     const s = new Set<string>();
