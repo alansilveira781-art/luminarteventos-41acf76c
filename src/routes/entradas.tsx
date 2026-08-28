@@ -1164,7 +1164,7 @@ function EntradaEditForm({ original, itens, fornecedores, onEditFornecedor, onSu
         <FormField label="Nota fiscal"><Input value={form.nota_fiscal} onChange={(e) => set("nota_fiscal", e.target.value)} /></FormField>
         <FormField label="Observações" wide><Textarea rows={2} value={form.observacoes} onChange={(e) => set("observacoes", e.target.value)} /></FormField>
       </FormSection>
-      <FormActions><Button type="submit" size="lg" disabled={submitting}>{submitting ? "Salvando…" : "Salvar alterações"}</Button></FormActions>
+      <FormActions><Button type="submit" size="lg" disabled={submitting || locked}>{submitting || locked ? "Salvando…" : "Salvar alterações"}</Button></FormActions>
     </form>
   );
 }
