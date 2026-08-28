@@ -6346,6 +6346,43 @@ export type Database = {
         }
         Returns: string
       }
+      compras_estoque_categorias: {
+        Args: never
+        Returns: {
+          categoria: string
+        }[]
+      }
+      compras_estoque_listar: {
+        Args: {
+          _busca?: string
+          _categoria?: string
+          _limite?: number
+          _offset?: number
+          _ordem?: string
+          _status?: string
+        }
+        Returns: {
+          categoria: string
+          codigo: string
+          id: string
+          nome: string
+          quantidade_atual: number
+          quantidade_minima: number
+          saidas: number
+          status: string
+          total_count: number
+          unidade: string
+        }[]
+      }
+      compras_estoque_resumo: {
+        Args: never
+        Returns: {
+          baixo_estoque: number
+          disponivel: number
+          sem_estoque: number
+          total: number
+        }[]
+      }
       enqueue_notificacoes: { Args: { rows: Json }; Returns: undefined }
       estoque_editar_entrada: {
         Args: { p_linhas: Json; p_meta: Json; p_old_ids: string[] }
