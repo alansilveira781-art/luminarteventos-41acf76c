@@ -371,19 +371,30 @@ function ExportDialog({ open, onOpenChange, all, filtered }: {
   open: boolean; onOpenChange: (v: boolean) => void; all: Pat[]; filtered: Pat[];
 }) {
   const [scope, setScope] = useState<"filtered" | "all">("filtered");
-  const [format, setFormat] = useState<"csv" | "xls">("csv");
+  const [format, setFormat] = useState<"csv" | "xls" | "pdf">("csv");
   const [cols, setCols] = useState<string[]>(EXPORT_COLS.map((c) => c.key as string));
 
   const toggle = (k: string) => setCols((p) => p.includes(k) ? p.filter((x) => x !== k) : [...p, k]);
 
-  const doExport = () => {
+  const doExport = async () => {
     const rows = scope === "all" ? all : filtered;
     const selected = EXPORT_COLS.filter((c) => cols.includes(c.key as string));
     if (!selected.length) return toast.error("Selecione ao menos uma coluna");
     const date = new Date().toISOString().slice(0, 10);
     const filename = `inventario_patrimonio_${date}.${format === "csv" ? "csv" : "xls"}`;
 
-    if (format === "csv") {
+    if (format === "pdf") {
+      try {
+        const { gerarInventarioPdf } = await import("@/lib/patrimonio/inventario-pdf");
+        await gerarInventarioPdf({
+          escopo: scope === "all" ? "Todos os itens" : "Itens filtrados",
+          colunas: selected.map((c) => ({ key: c.key as string, label: c.label })),
+          linhas: rows as any[],
+        });
+      } catch (e: any) {
+        return toast.error(e?.message ?? "Falha ao gerar o PDF");
+      }
+    } else if (format === "csv") {
       const esc = (v: any) => {
         const s = v == null ? "" : String(v);
         return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -427,6 +438,7 @@ function ExportDialog({ open, onOpenChange, all, filtered }: {
                 <SelectContent>
                   <SelectItem value="csv">CSV (Excel/Google Sheets)</SelectItem>
                   <SelectItem value="xls">Excel (.xls)</SelectItem>
+                  <SelectItem value="pdf">PDF (relatório)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
