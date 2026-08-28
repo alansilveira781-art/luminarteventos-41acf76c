@@ -221,7 +221,7 @@ export function ConferenciaEgestorDialog({
         if (sis) {
           matched.add(sis.id);
           const saldoSis = Number(sis.quantidade_atual ?? 0);
-          const dif = saldoSis - eg.estoque;
+          const dif = arred(saldoSis - eg.estoque);
           out.push({
             itemId: sis.id,
             nome: sis.nome,
@@ -229,7 +229,8 @@ export function ConferenciaEgestorDialog({
             saldoSistema: saldoSis,
             saldoEgestor: eg.estoque,
             diferenca: dif,
-            status: dif === 0 ? "ok" : "divergente",
+            status: Math.abs(dif) < 0.001 ? "ok" : "divergente",
+
             inativo: sis.status === "inativo",
           });
         } else {
