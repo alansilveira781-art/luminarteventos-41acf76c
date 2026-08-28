@@ -352,7 +352,26 @@ function SaidasPage() {
       g.linhas.push(m);
       g.qtd_total += Number(m.quantidade);
     }
-    const arr = Array.from(map.values());
+    let arr = Array.from(map.values());
+    // Busca por requisição: se qualquer item casar, a requisição inteira aparece.
+    if (filterItemQd.trim()) {
+      arr = arr.filter((g: any) =>
+        g.linhas.some((l: any) =>
+          matchTokens(`${l.item?.codigo ?? ""} ${l.item?.nome ?? ""}`, filterItemQd),
+        ),
+      );
+    }
+    if (qd.trim()) {
+      arr = arr.filter((g: any) => {
+        const hay = [
+          g.evento_projeto, g.solicitante?.nome, g.saida_tipo, g.finalidade,
+          g.observacoes, g.saida_status,
+          g.numero ? `req-${String(g.numero).padStart(4, "0")}` : "",
+          ...g.linhas.flatMap((l: any) => [l.item?.nome, l.item?.codigo]),
+        ].join(" ");
+        return matchTokens(hay, qd);
+      });
+    }
     return applySort(arr, (g: any, k: string) => {
       if (k === "data_movimento") return g.data_movimento;
       if (k === "solicitante") return g.solicitante?.nome;
@@ -360,7 +379,8 @@ function SaidasPage() {
       if (k === "numero") return g.numero ?? 0;
       return g[k];
     });
-  }, [filteredBaseList, sort]);
+  }, [filteredBaseList, sort, qd, filterItemQd]);
+
 
   const gruposPeriodo = useMemo(
     () => filterByPeriodo(grupos, periodo, (g: any) => g.data_movimento),
