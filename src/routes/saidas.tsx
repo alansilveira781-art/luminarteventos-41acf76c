@@ -754,6 +754,8 @@ function SaidaForm({ prefill, isEditing, itens, solicitantes, onEditSolicitante,
   };
   const addLinha = () => setLinhas((a) => [...a, { item_id: "", quantidade: "" }]);
   const remLinha = (i: number) => setLinhas((a) => (a.length === 1 ? a : a.filter((_, idx) => idx !== i)));
+  const { locked, tryLock } = useSubmitLock(submitting);
+
 
   return (
     <form onSubmit={(e) => {
