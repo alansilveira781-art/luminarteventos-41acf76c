@@ -505,6 +505,42 @@ function EstoquePage() {
         onSubmit={(p) => bulkMut.mutate(normalizeBulkPatch(p))}
         title="Editar itens em massa"
       />
+
+      <AlertDialog open={!!confirmDel} onOpenChange={(o) => { if (!o) setConfirmDel(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmDel?.tipo === "bulk" ? `Excluir ${confirmDel.ids.length} item(ns)?` : "Excluir item?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDel?.tipo === "single" && (
+                <>
+                  O item <strong>{confirmDel.item.nome}</strong> possui saldo atual de{" "}
+                  <strong>{Number(confirmDel.item.quantidade_atual)} {confirmDel.item.unidade}</strong>.{" "}
+                </>
+              )}
+              Será lançada uma saída de baixa zerando o saldo e, em seguida, o item será excluído
+              junto com todo o seu histórico de movimentações. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={delMut.isPending || bulkDelMut.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (!confirmDel) return;
+                if (confirmDel.tipo === "single") delMut.mutate(confirmDel.item.id);
+                else bulkDelMut.mutate(confirmDel.ids);
+              }}
+            >
+              {delMut.isPending || bulkDelMut.isPending ? "Excluindo…" : "Excluir item"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </>
   );
 }
