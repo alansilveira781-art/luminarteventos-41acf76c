@@ -438,6 +438,7 @@ function ExportDialog({ open, onOpenChange, all, filtered }: {
                 <SelectContent>
                   <SelectItem value="csv">CSV (Excel/Google Sheets)</SelectItem>
                   <SelectItem value="xls">Excel (.xls)</SelectItem>
+                  <SelectItem value="pdf">PDF (relatório)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
