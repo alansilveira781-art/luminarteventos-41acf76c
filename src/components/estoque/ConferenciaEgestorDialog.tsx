@@ -220,7 +220,7 @@ export function ConferenciaEgestorDialog({
         if (!sis && cKey) sis = porCodigo.get(cKey);
         if (sis) {
           matched.add(sis.id);
-          const saldoSis = Number(sis.quantidade_atual ?? 0);
+          const saldoSis = arred(Number(sis.quantidade_atual ?? 0));
           const dif = arred(saldoSis - eg.estoque);
           out.push({
             itemId: sis.id,
