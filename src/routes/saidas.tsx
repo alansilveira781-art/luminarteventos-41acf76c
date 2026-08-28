@@ -758,6 +758,7 @@ function SaidaForm({ prefill, isEditing, itens, solicitantes, onEditSolicitante,
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
+      if (submitting || locked) return;
       if (isEvento && !meta.evento_projeto) return toast.error("Evento/Projeto é obrigatório");
       if (!meta.empresa) return toast.error("Empresa é obrigatória");
       if (meta.sera_devolvido === "sim" && !meta.data_prevista_devolucao) {
@@ -765,6 +766,7 @@ function SaidaForm({ prefill, isEditing, itens, solicitantes, onEditSolicitante,
       }
       const validas = linhas.filter((l) => l.item_id && Number(l.quantidade) > 0);
       if (validas.length === 0) return toast.error("Adicione pelo menos um item");
+      if (!tryLock()) return;
       onSubmit(
         {
           data_movimento: fromBRTInputDateTime(meta.data_movimento),
