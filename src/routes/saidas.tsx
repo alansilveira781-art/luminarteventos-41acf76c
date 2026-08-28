@@ -987,7 +987,7 @@ function SaidaEditForm({ original, itens, solicitantes, onEditSolicitante, event
         <FormField label="Finalidade" wide><Input value={form.finalidade} onChange={(e) => set("finalidade", e.target.value)} /></FormField>
         <FormField label="Observações" wide><Textarea rows={2} value={form.observacoes} onChange={(e) => set("observacoes", e.target.value)} /></FormField>
       </FormSection>
-      <FormActions><Button type="submit" size="lg" disabled={submitting}>{submitting ? "Salvando…" : "Salvar alterações"}</Button></FormActions>
+      <FormActions><Button type="submit" size="lg" disabled={submitting || locked}>{submitting || locked ? "Salvando…" : "Salvar alterações"}</Button></FormActions>
     </form>
   );
 }
