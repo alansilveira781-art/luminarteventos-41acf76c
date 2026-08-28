@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef, useMemo, useEffect } from "react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useSubmitLock } from "@/hooks/useSubmitLock";
 
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -754,10 +755,13 @@ function SaidaForm({ prefill, isEditing, itens, solicitantes, onEditSolicitante,
   };
   const addLinha = () => setLinhas((a) => [...a, { item_id: "", quantidade: "" }]);
   const remLinha = (i: number) => setLinhas((a) => (a.length === 1 ? a : a.filter((_, idx) => idx !== i)));
+  const { locked, tryLock } = useSubmitLock(submitting);
+
 
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
+      if (submitting || locked) return;
       if (isEvento && !meta.evento_projeto) return toast.error("Evento/Projeto é obrigatório");
       if (!meta.empresa) return toast.error("Empresa é obrigatória");
       if (meta.sera_devolvido === "sim" && !meta.data_prevista_devolucao) {
@@ -765,6 +769,7 @@ function SaidaForm({ prefill, isEditing, itens, solicitantes, onEditSolicitante,
       }
       const validas = linhas.filter((l) => l.item_id && Number(l.quantidade) > 0);
       if (validas.length === 0) return toast.error("Adicione pelo menos um item");
+      if (!tryLock()) return;
       onSubmit(
         {
           data_movimento: fromBRTInputDateTime(meta.data_movimento),
@@ -891,7 +896,7 @@ function SaidaForm({ prefill, isEditing, itens, solicitantes, onEditSolicitante,
         </Card>
       </div>
 
-      <FormActions><Button type="submit" size="lg" disabled={submitting}>{submitting ? "Salvando…" : (isEditing ? "Salvar alterações" : "Registrar saída")}</Button></FormActions>
+      <FormActions><Button type="submit" size="lg" disabled={submitting || locked}>{submitting || locked ? "Salvando…" : (isEditing ? "Salvar alterações" : "Registrar saída")}</Button></FormActions>
     </form>
   );
 }
@@ -912,13 +917,16 @@ function SaidaEditForm({ original, itens, solicitantes, onEditSolicitante, event
   });
   const set = (k: string, v: any) => setForm((p) => ({ ...p, [k]: v }));
   const isEvento = form.saida_tipo === "evento";
+  const { locked, tryLock } = useSubmitLock(submitting);
 
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
+      if (submitting || locked) return;
       if (!form.item_id || Number(form.quantidade) <= 0) return toast.error("Item e quantidade obrigatórios");
       if (isEvento && !form.evento_projeto) return toast.error("Evento/Projeto é obrigatório");
       if (form.sera_devolvido === "sim" && !form.data_prevista_devolucao) return toast.error("Informe a data prevista de devolução");
+      if (!tryLock()) return;
       onSubmit({
         data_movimento: fromBRTInputDateTime(form.data_movimento),
         saida_tipo: form.saida_tipo,
@@ -979,7 +987,7 @@ function SaidaEditForm({ original, itens, solicitantes, onEditSolicitante, event
         <FormField label="Finalidade" wide><Input value={form.finalidade} onChange={(e) => set("finalidade", e.target.value)} /></FormField>
         <FormField label="Observações" wide><Textarea rows={2} value={form.observacoes} onChange={(e) => set("observacoes", e.target.value)} /></FormField>
       </FormSection>
-      <FormActions><Button type="submit" size="lg" disabled={submitting}>{submitting ? "Salvando…" : "Salvar alterações"}</Button></FormActions>
+      <FormActions><Button type="submit" size="lg" disabled={submitting || locked}>{submitting || locked ? "Salvando…" : "Salvar alterações"}</Button></FormActions>
     </form>
   );
 }

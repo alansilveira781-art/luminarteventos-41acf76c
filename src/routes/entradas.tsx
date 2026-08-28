@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef, useMemo, useEffect } from "react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useSubmitLock } from "@/hooks/useSubmitLock";
 
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -967,13 +968,16 @@ function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor
   const sumIpi = linhas.reduce((acc, l) => acc + Number(l.ipi || 0), 0);
   const sumOutros = linhas.reduce((acc, l) => acc + Number(l.outros_custos || 0), 0);
   const totalGeral = linhas.reduce((acc, l) => acc + calcLinha(l), 0);
+  const { locked, tryLock } = useSubmitLock(submitting);
 
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
+      if (submitting || locked) return;
       const validas = linhas.filter((l) => l.item_id && Number(l.quantidade) > 0);
       if (validas.length === 0) return toast.error("Adicione pelo menos um item");
       if (!meta.empresa) return toast.error("Selecione a empresa");
+      if (!tryLock()) return;
       onSubmit(
         {
           data_movimento: fromBRTInputDateTime(meta.data_movimento),
@@ -1098,7 +1102,7 @@ function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor
         </Card>
       </div>
 
-      <FormActions><Button type="submit" size="lg" disabled={submitting}>{submitting ? "Salvando…" : (isEditing ? "Salvar alterações" : "Registrar entrada")}</Button></FormActions>
+      <FormActions><Button type="submit" size="lg" disabled={submitting || locked}>{submitting || locked ? "Salvando…" : (isEditing ? "Salvar alterações" : "Registrar entrada")}</Button></FormActions>
     </form>
   );
 }
@@ -1115,11 +1119,14 @@ function EntradaEditForm({ original, itens, fornecedores, onEditFornecedor, onSu
     observacoes: original.observacoes ?? "",
   });
   const set = (k: string, v: any) => setForm((p) => ({ ...p, [k]: v }));
+  const { locked, tryLock } = useSubmitLock(submitting);
 
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
+      if (submitting || locked) return;
       if (!form.item_id || Number(form.quantidade) <= 0) return toast.error("Item e quantidade obrigatórios");
+      if (!tryLock()) return;
       onSubmit({
         data_movimento: new Date(form.data_movimento).toISOString(),
         entrada_tipo: form.entrada_tipo,
@@ -1157,7 +1164,7 @@ function EntradaEditForm({ original, itens, fornecedores, onEditFornecedor, onSu
         <FormField label="Nota fiscal"><Input value={form.nota_fiscal} onChange={(e) => set("nota_fiscal", e.target.value)} /></FormField>
         <FormField label="Observações" wide><Textarea rows={2} value={form.observacoes} onChange={(e) => set("observacoes", e.target.value)} /></FormField>
       </FormSection>
-      <FormActions><Button type="submit" size="lg" disabled={submitting}>{submitting ? "Salvando…" : "Salvar alterações"}</Button></FormActions>
+      <FormActions><Button type="submit" size="lg" disabled={submitting || locked}>{submitting || locked ? "Salvando…" : "Salvar alterações"}</Button></FormActions>
     </form>
   );
 }
