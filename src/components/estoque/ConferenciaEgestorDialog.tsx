@@ -292,7 +292,7 @@ export function ConferenciaEgestorDialog({
   const ajustarLinha = async (l: LinhaConferencia): Promise<boolean> => {
     if (!l.itemId || l.saldoSistema == null || l.saldoEgestor == null) return false;
     const dif = arred(l.saldoSistema - l.saldoEgestor);
-    if (dif === 0) return true;
+    if (Math.abs(dif) < 0.001) return true;
     const qtd = Math.abs(dif);
     const obs = `Ajuste por conferência Egestor (saldo anterior: ${l.saldoSistema}, novo: ${l.saldoEgestor})`;
 
