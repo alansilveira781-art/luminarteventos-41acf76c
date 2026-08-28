@@ -1,0 +1,1 @@
+ALTER FUNCTION public.revert_movement_on_delete() SET search_path = public;
