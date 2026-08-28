@@ -40,26 +40,51 @@ type LinhaConferencia = {
 
 type Filtro = "todos" | "divergentes" | "so_egestor" | "so_sistema";
 
+/** Arredonda para 3 casas, eliminando dízimas de ponto flutuante. */
+function arred(n: number): number {
+  return Math.round(n * 1000) / 1000;
+}
+
+/**
+ * Lê o saldo do Egestor aceitando vírgula ou ponto como separador decimal
+ * ("-0,5", "-0.5", "1.234,56", "1,234.56"). O separador de milhar só é
+ * descartado quando realmente separa grupos de 3 dígitos.
+ */
 function parseSaldoEgestor(raw: any): number {
+  if (typeof raw === "number") return Number.isFinite(raw) ? arred(raw) : 0;
   let s = String(raw ?? "").trim();
   if (s === "" || s.toLowerCase() === "nan") return 0;
-  const neg = s.startsWith("-");
-  if (neg) s = s.slice(1);
+  const neg = s.startsWith("-") || /^\(.*\)$/.test(s);
+  s = s.replace(/[()\-\s]/g, "").replace(/[^\d.,]/g, "");
+  if (!s) return 0;
 
-  let val: number;
-  if (/e\+?\d/i.test(s)) {
-    val = Number(s.replace(",", "."));
-    if (val >= 1e6) val = val / 1e10;
-  } else if (s.includes(",")) {
-    val = Number(s.replace(/\./g, "").replace(",", "."));
-  } else {
-    const digits = s.replace(/\./g, "");
-    const asNum = Number(digits);
-    val = asNum >= 1e7 ? asNum / 1e10 : asNum;
+  const lastComma = s.lastIndexOf(",");
+  const lastDot = s.lastIndexOf(".");
+  let decSep = "";
+  if (lastComma >= 0 && lastDot >= 0) {
+    decSep = lastComma > lastDot ? "," : ".";
+  } else if (lastComma >= 0) {
+    // vírgula única: decimal, a menos que separe grupos de 3 (1,234)
+    decSep = /^\d{1,3}(,\d{3})+$/.test(s) ? "" : ",";
+  } else if (lastDot >= 0) {
+    decSep = /^\d{1,3}(\.\d{3})+$/.test(s) ? "" : ".";
   }
+
+  let normalizedNum: string;
+  if (decSep) {
+    const idx = decSep === "," ? lastComma : lastDot;
+    const intPart = s.slice(0, idx).replace(/[.,]/g, "");
+    const decPart = s.slice(idx + 1).replace(/[.,]/g, "");
+    normalizedNum = `${intPart || "0"}.${decPart || "0"}`;
+  } else {
+    normalizedNum = s.replace(/[.,]/g, "");
+  }
+
+  const val = Number(normalizedNum);
   if (!Number.isFinite(val)) return 0;
-  return neg ? -val : val;
+  return arred(neg ? -val : val);
 }
+
 
 async function lerAOA(buf: ArrayBuffer): Promise<any[][]> {
   const bytes = new Uint8Array(buf);
