@@ -6388,6 +6388,7 @@ export type Database = {
         Args: { p_linhas: Json; p_meta: Json; p_old_ids: string[] }
         Returns: undefined
       }
+      estoque_excluir_item: { Args: { p_item_id: string }; Returns: undefined }
       get_profile_names: {
         Args: { _ids: string[] }
         Returns: {

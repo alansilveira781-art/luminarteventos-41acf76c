@@ -33,6 +33,10 @@ import { BulkEditDialog, normalizeBulkPatch, type BulkField } from "@/components
 import { PeriodoFilter, filterByPeriodo, periodoFromPreset, type Periodo, type PeriodoPreset } from "@/components/PeriodoFilter";
 import { TablePagination } from "@/components/TablePagination";
 import { toast } from "sonner";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const ITEM_BULK_FIELDS: BulkField[] = [
   { key: "categoria", label: "Categoria", type: "text" },
@@ -144,15 +148,15 @@ function EstoquePage() {
 
   const delMut = useMutation({
     mutationFn: async (id: string) => {
-      // remove dependent movements first to avoid FK/constraint surprises
-      await supabase.from("movimentacao_itens").delete().eq("item_id", id);
-      await supabase.from("movimentacoes").delete().eq("item_id", id);
-      const { error } = await supabase.from("itens").delete().eq("id", id);
+      const { error } = await supabase.rpc("estoque_excluir_item" as any, { p_item_id: id });
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["itens"] });
-      toast.success("Item excluído");
+      qc.invalidateQueries({ queryKey: ["itens-select"] });
+      qc.invalidateQueries({ queryKey: ["itens-select-saida"] });
+      toast.success("Item excluído (saída de baixa registrada)");
+      setConfirmDel(null);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -160,9 +164,7 @@ function EstoquePage() {
   const bulkDelMut = useMutation({
     mutationFn: async (ids: string[]) => {
       for (const id of ids) {
-        await supabase.from("movimentacao_itens").delete().eq("item_id", id);
-        await supabase.from("movimentacoes").delete().eq("item_id", id);
-        const { error } = await supabase.from("itens").delete().eq("id", id);
+        const { error } = await supabase.rpc("estoque_excluir_item" as any, { p_item_id: id });
         if (error) throw error;
       }
     },
@@ -170,18 +172,21 @@ function EstoquePage() {
       qc.invalidateQueries({ queryKey: ["itens"] });
       qc.invalidateQueries({ queryKey: ["itens-select"] });
       qc.invalidateQueries({ queryKey: ["itens-select-saida"] });
-      toast.success("Itens excluídos");
+      toast.success("Itens excluídos (saídas de baixa registradas)");
+      setConfirmDel(null);
       sel.clear();
     },
     onError: (e: any) => toast.error(e.message),
   });
 
+  const [confirmDel, setConfirmDel] = useState<{ tipo: "single"; item: any } | { tipo: "bulk"; ids: string[] } | null>(null);
+
   function handleBulkDelete() {
     const ids = Array.from(sel.selected);
     if (!ids.length) return;
-    if (!confirm(`Excluir ${ids.length} item(ns)? Todas as movimentações vinculadas serão apagadas. Esta ação não pode ser desfeita.`)) return;
-    bulkDelMut.mutate(ids);
+    setConfirmDel({ tipo: "bulk", ids });
   }
+
 
 
   const filtered = useMemo(() => {
@@ -414,11 +419,8 @@ function EstoquePage() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => {
-                                if (confirm(`Excluir o item "${i.nome}"? Esta ação não pode ser desfeita.`)) {
-                                  delMut.mutate(i.id);
-                                }
-                              }}
+                              onClick={() => setConfirmDel({ tipo: "single", item: i })}
+
                               title="Excluir"
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
@@ -507,6 +509,42 @@ function EstoquePage() {
         onSubmit={(p) => bulkMut.mutate(normalizeBulkPatch(p))}
         title="Editar itens em massa"
       />
+
+      <AlertDialog open={!!confirmDel} onOpenChange={(o) => { if (!o) setConfirmDel(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmDel?.tipo === "bulk" ? `Excluir ${confirmDel.ids.length} item(ns)?` : "Excluir item?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDel?.tipo === "single" && (
+                <>
+                  O item <strong>{confirmDel.item.nome}</strong> possui saldo atual de{" "}
+                  <strong>{Number(confirmDel.item.quantidade_atual)} {confirmDel.item.unidade}</strong>.{" "}
+                </>
+              )}
+              Será lançada uma saída de baixa zerando o saldo e, em seguida, o item será excluído
+              junto com todo o seu histórico de movimentações. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={delMut.isPending || bulkDelMut.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (!confirmDel) return;
+                if (confirmDel.tipo === "single") delMut.mutate(confirmDel.item.id);
+                else bulkDelMut.mutate(confirmDel.ids);
+              }}
+            >
+              {delMut.isPending || bulkDelMut.isPending ? "Excluindo…" : "Excluir item"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </>
   );
 }
