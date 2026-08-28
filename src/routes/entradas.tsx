@@ -219,22 +219,15 @@ function EntradasPage() {
     },
   });
 
-  // Filtros + agrupamento por requisicao_numero (ajustes de estoque ficam ocultos na lista)
+  // Filtros de grupo (ajustes de estoque ficam ocultos na lista).
+  // A busca por item é aplicada depois do agrupamento, para que a nota/requisição
+  // inteira apareça mesmo quando só um dos itens casa com o termo buscado.
   const filteredBaseList = (entradas ?? []).filter((m: any) => {
     if (isAjusteMovimentacao(m)) return false;
-    if (filterItemQd.trim()) {
-      const itemHay = `${m.item?.codigo ?? ""} ${m.item?.nome ?? ""}`;
-      if (!matchTokens(itemHay, filterItemQd)) return false;
-    }
     if (filterEvento !== "__all" && (m.evento_projeto ?? "") !== filterEvento) return false;
-    if (!qd.trim()) return true;
-    const hay = [
-      m.item?.nome, m.item?.codigo, m.fornecedor?.nome, m.fornecedor?.documento,
-      m.entrada_tipo, m.nota_fiscal, m.responsavel_lancamento, m.observacoes,
-      m.requisicao_numero ? `req-${String(m.requisicao_numero).padStart(4, "0")}` : "",
-    ].join(" ");
-    return matchTokens(hay, qd);
+    return true;
   });
+
   // Lista distinct de eventos para o filtro
   const eventosDisponiveis = useMemo(() => {
     const s = new Set<string>();
@@ -267,8 +260,27 @@ function EntradasPage() {
       g.qtd_total += Number(m.quantidade);
       g.valor_total += Number(m.valor_unitario ?? 0) * Number(m.quantidade ?? 0);
     }
-    const arr = Array.from(map.values());
+    let arr = Array.from(map.values());
+    if (filterItemQd.trim()) {
+      arr = arr.filter((g: any) =>
+        g.linhas.some((l: any) =>
+          matchTokens(`${l.item?.codigo ?? ""} ${l.item?.nome ?? ""}`, filterItemQd),
+        ),
+      );
+    }
+    if (qd.trim()) {
+      arr = arr.filter((g: any) => {
+        const hay = [
+          g.fornecedor?.nome, g.fornecedor?.documento, g.entrada_tipo, g.nota_fiscal,
+          g.responsavel_lancamento, g.observacoes,
+          g.numero ? `req-${String(g.numero).padStart(4, "0")}` : "",
+          ...g.linhas.flatMap((l: any) => [l.item?.nome, l.item?.codigo]),
+        ].join(" ");
+        return matchTokens(hay, qd);
+      });
+    }
     return applySort(arr, (g: any, k: string) => {
+
       if (k === "data_movimento") return g.data_movimento;
       if (k === "fornecedor") return g.fornecedor?.nome;
       if (k === "valor_total") return g.valor_total;
@@ -276,7 +288,7 @@ function EntradasPage() {
       if (k === "numero") return g.numero ?? 0;
       return g[k];
     });
-  }, [filteredBaseList, sort]);
+  }, [filteredBaseList, sort, qd, filterItemQd]);
 
   const gruposPeriodo = useMemo(
     () => filterByPeriodo(grupos, periodo, (g: any) => g.data_movimento),
