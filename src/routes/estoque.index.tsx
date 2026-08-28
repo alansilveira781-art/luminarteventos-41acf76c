@@ -144,15 +144,15 @@ function EstoquePage() {
 
   const delMut = useMutation({
     mutationFn: async (id: string) => {
-      // remove dependent movements first to avoid FK/constraint surprises
-      await supabase.from("movimentacao_itens").delete().eq("item_id", id);
-      await supabase.from("movimentacoes").delete().eq("item_id", id);
-      const { error } = await supabase.from("itens").delete().eq("id", id);
+      const { error } = await supabase.rpc("estoque_excluir_item" as any, { p_item_id: id });
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["itens"] });
-      toast.success("Item excluído");
+      qc.invalidateQueries({ queryKey: ["itens-select"] });
+      qc.invalidateQueries({ queryKey: ["itens-select-saida"] });
+      toast.success("Item excluído (saída de baixa registrada)");
+      setConfirmDel(null);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -160,9 +160,7 @@ function EstoquePage() {
   const bulkDelMut = useMutation({
     mutationFn: async (ids: string[]) => {
       for (const id of ids) {
-        await supabase.from("movimentacao_itens").delete().eq("item_id", id);
-        await supabase.from("movimentacoes").delete().eq("item_id", id);
-        const { error } = await supabase.from("itens").delete().eq("id", id);
+        const { error } = await supabase.rpc("estoque_excluir_item" as any, { p_item_id: id });
         if (error) throw error;
       }
     },
@@ -170,18 +168,21 @@ function EstoquePage() {
       qc.invalidateQueries({ queryKey: ["itens"] });
       qc.invalidateQueries({ queryKey: ["itens-select"] });
       qc.invalidateQueries({ queryKey: ["itens-select-saida"] });
-      toast.success("Itens excluídos");
+      toast.success("Itens excluídos (saídas de baixa registradas)");
+      setConfirmDel(null);
       sel.clear();
     },
     onError: (e: any) => toast.error(e.message),
   });
 
+  const [confirmDel, setConfirmDel] = useState<{ tipo: "single"; item: any } | { tipo: "bulk"; ids: string[] } | null>(null);
+
   function handleBulkDelete() {
     const ids = Array.from(sel.selected);
     if (!ids.length) return;
-    if (!confirm(`Excluir ${ids.length} item(ns)? Todas as movimentações vinculadas serão apagadas. Esta ação não pode ser desfeita.`)) return;
-    bulkDelMut.mutate(ids);
+    setConfirmDel({ tipo: "bulk", ids });
   }
+
 
 
   const filtered = useMemo(() => {
