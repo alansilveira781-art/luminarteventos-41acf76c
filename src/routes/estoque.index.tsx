@@ -33,6 +33,10 @@ import { BulkEditDialog, normalizeBulkPatch, type BulkField } from "@/components
 import { PeriodoFilter, filterByPeriodo, periodoFromPreset, type Periodo, type PeriodoPreset } from "@/components/PeriodoFilter";
 import { TablePagination } from "@/components/TablePagination";
 import { toast } from "sonner";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const ITEM_BULK_FIELDS: BulkField[] = [
   { key: "categoria", label: "Categoria", type: "text" },
