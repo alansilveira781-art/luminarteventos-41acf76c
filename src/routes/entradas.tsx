@@ -968,13 +968,16 @@ function EntradaForm({ prefill, isEditing, itens, fornecedores, onEditFornecedor
   const sumIpi = linhas.reduce((acc, l) => acc + Number(l.ipi || 0), 0);
   const sumOutros = linhas.reduce((acc, l) => acc + Number(l.outros_custos || 0), 0);
   const totalGeral = linhas.reduce((acc, l) => acc + calcLinha(l), 0);
+  const { locked, tryLock } = useSubmitLock(submitting);
 
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
+      if (submitting || locked) return;
       const validas = linhas.filter((l) => l.item_id && Number(l.quantidade) > 0);
       if (validas.length === 0) return toast.error("Adicione pelo menos um item");
       if (!meta.empresa) return toast.error("Selecione a empresa");
+      if (!tryLock()) return;
       onSubmit(
         {
           data_movimento: fromBRTInputDateTime(meta.data_movimento),
