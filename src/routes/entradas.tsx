@@ -288,7 +288,7 @@ function EntradasPage() {
       if (k === "numero") return g.numero ?? 0;
       return g[k];
     });
-  }, [filteredBaseList, sort]);
+  }, [filteredBaseList, sort, qd, filterItemQd]);
 
   const gruposPeriodo = useMemo(
     () => filterByPeriodo(grupos, periodo, (g: any) => g.data_movimento),
