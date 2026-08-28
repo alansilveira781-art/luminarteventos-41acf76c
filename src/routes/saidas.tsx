@@ -917,10 +917,12 @@ function SaidaEditForm({ original, itens, solicitantes, onEditSolicitante, event
   });
   const set = (k: string, v: any) => setForm((p) => ({ ...p, [k]: v }));
   const isEvento = form.saida_tipo === "evento";
+  const { locked, tryLock } = useSubmitLock(submitting);
 
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
+      if (submitting || locked) return;
       if (!form.item_id || Number(form.quantidade) <= 0) return toast.error("Item e quantidade obrigatórios");
       if (isEvento && !form.evento_projeto) return toast.error("Evento/Projeto é obrigatório");
       if (form.sera_devolvido === "sim" && !form.data_prevista_devolucao) return toast.error("Informe a data prevista de devolução");
