@@ -88,18 +88,22 @@ export function CompraDialog({
   compraId,
   defaultStatus = "solicitacao",
   onAdvance,
+  onConverted,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   compraId?: string | null;
   defaultStatus?: CompraStatus;
   onAdvance?: (compra: Compra & { id: string }, opts?: AdvanceOpts) => void | Promise<void>;
+  onConverted?: (novo: { destino: "demanda" | "compra"; id: string; numero: number | null }) => void;
 }) {
   const qc = useQueryClient();
   const { user, isAdmin: isGlobalAdmin, modulos } = useAuth();
   const [form, setForm] = useState<Compra>({ status: defaultStatus });
+  const [converterOpen, setConverterOpen] = useState(false);
   const [itens, setItens] = useState<CompraItem[]>([]);
   const [pagamentos, setPagamentos] = useState<PagamentoLinha[]>([]);
+
 
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [pendingComprovantes, setPendingComprovantes] = useState<File[]>([]);
