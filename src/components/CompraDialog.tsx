@@ -11,7 +11,9 @@ import { FormField, FormSection } from "@/components/FormSection";
 import { ItemSearchSelect } from "@/components/ItemSearchSelect";
 import { SelectCreatable } from "@/components/SelectCreatable";
 import { MentionInput, renderCommentText } from "@/components/MentionInput";
-import { Plus, Trash2, Upload, Download, FileIcon, ChevronRight, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Trash2, Upload, Download, FileIcon, ChevronRight, CheckCircle2, XCircle, ArrowLeftRight } from "lucide-react";
+import { ConverterCardDialog } from "@/components/ConverterCardDialog";
+
 import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
@@ -88,18 +90,22 @@ export function CompraDialog({
   compraId,
   defaultStatus = "solicitacao",
   onAdvance,
+  onConverted,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   compraId?: string | null;
   defaultStatus?: CompraStatus;
   onAdvance?: (compra: Compra & { id: string }, opts?: AdvanceOpts) => void | Promise<void>;
+  onConverted?: (novo: { destino: "demanda" | "compra"; id: string; numero: number | null }) => void;
 }) {
   const qc = useQueryClient();
   const { user, isAdmin: isGlobalAdmin, modulos } = useAuth();
   const [form, setForm] = useState<Compra>({ status: defaultStatus });
+  const [converterOpen, setConverterOpen] = useState(false);
   const [itens, setItens] = useState<CompraItem[]>([]);
   const [pagamentos, setPagamentos] = useState<PagamentoLinha[]>([]);
+
 
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [pendingComprovantes, setPendingComprovantes] = useState<File[]>([]);
@@ -803,6 +809,18 @@ export function CompraDialog({
                 <CopiarLinkButton path={`/compras?id=${compraId}`} />
               </span>
             )}
+            {compraId && (
+              <Button
+                variant="outline"
+                className="ml-2"
+                disabled={!canEdit}
+                title={canEdit ? "Transformar este card em Despesa" : (editBlockedMsg ?? undefined)}
+                onClick={() => setConverterOpen(true)}
+              >
+                <ArrowLeftRight className="h-4 w-4 mr-1" /> Converter em Despesa
+              </Button>
+            )}
+
           </div>
           <div className="flex flex-wrap gap-2">
             {(() => {
@@ -943,7 +961,23 @@ export function CompraDialog({
         </DialogContent>
       </Dialog>
     )}
+
+    {compraId && (
+      <ConverterCardDialog
+        open={converterOpen}
+        onOpenChange={setConverterOpen}
+        destino="demanda"
+        cardId={compraId}
+        codigoOrigem={(form as any).numero != null ? `COMPRA-${(form as any).numero}` : "Este card"}
+        onConverted={(novo) => {
+          qc.invalidateQueries({ queryKey: ["compras"] });
+          onOpenChange(false);
+          onConverted?.(novo);
+        }}
+      />
+    )}
     </>
+
   );
 }
 

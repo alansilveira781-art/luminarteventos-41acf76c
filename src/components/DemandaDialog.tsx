@@ -13,7 +13,9 @@ import { DbComboboxCreatable } from "@/components/DbComboboxCreatable";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { MentionInput, renderCommentText } from "@/components/MentionInput";
-import { Trash2, Upload, Download, FileIcon, ChevronRight, CheckCircle2, XCircle, Plus } from "lucide-react";
+import { Trash2, Upload, Download, FileIcon, ChevronRight, CheckCircle2, XCircle, Plus, ArrowLeftRight } from "lucide-react";
+import { ConverterCardDialog } from "@/components/ConverterCardDialog";
+
 import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 import { MoneyInput } from "@/components/MoneyInput";
 import { ItemSearchSelect } from "@/components/ItemSearchSelect";
@@ -92,24 +94,35 @@ export function DemandaDialog({
   demandaId,
   defaultStatus = "solicitacao",
   onAdvance,
+  onConverted,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   demandaId?: string | null;
   defaultStatus?: DemandaStatus;
   onAdvance?: (demanda: Demanda & { id: string }, opts?: DemandaAdvanceOpts) => void | Promise<void>;
+  onConverted?: (novo: { destino: "demanda" | "compra"; id: string; numero: number | null }) => void;
 }) {
   const qc = useQueryClient();
-  const { user } = useAuth();
+  const { user, isAdmin: isGlobalAdmin, modulos } = useAuth();
   const [form, setForm] = useState<Demanda>({ status: defaultStatus });
+  const [converterOpen, setConverterOpen] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [pendingComprovantes, setPendingComprovantes] = useState<File[]>([]);
   const [itens, setItens] = useState<DemandaItem[]>([]);
   const [pagamentos, setPagamentos] = useState<PagamentoLinha[]>([]);
 
 
+
   const tiposDespesa = useTiposDespesa();
   const [novoTipoOpen, setNovoTipoOpen] = useState(false);
+
+  const isAdminCompras = isGlobalAdmin || modulos.some((m) => m.slug === "compras" && m.is_admin);
+  const podeConverter =
+    isAdminCompras ||
+    (!!user?.id &&
+      ((form as any).created_by === user.id || (form as any).responsavel_id === user.id));
+
 
   const tipoRequerItens = useMemo(
     () => tiposDespesa.exigeItens(form.tipo_demanda),
@@ -814,6 +827,18 @@ export function DemandaDialog({
                 <CopiarLinkButton path={`/compras?id=${demandaId}&origem=demanda`} />
               </span>
             )}
+            {demandaId && (
+              <Button
+                variant="outline"
+                className="ml-2"
+                disabled={!podeConverter}
+                title={podeConverter ? "Transformar este card em Compra" : "Sem permissão para converter este card."}
+                onClick={() => setConverterOpen(true)}
+              >
+                <ArrowLeftRight className="h-4 w-4 mr-1" /> Converter em Compra
+              </Button>
+            )}
+
           </div>
           <div className="flex flex-wrap gap-2">
             {(() => {
@@ -875,7 +900,23 @@ export function DemandaDialog({
         setForm((f) => ({ ...f, tipo_demanda: slug }));
       }}
     />
+    {demandaId && (
+      <ConverterCardDialog
+        open={converterOpen}
+        onOpenChange={setConverterOpen}
+        destino="compra"
+        cardId={demandaId}
+        codigoOrigem={(form as any).numero != null ? `DESPESA-${(form as any).numero}` : "Este card"}
+        onConverted={(novo) => {
+          qc.invalidateQueries({ queryKey: ["compras"] });
+          qc.invalidateQueries({ queryKey: ["demandas"] });
+          onOpenChange(false);
+          onConverted?.(novo);
+        }}
+      />
+    )}
     </>
+
   );
 }
 
