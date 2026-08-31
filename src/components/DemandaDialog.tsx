@@ -825,6 +825,18 @@ export function DemandaDialog({
                 <CopiarLinkButton path={`/compras?id=${demandaId}&origem=demanda`} />
               </span>
             )}
+            {demandaId && (
+              <Button
+                variant="outline"
+                className="ml-2"
+                disabled={!podeConverter}
+                title={podeConverter ? "Transformar este card em Compra" : "Sem permissão para converter este card."}
+                onClick={() => setConverterOpen(true)}
+              >
+                <ArrowLeftRight className="h-4 w-4 mr-1" /> Converter em Compra
+              </Button>
+            )}
+
           </div>
           <div className="flex flex-wrap gap-2">
             {(() => {
