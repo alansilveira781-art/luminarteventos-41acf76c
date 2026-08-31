@@ -877,6 +877,15 @@ function ComprasKanban() {
           }
         }}
         demandaId={editDemandaId}
+        onConverted={(novo) => {
+          qc.invalidateQueries({ queryKey: ["compras"] });
+          qc.invalidateQueries({ queryKey: ["compras", "demandas"] });
+          setEditDemandaId(null);
+          setOpenDemanda(false);
+          setEditId(novo.id);
+          setOpen(true);
+        }}
+
         defaultStatus={defaultStatus}
         onAdvance={async (demandaData: any, opts: any) => {
           const card = { ...(demandaData as any), origem: "demanda" } as Compra;
