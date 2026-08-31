@@ -840,6 +840,15 @@ function ComprasKanban() {
           }
         }}
         compraId={editId}
+        onConverted={(novo) => {
+          qc.invalidateQueries({ queryKey: ["compras"] });
+          qc.invalidateQueries({ queryKey: ["compras", "demandas"] });
+          setEditId(null);
+          setOpen(false);
+          setEditDemandaId(novo.id);
+          setOpenDemanda(true);
+        }}
+
         defaultStatus={defaultStatus}
         onAdvance={async (compraData, opts) => {
           const target = opts?.deny ? "negada" : opts?.approve ? "aprovada" : nextCompraStatus(compraData.status);
