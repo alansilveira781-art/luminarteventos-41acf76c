@@ -798,8 +798,8 @@ export function DemandaDialog({
           </TabsContent>
         </Tabs>
 
-        <DialogFooter className="sm:justify-between">
-          <div>
+        <DialogFooter className="gap-2 sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
             {demandaId && (
               <Button
                 variant="destructive"

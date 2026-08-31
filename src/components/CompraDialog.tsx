@@ -788,8 +788,8 @@ export function CompraDialog({
 
         </Tabs>
 
-        <DialogFooter className="sm:justify-between">
-          <div>
+        <DialogFooter className="gap-2 sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
             {compraId && (
               <Button
                 variant="destructive"
@@ -805,14 +805,11 @@ export function CompraDialog({
               </Button>
             )}
             {compraId && (
-              <span className="ml-2 inline-block align-middle">
-                <CopiarLinkButton path={`/compras?id=${compraId}`} />
-              </span>
+              <CopiarLinkButton path={`/compras?id=${compraId}`} />
             )}
             {compraId && (
               <Button
                 variant="outline"
-                className="ml-2"
                 disabled={!canEdit}
                 title={canEdit ? "Transformar este card em Despesa" : (editBlockedMsg ?? undefined)}
                 onClick={() => setConverterOpen(true)}
@@ -820,7 +817,6 @@ export function CompraDialog({
                 <ArrowLeftRight className="h-4 w-4 mr-1" /> Converter em Despesa
               </Button>
             )}
-
           </div>
           <div className="flex flex-wrap gap-2">
             {(() => {
