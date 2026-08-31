@@ -900,7 +900,23 @@ export function DemandaDialog({
         setForm((f) => ({ ...f, tipo_demanda: slug }));
       }}
     />
+    {demandaId && (
+      <ConverterCardDialog
+        open={converterOpen}
+        onOpenChange={setConverterOpen}
+        destino="compra"
+        cardId={demandaId}
+        codigoOrigem={(form as any).numero != null ? `DESPESA-${(form as any).numero}` : "Este card"}
+        onConverted={(novo) => {
+          qc.invalidateQueries({ queryKey: ["compras"] });
+          qc.invalidateQueries({ queryKey: ["demandas"] });
+          onOpenChange(false);
+          onConverted?.(novo);
+        }}
+      />
+    )}
     </>
+
   );
 }
 
