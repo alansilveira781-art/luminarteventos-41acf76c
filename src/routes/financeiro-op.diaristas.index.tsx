@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { MoneyInput } from "@/components/MoneyInput";
+import { SearchableSelect } from "@/components/SearchableSelect";
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -1101,17 +1102,18 @@ function ApontamentoTab() {
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Diarista</Label>
-                <Select
+                <SearchableSelect
                   value={editing.diarista_id}
-                  onValueChange={(v) => setEditing({ ...editing, diarista_id: v })}
-                >
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    {diaristasAtivos.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>{nomeExib(d)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={(v) => setEditing({ ...editing, diarista_id: v })}
+                  placeholder="Selecione"
+                  searchPlaceholder="Digite o nome do diarista…"
+                  options={(() => {
+                    const lista = diaristasAtivos.some((d) => d.id === editing.diarista_id)
+                      ? diaristasAtivos
+                      : [...diaristasAtivos, ...diaristas.filter((d) => d.id === editing.diarista_id)];
+                    return lista.map((d) => ({ value: d.id, label: nomeExib(d) }));
+                  })()}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Local</Label>
