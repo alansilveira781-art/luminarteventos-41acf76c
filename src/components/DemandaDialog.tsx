@@ -798,8 +798,8 @@ export function DemandaDialog({
           </TabsContent>
         </Tabs>
 
-        <DialogFooter className="sm:justify-between">
-          <div>
+        <DialogFooter className="gap-2 sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
             {demandaId && (
               <Button
                 variant="destructive"
@@ -823,14 +823,11 @@ export function DemandaDialog({
               </Button>
             )}
             {demandaId && (
-              <span className="ml-2 inline-block align-middle">
-                <CopiarLinkButton path={`/compras?id=${demandaId}&origem=demanda`} />
-              </span>
+              <CopiarLinkButton path={`/compras?id=${demandaId}&origem=demanda`} />
             )}
             {demandaId && (
               <Button
                 variant="outline"
-                className="ml-2"
                 disabled={!podeConverter}
                 title={podeConverter ? "Transformar este card em Compra" : "Sem permissão para converter este card."}
                 onClick={() => setConverterOpen(true)}
@@ -838,7 +835,6 @@ export function DemandaDialog({
                 <ArrowLeftRight className="h-4 w-4 mr-1" /> Converter em Compra
               </Button>
             )}
-
           </div>
           <div className="flex flex-wrap gap-2">
             {(() => {
