@@ -961,7 +961,23 @@ export function CompraDialog({
         </DialogContent>
       </Dialog>
     )}
+
+    {compraId && (
+      <ConverterCardDialog
+        open={converterOpen}
+        onOpenChange={setConverterOpen}
+        destino="demanda"
+        cardId={compraId}
+        codigoOrigem={(form as any).numero != null ? `COMPRA-${(form as any).numero}` : "Este card"}
+        onConverted={(novo) => {
+          qc.invalidateQueries({ queryKey: ["compras"] });
+          onOpenChange(false);
+          onConverted?.(novo);
+        }}
+      />
+    )}
     </>
+
   );
 }
 
