@@ -807,6 +807,18 @@ export function CompraDialog({
                 <CopiarLinkButton path={`/compras?id=${compraId}`} />
               </span>
             )}
+            {compraId && (
+              <Button
+                variant="outline"
+                className="ml-2"
+                disabled={!canEdit}
+                title={canEdit ? "Transformar este card em Despesa" : (editBlockedMsg ?? undefined)}
+                onClick={() => setConverterOpen(true)}
+              >
+                <ArrowLeftRight className="h-4 w-4 mr-1" /> Converter em Despesa
+              </Button>
+            )}
+
           </div>
           <div className="flex flex-wrap gap-2">
             {(() => {
