@@ -11,7 +11,9 @@ import { FormField, FormSection } from "@/components/FormSection";
 import { ItemSearchSelect } from "@/components/ItemSearchSelect";
 import { SelectCreatable } from "@/components/SelectCreatable";
 import { MentionInput, renderCommentText } from "@/components/MentionInput";
-import { Plus, Trash2, Upload, Download, FileIcon, ChevronRight, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Trash2, Upload, Download, FileIcon, ChevronRight, CheckCircle2, XCircle, ArrowLeftRight } from "lucide-react";
+import { ConverterCardDialog } from "@/components/ConverterCardDialog";
+
 import { AnexoViewer, baixarAnexo } from "@/components/AnexoViewer";
 import { MoneyInput } from "@/components/MoneyInput";
 import { toast } from "sonner";
