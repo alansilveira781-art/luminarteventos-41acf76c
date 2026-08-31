@@ -92,20 +92,24 @@ export function DemandaDialog({
   demandaId,
   defaultStatus = "solicitacao",
   onAdvance,
+  onConverted,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   demandaId?: string | null;
   defaultStatus?: DemandaStatus;
   onAdvance?: (demanda: Demanda & { id: string }, opts?: DemandaAdvanceOpts) => void | Promise<void>;
+  onConverted?: (novo: { destino: "demanda" | "compra"; id: string; numero: number | null }) => void;
 }) {
   const qc = useQueryClient();
-  const { user } = useAuth();
+  const { user, isAdmin: isGlobalAdmin, modulos } = useAuth();
   const [form, setForm] = useState<Demanda>({ status: defaultStatus });
+  const [converterOpen, setConverterOpen] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [pendingComprovantes, setPendingComprovantes] = useState<File[]>([]);
   const [itens, setItens] = useState<DemandaItem[]>([]);
   const [pagamentos, setPagamentos] = useState<PagamentoLinha[]>([]);
+
 
 
   const tiposDespesa = useTiposDespesa();
