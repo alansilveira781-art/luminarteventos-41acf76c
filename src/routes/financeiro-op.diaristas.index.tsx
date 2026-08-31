@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { MoneyInput } from "@/components/MoneyInput";
+import { SearchableSelect } from "@/components/SearchableSelect";
 import { EventoSheetCombobox } from "@/components/EventoSheetCombobox";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
