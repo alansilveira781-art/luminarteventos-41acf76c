@@ -115,6 +115,13 @@ export function DemandaDialog({
   const tiposDespesa = useTiposDespesa();
   const [novoTipoOpen, setNovoTipoOpen] = useState(false);
 
+  const isAdminCompras = isGlobalAdmin || modulos.some((m) => m.slug === "compras" && m.is_admin);
+  const podeConverter =
+    isAdminCompras ||
+    (!!user?.id &&
+      ((form as any).created_by === user.id || (form as any).responsavel_id === user.id));
+
+
   const tipoRequerItens = useMemo(
     () => tiposDespesa.exigeItens(form.tipo_demanda),
     [tiposDespesa, form.tipo_demanda],
