@@ -18,7 +18,6 @@ export const CA_EXPORT_HEADERS = [
   "Cliente/Fornecedor",
   "CNPJ/CPF Cliente/Fornecedor",
   "Centro de Custo",
-  "Observações",
 ] as const;
 
 export type PagamentoMin = {
