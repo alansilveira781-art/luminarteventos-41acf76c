@@ -46,15 +46,16 @@ export async function carregarResolverFornecedor(): Promise<ResolverFornecedor> 
   const soDigitos = (s: string) => s.replace(/[^\d]/g, "");
 
   return {
+    // Atenção: `compras.documento` / `demandas.documento` guardam o número da
+    // nota/documento do card, NÃO o CNPJ/CPF — por isso não entram na cascata.
     documento: (card) => {
-      const proprio = soDigitos(String(card.documento ?? ""));
-      if (proprio) return proprio;
       const porVinculo = card.fornecedor_id ? porId.get(String(card.fornecedor_id))?.documento : "";
       if (porVinculo) return soDigitos(porVinculo);
       const k = chave(card.fornecedor);
       const achado = k ? porNome.get(k) : "";
       return achado ? soDigitos(achado) : "";
     },
+
     nome: (card) => {
       const n = String(card.fornecedor ?? "").trim();
       if (n) return n;
