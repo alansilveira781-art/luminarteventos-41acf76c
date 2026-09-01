@@ -580,6 +580,9 @@ function ApontamentoTab() {
   const preview = previewDiarista
     ? calcularApontamentoComEventos(editing, tarifaDe(previewDiarista), editing.modo_divisao, editing.eventos)
     : null;
+  const jornada = previewDiarista ? jornadaDiaria(tarifaDe(previewDiarista)) : 8;
+  const jornadaLabel = `${jornada.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}h`;
+  const jornadaExemplo = `${(jornada + 1).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}h`;
 
   const setEvento = (i: number, patch: Partial<EventoLinha>) =>
     setEditing((prev) => ({
