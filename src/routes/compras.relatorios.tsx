@@ -16,6 +16,8 @@ import {
 import { toast } from "sonner";
 import { fetchAllRows } from "@/lib/fetch-all";
 import CartoesReport from "@/components/compras/CartoesReport";
+import AnalisesFornecedorReport from "@/components/compras/AnalisesFornecedorReport";
+import { TablePagination } from "@/components/TablePagination";
 
 import {
   CA_EXPORT_HEADERS, formatarDataBR, linhaParaPlanilha, linhasDoCard, normForma,
@@ -31,6 +33,7 @@ export const Route = createFileRoute("/compras/relatorios")({
 const TODAS = "__todas__";
 const SEM_FORMA = "__sem_forma__";
 const SEM_CATEGORIA = "__sem_categoria__";
+const PAGE_SIZE = 25;
 
 const brl = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v ?? 0));
@@ -46,12 +49,16 @@ function RelatoriosComprasPage() {
         <TabsList>
           <TabsTrigger value="conta-azul">Importação Conta Azul</TabsTrigger>
           <TabsTrigger value="cartoes">Cartões</TabsTrigger>
+          <TabsTrigger value="analises">Análises</TabsTrigger>
         </TabsList>
         <TabsContent value="conta-azul">
           <ContaAzulExport />
         </TabsContent>
         <TabsContent value="cartoes">
           <CartoesReport />
+        </TabsContent>
+        <TabsContent value="analises">
+          <AnalisesFornecedorReport />
         </TabsContent>
       </Tabs>
 
@@ -64,6 +71,7 @@ function ContaAzulExport() {
   const [cartao, setCartao] = useState<string>(TODAS);
   const [preset, setPreset] = useState<PeriodoPreset>(PERIODO_MES_DEFAULT.preset);
   const [periodo, setPeriodo] = useState<Periodo>(PERIODO_MES_DEFAULT.periodo);
+  const [page, setPage] = useState(1);
 
   /* -------- formas de pagamento usadas nos cards -------- */
   const { data: formas = [] } = useQuery({
@@ -212,6 +220,11 @@ function ContaAzulExport() {
 
   const total = linhas.reduce((s, l) => s + l.valor, 0);
 
+  const pageCount = Math.max(1, Math.ceil(linhas.length / PAGE_SIZE));
+  const pageAtual = Math.min(page, pageCount);
+  const inicio = (pageAtual - 1) * PAGE_SIZE;
+  const linhasPagina = linhas.slice(inicio, inicio + PAGE_SIZE);
+
   /* -------- gravar categoria no card -------- */
   const salvarCategoria = useMutation({
     mutationFn: async ({ tipo, id, categoria }: { tipo: "COMPRA" | "DESPESA"; id: string; categoria: string | null }) => {
@@ -229,7 +242,7 @@ function ContaAzulExport() {
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     ws["!cols"] = [
       { wch: 20 }, { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 28 },
-      { wch: 52 }, { wch: 32 }, { wch: 20 }, { wch: 28 }, { wch: 40 },
+      { wch: 52 }, { wch: 32 }, { wch: 20 }, { wch: 28 },
     ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Dados");
@@ -243,7 +256,7 @@ function ContaAzulExport() {
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">Cartão / forma de pagamento</label>
-          <Select value={cartao} onValueChange={setCartao}>
+          <Select value={cartao} onValueChange={(v) => { setCartao(v); setPage(1); }}>
             <SelectTrigger className="w-[280px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value={TODAS}>Todas as formas</SelectItem>
@@ -259,7 +272,7 @@ function ContaAzulExport() {
           <PeriodoFilter
             preset={preset}
             periodo={periodo}
-            onChange={(p, per) => { setPreset(p); setPeriodo(per); }}
+            onChange={(p, per) => { setPreset(p); setPeriodo(per); setPage(1); }}
           />
         </div>
         <div className="ml-auto">
@@ -280,23 +293,33 @@ function ContaAzulExport() {
           <div className="text-xs text-muted-foreground">
             {linhas.length} lançamento(s) · Total {brl(total)}
           </div>
-          <div className="overflow-x-auto rounded-lg border">
-            <table className="w-full text-sm">
+          <div className="overflow-auto rounded-lg border max-h-[calc(100vh-260px)]">
+            <table className="w-full table-fixed text-sm">
+              <colgroup>
+                <col className="w-[9%]" />
+                <col className="w-[9%]" />
+                <col className="w-[9%]" />
+                <col className="w-[10%]" />
+                <col className="w-[18%]" />
+                <col className="w-[21%]" />
+                <col className="w-[14%]" />
+                <col className="w-[10%]" />
+              </colgroup>
               <thead className="bg-muted/50">
-                <tr>
+                <tr className="h-10">
                   {CA_EXPORT_HEADERS.map((h) => (
-                    <th key={h} className="text-left px-3 py-2 font-medium whitespace-nowrap">{h}</th>
+                    <th key={h} className="text-left px-3 font-medium whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {linhas.map((l, i) => (
-                  <tr key={`${l.cardKey}-${i}`} className="border-t align-top">
-                    <td className="px-3 py-2 whitespace-nowrap">{formatarDataBR(l.competencia) || "—"}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{formatarDataBR(l.vencimento) || "—"}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{formatarDataBR(l.pagamento) || "—"}</td>
-                    <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{brl(l.valor)}</td>
-                    <td className="px-3 py-2 min-w-[220px]">
+                {linhasPagina.map((l, i) => (
+                  <tr key={`${l.cardKey}-${inicio + i}`} className="h-11 border-t">
+                    <td className="px-3 whitespace-nowrap">{formatarDataBR(l.competencia) || "—"}</td>
+                    <td className="px-3 whitespace-nowrap">{formatarDataBR(l.vencimento) || "—"}</td>
+                    <td className="px-3 whitespace-nowrap">{formatarDataBR(l.pagamento) || "—"}</td>
+                    <td className="px-3 text-right tabular-nums whitespace-nowrap">{brl(l.valor)}</td>
+                    <td className="px-3">
                       <Select
                         value={l.categoria ?? SEM_CATEGORIA}
                         onValueChange={(v) =>
@@ -318,20 +341,24 @@ function ContaAzulExport() {
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 truncate" title={l.descricao}>
                       {l.descricao}
                       {l.parcelaLabel !== "1/1" && (
                         <span className="ml-1 text-xs text-muted-foreground">({l.parcelaLabel})</span>
                       )}
                     </td>
-                    <td className="px-3 py-2">{l.fornecedor || "—"}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{l.documento || "—"}</td>
-                    <td className="px-3 py-2">{l.centroCusto || "—"}</td>
-                    <td className="px-3 py-2 max-w-[280px]">{l.observacoes || "—"}</td>
+                    <td className="px-3 truncate" title={l.fornecedor}>{l.fornecedor || "—"}</td>
+                    <td className="px-3 truncate" title={l.centroCusto}>{l.centroCusto || "—"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">
+              {inicio + 1}–{Math.min(inicio + PAGE_SIZE, linhas.length)} de {linhas.length}
+            </span>
+            <TablePagination page={pageAtual} pageCount={pageCount} onPageChange={setPage} />
           </div>
         </>
       )}
