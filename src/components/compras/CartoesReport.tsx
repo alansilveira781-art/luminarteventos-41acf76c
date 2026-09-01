@@ -12,6 +12,7 @@ import {
   PeriodoFilter, PERIODO_MES_DEFAULT, type Periodo, type PeriodoPreset,
 } from "@/components/PeriodoFilter";
 import { fetchAllRows } from "@/lib/fetch-all";
+import { TablePagination } from "@/components/TablePagination";
 import { normForma } from "@/lib/conta-azul/exportacao-cards";
 
 const sb = supabase as any;
@@ -59,6 +60,8 @@ type Row = {
 
 type CartoesData = { rows: Row[]; total: number };
 
+const PAGE_SIZE = 25;
+
 const TODAS = "__todas__";
 const SEM_FORMA = "__sem_forma__";
 
@@ -67,6 +70,7 @@ export default function CartoesReport() {
   const [preset, setPreset] = useState<PeriodoPreset>(PERIODO_MES_DEFAULT.preset);
   const [periodo, setPeriodo] = useState<Periodo>(PERIODO_MES_DEFAULT.periodo);
   const [statusPreset, setStatusPreset] = useState<StatusPreset>("padrao");
+  const [page, setPage] = useState(1);
 
   // Formas disponíveis: cadastro + formas realmente usadas nos cards,
   // agrupadas por chave normalizada (PIX/Pix = mesma forma).
@@ -282,6 +286,11 @@ export default function CartoesReport() {
   }, [todas, periodo, statusPreset]);
 
 
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const pageAtual = Math.min(page, pageCount);
+  const inicio = (pageAtual - 1) * PAGE_SIZE;
+  const rowsPagina = rows.slice(inicio, inicio + PAGE_SIZE);
+
   const foraDoFiltro = (data?.total ?? 0) - rows.length;
   const mostrarForma = cartao === TODAS;
 
@@ -378,7 +387,7 @@ export default function CartoesReport() {
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">Forma de pagamento</label>
-          <Select value={cartao} onValueChange={setCartao}>
+          <Select value={cartao} onValueChange={(v) => { setCartao(v); setPage(1); }}>
             <SelectTrigger className="w-[280px]">
               <SelectValue placeholder="Selecione uma forma…" />
             </SelectTrigger>
@@ -397,12 +406,12 @@ export default function CartoesReport() {
           <PeriodoFilter
             preset={preset}
             periodo={periodo}
-            onChange={(p, per) => { setPreset(p); setPeriodo(per); }}
+            onChange={(p, per) => { setPreset(p); setPeriodo(per); setPage(1); }}
           />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">Status</label>
-          <Select value={statusPreset} onValueChange={(v) => setStatusPreset(v as StatusPreset)}>
+          <Select value={statusPreset} onValueChange={(v) => { setStatusPreset(v as StatusPreset); setPage(1); }}>
             <SelectTrigger className="w-[210px]">
               <SelectValue />
             </SelectTrigger>
@@ -434,54 +443,62 @@ export default function CartoesReport() {
         </div>
 
       ) : (
-        <div className="overflow-auto rounded-lg border max-h-[calc(100vh-180px)]">
-          <table className="w-full text-sm">
+        <>
+        <div className="overflow-auto rounded-lg border max-h-[calc(100vh-260px)]">
+          <table className="w-full table-fixed text-sm">
+            <colgroup>
+              <col className="w-[9%]" />
+              <col className="w-[16%]" />
+              <col className="w-[12%]" />
+              <col className="w-[12%]" />
+              <col className={mostrarForma ? "w-[21%]" : "w-[32%]"} />
+              {mostrarForma && <col className="w-[11%]" />}
+              <col className="w-[9%]" />
+              <col className="w-[10%]" />
+            </colgroup>
             <thead className="bg-muted/50">
-              <tr>
-                <th className="text-left px-3 py-2 font-medium">Tipo</th>
-                <th className="text-left px-3 py-2 font-medium">Título</th>
-                <th className="text-left px-3 py-2 font-medium">Solicitante</th>
-                <th className="text-left px-3 py-2 font-medium">Comprador</th>
-                <th className="text-left px-3 py-2 font-medium">Itens ou Descritivo</th>
-                {mostrarForma && <th className="text-left px-3 py-2 font-medium">Forma</th>}
-                <th className="text-left px-3 py-2 font-medium">Parcelamento</th>
-                <th className="text-right px-3 py-2 font-medium">Valor total</th>
+              <tr className="h-10">
+                <th className="text-left px-3 font-medium">Tipo</th>
+                <th className="text-left px-3 font-medium">Título</th>
+                <th className="text-left px-3 font-medium">Solicitante</th>
+                <th className="text-left px-3 font-medium">Comprador</th>
+                <th className="text-left px-3 font-medium">Itens ou Descritivo</th>
+                {mostrarForma && <th className="text-left px-3 font-medium">Forma</th>}
+                <th className="text-left px-3 font-medium">Parcelamento</th>
+                <th className="text-right px-3 font-medium">Valor total</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
-                <tr key={`${r.tipo}-${r.id}`} className="border-t align-top">
-                  <td className="px-3 py-2 whitespace-nowrap font-mono text-xs">{r.tipo}-{r.numero ?? "—"}</td>
-                  <td className="px-3 py-2">{r.titulo ?? "—"}</td>
-                  <td className="px-3 py-2">{r.solicitante ?? "—"}</td>
-                  <td className="px-3 py-2">{r.comprador ?? "—"}</td>
-                  <td className="px-3 py-2">
-                    {r.itens.length > 0 ? (
-                      <ul className="space-y-0.5">
-                        {r.itens.map((it, i) => (
-                          <li key={i}>{Number(it.quantidade ?? 0)}x {it.descricao ?? "—"}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <span className="whitespace-pre-wrap">{r.descritivo_fallback ?? "—"}</span>
+              {rowsPagina.map((r) => {
+                const itensTexto = r.itens.length > 0
+                  ? r.itens.map((it) => `${Number(it.quantidade ?? 0)}x ${it.descricao ?? "—"}`).join(" · ")
+                  : (r.descritivo_fallback ?? "—");
+                return (
+                  <tr key={`${r.tipo}-${r.id}`} className="h-11 border-t">
+                    <td className="px-3 whitespace-nowrap font-mono text-xs">{r.tipo}-{r.numero ?? "—"}</td>
+                    <td className="px-3 truncate" title={r.titulo ?? ""}>{r.titulo ?? "—"}</td>
+                    <td className="px-3 truncate" title={r.solicitante ?? ""}>{r.solicitante ?? "—"}</td>
+                    <td className="px-3 truncate" title={r.comprador ?? ""}>{r.comprador ?? "—"}</td>
+                    <td className="px-3 truncate" title={itensTexto}>{itensTexto}</td>
+                    {mostrarForma && (
+                      <td className="px-3 truncate" title={r.forma ?? ""}>{r.forma ?? "—"}</td>
                     )}
-                  </td>
-                  {mostrarForma && <td className="px-3 py-2">{r.forma ?? "—"}</td>}
-                  <td className="px-3 py-2 whitespace-nowrap">{r.parcelamento ?? "—"}</td>
-                  <td className="px-3 py-2 text-right whitespace-nowrap">{brl(r.valor_total)}</td>
-                </tr>
-              ))}
+                    <td className="px-3 truncate whitespace-nowrap">{r.parcelamento ?? "—"}</td>
+                    <td className="px-3 text-right tabular-nums whitespace-nowrap">{brl(r.valor_total)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
             <tfoot>
-              <tr className="border-t bg-muted/30">
-                <td colSpan={mostrarForma ? 7 : 6} className="px-3 py-2 text-right text-xs text-muted-foreground">
+              <tr className="h-10 border-t bg-muted/30">
+                <td colSpan={mostrarForma ? 7 : 6} className="px-3 text-right text-xs text-muted-foreground">
                   Subtotal Compras: {brl(totalCompras)} · Subtotal Despesas: {brl(totalDemandas)}
                 </td>
-                <td className="px-3 py-2 text-right font-mono text-xs text-muted-foreground">&nbsp;</td>
+                <td className="px-3 text-right font-mono text-xs text-muted-foreground">&nbsp;</td>
               </tr>
-              <tr className="border-t bg-muted/60">
-                <td colSpan={mostrarForma ? 7 : 6} className="px-3 py-2 text-right font-semibold">Total geral</td>
-                <td className="px-3 py-2 text-right font-semibold whitespace-nowrap">{brl(totalGeral)}</td>
+              <tr className="h-10 border-t bg-muted/60">
+                <td colSpan={mostrarForma ? 7 : 6} className="px-3 text-right font-semibold">Total geral</td>
+                <td className="px-3 text-right font-semibold whitespace-nowrap">{brl(totalGeral)}</td>
               </tr>
             </tfoot>
           </table>
@@ -493,6 +510,13 @@ export default function CartoesReport() {
             </p>
           )}
         </div>
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">
+            {inicio + 1}–{Math.min(inicio + PAGE_SIZE, rows.length)} de {rows.length}
+          </span>
+          <TablePagination page={pageAtual} pageCount={pageCount} onPageChange={setPage} />
+        </div>
+        </>
       )}
 
 
