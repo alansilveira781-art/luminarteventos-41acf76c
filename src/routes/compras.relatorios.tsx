@@ -301,8 +301,9 @@ function ContaAzulExport() {
                 <col className="w-[9%]" />
                 <col className="w-[10%]" />
                 <col className="w-[18%]" />
-                <col className="w-[21%]" />
-                <col className="w-[14%]" />
+                <col className="w-[19%]" />
+                <col className="w-[12%]" />
+                <col className="w-[10%]" />
                 <col className="w-[10%]" />
               </colgroup>
               <thead className="bg-muted/50">
@@ -348,6 +349,7 @@ function ContaAzulExport() {
                       )}
                     </td>
                     <td className="px-3 truncate" title={l.fornecedor}>{l.fornecedor || "—"}</td>
+                    <td className="px-3 truncate whitespace-nowrap" title={l.documento}>{l.documento || "—"}</td>
                     <td className="px-3 truncate" title={l.centroCusto}>{l.centroCusto || "—"}</td>
                   </tr>
                 ))}
