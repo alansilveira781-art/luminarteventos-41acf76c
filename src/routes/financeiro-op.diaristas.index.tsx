@@ -33,6 +33,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   calcularApontamento,
   calcularApontamentoComEventos,
+  jornadaDiaria,
   formatHoras,
   intervaloExibicao,
 
