@@ -278,17 +278,20 @@ function DiaristasConfiguracoes() {
                     <td className="py-2 px-3 text-xs text-muted-foreground">{d.departamento || "—"}</td>
 
 
+                    <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
+                      {fmtHoras(jornadaDe(d))}
+                    </td>
                     <td className="py-2 px-3 text-right tabular-nums">
                       {fmtBRL(Number(d.valor_hora_fortaleza))}
                     </td>
                     <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
-                      {fmtBRL(Number(d.valor_hora_fortaleza) * 8)}
+                      {fmtBRL(Number(d.valor_hora_fortaleza) * jornadaDe(d))}
                     </td>
                     <td className="py-2 px-3 text-right tabular-nums">
                       {fmtBRL(Number(d.valor_hora_fora))}
                     </td>
                     <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
-                      {fmtBRL(Number(d.valor_hora_fora) * 8)}
+                      {fmtBRL(Number(d.valor_hora_fora) * jornadaDe(d))}
                     </td>
                     <td className="py-2 px-3 text-xs text-muted-foreground">
                       {d.chave_pix || "—"}
