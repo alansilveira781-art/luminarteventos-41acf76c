@@ -259,11 +259,12 @@ function DiaristasConfiguracoes() {
                   <th className="py-2 pr-3">Apelido</th>
                   <th className="py-2 px-3">Nome</th>
                   <th className="py-2 px-3">Departamento</th>
+                  <th className="py-2 px-3 text-right">Jornada</th>
                   <th className="py-2 px-3 text-right">R$/h Fortaleza</th>
 
-                  <th className="py-2 px-3 text-right">Diária Fortaleza (8h)</th>
+                  <th className="py-2 px-3 text-right">Diária Fortaleza</th>
                   <th className="py-2 px-3 text-right">R$/h Fora</th>
-                  <th className="py-2 px-3 text-right">Diária Fora (8h)</th>
+                  <th className="py-2 px-3 text-right">Diária Fora</th>
                   <th className="py-2 px-3">Chave Pix</th>
                   <th className="py-2 px-3 text-center">Ativo</th>
                   <th className="py-2 pl-3 text-right">Ações</th>
