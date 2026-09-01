@@ -129,9 +129,13 @@ export function RelatorioVendasPeriodo({
     [rowsA, rowsB],
   );
   const rkVendedor = useMemo(
-    () => combinaRanking(rankingConsultor(rowsA), rankingConsultor(rowsB)),
+    () =>
+      combinaRanking(rankingConsultor(rowsA), rankingConsultor(rowsB)).filter(
+        (d) => d.A !== 0 || d.B !== 0,
+      ),
     [rowsA, rowsB],
   );
+
   const rkCerimonial = useMemo(
     () =>
       combinaRanking(
