@@ -244,6 +244,5 @@ export function linhaParaPlanilha(l: LinhaExport): (string | number)[] {
     l.fornecedor,
     l.documento,
     l.centroCusto,
-    l.observacoes,
   ];
 }
