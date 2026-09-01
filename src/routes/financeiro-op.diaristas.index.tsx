@@ -1202,10 +1202,12 @@ function ApontamentoTab() {
               )}
               <div className="sm:col-span-2 flex items-start justify-between gap-4 rounded-md border border-border p-3">
                 <div>
-                  <Label htmlFor="diaria-minima">Garantir diária de 8h</Label>
+                  <Label htmlFor="diaria-minima">
+                    Garantir diária de {jornadaLabel}
+                  </Label>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {editing.diaria_minima
-                      ? "Paga em diárias fechadas de 8h, arredondando para cima (ex.: 15h30 = 2 diárias)."
+                      ? `Paga em diárias fechadas de ${jornadaLabel}, arredondando para cima (ex.: ${jornadaExemplo} = 2 diárias).`
                       : "Paga estritamente as horas trabalhadas (valor/hora × horas)."}
                   </p>
                 </div>
