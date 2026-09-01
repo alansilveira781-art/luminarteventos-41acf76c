@@ -18,7 +18,6 @@ export const CA_EXPORT_HEADERS = [
   "Cliente/Fornecedor",
   "CNPJ/CPF Cliente/Fornecedor",
   "Centro de Custo",
-  "Observações",
 ] as const;
 
 export type PagamentoMin = {
@@ -245,6 +244,5 @@ export function linhaParaPlanilha(l: LinhaExport): (string | number)[] {
     l.fornecedor,
     l.documento,
     l.centroCusto,
-    l.observacoes,
   ];
 }
