@@ -86,12 +86,14 @@ function montarResultado(
   extraManual: number,
   refeicoes = 0,
   diariaMinima = true,
+  jornada = 8,
 ): CalcResult {
+  const j = Number(jornada) > 0 ? Number(jornada) : 8;
   const horasTrab = minutosTrab / 60;
-  const diariaCheia = valorHora * 8;
-  // Com a regra ligada, paga em diárias fechadas de 8h (arredonda para cima).
+  const diariaCheia = valorHora * j;
+  // Com a regra ligada, paga em diárias fechadas da jornada (arredonda p/ cima).
   const diaria = diariaMinima
-    ? Math.max(1, Math.ceil(horasTrab / 8)) * diariaCheia
+    ? Math.max(1, Math.ceil(horasTrab / j)) * diariaCheia
     : horasTrab * valorHora;
   const extra = Number(extraManual) || 0;
   const ref = Number(refeicoes) || 0;
