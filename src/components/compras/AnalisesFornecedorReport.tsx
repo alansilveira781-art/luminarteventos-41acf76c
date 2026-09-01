@@ -14,6 +14,8 @@ import {
 } from "@/components/PeriodoFilter";
 import { TablePagination } from "@/components/TablePagination";
 import { fetchAllRows } from "@/lib/fetch-all";
+import { carregarResolverFornecedor } from "@/lib/compras/fornecedor-doc";
+
 import {
   agruparPorFornecedor, normalizarNome,
   type CardAnalise, type FornecedorAgregado,
