@@ -307,27 +307,28 @@ export default function AnalisesFornecedorReport() {
             {fornecedoresAgg.length} fornecedor(es) · {totalCards} demanda(s) · Total {brl(totalValor)}
           </div>
           <div className="overflow-auto rounded-lg border max-h-[calc(100vh-260px)]">
-            <table className="w-full table-fixed text-sm">
+            <table className="w-full min-w-[1020px] table-fixed text-sm">
               <colgroup>
-                <col className="w-[26%]" />
-                <col className="w-[13%]" />
-                <col className="w-[8%]" />
-                <col className="w-[17%]" />
-                <col className="w-[14%]" />
-                <col className="w-[10%]" />
-                <col className="w-[12%]" />
+                <col className="w-[300px]" />
+                <col className="w-[150px]" />
+                <col className="w-[100px]" />
+                <col className="w-[180px]" />
+                <col className="w-[160px]" />
+                <col className="w-[130px]" />
+                <col className="w-[150px]" />
               </colgroup>
-              <thead className="bg-muted/50">
+              <thead className="bg-muted/50 sticky top-0 z-10">
                 <tr className="h-10">
-                  <th className="text-left px-3 font-medium">Fornecedor</th>
-                  <th className="text-left px-3 font-medium">CNPJ/CPF</th>
-                  <th className="text-right px-3 font-medium">Demandas</th>
-                  <th className="text-left px-3 font-medium">Formas</th>
-                  <th className="text-left px-3 font-medium">Condição</th>
-                  <th className="text-left px-3 font-medium">Parcelamento</th>
-                  <th className="text-right px-3 font-medium">Valor total</th>
+                  <th className="text-left px-3 font-medium"><span className="block truncate">Fornecedor</span></th>
+                  <th className="text-left px-3 font-medium"><span className="block truncate">CNPJ/CPF</span></th>
+                  <th className="text-right px-3 font-medium"><span className="block truncate">Demandas</span></th>
+                  <th className="text-left px-3 font-medium"><span className="block truncate">Formas</span></th>
+                  <th className="text-left px-3 font-medium"><span className="block truncate">Condição</span></th>
+                  <th className="text-left px-3 font-medium"><span className="block truncate">Parcelamento</span></th>
+                  <th className="text-right px-3 font-medium"><span className="block truncate">Valor total</span></th>
                 </tr>
               </thead>
+
               <tbody>
                 {visiveis.map((f) => {
                   const aberto = !!abertos[f.key];
