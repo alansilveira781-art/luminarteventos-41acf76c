@@ -1,0 +1,1 @@
+ALTER TABLE public.diaristas ADD COLUMN IF NOT EXISTS horas_diaria numeric NOT NULL DEFAULT 8;
