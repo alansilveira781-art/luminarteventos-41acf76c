@@ -429,6 +429,23 @@ function DiaristasConfiguracoes() {
               </div>
             </div>
 
+            <div className="space-y-1.5">
+              <Label>Horas da diária</Label>
+              <Input
+                type="number"
+                min={1}
+                max={24}
+                step="0.5"
+                value={editing.horas_diaria}
+                onChange={(e) =>
+                  setEditing({ ...editing, horas_diaria: Number(e.target.value) })
+                }
+              />
+              <div className="text-[11px] text-muted-foreground">
+                Jornada considerada para a diária (ex.: 8 para 08h–17h, 12 para 08h–20h).
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Valor/Hora Fortaleza</Label>
@@ -437,7 +454,8 @@ function DiaristasConfiguracoes() {
                   onChange={(v) => setEditing({ ...editing, valor_hora_fortaleza: v })}
                 />
                 <div className="text-[11px] text-muted-foreground">
-                  Diária (8h): {fmtBRL(editing.valor_hora_fortaleza * 8)}
+                  Diária ({fmtHoras(jornadaDe(editing))}):{" "}
+                  {fmtBRL(editing.valor_hora_fortaleza * jornadaDe(editing))}
                 </div>
               </div>
               <div className="space-y-1.5">
@@ -447,7 +465,8 @@ function DiaristasConfiguracoes() {
                   onChange={(v) => setEditing({ ...editing, valor_hora_fora: v })}
                 />
                 <div className="text-[11px] text-muted-foreground">
-                  Diária (8h): {fmtBRL(editing.valor_hora_fora * 8)}
+                  Diária ({fmtHoras(jornadaDe(editing))}):{" "}
+                  {fmtBRL(editing.valor_hora_fora * jornadaDe(editing))}
                 </div>
               </div>
             </div>
