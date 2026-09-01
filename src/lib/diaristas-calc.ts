@@ -248,7 +248,7 @@ export function calcularApontamentoComEventos(
     });
     const somaRateio =
       minutosPorEvento.reduce((acc, m, i) => acc + (ehEmpeleita[i] ? 0 : m), 0) || 1;
-    const base = montarResultado(totalMin, valorHora, a.extra_manual ?? 0, valorRefeicoes(a, t), usaDiariaMinima(a));
+    const base = montarResultado(totalMin, valorHora, a.extra_manual ?? 0, valorRefeicoes(a, t), usaDiariaMinima(a), jornadaDiaria(t));
     const baseFinal = isEmpeleita(a) ? zerarValores(base) : base;
     const ultimoPago = ehEmpeleita.lastIndexOf(false);
     let acumulado = 0;
