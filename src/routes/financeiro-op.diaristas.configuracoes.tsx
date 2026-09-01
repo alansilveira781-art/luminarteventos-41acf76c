@@ -315,6 +315,7 @@ function DiaristasConfiguracoes() {
                               colaborador_id: d.colaborador_id ?? null,
                               valor_hora_fortaleza: Number(d.valor_hora_fortaleza) || 0,
                               valor_hora_fora: Number(d.valor_hora_fora) || 0,
+                              horas_diaria: jornadaDe(d),
                               chave_pix: d.chave_pix ?? "",
                               ativo: d.ativo,
                             });
