@@ -299,66 +299,124 @@ function CalendarioRotinas({ rotinas, onEdit }: { rotinas: Rotina[]; onEdit: (r:
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
+  const [diaSel, setDiaSel] = useState<string>(() => new Date().toISOString().slice(0, 10));
 
   const ativas = useMemo(() => rotinas.filter((r) => r.status === "ativa" && !r.encerrada), [rotinas]);
   const cells = useMemo(() => buildMonthGrid(cursor, ativas), [cursor, ativas]);
 
+  const cellSel = useMemo(() => {
+    const found = cells.find((c) => c.date.toISOString().slice(0, 10) === diaSel);
+    if (found) return found;
+    const d = parseISODate(diaSel);
+    return {
+      date: d,
+      day: d.getDate(),
+      inMonth: false,
+      isToday: diaSel === new Date().toISOString().slice(0, 10),
+      events: ativas.filter((r) => occursOn(r, d)).sort((a, b) => (a.hora ?? "").localeCompare(b.hora ?? "")),
+    };
+  }, [cells, diaSel, ativas]);
+
   const monthLabel = cursor.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  const diaLabel = cellSel.date.toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 
   return (
-    <Card className="p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-base font-semibold capitalize">{monthLabel}</div>
-        <div className="flex gap-1">
-          <Button size="icon" variant="outline" onClick={() => setCursor((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1))}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => {
-            const d = new Date();
-            setCursor(new Date(d.getFullYear(), d.getMonth(), 1));
-          }}>Hoje</Button>
-          <Button size="icon" variant="outline" onClick={() => setCursor((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1))}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-7 gap-1 text-xs">
-        {DIAS_SEMANA.map((d) => (
-          <div key={d} className="px-2 py-1 text-center font-semibold text-muted-foreground uppercase tracking-wider">{d}</div>
-        ))}
-        {cells.map((cell, i) => (
-          <div
-            key={i}
-            className={`min-h-[88px] rounded border p-1 ${
-              cell.inMonth ? "bg-background" : "bg-muted/20 opacity-60"
-            } ${cell.isToday ? "ring-2 ring-primary" : ""}`}
-          >
-            <div className="text-[10px] font-medium text-muted-foreground mb-1">{cell.day}</div>
-            <div className="space-y-0.5">
-              {cell.events.slice(0, 3).map((r) => {
-                const horaFmt = r.hora?.slice(0, 5) ?? "—";
-                return (
-                  <button
-                    key={r.id}
-                    onClick={() => onEdit(r)}
-                    className="w-full text-left text-[10px] rounded px-1 py-0.5 bg-primary/10 hover:bg-primary/20 text-primary truncate flex items-center gap-1"
-                    title={`${r.titulo} às ${horaFmt}`}
-                  >
-                    <Clock className="h-2.5 w-2.5 shrink-0" />
-                    <span className="tabular-nums">{horaFmt}</span>
-                    <span className="truncate">{r.titulo}</span>
-                  </button>
-                );
-              })}
-              {cell.events.length > 3 && (
-                <div className="text-[10px] text-muted-foreground px-1">+{cell.events.length - 3}</div>
-              )}
-            </div>
+    <div className="grid gap-4 lg:grid-cols-[1fr_320px] items-start">
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-base font-semibold capitalize">{monthLabel}</div>
+          <div className="flex gap-1">
+            <Button size="icon" variant="outline" onClick={() => setCursor((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1))}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => {
+              const d = new Date();
+              setCursor(new Date(d.getFullYear(), d.getMonth(), 1));
+              setDiaSel(d.toISOString().slice(0, 10));
+            }}>Hoje</Button>
+            <Button size="icon" variant="outline" onClick={() => setCursor((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1))}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
-        ))}
-      </div>
-    </Card>
+        </div>
+
+        <div className="grid grid-cols-7 gap-1 text-xs">
+          {DIAS_SEMANA.map((d) => (
+            <div key={d} className="px-2 py-1 text-center font-semibold text-muted-foreground uppercase tracking-wider">{d}</div>
+          ))}
+          {cells.map((cell, i) => {
+            const key = cell.date.toISOString().slice(0, 10);
+            const isSel = key === diaSel;
+            return (
+              <div
+                key={i}
+                onClick={() => setDiaSel(key)}
+                className={`min-h-[88px] rounded border p-1 cursor-pointer transition-colors ${
+                  cell.inMonth ? "bg-background" : "bg-muted/20 opacity-60"
+                } ${cell.isToday ? "ring-2 ring-primary" : ""} ${isSel ? "border-primary bg-primary/5" : ""}`}
+              >
+                <div className={`text-[10px] font-medium mb-1 ${isSel ? "text-primary" : "text-muted-foreground"}`}>{cell.day}</div>
+                <div className="space-y-0.5">
+                  {cell.events.slice(0, 3).map((r) => {
+                    const horaFmt = r.hora?.slice(0, 5) ?? "—";
+                    return (
+                      <button
+                        key={r.id}
+                        onClick={(e) => { e.stopPropagation(); onEdit(r); }}
+                        className="w-full text-left text-[10px] rounded px-1 py-0.5 bg-primary/10 hover:bg-primary/20 text-primary truncate flex items-center gap-1"
+                        title={`${r.titulo} às ${horaFmt}`}
+                      >
+                        <Clock className="h-2.5 w-2.5 shrink-0" />
+                        <span className="tabular-nums">{horaFmt}</span>
+                        <span className="truncate">{r.titulo}</span>
+                      </button>
+                    );
+                  })}
+                  {cell.events.length > 3 && (
+                    <div className="text-[10px] text-muted-foreground px-1">+{cell.events.length - 3}</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+
+      <Card className="p-4 lg:sticky lg:top-4">
+        <div className="text-sm font-semibold capitalize mb-3">{diaLabel}</div>
+        {cellSel.events.length === 0 ? (
+          <div className="text-sm text-muted-foreground">Nenhuma rotina prevista para este dia.</div>
+        ) : (
+          <div className="space-y-2">
+            {cellSel.events.map((r) => (
+              <div key={r.id} className="rounded border p-2.5 space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-sm font-medium min-w-0">
+                    <Clock className="h-3.5 w-3.5 shrink-0 text-primary" />
+                    <span className="tabular-nums text-primary">{r.hora?.slice(0, 5) ?? "—"}</span>
+                    <span className="truncate">{r.titulo}</span>
+                  </div>
+                  <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => onEdit(r)} title="Editar">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                {r.responsavel_nome && (
+                  <div className="text-xs text-muted-foreground">Responsável: {r.responsavel_nome}</div>
+                )}
+                {r.descricao?.trim() && (
+                  <div className="text-xs text-muted-foreground whitespace-pre-wrap">{r.descricao}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+    </div>
   );
 }
 
