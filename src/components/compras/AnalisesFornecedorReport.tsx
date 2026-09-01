@@ -106,13 +106,11 @@ export default function AnalisesFornecedorReport() {
 
       const monta = (r: any, tipo: "COMPRA" | "DESPESA", agg: Agg | undefined): CardAnalise => {
         const parcelamento =
-          (agg?.parcelamentos.length ? agg.parcelamentos.join(" + ") : null) ??
-          (String(r.parcelamento ?? "").trim() || null) ??
+          (agg?.parcelamentos.length ? agg.parcelamentos.join(" + ") : null) ||
+          (String(r.parcelamento ?? "").trim() || null) ||
           (agg && agg.linhas > 1 ? `${agg.linhas}x` : null);
-        const condicao =
-          (String(r.condicao_pagamento ?? "").trim() || null) ??
-          null ??
-          null;
+        const condicao = String(r.condicao_pagamento ?? "").trim() || null;
+
         return {
           tipo,
           id: r.id,
