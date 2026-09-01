@@ -25,10 +25,18 @@ export type ApontamentoInput = {
 export type DiaristaTarifa = {
   valor_hora_fortaleza: number;
   valor_hora_fora: number;
+  /** Jornada da diária em horas (padrão 8) */
+  horas_diaria?: number | null;
   /** Valores gerais de refeição (configuração do módulo) */
   valor_almoco?: number | null;
   valor_janta?: number | null;
 };
+
+/** Jornada da diária do diarista, com fallback de 8h. */
+export function jornadaDiaria(t: DiaristaTarifa): number {
+  const h = Number(t?.horas_diaria);
+  return Number.isFinite(h) && h > 0 ? h : 8;
+}
 
 export type CalcResult = {
   minutosTrabalhados: number;
