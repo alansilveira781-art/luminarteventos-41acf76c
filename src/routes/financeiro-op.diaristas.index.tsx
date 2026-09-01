@@ -56,6 +56,7 @@ type Diarista = {
   departamento?: string | null;
   valor_hora_fortaleza: number;
   valor_hora_fora: number;
+  horas_diaria?: number | null;
   chave_pix: string | null;
   ativo: boolean;
 };
