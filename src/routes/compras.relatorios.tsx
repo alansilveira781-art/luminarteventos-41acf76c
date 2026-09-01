@@ -18,6 +18,8 @@ import { fetchAllRows } from "@/lib/fetch-all";
 import CartoesReport from "@/components/compras/CartoesReport";
 import AnalisesFornecedorReport from "@/components/compras/AnalisesFornecedorReport";
 import { TablePagination } from "@/components/TablePagination";
+import { carregarResolverFornecedor } from "@/lib/compras/fornecedor-doc";
+
 
 import {
   CA_EXPORT_HEADERS, formatarDataBR, linhaParaPlanilha, linhasDoCard, normForma,
