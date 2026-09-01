@@ -190,6 +190,11 @@ function VendasPage() {
     classificacoes: unique(rows.map((r) => r.classificacao)).sort(),
   }), [rows]);
 
+  const classificacaoOptions = useMemo(() => {
+    const set = new Set(["Planejados", ...opts.classificacoes]);
+    return [...set].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [opts.classificacoes]);
+
   const filtered = useMemo(() => {
     const q = busca.trim().toLowerCase();
     let list = rows.filter((r) => {
@@ -580,7 +585,7 @@ function VendasPage() {
         <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
           <FiltroSelect label="Empresa" value={empresa} onChange={setEmpresa} options={opts.empresas} />
           <FiltroSelect label="Consultor" value={consultor} onChange={setConsultor} options={opts.consultores} />
-          <FiltroSelect label="Classificação" value={classificacao} onChange={setClassificacao} options={opts.classificacoes} />
+          <FiltroSelect label="Classificação" value={classificacao} onChange={setClassificacao} options={classificacaoOptions} />
         </div>
         <div className="space-y-1">
           <Label className="text-[11px] uppercase">Buscar</Label>
