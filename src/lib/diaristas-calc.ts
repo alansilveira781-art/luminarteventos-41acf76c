@@ -131,6 +131,7 @@ export function calcularApontamento(a: ApontamentoInput, t: DiaristaTarifa): Cal
     a.extra_manual ?? 0,
     valorRefeicoes(a, t),
     usaDiariaMinima(a),
+    jornadaDiaria(t),
   );
   return isEmpeleita(a) ? zerarValores(res) : res;
 }
