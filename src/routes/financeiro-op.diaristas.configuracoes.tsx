@@ -151,6 +151,7 @@ function DiaristasConfiguracoes() {
         colaborador_id: payload.colaborador_id || null,
         valor_hora_fortaleza: Number(payload.valor_hora_fortaleza) || 0,
         valor_hora_fora: Number(payload.valor_hora_fora) || 0,
+        horas_diaria: Number(payload.horas_diaria) > 0 ? Number(payload.horas_diaria) : 8,
         chave_pix: payload.chave_pix.trim() || null,
         ativo: payload.ativo,
       };
