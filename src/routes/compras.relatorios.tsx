@@ -111,7 +111,7 @@ function ContaAzulExport() {
   const { data: cards = [], isLoading } = useQuery({
     queryKey: ["compras-relatorio-cards-ca"],
     queryFn: async (): Promise<CardMin[]> => {
-      const [compras, demandas, pagC, pagD, itens, fornecedores] = await Promise.all([
+      const [compras, demandas, pagC, pagD, itens, resolver] = await Promise.all([
         fetchAllRows<any>(
           "compras",
           "id, numero, titulo, fornecedor, fornecedor_id, documento, observacoes, valor_total, data_compra, data_solicitacao, created_at, categoria_conta_azul",
@@ -129,11 +129,8 @@ function ContaAzulExport() {
           "demanda_id, forma, parcelamento, valor, data_pagamento, pago, pago_em, ordem",
         ),
         fetchAllRows<any>("compra_itens", "compra_id, evento_projeto"),
-        fetchAllRows<any>("compras_fornecedores", "id, documento"),
+        carregarResolverFornecedor(),
       ]);
-
-      const docFornecedor = new Map<string, string>();
-      for (const f of fornecedores) if (f?.id) docFornecedor.set(f.id, f.documento ?? "");
 
       const eventoPorCompra = new Map<string, string>();
       for (const it of itens) {
@@ -154,16 +151,15 @@ function ContaAzulExport() {
         pagPorDemanda.set(p.demanda_id, arr);
       }
 
-      const doc = (c: any) => c.documento || docFornecedor.get(c.fornecedor_id ?? "") || "";
-
       const out: CardMin[] = [
         ...compras.map((c) => ({
           tipo: "COMPRA" as const,
           id: c.id,
           numero: c.numero ?? null,
           titulo: c.titulo ?? null,
-          fornecedor: c.fornecedor ?? null,
-          documento: doc(c),
+          fornecedor: resolver.nome(c) || null,
+          documento: resolver.documento(c),
+
           observacoes: c.observacoes ?? null,
           evento_projeto: eventoPorCompra.get(c.id) ?? null,
           valor_total: c.valor_total ?? null,
