@@ -76,28 +76,27 @@ export default function AnalisesFornecedorReport() {
         "id, numero, titulo, fornecedor, fornecedor_id, documento, valor_total, parcelamento, condicao_pagamento, status, data_compra, data_solicitacao, created_at";
       const selectDemandas = selectCompras;
 
-      const [compras, demandas, pagC, pagD, fornecedores] = await Promise.all([
+      const [compras, demandas, pagC, pagD, resolver] = await Promise.all([
         fetchAllRows<any>("compras", selectCompras),
         fetchAllRows<any>("demandas", selectDemandas),
         fetchAllRows<any>("compra_pagamentos", "compra_id, forma, parcelamento, valor"),
         fetchAllRows<any>("demanda_pagamentos", "demanda_id, forma, parcelamento, valor"),
-        fetchAllRows<any>("compras_fornecedores", "id, nome, documento"),
+        carregarResolverFornecedor(),
       ]);
 
-      const docFornecedor = new Map<string, string>();
-      for (const f of fornecedores) if (f?.id) docFornecedor.set(f.id, f.documento ?? "");
-
-      type Agg = { valor: number; formas: string[]; parcelamento: string | null };
+      type Agg = { valor: number; formas: string[]; parcelamentos: string[]; linhas: number };
       const agrupar = (linhas: any[], idKey: string) => {
         const m = new Map<string, Agg>();
         for (const p of linhas) {
           const id = p[idKey];
           if (!id) continue;
-          const cur = m.get(id) ?? { valor: 0, formas: [], parcelamento: null };
+          const cur = m.get(id) ?? { valor: 0, formas: [], parcelamentos: [], linhas: 0 };
           cur.valor += Number(p.valor ?? 0);
+          cur.linhas += 1;
           const label = String(p.forma ?? "").trim();
           if (label && !cur.formas.includes(label)) cur.formas.push(label);
-          cur.parcelamento = cur.parcelamento ?? p.parcelamento ?? null;
+          const parc = String(p.parcelamento ?? "").trim();
+          if (parc && !cur.parcelamentos.includes(parc)) cur.parcelamentos.push(parc);
           m.set(id, cur);
         }
         return m;
@@ -105,20 +104,33 @@ export default function AnalisesFornecedorReport() {
       const aggC = agrupar(pagC, "compra_id");
       const aggD = agrupar(pagD, "demanda_id");
 
-      const monta = (r: any, tipo: "COMPRA" | "DESPESA", agg: Agg | undefined): CardAnalise => ({
-        tipo,
-        id: r.id,
-        numero: r.numero ?? null,
-        titulo: r.titulo ?? null,
-        fornecedor: r.fornecedor ?? null,
-        documento: r.documento || docFornecedor.get(r.fornecedor_id ?? "") || "",
-        status: r.status ?? null,
-        data: dataRef(r),
-        valor: agg && agg.valor ? agg.valor : Number(r.valor_total ?? 0),
-        formas: agg?.formas ?? [],
-        parcelamento: agg?.parcelamento ?? r.parcelamento ?? null,
-        condicao: r.condicao_pagamento ?? null,
-      });
+      const monta = (r: any, tipo: "COMPRA" | "DESPESA", agg: Agg | undefined): CardAnalise => {
+        const parcelamento =
+          (agg?.parcelamentos.length ? agg.parcelamentos.join(" + ") : null) ??
+          (String(r.parcelamento ?? "").trim() || null) ??
+          (agg && agg.linhas > 1 ? `${agg.linhas}x` : null);
+        const condicao =
+          (String(r.condicao_pagamento ?? "").trim() || null) ??
+          null ??
+          null;
+        return {
+          tipo,
+          id: r.id,
+          numero: r.numero ?? null,
+          titulo: r.titulo ?? null,
+          fornecedor: resolver.nome(r) || null,
+          documento: resolver.documento(r),
+          status: r.status ?? null,
+          data: dataRef(r),
+          valor: agg && agg.valor ? agg.valor : Number(r.valor_total ?? 0),
+          formas: agg?.formas ?? [],
+          parcelamento,
+          condicao:
+            condicao ??
+            (parcelamento && parcelamento !== "1x" ? `Parcelado ${parcelamento}` : "À vista"),
+        };
+      };
+
 
       return [
         ...compras.map((c) => monta(c, "COMPRA", aggC.get(c.id))),
