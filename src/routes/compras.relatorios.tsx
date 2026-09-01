@@ -174,8 +174,9 @@ function ContaAzulExport() {
           id: d.id,
           numero: d.numero ?? null,
           titulo: d.titulo ?? null,
-          fornecedor: d.fornecedor ?? null,
-          documento: doc(d),
+          fornecedor: resolver.nome(d) || null,
+          documento: resolver.documento(d),
+
           observacoes: d.observacoes ?? null,
           evento_projeto: d.evento_projeto ?? null,
           valor_total: d.valor_total ?? null,
