@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -320,9 +320,8 @@ export default function AnalisesFornecedorReport() {
                 {visiveis.map((f) => {
                   const aberto = !!abertos[f.key];
                   return (
-                    <>
+                    <Fragment key={f.key}>
                       <tr
-                        key={f.key}
                         className="h-10 border-t cursor-pointer hover:bg-muted/40"
                         onClick={() => setAbertos((s) => ({ ...s, [f.key]: !s[f.key] }))}
                       >
@@ -356,7 +355,7 @@ export default function AnalisesFornecedorReport() {
                             <td className="px-3 text-right tabular-nums whitespace-nowrap">{brl(c.valor)}</td>
                           </tr>
                         ))}
-                    </>
+                    </Fragment>
                   );
                 })}
               </tbody>
