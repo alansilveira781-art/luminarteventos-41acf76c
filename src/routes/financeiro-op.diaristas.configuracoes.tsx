@@ -39,6 +39,7 @@ type Diarista = {
   colaborador_id: string | null;
   valor_hora_fortaleza: number;
   valor_hora_fora: number;
+  horas_diaria: number | null;
   chave_pix: string | null;
   ativo: boolean;
 };
@@ -51,9 +52,20 @@ type DiaristaForm = {
   colaborador_id: string | null;
   valor_hora_fortaleza: number;
   valor_hora_fora: number;
+  horas_diaria: number;
   chave_pix: string;
   ativo: boolean;
 };
+
+/** Jornada da diária (horas), com fallback de 8h. */
+function jornadaDe(d: { horas_diaria?: number | null }): number {
+  const h = Number(d?.horas_diaria);
+  return Number.isFinite(h) && h > 0 ? h : 8;
+}
+
+function fmtHoras(h: number) {
+  return `${Number(h).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}h`;
+}
 
 const SEM_DEPTO = "__sem";
 const SEM_COLAB = "__nenhum";
