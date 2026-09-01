@@ -39,6 +39,7 @@ type Diarista = {
   colaborador_id: string | null;
   valor_hora_fortaleza: number;
   valor_hora_fora: number;
+  horas_diaria: number | null;
   chave_pix: string | null;
   ativo: boolean;
 };
@@ -51,9 +52,20 @@ type DiaristaForm = {
   colaborador_id: string | null;
   valor_hora_fortaleza: number;
   valor_hora_fora: number;
+  horas_diaria: number;
   chave_pix: string;
   ativo: boolean;
 };
+
+/** Jornada da diária (horas), com fallback de 8h. */
+function jornadaDe(d: { horas_diaria?: number | null }): number {
+  const h = Number(d?.horas_diaria);
+  return Number.isFinite(h) && h > 0 ? h : 8;
+}
+
+function fmtHoras(h: number) {
+  return `${Number(h).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}h`;
+}
 
 const SEM_DEPTO = "__sem";
 const SEM_COLAB = "__nenhum";
@@ -72,6 +84,7 @@ const emptyForm: DiaristaForm = {
   colaborador_id: null,
   valor_hora_fortaleza: 0,
   valor_hora_fora: 0,
+  horas_diaria: 8,
   chave_pix: "",
   ativo: true,
 };
@@ -138,6 +151,7 @@ function DiaristasConfiguracoes() {
         colaborador_id: payload.colaborador_id || null,
         valor_hora_fortaleza: Number(payload.valor_hora_fortaleza) || 0,
         valor_hora_fora: Number(payload.valor_hora_fora) || 0,
+        horas_diaria: Number(payload.horas_diaria) > 0 ? Number(payload.horas_diaria) : 8,
         chave_pix: payload.chave_pix.trim() || null,
         ativo: payload.ativo,
       };
@@ -245,11 +259,12 @@ function DiaristasConfiguracoes() {
                   <th className="py-2 pr-3">Apelido</th>
                   <th className="py-2 px-3">Nome</th>
                   <th className="py-2 px-3">Departamento</th>
+                  <th className="py-2 px-3 text-right">Jornada</th>
                   <th className="py-2 px-3 text-right">R$/h Fortaleza</th>
 
-                  <th className="py-2 px-3 text-right">Diária Fortaleza (8h)</th>
+                  <th className="py-2 px-3 text-right">Diária Fortaleza</th>
                   <th className="py-2 px-3 text-right">R$/h Fora</th>
-                  <th className="py-2 px-3 text-right">Diária Fora (8h)</th>
+                  <th className="py-2 px-3 text-right">Diária Fora</th>
                   <th className="py-2 px-3">Chave Pix</th>
                   <th className="py-2 px-3 text-center">Ativo</th>
                   <th className="py-2 pl-3 text-right">Ações</th>
@@ -263,17 +278,20 @@ function DiaristasConfiguracoes() {
                     <td className="py-2 px-3 text-xs text-muted-foreground">{d.departamento || "—"}</td>
 
 
+                    <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
+                      {fmtHoras(jornadaDe(d))}
+                    </td>
                     <td className="py-2 px-3 text-right tabular-nums">
                       {fmtBRL(Number(d.valor_hora_fortaleza))}
                     </td>
                     <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
-                      {fmtBRL(Number(d.valor_hora_fortaleza) * 8)}
+                      {fmtBRL(Number(d.valor_hora_fortaleza) * jornadaDe(d))}
                     </td>
                     <td className="py-2 px-3 text-right tabular-nums">
                       {fmtBRL(Number(d.valor_hora_fora))}
                     </td>
                     <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
-                      {fmtBRL(Number(d.valor_hora_fora) * 8)}
+                      {fmtBRL(Number(d.valor_hora_fora) * jornadaDe(d))}
                     </td>
                     <td className="py-2 px-3 text-xs text-muted-foreground">
                       {d.chave_pix || "—"}
@@ -301,6 +319,7 @@ function DiaristasConfiguracoes() {
                               colaborador_id: d.colaborador_id ?? null,
                               valor_hora_fortaleza: Number(d.valor_hora_fortaleza) || 0,
                               valor_hora_fora: Number(d.valor_hora_fora) || 0,
+                              horas_diaria: jornadaDe(d),
                               chave_pix: d.chave_pix ?? "",
                               ativo: d.ativo,
                             });
@@ -410,6 +429,23 @@ function DiaristasConfiguracoes() {
               </div>
             </div>
 
+            <div className="space-y-1.5">
+              <Label>Horas da diária</Label>
+              <Input
+                type="number"
+                min={1}
+                max={24}
+                step="0.5"
+                value={editing.horas_diaria}
+                onChange={(e) =>
+                  setEditing({ ...editing, horas_diaria: Number(e.target.value) })
+                }
+              />
+              <div className="text-[11px] text-muted-foreground">
+                Jornada considerada para a diária (ex.: 8 para 08h–17h, 12 para 08h–20h).
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Valor/Hora Fortaleza</Label>
@@ -418,7 +454,8 @@ function DiaristasConfiguracoes() {
                   onChange={(v) => setEditing({ ...editing, valor_hora_fortaleza: v })}
                 />
                 <div className="text-[11px] text-muted-foreground">
-                  Diária (8h): {fmtBRL(editing.valor_hora_fortaleza * 8)}
+                  Diária ({fmtHoras(jornadaDe(editing))}):{" "}
+                  {fmtBRL(editing.valor_hora_fortaleza * jornadaDe(editing))}
                 </div>
               </div>
               <div className="space-y-1.5">
@@ -428,7 +465,8 @@ function DiaristasConfiguracoes() {
                   onChange={(v) => setEditing({ ...editing, valor_hora_fora: v })}
                 />
                 <div className="text-[11px] text-muted-foreground">
-                  Diária (8h): {fmtBRL(editing.valor_hora_fora * 8)}
+                  Diária ({fmtHoras(jornadaDe(editing))}):{" "}
+                  {fmtBRL(editing.valor_hora_fora * jornadaDe(editing))}
                 </div>
               </div>
             </div>

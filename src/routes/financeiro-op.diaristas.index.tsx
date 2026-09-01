@@ -33,6 +33,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   calcularApontamento,
   calcularApontamentoComEventos,
+  jornadaDiaria,
   formatHoras,
   intervaloExibicao,
 
@@ -56,6 +57,7 @@ type Diarista = {
   departamento?: string | null;
   valor_hora_fortaleza: number;
   valor_hora_fora: number;
+  horas_diaria?: number | null;
   chave_pix: string | null;
   ativo: boolean;
 };
@@ -579,6 +581,9 @@ function ApontamentoTab() {
   const preview = previewDiarista
     ? calcularApontamentoComEventos(editing, tarifaDe(previewDiarista), editing.modo_divisao, editing.eventos)
     : null;
+  const jornada = previewDiarista ? jornadaDiaria(tarifaDe(previewDiarista)) : 8;
+  const jornadaLabel = `${jornada.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}h`;
+  const jornadaExemplo = `${(jornada + 1).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}h`;
 
   const setEvento = (i: number, patch: Partial<EventoLinha>) =>
     setEditing((prev) => ({
@@ -1201,10 +1206,12 @@ function ApontamentoTab() {
               )}
               <div className="sm:col-span-2 flex items-start justify-between gap-4 rounded-md border border-border p-3">
                 <div>
-                  <Label htmlFor="diaria-minima">Garantir diária de 8h</Label>
+                  <Label htmlFor="diaria-minima">
+                    Garantir diária de {jornadaLabel}
+                  </Label>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {editing.diaria_minima
-                      ? "Paga em diárias fechadas de 8h, arredondando para cima (ex.: 15h30 = 2 diárias)."
+                      ? `Paga em diárias fechadas de ${jornadaLabel}, arredondando para cima (ex.: ${jornadaExemplo} = 2 diárias).`
                       : "Paga estritamente as horas trabalhadas (valor/hora × horas)."}
                   </p>
                 </div>

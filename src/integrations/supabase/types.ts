@@ -2959,6 +2959,7 @@ export type Database = {
           colaborador_id: string | null
           created_at: string
           departamento: string | null
+          horas_diaria: number
           id: string
           nome: string
           updated_at: string
@@ -2972,6 +2973,7 @@ export type Database = {
           colaborador_id?: string | null
           created_at?: string
           departamento?: string | null
+          horas_diaria?: number
           id?: string
           nome: string
           updated_at?: string
@@ -2985,6 +2987,7 @@ export type Database = {
           colaborador_id?: string | null
           created_at?: string
           departamento?: string | null
+          horas_diaria?: number
           id?: string
           nome?: string
           updated_at?: string

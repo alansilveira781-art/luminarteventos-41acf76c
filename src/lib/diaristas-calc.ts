@@ -25,10 +25,18 @@ export type ApontamentoInput = {
 export type DiaristaTarifa = {
   valor_hora_fortaleza: number;
   valor_hora_fora: number;
+  /** Jornada da diária em horas (padrão 8) */
+  horas_diaria?: number | null;
   /** Valores gerais de refeição (configuração do módulo) */
   valor_almoco?: number | null;
   valor_janta?: number | null;
 };
+
+/** Jornada da diária do diarista, com fallback de 8h. */
+export function jornadaDiaria(t: DiaristaTarifa): number {
+  const h = Number(t?.horas_diaria);
+  return Number.isFinite(h) && h > 0 ? h : 8;
+}
 
 export type CalcResult = {
   minutosTrabalhados: number;
@@ -78,12 +86,14 @@ function montarResultado(
   extraManual: number,
   refeicoes = 0,
   diariaMinima = true,
+  jornada = 8,
 ): CalcResult {
+  const j = Number(jornada) > 0 ? Number(jornada) : 8;
   const horasTrab = minutosTrab / 60;
-  const diariaCheia = valorHora * 8;
-  // Com a regra ligada, paga em diárias fechadas de 8h (arredonda para cima).
+  const diariaCheia = valorHora * j;
+  // Com a regra ligada, paga em diárias fechadas da jornada (arredonda p/ cima).
   const diaria = diariaMinima
-    ? Math.max(1, Math.ceil(horasTrab / 8)) * diariaCheia
+    ? Math.max(1, Math.ceil(horasTrab / j)) * diariaCheia
     : horasTrab * valorHora;
   const extra = Number(extraManual) || 0;
   const ref = Number(refeicoes) || 0;
@@ -121,6 +131,7 @@ export function calcularApontamento(a: ApontamentoInput, t: DiaristaTarifa): Cal
     a.extra_manual ?? 0,
     valorRefeicoes(a, t),
     usaDiariaMinima(a),
+    jornadaDiaria(t),
   );
   return isEmpeleita(a) ? zerarValores(res) : res;
 }
@@ -237,7 +248,7 @@ export function calcularApontamentoComEventos(
     });
     const somaRateio =
       minutosPorEvento.reduce((acc, m, i) => acc + (ehEmpeleita[i] ? 0 : m), 0) || 1;
-    const base = montarResultado(totalMin, valorHora, a.extra_manual ?? 0, valorRefeicoes(a, t), usaDiariaMinima(a));
+    const base = montarResultado(totalMin, valorHora, a.extra_manual ?? 0, valorRefeicoes(a, t), usaDiariaMinima(a), jornadaDiaria(t));
     const baseFinal = isEmpeleita(a) ? zerarValores(base) : base;
     const ultimoPago = ehEmpeleita.lastIndexOf(false);
     let acumulado = 0;
