@@ -121,7 +121,7 @@ export function RelatorioVendasPeriodo({
       cur.B = x.valor;
       map.set(x.nome, cur);
     }
-    return [...map.values()].sort((a, b) => b.A + b.B - (a.A + a.B));
+    return [...map.values()].sort((a, b) => b.A - a.A);
   };
 
   const rkCategoria = useMemo(
