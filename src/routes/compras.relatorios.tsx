@@ -18,6 +18,8 @@ import { fetchAllRows } from "@/lib/fetch-all";
 import CartoesReport from "@/components/compras/CartoesReport";
 import AnalisesFornecedorReport from "@/components/compras/AnalisesFornecedorReport";
 import { TablePagination } from "@/components/TablePagination";
+import { carregarResolverFornecedor } from "@/lib/compras/fornecedor-doc";
+
 
 import {
   CA_EXPORT_HEADERS, formatarDataBR, linhaParaPlanilha, linhasDoCard, normForma,
@@ -111,7 +113,7 @@ function ContaAzulExport() {
   const { data: cards = [], isLoading } = useQuery({
     queryKey: ["compras-relatorio-cards-ca"],
     queryFn: async (): Promise<CardMin[]> => {
-      const [compras, demandas, pagC, pagD, itens, fornecedores] = await Promise.all([
+      const [compras, demandas, pagC, pagD, itens, resolver] = await Promise.all([
         fetchAllRows<any>(
           "compras",
           "id, numero, titulo, fornecedor, fornecedor_id, documento, observacoes, valor_total, data_compra, data_solicitacao, created_at, categoria_conta_azul",
@@ -129,11 +131,8 @@ function ContaAzulExport() {
           "demanda_id, forma, parcelamento, valor, data_pagamento, pago, pago_em, ordem",
         ),
         fetchAllRows<any>("compra_itens", "compra_id, evento_projeto"),
-        fetchAllRows<any>("compras_fornecedores", "id, documento"),
+        carregarResolverFornecedor(),
       ]);
-
-      const docFornecedor = new Map<string, string>();
-      for (const f of fornecedores) if (f?.id) docFornecedor.set(f.id, f.documento ?? "");
 
       const eventoPorCompra = new Map<string, string>();
       for (const it of itens) {
@@ -154,16 +153,15 @@ function ContaAzulExport() {
         pagPorDemanda.set(p.demanda_id, arr);
       }
 
-      const doc = (c: any) => c.documento || docFornecedor.get(c.fornecedor_id ?? "") || "";
-
       const out: CardMin[] = [
         ...compras.map((c) => ({
           tipo: "COMPRA" as const,
           id: c.id,
           numero: c.numero ?? null,
           titulo: c.titulo ?? null,
-          fornecedor: c.fornecedor ?? null,
-          documento: doc(c),
+          fornecedor: resolver.nome(c) || null,
+          documento: resolver.documento(c),
+
           observacoes: c.observacoes ?? null,
           evento_projeto: eventoPorCompra.get(c.id) ?? null,
           valor_total: c.valor_total ?? null,
@@ -178,8 +176,9 @@ function ContaAzulExport() {
           id: d.id,
           numero: d.numero ?? null,
           titulo: d.titulo ?? null,
-          fornecedor: d.fornecedor ?? null,
-          documento: doc(d),
+          fornecedor: resolver.nome(d) || null,
+          documento: resolver.documento(d),
+
           observacoes: d.observacoes ?? null,
           evento_projeto: d.evento_projeto ?? null,
           valor_total: d.valor_total ?? null,
@@ -294,28 +293,31 @@ function ContaAzulExport() {
             {linhas.length} lançamento(s) · Total {brl(total)}
           </div>
           <div className="overflow-auto rounded-lg border max-h-[calc(100vh-260px)]">
-            <table className="w-full table-fixed text-sm">
+            <table className="w-full min-w-[1180px] table-fixed text-sm">
               <colgroup>
-                <col className="w-[9%]" />
-                <col className="w-[9%]" />
-                <col className="w-[9%]" />
-                <col className="w-[10%]" />
-                <col className="w-[18%]" />
-                <col className="w-[19%]" />
-                <col className="w-[12%]" />
-                <col className="w-[10%]" />
-                <col className="w-[10%]" />
+                <col className="w-[110px]" />
+                <col className="w-[110px]" />
+                <col className="w-[110px]" />
+                <col className="w-[110px]" />
+                <col className="w-[200px]" />
+                <col className="w-[260px]" />
+                <col className="w-[180px]" />
+                <col className="w-[140px]" />
+                <col className="w-[180px]" />
               </colgroup>
-              <thead className="bg-muted/50">
+              <thead className="bg-muted/50 sticky top-0 z-10">
                 <tr className="h-10">
                   {CA_EXPORT_HEADERS.map((h) => (
-                    <th key={h} className="text-left px-3 font-medium whitespace-nowrap">{h}</th>
+                    <th key={h} className="text-left px-3 font-medium">
+                      <span className="block truncate" title={h}>{h}</span>
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {linhasPagina.map((l, i) => (
                   <tr key={`${l.cardKey}-${inicio + i}`} className="h-11 border-t">
+
                     <td className="px-3 whitespace-nowrap">{formatarDataBR(l.competencia) || "—"}</td>
                     <td className="px-3 whitespace-nowrap">{formatarDataBR(l.vencimento) || "—"}</td>
                     <td className="px-3 whitespace-nowrap">{formatarDataBR(l.pagamento) || "—"}</td>

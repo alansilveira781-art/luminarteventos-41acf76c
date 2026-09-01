@@ -445,29 +445,30 @@ export default function CartoesReport() {
       ) : (
         <>
         <div className="overflow-auto rounded-lg border max-h-[calc(100vh-260px)]">
-          <table className="w-full table-fixed text-sm">
+          <table className={`w-full table-fixed text-sm ${mostrarForma ? "min-w-[1180px]" : "min-w-[1040px]"}`}>
             <colgroup>
-              <col className="w-[9%]" />
-              <col className="w-[16%]" />
-              <col className="w-[12%]" />
-              <col className="w-[12%]" />
-              <col className={mostrarForma ? "w-[21%]" : "w-[32%]"} />
-              {mostrarForma && <col className="w-[11%]" />}
-              <col className="w-[9%]" />
-              <col className="w-[10%]" />
+              <col className="w-[110px]" />
+              <col className="w-[240px]" />
+              <col className="w-[160px]" />
+              <col className="w-[160px]" />
+              <col className={mostrarForma ? "w-[240px]" : "w-[360px]"} />
+              {mostrarForma && <col className="w-[140px]" />}
+              <col className="w-[130px]" />
+              <col className="w-[140px]" />
             </colgroup>
-            <thead className="bg-muted/50">
+            <thead className="bg-muted/50 sticky top-0 z-10">
               <tr className="h-10">
-                <th className="text-left px-3 font-medium">Tipo</th>
-                <th className="text-left px-3 font-medium">Título</th>
-                <th className="text-left px-3 font-medium">Solicitante</th>
-                <th className="text-left px-3 font-medium">Comprador</th>
-                <th className="text-left px-3 font-medium">Itens ou Descritivo</th>
-                {mostrarForma && <th className="text-left px-3 font-medium">Forma</th>}
-                <th className="text-left px-3 font-medium">Parcelamento</th>
-                <th className="text-right px-3 font-medium">Valor total</th>
+                <th className="text-left px-3 font-medium"><span className="block truncate">Tipo</span></th>
+                <th className="text-left px-3 font-medium"><span className="block truncate">Título</span></th>
+                <th className="text-left px-3 font-medium"><span className="block truncate">Solicitante</span></th>
+                <th className="text-left px-3 font-medium"><span className="block truncate">Comprador</span></th>
+                <th className="text-left px-3 font-medium"><span className="block truncate">Itens ou Descritivo</span></th>
+                {mostrarForma && <th className="text-left px-3 font-medium"><span className="block truncate">Forma</span></th>}
+                <th className="text-left px-3 font-medium"><span className="block truncate">Parcelamento</span></th>
+                <th className="text-right px-3 font-medium"><span className="block truncate">Valor total</span></th>
               </tr>
             </thead>
+
             <tbody>
               {rowsPagina.map((r) => {
                 const itensTexto = r.itens.length > 0

@@ -14,6 +14,8 @@ import {
 } from "@/components/PeriodoFilter";
 import { TablePagination } from "@/components/TablePagination";
 import { fetchAllRows } from "@/lib/fetch-all";
+import { carregarResolverFornecedor } from "@/lib/compras/fornecedor-doc";
+
 import {
   agruparPorFornecedor, normalizarNome,
   type CardAnalise, type FornecedorAgregado,
@@ -76,28 +78,27 @@ export default function AnalisesFornecedorReport() {
         "id, numero, titulo, fornecedor, fornecedor_id, documento, valor_total, parcelamento, condicao_pagamento, status, data_compra, data_solicitacao, created_at";
       const selectDemandas = selectCompras;
 
-      const [compras, demandas, pagC, pagD, fornecedores] = await Promise.all([
+      const [compras, demandas, pagC, pagD, resolver] = await Promise.all([
         fetchAllRows<any>("compras", selectCompras),
         fetchAllRows<any>("demandas", selectDemandas),
         fetchAllRows<any>("compra_pagamentos", "compra_id, forma, parcelamento, valor"),
         fetchAllRows<any>("demanda_pagamentos", "demanda_id, forma, parcelamento, valor"),
-        fetchAllRows<any>("compras_fornecedores", "id, nome, documento"),
+        carregarResolverFornecedor(),
       ]);
 
-      const docFornecedor = new Map<string, string>();
-      for (const f of fornecedores) if (f?.id) docFornecedor.set(f.id, f.documento ?? "");
-
-      type Agg = { valor: number; formas: string[]; parcelamento: string | null };
+      type Agg = { valor: number; formas: string[]; parcelamentos: string[]; linhas: number };
       const agrupar = (linhas: any[], idKey: string) => {
         const m = new Map<string, Agg>();
         for (const p of linhas) {
           const id = p[idKey];
           if (!id) continue;
-          const cur = m.get(id) ?? { valor: 0, formas: [], parcelamento: null };
+          const cur = m.get(id) ?? { valor: 0, formas: [], parcelamentos: [], linhas: 0 };
           cur.valor += Number(p.valor ?? 0);
+          cur.linhas += 1;
           const label = String(p.forma ?? "").trim();
           if (label && !cur.formas.includes(label)) cur.formas.push(label);
-          cur.parcelamento = cur.parcelamento ?? p.parcelamento ?? null;
+          const parc = String(p.parcelamento ?? "").trim();
+          if (parc && !cur.parcelamentos.includes(parc)) cur.parcelamentos.push(parc);
           m.set(id, cur);
         }
         return m;
@@ -105,20 +106,31 @@ export default function AnalisesFornecedorReport() {
       const aggC = agrupar(pagC, "compra_id");
       const aggD = agrupar(pagD, "demanda_id");
 
-      const monta = (r: any, tipo: "COMPRA" | "DESPESA", agg: Agg | undefined): CardAnalise => ({
-        tipo,
-        id: r.id,
-        numero: r.numero ?? null,
-        titulo: r.titulo ?? null,
-        fornecedor: r.fornecedor ?? null,
-        documento: r.documento || docFornecedor.get(r.fornecedor_id ?? "") || "",
-        status: r.status ?? null,
-        data: dataRef(r),
-        valor: agg && agg.valor ? agg.valor : Number(r.valor_total ?? 0),
-        formas: agg?.formas ?? [],
-        parcelamento: agg?.parcelamento ?? r.parcelamento ?? null,
-        condicao: r.condicao_pagamento ?? null,
-      });
+      const monta = (r: any, tipo: "COMPRA" | "DESPESA", agg: Agg | undefined): CardAnalise => {
+        const parcelamento =
+          (agg?.parcelamentos.length ? agg.parcelamentos.join(" + ") : null) ||
+          (String(r.parcelamento ?? "").trim() || null) ||
+          (agg && agg.linhas > 1 ? `${agg.linhas}x` : null);
+        const condicao = String(r.condicao_pagamento ?? "").trim() || null;
+
+        return {
+          tipo,
+          id: r.id,
+          numero: r.numero ?? null,
+          titulo: r.titulo ?? null,
+          fornecedor: resolver.nome(r) || null,
+          documento: resolver.documento(r),
+          status: r.status ?? null,
+          data: dataRef(r),
+          valor: agg && agg.valor ? agg.valor : Number(r.valor_total ?? 0),
+          formas: agg?.formas ?? [],
+          parcelamento,
+          condicao:
+            condicao ??
+            (parcelamento && parcelamento !== "1x" ? `Parcelado ${parcelamento}` : "À vista"),
+        };
+      };
+
 
       return [
         ...compras.map((c) => monta(c, "COMPRA", aggC.get(c.id))),
@@ -295,27 +307,28 @@ export default function AnalisesFornecedorReport() {
             {fornecedoresAgg.length} fornecedor(es) · {totalCards} demanda(s) · Total {brl(totalValor)}
           </div>
           <div className="overflow-auto rounded-lg border max-h-[calc(100vh-260px)]">
-            <table className="w-full table-fixed text-sm">
+            <table className="w-full min-w-[1020px] table-fixed text-sm">
               <colgroup>
-                <col className="w-[26%]" />
-                <col className="w-[13%]" />
-                <col className="w-[8%]" />
-                <col className="w-[17%]" />
-                <col className="w-[14%]" />
-                <col className="w-[10%]" />
-                <col className="w-[12%]" />
+                <col className="w-[300px]" />
+                <col className="w-[150px]" />
+                <col className="w-[100px]" />
+                <col className="w-[180px]" />
+                <col className="w-[160px]" />
+                <col className="w-[130px]" />
+                <col className="w-[150px]" />
               </colgroup>
-              <thead className="bg-muted/50">
+              <thead className="bg-muted/50 sticky top-0 z-10">
                 <tr className="h-10">
-                  <th className="text-left px-3 font-medium">Fornecedor</th>
-                  <th className="text-left px-3 font-medium">CNPJ/CPF</th>
-                  <th className="text-right px-3 font-medium">Demandas</th>
-                  <th className="text-left px-3 font-medium">Formas</th>
-                  <th className="text-left px-3 font-medium">Condição</th>
-                  <th className="text-left px-3 font-medium">Parcelamento</th>
-                  <th className="text-right px-3 font-medium">Valor total</th>
+                  <th className="text-left px-3 font-medium"><span className="block truncate">Fornecedor</span></th>
+                  <th className="text-left px-3 font-medium"><span className="block truncate">CNPJ/CPF</span></th>
+                  <th className="text-right px-3 font-medium"><span className="block truncate">Demandas</span></th>
+                  <th className="text-left px-3 font-medium"><span className="block truncate">Formas</span></th>
+                  <th className="text-left px-3 font-medium"><span className="block truncate">Condição</span></th>
+                  <th className="text-left px-3 font-medium"><span className="block truncate">Parcelamento</span></th>
+                  <th className="text-right px-3 font-medium"><span className="block truncate">Valor total</span></th>
                 </tr>
               </thead>
+
               <tbody>
                 {visiveis.map((f) => {
                   const aberto = !!abertos[f.key];
