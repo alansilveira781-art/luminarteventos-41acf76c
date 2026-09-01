@@ -294,28 +294,31 @@ function ContaAzulExport() {
             {linhas.length} lançamento(s) · Total {brl(total)}
           </div>
           <div className="overflow-auto rounded-lg border max-h-[calc(100vh-260px)]">
-            <table className="w-full table-fixed text-sm">
+            <table className="w-full min-w-[1180px] table-fixed text-sm">
               <colgroup>
-                <col className="w-[9%]" />
-                <col className="w-[9%]" />
-                <col className="w-[9%]" />
-                <col className="w-[10%]" />
-                <col className="w-[18%]" />
-                <col className="w-[19%]" />
-                <col className="w-[12%]" />
-                <col className="w-[10%]" />
-                <col className="w-[10%]" />
+                <col className="w-[110px]" />
+                <col className="w-[110px]" />
+                <col className="w-[110px]" />
+                <col className="w-[110px]" />
+                <col className="w-[200px]" />
+                <col className="w-[260px]" />
+                <col className="w-[180px]" />
+                <col className="w-[140px]" />
+                <col className="w-[180px]" />
               </colgroup>
-              <thead className="bg-muted/50">
+              <thead className="bg-muted/50 sticky top-0 z-10">
                 <tr className="h-10">
                   {CA_EXPORT_HEADERS.map((h) => (
-                    <th key={h} className="text-left px-3 font-medium whitespace-nowrap">{h}</th>
+                    <th key={h} className="text-left px-3 font-medium">
+                      <span className="block truncate" title={h}>{h}</span>
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {linhasPagina.map((l, i) => (
                   <tr key={`${l.cardKey}-${inicio + i}`} className="h-11 border-t">
+
                     <td className="px-3 whitespace-nowrap">{formatarDataBR(l.competencia) || "—"}</td>
                     <td className="px-3 whitespace-nowrap">{formatarDataBR(l.vencimento) || "—"}</td>
                     <td className="px-3 whitespace-nowrap">{formatarDataBR(l.pagamento) || "—"}</td>
