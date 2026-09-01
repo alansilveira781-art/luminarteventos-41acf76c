@@ -84,6 +84,7 @@ const emptyForm: DiaristaForm = {
   colaborador_id: null,
   valor_hora_fortaleza: 0,
   valor_hora_fora: 0,
+  horas_diaria: 8,
   chave_pix: "",
   ativo: true,
 };
