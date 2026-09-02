@@ -399,7 +399,7 @@ function SolicitarPage() {
   }
 
   if (done) {
-    const codePrefix = done.tipo === "compra" ? "COMPRA" : "DEMANDA";
+    const codePrefix = done.tipo === "compra" ? "COMPRA" : "AQUISIÇÃO";
     return (
       <Shell>
         <div className="text-center space-y-4 py-6">
