@@ -233,34 +233,36 @@ export const Route = createFileRoute("/api/public/solicitar")({
               if (v instanceof File && v.size > 0) uploadedFiles.push(v);
             }
             if (uploadedFiles.length > MAX_FILES) {
-              return new Response(
-                JSON.stringify({ error: `Máximo de ${MAX_FILES} anexos por solicitação` }),
-                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+              return recusar(
+                400,
+                { error: `Máximo de ${MAX_FILES} anexos por solicitação` },
+                "excedeu o limite de anexos",
               );
             }
             for (const f of uploadedFiles) {
               if (f.size > MAX_FILE_BYTES) {
-                return new Response(
-                  JSON.stringify({ error: `Arquivo '${f.name}' excede 10 MB` }),
-                  { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-                );
+                return recusar(400, { error: `Arquivo '${f.name}' excede 10 MB` }, "anexo acima de 10 MB");
               }
             }
           } else {
             body = await request.json();
           }
         } catch {
-          return new Response(JSON.stringify({ error: "Requisição inválida" }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+          return recusar(400, { error: "Requisição inválida" }, "corpo da requisição ilegível");
         }
+
+        const anyBody = (body ?? {}) as Record<string, unknown>;
+        ctx.tipo = typeof anyBody.tipo === "string" ? anyBody.tipo : null;
+        ctx.titulo = typeof anyBody.titulo === "string" ? anyBody.titulo : null;
+        ctx.nome = typeof anyBody.solicitante_nome === "string" ? anyBody.solicitante_nome : null;
+        ctx.email = typeof anyBody.solicitante_email === "string" ? anyBody.solicitante_email : null;
 
         const parsed = baseSchema.safeParse(body);
         if (!parsed.success) {
-          return new Response(
-            JSON.stringify({ error: "Dados inválidos", issues: parsed.error.flatten() }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          return recusar(
+            400,
+            { error: "Dados inválidos", issues: parsed.error.flatten() },
+            `validação: ${JSON.stringify(parsed.error.flatten().fieldErrors).slice(0, 300)}`,
           );
         }
 
@@ -269,17 +271,11 @@ export const Route = createFileRoute("/api/public/solicitar")({
         // Validações específicas por tipo
         if (d.tipo === "compra") {
           if (!d.itens || d.itens.length === 0) {
-            return new Response(
-              JSON.stringify({ error: "Informe ao menos um item para a compra" }),
-              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-            );
+            return recusar(400, { error: "Informe ao menos um item para a compra" }, "compra sem itens");
           }
         } else {
           if (!d.descricao || d.descricao.trim().length === 0) {
-            return new Response(
-              JSON.stringify({ error: "Descreva a demanda" }),
-              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-            );
+            return recusar(400, { error: "Descreva a demanda" }, "aquisição sem descrição");
           }
         }
 
