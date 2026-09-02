@@ -120,6 +120,66 @@ async function uploadAnexos(
 }
 
 
+/** Registro de auditoria de toda tentativa vinda do link público. Nunca derruba a requisição. */
+async function registrarTentativa(entry: {
+  tipo?: string | null;
+  titulo?: string | null;
+  solicitante_nome?: string | null;
+  solicitante_email?: string | null;
+  ip_hash?: string | null;
+  resultado: "criado" | "recusado" | "erro";
+  erro?: string | null;
+  card_id?: string | null;
+  card_numero?: number | null;
+}) {
+  try {
+    await (supabaseAdmin as any).from("solicitacoes_publicas_log").insert(entry);
+  } catch (err) {
+    console.error("[solicitar] falha ao registrar log da tentativa", err);
+  }
+}
+
+async function hashIp(ip: string): Promise<string> {
+  try {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(ip));
+    return Array.from(new Uint8Array(buf))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("")
+      .slice(0, 16);
+  } catch {
+    return "unknown";
+  }
+}
+
+/** Avisa os responsáveis padrão da etapa "Solicitação" que chegou um pedido novo. */
+async function notificarResponsaveis(params: {
+  origem: "compra" | "demanda";
+  cardId: string;
+  titulo: string;
+  solicitante: string;
+}) {
+  try {
+    const tabela = params.origem === "compra" ? "compras_status_defaults" : "financeiro_status_defaults";
+    const { data } = await (supabaseAdmin as any)
+      .from(tabela)
+      .select("responsavel_id")
+      .eq("status", "solicitacao");
+    const ids = [...new Set(((data ?? []) as any[]).map((r) => r.responsavel_id).filter(Boolean))];
+    if (!ids.length) return;
+    await (supabaseAdmin as any).rpc("enqueue_notificacoes", {
+      rows: ids.map((user_id) => ({
+        user_id,
+        tipo: "nova_solicitacao",
+        titulo: params.origem === "compra" ? "Nova solicitação de compra" : "Nova solicitação de aquisição",
+        mensagem: `${params.titulo} — ${params.solicitante}`.slice(0, 140),
+        link: `/compras?id=${params.cardId}${params.origem === "demanda" ? "&origem=demanda" : ""}`,
+      })),
+    });
+  } catch (err) {
+    console.error("[solicitar] falha ao notificar responsáveis", err);
+  }
+}
+
 export const Route = createFileRoute("/api/public/solicitar")({
   server: {
     handlers: {
@@ -130,10 +190,30 @@ export const Route = createFileRoute("/api/public/solicitar")({
           request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
           request.headers.get("x-real-ip") ||
           "unknown";
+        const ipHash = await hashIp(ip);
+        // Contexto preenchido conforme os dados vão sendo lidos, para o log de tentativas.
+        const ctx: { tipo?: string | null; titulo?: string | null; nome?: string | null; email?: string | null } = {};
+        const recusar = async (status: number, payload: Record<string, unknown>, motivo: string) => {
+          await registrarTentativa({
+            tipo: ctx.tipo ?? null,
+            titulo: ctx.titulo ?? null,
+            solicitante_nome: ctx.nome ?? null,
+            solicitante_email: ctx.email ?? null,
+            ip_hash: ipHash,
+            resultado: status >= 500 ? "erro" : "recusado",
+            erro: motivo,
+          });
+          return new Response(JSON.stringify(payload), {
+            status,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        };
+
         if (!rateLimit(ip)) {
-          return new Response(
-            JSON.stringify({ error: "Muitas solicitações. Aguarde alguns instantes e tente novamente." }),
-            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          return recusar(
+            429,
+            { error: "Muitas solicitações. Aguarde alguns instantes e tente novamente." },
+            "rate limit por IP",
           );
         }
 
@@ -153,34 +233,36 @@ export const Route = createFileRoute("/api/public/solicitar")({
               if (v instanceof File && v.size > 0) uploadedFiles.push(v);
             }
             if (uploadedFiles.length > MAX_FILES) {
-              return new Response(
-                JSON.stringify({ error: `Máximo de ${MAX_FILES} anexos por solicitação` }),
-                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+              return recusar(
+                400,
+                { error: `Máximo de ${MAX_FILES} anexos por solicitação` },
+                "excedeu o limite de anexos",
               );
             }
             for (const f of uploadedFiles) {
               if (f.size > MAX_FILE_BYTES) {
-                return new Response(
-                  JSON.stringify({ error: `Arquivo '${f.name}' excede 10 MB` }),
-                  { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-                );
+                return recusar(400, { error: `Arquivo '${f.name}' excede 10 MB` }, "anexo acima de 10 MB");
               }
             }
           } else {
             body = await request.json();
           }
         } catch {
-          return new Response(JSON.stringify({ error: "Requisição inválida" }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+          return recusar(400, { error: "Requisição inválida" }, "corpo da requisição ilegível");
         }
+
+        const anyBody = (body ?? {}) as Record<string, unknown>;
+        ctx.tipo = typeof anyBody.tipo === "string" ? anyBody.tipo : null;
+        ctx.titulo = typeof anyBody.titulo === "string" ? anyBody.titulo : null;
+        ctx.nome = typeof anyBody.solicitante_nome === "string" ? anyBody.solicitante_nome : null;
+        ctx.email = typeof anyBody.solicitante_email === "string" ? anyBody.solicitante_email : null;
 
         const parsed = baseSchema.safeParse(body);
         if (!parsed.success) {
-          return new Response(
-            JSON.stringify({ error: "Dados inválidos", issues: parsed.error.flatten() }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          return recusar(
+            400,
+            { error: "Dados inválidos", issues: parsed.error.flatten() },
+            `validação: ${JSON.stringify(parsed.error.flatten().fieldErrors).slice(0, 300)}`,
           );
         }
 
@@ -189,17 +271,11 @@ export const Route = createFileRoute("/api/public/solicitar")({
         // Validações específicas por tipo
         if (d.tipo === "compra") {
           if (!d.itens || d.itens.length === 0) {
-            return new Response(
-              JSON.stringify({ error: "Informe ao menos um item para a compra" }),
-              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-            );
+            return recusar(400, { error: "Informe ao menos um item para a compra" }, "compra sem itens");
           }
         } else {
           if (!d.descricao || d.descricao.trim().length === 0) {
-            return new Response(
-              JSON.stringify({ error: "Descreva a demanda" }),
-              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-            );
+            return recusar(400, { error: "Descreva a demanda" }, "aquisição sem descrição");
           }
         }
 
@@ -272,9 +348,10 @@ export const Route = createFileRoute("/api/public/solicitar")({
             .single();
 
           if (error) {
-            return new Response(
-              JSON.stringify({ error: "Não foi possível registrar a compra" }),
-              { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+            return recusar(
+              500,
+              { error: "Não foi possível registrar a compra" },
+              `insert compras: ${error.message ?? "erro desconhecido"}`,
             );
           }
 
@@ -300,11 +377,29 @@ export const Route = createFileRoute("/api/public/solicitar")({
             );
           }
 
+          await registrarTentativa({
+            tipo: "compra",
+            titulo: d.titulo,
+            solicitante_nome: d.solicitante_nome,
+            solicitante_email: solicitanteEmail,
+            ip_hash: ipHash,
+            resultado: "criado",
+            card_id: (compra as any).id,
+            card_numero: (compra as any).numero ?? null,
+          });
+          await notificarResponsaveis({
+            origem: "compra",
+            cardId: (compra as any).id,
+            titulo: d.titulo,
+            solicitante: d.solicitante_nome,
+          });
+
           return new Response(
             JSON.stringify({
               ok: true,
               id: (compra as any).id,
               numero: (compra as any).numero,
+              codigo: (compra as any).numero != null ? `COMPRA-${(compra as any).numero}` : null,
               tipo: "compra",
               anexos_falhados: anexosResult.falhados,
               anexos_erros: anexosResult.erros,
@@ -354,9 +449,10 @@ export const Route = createFileRoute("/api/public/solicitar")({
           .single();
 
         if (error) {
-          return new Response(
-            JSON.stringify({ error: "Não foi possível registrar a demanda" }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          return recusar(
+            500,
+            { error: "Não foi possível registrar a demanda" },
+            `insert demandas: ${error.message ?? "erro desconhecido"}`,
           );
         }
 
@@ -385,11 +481,29 @@ export const Route = createFileRoute("/api/public/solicitar")({
           );
         }
 
+        await registrarTentativa({
+          tipo: "demanda",
+          titulo: d.titulo,
+          solicitante_nome: d.solicitante_nome,
+          solicitante_email: solicitanteEmail,
+          ip_hash: ipHash,
+          resultado: "criado",
+          card_id: (demanda as any).id,
+          card_numero: (demanda as any).numero ?? null,
+        });
+        await notificarResponsaveis({
+          origem: "demanda",
+          cardId: (demanda as any).id,
+          titulo: d.titulo,
+          solicitante: d.solicitante_nome,
+        });
+
         return new Response(
           JSON.stringify({
             ok: true,
             id: (demanda as any).id,
             numero: (demanda as any).numero,
+            codigo: (demanda as any).numero != null ? `AQUISIÇÃO-${(demanda as any).numero}` : null,
             tipo: "demanda",
             anexos_falhados: anexosDemanda.falhados,
             anexos_erros: anexosDemanda.erros,

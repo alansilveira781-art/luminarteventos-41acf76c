@@ -399,7 +399,7 @@ function SolicitarPage() {
   }
 
   if (done) {
-    const codePrefix = done.tipo === "compra" ? "COMPRA" : "DEMANDA";
+    const codePrefix = done.tipo === "compra" ? "COMPRA" : "AQUISIÇÃO";
     return (
       <Shell>
         <div className="text-center space-y-4 py-6">
@@ -411,9 +411,15 @@ function SolicitarPage() {
             Recebemos sua solicitação e ela já está na fila para análise.
           </p>
           {done.numero != null && (
-            <p className="text-xs font-mono text-muted-foreground">
-              Protocolo: {codePrefix}-{done.numero}
-            </p>
+            <div className="space-y-1">
+              <p className="text-sm font-mono font-semibold">
+                {codePrefix}-{done.numero}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Guarde este código. O card entra na coluna <strong>Solicitação</strong> do Quadro de Compras e pode
+                ser localizado pela busca com esse código.
+              </p>
+            </div>
           )}
           <div className="pt-4 flex flex-col gap-2">
             <Button
