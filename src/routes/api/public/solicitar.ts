@@ -449,9 +449,10 @@ export const Route = createFileRoute("/api/public/solicitar")({
           .single();
 
         if (error) {
-          return new Response(
-            JSON.stringify({ error: "Não foi possível registrar a demanda" }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          return recusar(
+            500,
+            { error: "Não foi possível registrar a demanda" },
+            `insert demandas: ${error.message ?? "erro desconhecido"}`,
           );
         }
 
