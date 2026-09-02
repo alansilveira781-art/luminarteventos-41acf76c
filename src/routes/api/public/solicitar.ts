@@ -190,10 +190,30 @@ export const Route = createFileRoute("/api/public/solicitar")({
           request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
           request.headers.get("x-real-ip") ||
           "unknown";
+        const ipHash = await hashIp(ip);
+        // Contexto preenchido conforme os dados vão sendo lidos, para o log de tentativas.
+        const ctx: { tipo?: string | null; titulo?: string | null; nome?: string | null; email?: string | null } = {};
+        const recusar = async (status: number, payload: Record<string, unknown>, motivo: string) => {
+          await registrarTentativa({
+            tipo: ctx.tipo ?? null,
+            titulo: ctx.titulo ?? null,
+            solicitante_nome: ctx.nome ?? null,
+            solicitante_email: ctx.email ?? null,
+            ip_hash: ipHash,
+            resultado: status >= 500 ? "erro" : "recusado",
+            erro: motivo,
+          });
+          return new Response(JSON.stringify(payload), {
+            status,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        };
+
         if (!rateLimit(ip)) {
-          return new Response(
-            JSON.stringify({ error: "Muitas solicitações. Aguarde alguns instantes e tente novamente." }),
-            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          return recusar(
+            429,
+            { error: "Muitas solicitações. Aguarde alguns instantes e tente novamente." },
+            "rate limit por IP",
           );
         }
 
