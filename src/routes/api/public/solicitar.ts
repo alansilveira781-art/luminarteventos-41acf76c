@@ -348,9 +348,10 @@ export const Route = createFileRoute("/api/public/solicitar")({
             .single();
 
           if (error) {
-            return new Response(
-              JSON.stringify({ error: "Não foi possível registrar a compra" }),
-              { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+            return recusar(
+              500,
+              { error: "Não foi possível registrar a compra" },
+              `insert compras: ${error.message ?? "erro desconhecido"}`,
             );
           }
 
