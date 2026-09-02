@@ -377,11 +377,29 @@ export const Route = createFileRoute("/api/public/solicitar")({
             );
           }
 
+          await registrarTentativa({
+            tipo: "compra",
+            titulo: d.titulo,
+            solicitante_nome: d.solicitante_nome,
+            solicitante_email: solicitanteEmail,
+            ip_hash: ipHash,
+            resultado: "criado",
+            card_id: (compra as any).id,
+            card_numero: (compra as any).numero ?? null,
+          });
+          await notificarResponsaveis({
+            origem: "compra",
+            cardId: (compra as any).id,
+            titulo: d.titulo,
+            solicitante: d.solicitante_nome,
+          });
+
           return new Response(
             JSON.stringify({
               ok: true,
               id: (compra as any).id,
               numero: (compra as any).numero,
+              codigo: (compra as any).numero != null ? `COMPRA-${(compra as any).numero}` : null,
               tipo: "compra",
               anexos_falhados: anexosResult.falhados,
               anexos_erros: anexosResult.erros,
