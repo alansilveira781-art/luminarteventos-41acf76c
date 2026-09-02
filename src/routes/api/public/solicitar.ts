@@ -481,11 +481,29 @@ export const Route = createFileRoute("/api/public/solicitar")({
           );
         }
 
+        await registrarTentativa({
+          tipo: "demanda",
+          titulo: d.titulo,
+          solicitante_nome: d.solicitante_nome,
+          solicitante_email: solicitanteEmail,
+          ip_hash: ipHash,
+          resultado: "criado",
+          card_id: (demanda as any).id,
+          card_numero: (demanda as any).numero ?? null,
+        });
+        await notificarResponsaveis({
+          origem: "demanda",
+          cardId: (demanda as any).id,
+          titulo: d.titulo,
+          solicitante: d.solicitante_nome,
+        });
+
         return new Response(
           JSON.stringify({
             ok: true,
             id: (demanda as any).id,
             numero: (demanda as any).numero,
+            codigo: (demanda as any).numero != null ? `AQUISIÇÃO-${(demanda as any).numero}` : null,
             tipo: "demanda",
             anexos_falhados: anexosDemanda.falhados,
             anexos_erros: anexosDemanda.erros,
