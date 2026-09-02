@@ -6163,6 +6163,48 @@ export type Database = {
         }
         Relationships: []
       }
+      solicitacoes_publicas_log: {
+        Row: {
+          card_id: string | null
+          card_numero: number | null
+          created_at: string
+          erro: string | null
+          id: string
+          ip_hash: string | null
+          resultado: string
+          solicitante_email: string | null
+          solicitante_nome: string | null
+          tipo: string | null
+          titulo: string | null
+        }
+        Insert: {
+          card_id?: string | null
+          card_numero?: number | null
+          created_at?: string
+          erro?: string | null
+          id?: string
+          ip_hash?: string | null
+          resultado: string
+          solicitante_email?: string | null
+          solicitante_nome?: string | null
+          tipo?: string | null
+          titulo?: string | null
+        }
+        Update: {
+          card_id?: string | null
+          card_numero?: number | null
+          created_at?: string
+          erro?: string | null
+          id?: string
+          ip_hash?: string | null
+          resultado?: string
+          solicitante_email?: string | null
+          solicitante_nome?: string | null
+          tipo?: string | null
+          titulo?: string | null
+        }
+        Relationships: []
+      }
       solicitantes: {
         Row: {
           apelido: string | null

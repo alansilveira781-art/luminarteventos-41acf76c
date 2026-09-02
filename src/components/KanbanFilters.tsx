@@ -62,6 +62,11 @@ export function applyKanbanFilters<T>(rows: T[], filters: Filters, fields: Field
   );
 }
 
+/** Quantidade de filtros realmente aplicados (ignora os que estão vazios). */
+export function countActiveFilters(filters: Filters): number {
+  return Object.values(filters ?? {}).filter((v) => v && isActive(v)).length;
+}
+
 function isActive(v: FilterValue): boolean {
   if (v.type === "multi") return v.values.length > 0;
   if (v.type === "date-range") return !!(v.from || v.to);

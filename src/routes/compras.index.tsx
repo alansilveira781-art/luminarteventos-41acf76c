@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 import { useTiposDespesa } from "@/hooks/useTiposDespesa";
 import { statusPagamentos, formatBRL, type PagamentoLinha, type StatusPagamentos } from "@/lib/pagamentos";
-import { KanbanFilters, applyKanbanFilters, type FieldDef, type Filters } from "@/components/KanbanFilters";
+import { KanbanFilters, applyKanbanFilters, countActiveFilters, type FieldDef, type Filters } from "@/components/KanbanFilters";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Dialog,
@@ -330,6 +330,15 @@ function ComprasKanban() {
     });
     return m;
   }, [filteredCompras]);
+
+  const filtrosAtivos = useMemo(() => countActiveFilters(filters), [filters]);
+
+  /** Total por status antes de qualquer filtro — para avisar quando a coluna só parece vazia. */
+  const totalPorStatus = useMemo(() => {
+    const m: Record<string, number> = {};
+    cards.forEach((c) => (m[c.status] = (m[c.status] ?? 0) + 1));
+    return m;
+  }, [cards]);
 
   const [pendingMove, setPendingMove] = useState<{ id: string; status: CompraStatus; titulo: string; prazo?: string } | null>(null);
 
@@ -667,6 +676,18 @@ function ComprasKanban() {
         <KanbanFilters rows={cards} fields={filterFields} value={filters} onChange={setFilters} />
       </div>
 
+      {filtrosAtivos > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
+          <span>
+            <strong>{filtrosAtivos}</strong> filtro(s) ativo(s) — {cards.length - filteredCompras.length} card(s)
+            estão ocultos nesta visualização.
+          </span>
+          <Button size="sm" variant="secondary" className="ml-auto h-7" onClick={() => setFilters({})}>
+            Limpar filtros
+          </Button>
+        </div>
+      )}
+
       {selectedIds.size > 0 && (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm">
           <span className="font-medium">{selectedIds.size} card(s) selecionado(s)</span>
@@ -744,7 +765,14 @@ function ComprasKanban() {
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <div className="flex gap-3 overflow-x-auto overflow-y-hidden pb-4 items-stretch h-[calc(100dvh-200px)] min-h-[420px]">
           {COMPRA_STATUSES.map((s) => (
-            <Column key={s.key} statusKey={s.key} label={s.label} color={s.color} count={byStatus[s.key]?.length ?? 0}>
+            <Column
+              key={s.key}
+              statusKey={s.key}
+              label={s.label}
+              color={s.color}
+              count={byStatus[s.key]?.length ?? 0}
+              ocultos={Math.max(0, (totalPorStatus[s.key] ?? 0) - (byStatus[s.key]?.length ?? 0))}
+            >
               {(byStatus[s.key] ?? []).map((c) => {
                 const isDemanda = c.origem === "demanda";
                 const next = isDemanda
@@ -937,8 +965,8 @@ function ComprasKanban() {
 }
 
 function Column({
-  statusKey, label, color, count, children,
-}: { statusKey: string; label: string; color: string; count: number; children: React.ReactNode }) {
+  statusKey, label, color, count, ocultos = 0, children,
+}: { statusKey: string; label: string; color: string; count: number; ocultos?: number; children: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id: statusKey });
   return (
     <div
@@ -952,7 +980,14 @@ function Column({
         </div>
         <span className="text-[10px] text-muted-foreground">{count}</span>
       </div>
-      <div className="p-2 space-y-2 flex-1 overflow-y-auto">{children}</div>
+      <div className="p-2 space-y-2 flex-1 overflow-y-auto">
+        {count === 0 && ocultos > 0 ? (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-[11px] leading-snug text-muted-foreground">
+            {ocultos} card(s) nesta etapa estão ocultos pelos filtros ativos.
+          </div>
+        ) : null}
+        {children}
+      </div>
     </div>
   );
 }

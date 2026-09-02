@@ -120,6 +120,66 @@ async function uploadAnexos(
 }
 
 
+/** Registro de auditoria de toda tentativa vinda do link público. Nunca derruba a requisição. */
+async function registrarTentativa(entry: {
+  tipo?: string | null;
+  titulo?: string | null;
+  solicitante_nome?: string | null;
+  solicitante_email?: string | null;
+  ip_hash?: string | null;
+  resultado: "criado" | "recusado" | "erro";
+  erro?: string | null;
+  card_id?: string | null;
+  card_numero?: number | null;
+}) {
+  try {
+    await (supabaseAdmin as any).from("solicitacoes_publicas_log").insert(entry);
+  } catch (err) {
+    console.error("[solicitar] falha ao registrar log da tentativa", err);
+  }
+}
+
+async function hashIp(ip: string): Promise<string> {
+  try {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(ip));
+    return Array.from(new Uint8Array(buf))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("")
+      .slice(0, 16);
+  } catch {
+    return "unknown";
+  }
+}
+
+/** Avisa os responsáveis padrão da etapa "Solicitação" que chegou um pedido novo. */
+async function notificarResponsaveis(params: {
+  origem: "compra" | "demanda";
+  cardId: string;
+  titulo: string;
+  solicitante: string;
+}) {
+  try {
+    const tabela = params.origem === "compra" ? "compras_status_defaults" : "financeiro_status_defaults";
+    const { data } = await (supabaseAdmin as any)
+      .from(tabela)
+      .select("responsavel_id")
+      .eq("status", "solicitacao");
+    const ids = [...new Set(((data ?? []) as any[]).map((r) => r.responsavel_id).filter(Boolean))];
+    if (!ids.length) return;
+    await (supabaseAdmin as any).rpc("enqueue_notificacoes", {
+      rows: ids.map((user_id) => ({
+        user_id,
+        tipo: "nova_solicitacao",
+        titulo: params.origem === "compra" ? "Nova solicitação de compra" : "Nova solicitação de aquisição",
+        mensagem: `${params.titulo} — ${params.solicitante}`.slice(0, 140),
+        link: `/compras?id=${params.cardId}${params.origem === "demanda" ? "&origem=demanda" : ""}`,
+      })),
+    });
+  } catch (err) {
+    console.error("[solicitar] falha ao notificar responsáveis", err);
+  }
+}
+
 export const Route = createFileRoute("/api/public/solicitar")({
   server: {
     handlers: {
